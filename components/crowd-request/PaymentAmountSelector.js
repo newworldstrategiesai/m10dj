@@ -96,42 +96,42 @@ function PaymentAmountSelector({
     updateCustomAmount(newValue.toFixed(2));
   };
   return (
-    <div className="opacity-0 animate-[fadeIn_0.3s_ease-in-out_forwards] bg-white/80 dark:!bg-black rounded-xl sm:rounded-2xl shadow-2xl border border-gray-200/50 dark:border-gray-700/50 p-3 sm:p-4 md:p-5 flex-shrink-0">
-      <h2 className="text-base sm:text-lg md:text-lg font-bold text-gray-900 dark:text-white mb-2 sm:mb-3 flex items-center gap-2">
-        <Gift className="w-4 h-4 sm:w-5 sm:h-5 text-brand-500" />
+    <div className="opacity-0 animate-[fadeIn_0.3s_ease-in-out_forwards] bg-white/80 dark:!bg-black rounded-xl shadow-2xl border border-gray-200/50 dark:border-gray-700/50 p-2.5 sm:p-3 flex-shrink-0">
+      <h2 className="text-sm sm:text-base font-bold text-gray-900 dark:text-white mb-1.5 flex items-center gap-1.5">
+        <Gift className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-brand-500" />
         {isBiddingMode ? 'Your Bid Amount' : 'Payment Amount'}
       </h2>
       
       {isBiddingMode && (
-        <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mb-3 italic">
+        <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mb-2 italic">
           💡 This is your starting bid. You can increase it later if someone outbids you.
         </p>
       )}
       
-      <div className="space-y-2 sm:space-y-3 md:space-y-4">
-        <div className="flex gap-2 sm:gap-3 mb-3 sm:mb-4 p-1 bg-gray-100/50 dark:bg-gray-700/30 rounded-lg sm:rounded-xl">
+      <div className="space-y-1.5">
+        <div className="flex gap-1.5 sm:gap-2 mb-1.5 p-0.5 bg-gray-100/50 dark:bg-gray-700/30 rounded-lg">
           <button
             type="button"
             onClick={() => setAmountType('preset')}
-            className={`flex-1 py-2 sm:py-2.5 px-2 sm:px-3 rounded-lg border-2 transition-all duration-300 touch-manipulation min-h-[40px] sm:min-h-[44px] ${
+            className={`flex-1 py-1.5 px-2 sm:px-3 rounded-md border-2 transition-all duration-200 touch-manipulation ${
               amountType === 'preset'
-                ? 'border-brand-500 bg-gradient-to-r from-brand-500 to-brand-700 text-white shadow-lg shadow-brand-500/30 scale-105'
+                ? 'border-brand-500 bg-gradient-to-r from-brand-500 to-brand-700 text-white shadow-md shadow-brand-500/20'
                 : 'border-transparent bg-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
             }`}
           >
-            <span className="font-bold text-xs sm:text-sm">Quick Amount</span>
+            <span className="font-semibold text-xs">Quick Amount</span>
           </button>
           
           <button
             type="button"
             onClick={() => setAmountType('custom')}
-            className={`flex-1 py-2 sm:py-2.5 px-2 sm:px-3 rounded-lg border-2 transition-all duration-300 touch-manipulation min-h-[40px] sm:min-h-[44px] ${
+            className={`flex-1 py-1.5 px-2 sm:px-3 rounded-md border-2 transition-all duration-200 touch-manipulation ${
               amountType === 'custom'
-                ? 'border-brand-500 bg-gradient-to-r from-brand-500 to-brand-700 text-white shadow-lg shadow-brand-500/30 scale-105'
+                ? 'border-brand-500 bg-gradient-to-r from-brand-500 to-brand-700 text-white shadow-md shadow-brand-500/20'
                 : 'border-transparent bg-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
             }`}
           >
-            <span className="font-bold text-xs sm:text-sm">Custom Amount</span>
+            <span className="font-semibold text-xs">Custom Amount</span>
           </button>
         </div>
 
@@ -194,24 +194,24 @@ function PaymentAmountSelector({
 
         {amountType === 'custom' && (
           <div>
-            <label className="block text-xs sm:text-sm font-semibold text-gray-900 dark:text-white mb-1 sm:mb-2">
+            <label className="block text-xs font-semibold text-gray-900 dark:text-white mb-1">
               Enter Amount (USD)
             </label>
             {isMobile && amountType === 'custom' ? (
               // Mobile: Native-like wheel picker with stepper controls (only visible when custom amount is selected)
               <div className="space-y-3">
-                <div className="flex items-center gap-2 bg-gray-50 dark:bg-gray-800 rounded-xl p-2 border-2 border-gray-200 dark:border-gray-700">
+                <div className="flex items-center gap-2 bg-gray-50 dark:bg-black rounded-xl p-2 border-2 border-gray-200 dark:border-gray-700">
                   <button
                     type="button"
                     onClick={() => adjustAmount(-1)}
-                    className="flex-shrink-0 w-10 h-10 flex items-center justify-center rounded-lg bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 active:bg-gray-100 dark:active:bg-gray-600 touch-manipulation"
+                    className="flex-shrink-0 w-10 h-10 flex items-center justify-center rounded-lg bg-white dark:bg-black border border-gray-300 dark:border-gray-600 active:bg-gray-100 dark:active:bg-gray-900 touch-manipulation"
                     aria-label="Decrease by $1"
                   >
                     <ChevronDown className="w-5 h-5 text-gray-700 dark:text-gray-300" />
                   </button>
                   
                   <div className="flex-1 relative">
-                    <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                    <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 dark:text-gray-500" />
                     <input
                       type="number"
                       value={customAmount}
@@ -226,7 +226,7 @@ function PaymentAmountSelector({
                           return customAmount && parseFloat(customAmount) > 0 && parseFloat(customAmount) < minAmount;
                         })()
                           ? 'border-red-500 dark:border-red-500 bg-red-50 dark:bg-red-900/20'
-                          : 'border-brand-500 dark:border-brand-500 bg-white dark:!bg-black'
+                          : 'border-brand-500 dark:border-brand-500 bg-white dark:bg-black'
                       } text-gray-900 dark:text-white focus:ring-2 focus:ring-brand-500 focus:border-transparent touch-manipulation`}
                       placeholder={requestType === 'tip' ? '0.00' : (() => {
                         const minAmount = minimumAmount > 0 ? minimumAmount / 100 : (presetAmounts.length > 0 ? presetAmounts[0].value / 100 : 0);
@@ -238,7 +238,7 @@ function PaymentAmountSelector({
                   <button
                     type="button"
                     onClick={() => adjustAmount(1)}
-                    className="flex-shrink-0 w-10 h-10 flex items-center justify-center rounded-lg bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 active:bg-gray-100 dark:active:bg-gray-600 touch-manipulation"
+                    className="flex-shrink-0 w-10 h-10 flex items-center justify-center rounded-lg bg-white dark:bg-black border border-gray-300 dark:border-gray-600 active:bg-gray-100 dark:active:bg-gray-900 touch-manipulation"
                     aria-label="Increase by $1"
                   >
                     <ChevronUp className="w-5 h-5 text-gray-700 dark:text-gray-300" />
@@ -266,7 +266,7 @@ function PaymentAmountSelector({
                       return customAmount && parseFloat(customAmount) > 0 && parseFloat(customAmount) < minAmount;
                     })()
                       ? 'border-red-500 dark:border-red-500 bg-red-50 dark:bg-red-900/20'
-                      : 'border-gray-300 dark:border-gray-600 bg-white dark:!bg-black'
+                      : 'border-gray-300 dark:border-gray-600 bg-white dark:bg-black'
                   } text-gray-900 dark:text-white focus:ring-2 focus:ring-brand-500 focus:border-transparent touch-manipulation`}
                   placeholder={requestType === 'tip' ? '0.00' : (() => {
                     const minAmount = minimumAmount > 0 ? minimumAmount / 100 : (presetAmounts.length > 0 ? presetAmounts[0].value / 100 : 0);
@@ -319,7 +319,21 @@ function PaymentAmountSelector({
         )}
 
         {/* Fast-Track and Next Options (only for song requests) - Compact Radio Style */}
-        {requestType === 'song_request' && !hidePriorityOptions && (showFastTrack || showNextSong) && (
+        {/* Only show when selected amount is less than the top preset amount */}
+        {requestType === 'song_request' && !hidePriorityOptions && (showFastTrack || showNextSong) && (() => {
+          // Get the top preset amount (highest value)
+          const topPresetAmount = presetAmounts.length > 0 
+            ? Math.max(...presetAmounts.map(p => p.value))
+            : 0;
+          
+          // Get current selected amount in cents
+          const currentAmount = amountType === 'preset' 
+            ? presetAmount 
+            : (parseFloat(customAmount) || 0) * 100;
+          
+          // Only show if current amount is less than top preset
+          return currentAmount > 0 && currentAmount < topPresetAmount;
+        })() && (
           <div className="border-t-2 border-gray-200/50 dark:border-gray-700/50 pt-3 sm:pt-4 mt-3 sm:mt-4 space-y-2 sm:space-y-3">
             {/* Fast-Track Option - More Compact */}
             {showFastTrack && (

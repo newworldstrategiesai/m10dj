@@ -62,7 +62,21 @@ const isM10DJCompanyDomain = () => {
          window.location.hostname === 'm10djcompany.com';
 };
 
-export default function Header({ customLogoUrl = null, transparent = false, socialLinks = null, isOwner = false, organizationSlug = null, organizationId = null }) {
+export default function Header({ 
+  customLogoUrl = null, 
+  transparent = false, 
+  socialLinks = null, 
+  isOwner = false, 
+  organizationSlug = null, 
+  organizationId = null, 
+  hideM10Logo = false,
+  m10LogoHeightMobile = 54,
+  m10LogoHeightDesktop = 68,
+  m10LogoMinWidthMobile = 120,
+  m10LogoMinWidthDesktop = 150,
+  m10LogoPosition = 'left',
+  companyLogoUrl = null
+}) {
   const router = useRouter();
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -427,7 +441,13 @@ export default function Header({ customLogoUrl = null, transparent = false, soci
             {/* Logo */}
             <Link 
               href="/" 
-              className="flex-shrink-0 group"
+              className={`flex-shrink-0 group ${
+                (isM10DJCompanyDomain() && (companyLogoUrl || (!hideM10Logo))) && m10LogoPosition === 'center' 
+                  ? 'flex-1 flex justify-center' 
+                  : (isM10DJCompanyDomain() && (companyLogoUrl || (!hideM10Logo))) && m10LogoPosition === 'right'
+                  ? 'flex-1 flex justify-end'
+                  : ''
+              }`}
               onClick={(e) => {
                 // Always ensure scroll to top when clicking logo to go home
                 if (router.pathname === '/') {
@@ -539,54 +559,174 @@ export default function Header({ customLogoUrl = null, transparent = false, soci
                       );
                     }
                     
-                    // Show M10 DJ Company logo only on m10djcompany.com domain
-                    if (isM10DJCompanyDomain()) {
+                    // Show custom company logo if provided (for super admin or organization owner)
+                    // Otherwise show M10 DJ Company logo only on m10djcompany.com domain
+                    // Hide if hideM10Logo prop is set (for super admin control)
+                    if (companyLogoUrl && isM10DJCompanyDomain()) {
+                      // Custom company logo - use same sizing as M10 logo
                       if (shouldBeTransparent) {
                         return (
-                          <img
-                            key={`transparent-logo-${isDarkMode ? 'dark' : 'light'}`}
-                            src={isDarkMode 
-                              ? getAssetUrl("/assets/m10 dj company logo white.gif")
-                              : getAssetUrl("/assets/m10 dj company logo black.gif")}
-                            alt="M10 DJ Company - Memphis Wedding DJ & Event Entertainment Services"
-                            className="h-[54px] sm:h-[68px] w-auto min-w-[120px] sm:min-w-[150px] rounded-lg transition-transform group-hover:scale-105"
-                            style={{ display: 'block', objectFit: 'contain' }}
-                            onError={(e) => {
-                              // Fallback if GIF doesn't load, try JPG version
-                              const currentSrc = e.target.src;
-                              if (currentSrc.includes('white.gif')) {
-                                e.target.src = getAssetUrl('/assets/m10 dj company logo static.jpg');
-                              } else if (currentSrc.includes('black.gif')) {
-                                e.target.src = getAssetUrl('/assets/m10 dj company logo static.jpg');
+                          <>
+                            <style jsx>{`
+                              .company-logo-transparent {
+                                height: ${m10LogoHeightMobile}px !important;
+                                width: auto !important;
+                                min-width: ${m10LogoMinWidthMobile}px !important;
                               }
+                              @media (min-width: 640px) {
+                                .company-logo-transparent {
+                                  height: ${m10LogoHeightDesktop}px !important;
+                                  min-width: ${m10LogoMinWidthDesktop}px !important;
+                                }
+                              }
+                            `}</style>
+                            <img
+                              key={`company-logo-transparent-${isDarkMode ? 'dark' : 'light'}`}
+                              src={companyLogoUrl}
+                              alt="Company Logo"
+                              className="company-logo-transparent rounded-lg transition-transform group-hover:scale-105"
+                              style={{ 
+                                display: 'block', 
+                                objectFit: 'contain'
+                              }}
+                              onError={(e) => {
+                                console.warn('Company logo failed to load:', companyLogoUrl);
+                                e.target.style.display = 'none';
+                              }}
+                            />
+                          </>
+                        );
+                      }
+                      
+                      // Regular header with custom company logo
+                      return (
+                        <>
+                          <style jsx>{`
+                            .company-logo-regular {
+                              height: ${m10LogoHeightMobile}px !important;
+                              width: auto !important;
+                              min-width: ${m10LogoMinWidthMobile}px !important;
+                            }
+                            @media (min-width: 640px) {
+                              .company-logo-regular {
+                                height: ${m10LogoHeightDesktop}px !important;
+                                min-width: ${m10LogoMinWidthDesktop}px !important;
+                              }
+                            }
+                          `}</style>
+                          <img
+                            key={`company-logo-regular-${isDarkMode ? 'dark' : 'light'}`}
+                            src={companyLogoUrl}
+                            alt="Company Logo"
+                            className="company-logo-regular rounded-lg transition-transform group-hover:scale-105"
+                            style={{ 
+                              objectFit: 'contain',
+                              display: 'block'
+                            }}
+                            onError={(e) => {
+                              console.warn('Company logo failed to load:', companyLogoUrl);
+                              e.target.style.display = 'none';
                             }}
                           />
+                        </>
+                      );
+                    }
+                    
+                    // Show M10 DJ Company logo only on m10djcompany.com domain
+                    // Hide if hideM10Logo prop is set (for super admin control)
+                    if (isM10DJCompanyDomain() && !hideM10Logo) {
+                      if (shouldBeTransparent) {
+                        return (
+                          <>
+                            <style jsx>{`
+                              .m10-logo-transparent {
+                                height: ${m10LogoHeightMobile}px !important;
+                                width: auto !important;
+                                min-width: ${m10LogoMinWidthMobile}px !important;
+                              }
+                              @media (min-width: 640px) {
+                                .m10-logo-transparent {
+                                  height: ${m10LogoHeightDesktop}px !important;
+                                  min-width: ${m10LogoMinWidthDesktop}px !important;
+                                }
+                              }
+                            `}</style>
+                            <img
+                              key={`transparent-logo-${isDarkMode ? 'dark' : 'light'}`}
+                              src={isDarkMode 
+                                ? getAssetUrl("/assets/m10 dj company logo white.gif")
+                                : getAssetUrl("/assets/m10 dj company logo black.gif")}
+                              alt="M10 DJ Company - Memphis Wedding DJ & Event Entertainment Services"
+                              className="m10-logo-transparent rounded-lg transition-transform group-hover:scale-105"
+                              style={{ 
+                                display: 'block', 
+                                objectFit: 'contain'
+                              }}
+                              onError={(e) => {
+                                // Fallback if GIF doesn't load, try JPG version
+                                const currentSrc = e.target.src;
+                                if (currentSrc.includes('white.gif')) {
+                                  e.target.src = getAssetUrl('/assets/m10 dj company logo static.jpg');
+                                } else if (currentSrc.includes('black.gif')) {
+                                  e.target.src = getAssetUrl('/assets/m10 dj company logo static.jpg');
+                                }
+                              }}
+                            />
+                          </>
                         );
                       }
                       
                       // Regular header with M10 logo
                       return (
-                        <Image
-                          key={`logo-m10-${isDarkMode ? 'dark' : 'light'}`}
-                          src={isDarkMode 
-                            ? getAssetUrl("/assets/m10 dj company logo white.gif")
-                            : getAssetUrl("/assets/m10 dj company logo black.gif")}
-                          alt="M10 DJ Company - Memphis Wedding DJ & Event Entertainment Services"
-                          width={150}
-                          height={68}
-                          className="h-[54px] sm:h-[68px] w-auto min-w-[120px] sm:min-w-[150px] rounded-lg transition-transform group-hover:scale-105"
-                          style={{ objectFit: 'contain' }}
-                          priority
-                          onError={(e) => {
-                            // Fallback if GIF doesn't load, try static JPG version
-                            const currentSrc = e.target.src;
-                            if (currentSrc.includes('white.gif')) {
-                              e.target.src = getAssetUrl('/assets/m10 dj company logo white.jpg');
-                            } else if (currentSrc.includes('black.gif')) {
-                              e.target.src = getAssetUrl('/assets/m10 dj company logo black.jpg');
+                        <>
+                          <style jsx>{`
+                            .m10-logo-regular {
+                              height: ${m10LogoHeightMobile}px !important;
+                              width: auto !important;
+                              min-width: ${m10LogoMinWidthMobile}px !important;
                             }
-                          }}
-                        />
+                            @media (min-width: 640px) {
+                              .m10-logo-regular {
+                                height: ${m10LogoHeightDesktop}px !important;
+                                min-width: ${m10LogoMinWidthDesktop}px !important;
+                              }
+                            }
+                          `}</style>
+                          <style jsx>{`
+                            .m10-logo-regular {
+                              height: ${m10LogoHeightMobile}px !important;
+                              width: auto !important;
+                              min-width: ${m10LogoMinWidthMobile}px !important;
+                            }
+                            @media (min-width: 640px) {
+                              .m10-logo-regular {
+                                height: ${m10LogoHeightDesktop}px !important;
+                                min-width: ${m10LogoMinWidthDesktop}px !important;
+                              }
+                            }
+                          `}</style>
+                          <img
+                            key={`logo-m10-${isDarkMode ? 'dark' : 'light'}`}
+                            src={isDarkMode 
+                              ? getAssetUrl("/assets/m10 dj company logo white.gif")
+                              : getAssetUrl("/assets/m10 dj company logo black.gif")}
+                            alt="M10 DJ Company - Memphis Wedding DJ & Event Entertainment Services"
+                            className="m10-logo-regular rounded-lg transition-transform group-hover:scale-105"
+                            style={{ 
+                              objectFit: 'contain',
+                              display: 'block'
+                            }}
+                            onError={(e) => {
+                              // Fallback if GIF doesn't load, try static JPG version
+                              const currentSrc = e.target.src;
+                              if (currentSrc.includes('white.gif')) {
+                                e.target.src = getAssetUrl('/assets/m10 dj company logo white.jpg');
+                              } else if (currentSrc.includes('black.gif')) {
+                                e.target.src = getAssetUrl('/assets/m10 dj company logo black.jpg');
+                              }
+                            }}
+                          />
+                        </>
                       );
                     }
                     

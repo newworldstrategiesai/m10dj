@@ -33,11 +33,8 @@ export function useCrowdRequestValidation({
 
   const validateForm = (setError) => {
     try {
-      // Requester name is required for song requests, but optional for tips and shoutouts
-      if (requestType === 'song_request' && !formData?.requesterName?.trim()) {
-        setError('Please enter your name');
-        return false;
-      }
+      // Requester name is optional - will be collected during checkout
+      // No need to validate it on the initial form
 
       if (requestType === 'song_request') {
         if (!formData?.songTitle?.trim()) {

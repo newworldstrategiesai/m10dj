@@ -158,6 +158,20 @@ export default function RequestsPageSettings() {
   const [headerLogoUrl, setHeaderLogoUrl] = useState('');
   const [canCustomizeHeaderLogo, setCanCustomizeHeaderLogo] = useState(false);
   
+  // Hide M10 logo (super admin only)
+  const [hideM10Logo, setHideM10Logo] = useState(false);
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
+  
+  // M10 logo size and position (super admin only)
+  const [m10LogoHeightMobile, setM10LogoHeightMobile] = useState(54);
+  const [m10LogoHeightDesktop, setM10LogoHeightDesktop] = useState(68);
+  const [m10LogoMinWidthMobile, setM10LogoMinWidthMobile] = useState(120);
+  const [m10LogoMinWidthDesktop, setM10LogoMinWidthDesktop] = useState(150);
+  const [m10LogoPosition, setM10LogoPosition] = useState<'left' | 'center' | 'right'>('left');
+  
+  // Custom company logo (super admin or organization owner)
+  const [companyLogoUrl, setCompanyLogoUrl] = useState('');
+  
   // Accent color customization (available to all users)
   // Default to TipJar green, will be updated when organization loads
   const [accentColor, setAccentColor] = useState('#10b981');
@@ -503,6 +517,11 @@ export default function RequestsPageSettings() {
         return;
       }
 
+      // Check if user is super admin (djbenmurray@gmail.com)
+      if (user.email?.toLowerCase() === 'djbenmurray@gmail.com') {
+        setIsSuperAdmin(true);
+      }
+
       setUser(user);
     } catch (error) {
       console.error('Error checking user:', error);
@@ -623,6 +642,19 @@ export default function RequestsPageSettings() {
         // Set custom header logo settings
         setHeaderLogoUrl(org.requests_header_logo_url || '');
         setCanCustomizeHeaderLogo(org.can_customize_header_logo || false);
+        
+        // Set hide M10 logo setting (super admin only)
+        setHideM10Logo(org.requests_hide_m10_logo === true);
+        
+        // Set M10 logo size and position (super admin only)
+        setM10LogoHeightMobile(org.requests_m10_logo_height_mobile || 54);
+        setM10LogoHeightDesktop(org.requests_m10_logo_height_desktop || 68);
+        setM10LogoMinWidthMobile(org.requests_m10_logo_min_width_mobile || 120);
+        setM10LogoMinWidthDesktop(org.requests_m10_logo_min_width_desktop || 150);
+        setM10LogoPosition(org.requests_m10_logo_position || 'left');
+        
+        // Set custom company logo (super admin or organization owner)
+        setCompanyLogoUrl(org.requests_company_logo_url || '');
         
         // Set accent color - default based on product context (black for TipJar if not set)
         const defaultAccentColor = org.product_context === 'tipjar' ? '#000000' : '#fcba00';
@@ -1061,6 +1093,16 @@ export default function RequestsPageSettings() {
         requests_page_title: seoFields.requests_page_title?.trim() || null,
         requests_page_description: seoFields.requests_page_description?.trim() || null,
         requests_default_request_type: seoFields.requests_default_request_type || 'song_request',
+        // Hide M10 logo (super admin only)
+        requests_hide_m10_logo: isSuperAdmin ? hideM10Logo : undefined,
+        // M10 logo size and position (super admin only)
+        requests_m10_logo_height_mobile: isSuperAdmin ? m10LogoHeightMobile : undefined,
+        requests_m10_logo_height_desktop: isSuperAdmin ? m10LogoHeightDesktop : undefined,
+        requests_m10_logo_min_width_mobile: isSuperAdmin ? m10LogoMinWidthMobile : undefined,
+        requests_m10_logo_min_width_desktop: isSuperAdmin ? m10LogoMinWidthDesktop : undefined,
+        requests_m10_logo_position: isSuperAdmin ? m10LogoPosition : undefined,
+        // Custom company logo (super admin or organization owner)
+        requests_company_logo_url: (isSuperAdmin || organization) ? (companyLogoUrl?.trim() || null) : undefined,
       };
 
       // Update slug if it changed (validate and update via API if needed)
@@ -1475,6 +1517,207 @@ export default function RequestsPageSettings() {
                         </div>
                       )}
                     </div>
+                    
+                    {/* Custom Company Logo (Super Admin or Organization Owner) */}
+                    {(isSuperAdmin || organization) && (
+                      <div className="p-4 rounded-lg border-2 border-blue-300 bg-blue-50 dark:bg-blue-900/20 dark:border-blue-700">
+                        <div className="flex items-start justify-between mb-4">
+                          <div>
+                            <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                              Custom Company Logo
+                              <span className="text-xs px-2 py-1 bg-blue-600 text-white rounded-full font-medium">
+                                {isSuperAdmin ? 'Super Admin' : 'Owner'}
+                              </span>
+                            </h3>
+                            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                              Upload your own company logo to replace the M10 logo on requests pages
+                            </p>
+                          </div>
+                        </div>
+                        
+                        <ImageUploadInput
+                          label="Company Logo"
+                          value={companyLogoUrl}
+                          onChange={(url) => {
+                            setCompanyLogoUrl(url);
+                            setError(null);
+                            setSuccess(false);
+                          }}
+                          recommendedDimensions="200x80px"
+                          aspectRatio="2.5:1"
+                          maxSizeMB={2}
+                          previewClassName="h-16 w-auto object-contain bg-gray-900 rounded-lg p-2"
+                          showPreview={true}
+                          required={false}
+                        />
+                        
+                        {companyLogoUrl && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setCompanyLogoUrl('');
+                              setError(null);
+                              setSuccess(false);
+                            }}
+                            className="mt-3 text-sm text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300"
+                          >
+                            Remove Company Logo
+                          </button>
+                        )}
+                      </div>
+                    )}
+                    
+                    {/* Hide M10 Logo (Super Admin Only) */}
+                    {isSuperAdmin && (
+                      <div className="p-4 rounded-lg border-2 border-purple-300 bg-purple-50 dark:bg-purple-900/20 dark:border-purple-700">
+                        <div className="flex items-start justify-between mb-4">
+                          <div>
+                            <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                              {companyLogoUrl ? 'Logo Settings' : 'Hide M10 Logo'}
+                              <span className="text-xs px-2 py-1 bg-purple-600 text-white rounded-full font-medium">
+                                Super Admin
+                              </span>
+                            </h3>
+                            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                              {companyLogoUrl 
+                                ? 'Control the size and position of your company logo'
+                                : 'Hide the M10 DJ Company logo at the top of the requests page'}
+                            </p>
+                          </div>
+                        </div>
+                        
+                        {!companyLogoUrl && (
+                          <label className="flex items-center gap-3 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={hideM10Logo}
+                              onChange={(e) => {
+                                setHideM10Logo(e.target.checked);
+                                setError(null);
+                                setSuccess(false);
+                              }}
+                              className="w-5 h-5 rounded border-gray-300 dark:border-gray-600 text-purple-600 focus:ring-purple-500"
+                            />
+                            <span className="text-sm font-medium text-gray-900 dark:text-white">
+                              Hide M10 logo on requests page
+                            </span>
+                          </label>
+                        )}
+                        
+                        {(!hideM10Logo || companyLogoUrl) && (
+                          <div className="mt-6 space-y-4 pt-4 border-t border-purple-200 dark:border-purple-700">
+                            {/* Logo Position */}
+                            <div>
+                              <label className="block text-sm font-medium text-gray-900 dark:text-white mb-2">
+                                Logo Position
+                              </label>
+                              <div className="flex gap-2">
+                                {(['left', 'center', 'right'] as const).map((pos) => (
+                                  <button
+                                    key={pos}
+                                    type="button"
+                                    onClick={() => {
+                                      setM10LogoPosition(pos);
+                                      setError(null);
+                                      setSuccess(false);
+                                    }}
+                                    className={`px-4 py-2 rounded-lg font-medium transition-all ${
+                                      m10LogoPosition === pos
+                                        ? 'bg-purple-600 text-white'
+                                        : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
+                                    }`}
+                                  >
+                                    {pos.charAt(0).toUpperCase() + pos.slice(1)}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                            
+                            {/* Logo Size - Mobile */}
+                            <div>
+                              <label className="block text-sm font-medium text-gray-900 dark:text-white mb-2">
+                                Logo Size (Mobile)
+                              </label>
+                              <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                  <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Height (px)</label>
+                                  <input
+                                    type="number"
+                                    min="20"
+                                    max="200"
+                                    value={m10LogoHeightMobile}
+                                    onChange={(e) => {
+                                      const val = parseInt(e.target.value) || 54;
+                                      setM10LogoHeightMobile(val);
+                                      setError(null);
+                                      setSuccess(false);
+                                    }}
+                                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Min Width (px)</label>
+                                  <input
+                                    type="number"
+                                    min="50"
+                                    max="400"
+                                    value={m10LogoMinWidthMobile}
+                                    onChange={(e) => {
+                                      const val = parseInt(e.target.value) || 120;
+                                      setM10LogoMinWidthMobile(val);
+                                      setError(null);
+                                      setSuccess(false);
+                                    }}
+                                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                                  />
+                                </div>
+                              </div>
+                            </div>
+                            
+                            {/* Logo Size - Desktop */}
+                            <div>
+                              <label className="block text-sm font-medium text-gray-900 dark:text-white mb-2">
+                                Logo Size (Desktop)
+                              </label>
+                              <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                  <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Height (px)</label>
+                                  <input
+                                    type="number"
+                                    min="20"
+                                    max="200"
+                                    value={m10LogoHeightDesktop}
+                                    onChange={(e) => {
+                                      const val = parseInt(e.target.value) || 68;
+                                      setM10LogoHeightDesktop(val);
+                                      setError(null);
+                                      setSuccess(false);
+                                    }}
+                                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Min Width (px)</label>
+                                  <input
+                                    type="number"
+                                    min="50"
+                                    max="400"
+                                    value={m10LogoMinWidthDesktop}
+                                    onChange={(e) => {
+                                      const val = parseInt(e.target.value) || 150;
+                                      setM10LogoMinWidthDesktop(val);
+                                      setError(null);
+                                      setSuccess(false);
+                                    }}
+                                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                                  />
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
                     
                     {/* Accent Color */}
                     <div className="p-4 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50">

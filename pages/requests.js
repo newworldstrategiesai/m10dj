@@ -2719,6 +2719,10 @@ export function GeneralRequestsPage({
                 .requests-page-container { background-color: transparent !important; }
               }
               .requests-page-container .dark\\:bg-black { background-color: transparent !important; }
+              .requests-page-container input[data-dark-bg="black"],
+              .requests-page-container textarea[data-dark-bg="black"] {
+                background-color: #000000 !important;
+              }
               .requests-page-container .dark\\:from-black { --tw-gradient-from: rgb(249, 250, 251) !important; }
               .requests-page-container .dark\\:via-black { --tw-gradient-via: rgb(249, 250, 251) !important; }
               .requests-page-container .dark\\:to-black { --tw-gradient-to: rgb(249, 250, 251) !important; }
@@ -2754,6 +2758,10 @@ export function GeneralRequestsPage({
               }
               .requests-page-container .bg-gray-50 { background-color: rgb(17, 24, 39) !important; }
               .requests-page-container .bg-white { background-color: rgb(31, 41, 55) !important; }
+              .requests-page-container input[data-dark-bg="black"],
+              .requests-page-container textarea[data-dark-bg="black"] {
+                background-color: #000000 !important;
+              }
               .requests-page-container .bg-white\\/80 { background-color: rgba(0, 0, 0, 0.8) !important; }
               .requests-page-container .from-gray-50 { --tw-gradient-from: black !important; }
               .requests-page-container .via-brand\\/5 { --tw-gradient-via: black !important; }
@@ -2809,7 +2817,7 @@ export function GeneralRequestsPage({
                 disablePictureInPicture
                 preload="metadata"
                 poster={coverPhoto}
-                style={{ objectPosition: 'center center' }}
+                style={{ objectPosition: 'center 35%' }}
                 onLoadStart={() => {
                   // Clear timeout when video starts loading
                   if (desktopVideoTimeoutRef.current) {
@@ -2849,7 +2857,7 @@ export function GeneralRequestsPage({
                 src={coverPhoto}
                 alt="Header background"
                 className="absolute inset-0 w-full h-full object-cover"
-                style={{ objectPosition: 'center center' }}
+                style={{ objectPosition: 'center 35%' }}
                 onError={(e) => {
                   console.warn('⚠️ [VIDEO] Poster image also failed to load');
                   // Fall through to animated gradient
@@ -3043,17 +3051,17 @@ export function GeneralRequestsPage({
             <div className="absolute inset-y-0 right-0 w-16 bg-gradient-to-l from-black/40 to-transparent pointer-events-none z-10"></div>
             
             {/* Gradient overlay at bottom for social links */}
-            <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-black via-black/60 to-transparent z-20 pointer-events-none"></div>
+            <div className="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-black via-black/30 to-transparent z-20 pointer-events-none"></div>
             
             {/* Social Links at bottom of video sidebar */}
             {((previewSocialLinks && previewSocialLinks.length > 0) || (organizationData?.social_links && Array.isArray(organizationData.social_links) && organizationData.social_links.length > 0)) && (
-              <div className="absolute bottom-8 left-0 right-0 flex items-center justify-center gap-5 z-30">
+              <div className="absolute bottom-0.5 left-0 right-0 flex items-center justify-center gap-3 z-30">
                 {(previewSocialLinks || organizationData?.social_links || [])
                   .filter(link => link.enabled !== false)
                   .sort((a, b) => (a.order || 0) - (b.order || 0))
                   .map((link, index) => {
                     const getSocialIcon = (platform) => {
-                      const iconProps = { className: "w-6 h-6", strokeWidth: 2, fill: "none" };
+                      const iconProps = { className: "w-4 h-4", strokeWidth: 1.5, fill: "none" };
                       switch (platform?.toLowerCase()) {
                         case 'facebook':
                           return <Facebook {...iconProps} />;
@@ -3084,7 +3092,7 @@ export function GeneralRequestsPage({
                             e.stopPropagation();
                             handleSocialClick(e, platform);
                           }}
-                          className="flex items-center justify-center w-11 h-11 rounded-full bg-white/20 backdrop-blur-md text-white hover:text-white hover:bg-white/30 transition-all cursor-pointer border border-white/20 p-0"
+                          className="flex items-center justify-center w-8 h-8 rounded-full bg-white/20 backdrop-blur-sm text-white hover:text-white hover:bg-white/25 transition-all cursor-pointer border border-white/20 p-0"
                           aria-label={link.label || link.platform}
                         >
                           {getSocialIcon(link.platform)}
@@ -3099,7 +3107,7 @@ export function GeneralRequestsPage({
                         href={link.url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex items-center justify-center w-11 h-11 rounded-full bg-white/20 backdrop-blur-md text-white hover:text-white hover:bg-white/30 transition-all border border-white/20"
+                        className="flex items-center justify-center w-8 h-8 rounded-full bg-white/20 backdrop-blur-sm text-white hover:text-white hover:bg-white/25 transition-all border border-white/20"
                         aria-label={link.label || link.platform}
                       >
                         {getSocialIcon(link.platform)}
@@ -3223,7 +3231,14 @@ export function GeneralRequestsPage({
                   socialLinks={previewSocialLinks || organizationData?.social_links} 
                   isOwner={isOwner} 
                   organizationSlug={organizationData?.slug} 
-                  organizationId={organizationId} 
+                  organizationId={organizationId}
+                  hideM10Logo={organizationData?.requests_hide_m10_logo === true}
+                  m10LogoHeightMobile={organizationData?.requests_m10_logo_height_mobile || 54}
+                  m10LogoHeightDesktop={organizationData?.requests_m10_logo_height_desktop || 68}
+                  m10LogoMinWidthMobile={organizationData?.requests_m10_logo_min_width_mobile || 120}
+                  m10LogoMinWidthDesktop={organizationData?.requests_m10_logo_min_width_desktop || 150}
+                  m10LogoPosition={organizationData?.requests_m10_logo_position || 'left'}
+                  companyLogoUrl={organizationData?.requests_company_logo_url || null}
                 />
               </div>
             </>
@@ -3324,14 +3339,41 @@ export function GeneralRequestsPage({
                 position: fixed !important;
                 top: 50% !important;
                 left: 50% !important;
-                transform: translate(-50%, -50%) !important;
+                transform: translate(-50%, -50%) scale(1) !important;
                 z-index: 15 !important;
                 animation: float 3s ease-in-out infinite !important;
                 width: 375px !important;
                 height: 812px !important;
-                max-height: 90vh !important;
+                max-width: min(375px, 90vw) !important;
+                max-height: min(812px, 90vh) !important;
                 pointer-events: none !important;
                 isolation: isolate !important;
+                transform-origin: center center !important;
+              }
+              
+              /* Scale down frame proportionally on smaller desktop windows */
+              @media (max-height: 900px) {
+                .desktop-iphone-frame-wrapper {
+                  transform: translate(-50%, -50%) scale(0.85) !important;
+                }
+              }
+              
+              @media (max-height: 800px) {
+                .desktop-iphone-frame-wrapper {
+                  transform: translate(-50%, -50%) scale(0.75) !important;
+                }
+              }
+              
+              @media (max-height: 700px) {
+                .desktop-iphone-frame-wrapper {
+                  transform: translate(-50%, -50%) scale(0.65) !important;
+                }
+              }
+              
+              @media (max-width: 1200px) and (max-height: 1000px) {
+                .desktop-iphone-frame-wrapper {
+                  transform: translate(-50%, -50%) scale(0.9) !important;
+                }
               }
               
               /* iPhone frame styling - realistic iPhone appearance with metallic finish */
@@ -3365,16 +3407,16 @@ export function GeneralRequestsPage({
                 position: fixed !important;
                 top: 50% !important;
                 left: 50% !important;
-                transform: translate(-50%, -50%) !important;
+                transform: translate(-50%, -50%) scale(1) !important;
                 width: 355px !important;
                 max-width: 355px !important;
                 height: 792px !important;
-                max-height: calc(90vh - 16px) !important;
+                max-height: 792px !important;
                 z-index: 14 !important;
                 background: #000000 !important;
                 border-radius: 37px !important;
                 overflow-x: hidden !important;
-                overflow-y: auto !important;
+                overflow-y: hidden !important;
                 -webkit-overflow-scrolling: touch !important;
                 pointer-events: auto !important;
                 box-shadow: 
@@ -3387,7 +3429,90 @@ export function GeneralRequestsPage({
                 animation: none !important;
                 display: flex !important;
                 flex-direction: column !important;
+                transform-origin: center center !important;
               }
+              
+              /* Scale down content wrapper proportionally on smaller desktop windows */
+              @media (max-height: 900px) {
+                .requests-page-container > div.desktop-content-wrapper {
+                  transform: translate(-50%, -50%) scale(0.85) !important;
+                }
+              }
+              
+              @media (max-height: 800px) {
+                .requests-page-container > div.desktop-content-wrapper {
+                  transform: translate(-50%, -50%) scale(0.75) !important;
+                }
+              }
+              
+              @media (max-height: 700px) {
+                .requests-page-container > div.desktop-content-wrapper {
+                  transform: translate(-50%, -50%) scale(0.65) !important;
+                }
+              }
+              
+              @media (max-width: 1200px) and (max-height: 1000px) {
+                .requests-page-container > div.desktop-content-wrapper {
+                  transform: translate(-50%, -50%) scale(0.9) !important;
+                }
+              }
+              
+              /* Make main content area fit within frame without scrolling */
+              .desktop-content-wrapper > main {
+                flex: 1 !important;
+                display: flex !important;
+                flex-direction: column !important;
+                overflow: hidden !important;
+                min-height: 0 !important;
+                max-height: 100% !important;
+                height: 100% !important;
+              }
+              
+              /* Reduce padding on desktop to fit content - match mobile exactly */
+              .desktop-content-wrapper > main.section-container {
+                padding-top: 0.75rem !important;
+                padding-bottom: 0.75rem !important;
+                padding-left: 0.75rem !important;
+                padding-right: 0.75rem !important;
+              }
+              
+              /* Ensure form container fits within viewport */
+              .desktop-content-wrapper > main > div {
+                flex: 1 !important;
+                display: flex !important;
+                flex-direction: column !important;
+                overflow: hidden !important;
+                min-height: 0 !important;
+                max-height: 100% !important;
+                height: 100% !important;
+              }
+              
+              /* Make form scrollable if needed, but within the frame */
+              .desktop-content-wrapper form {
+                flex: 1 !important;
+                display: flex !important;
+                flex-direction: column !important;
+                overflow-y: auto !important;
+                overflow-x: hidden !important;
+                min-height: 0 !important;
+                max-height: 100% !important;
+                -webkit-overflow-scrolling: touch !important;
+              }
+              
+              /* Reduce hero section height on desktop to fit in frame */
+              .desktop-content-wrapper > div[class*="relative w-full"]:not([data-requests-header-wrapper]) {
+                max-height: 140px !important;
+                height: 140px !important;
+                min-height: 140px !important;
+              }
+              
+              /* Ensure step indicator is compact on desktop */
+              .desktop-content-wrapper .text-center.mb-1 {
+                margin-bottom: 0.25rem !important;
+              }
+              
+              /* Match mobile spacing exactly - no special desktop overrides */
+              /* Let the natural mobile spacing flow through */
               
               /* Ensure sticky elements inside desktop-content-wrapper stick to the bottom */
               .desktop-content-wrapper .sticky {
@@ -3401,7 +3526,7 @@ export function GeneralRequestsPage({
                 position: sticky !important;
                 bottom: 0 !important;
                 width: 100% !important;
-                max-width: 355px !important;
+                max-width: 100% !important;
                 left: 0 !important;
                 right: 0 !important;
                 margin-left: 0 !important;
@@ -3439,7 +3564,7 @@ export function GeneralRequestsPage({
               
               /* Constrain all content inside the iPhone frame - CRITICAL for boundaries */
               .desktop-content-wrapper > * {
-                max-width: 359px !important;
+                max-width: 100% !important;
                 width: 100% !important;
                 box-sizing: border-box !important;
               }
@@ -3467,7 +3592,7 @@ export function GeneralRequestsPage({
               /* Hero section - must respect boundaries but allow content to flow */
               .desktop-content-wrapper > div[class*="relative w-full"] {
                 width: 100% !important;
-                max-width: 359px !important;
+                max-width: 100% !important;
                 position: relative !important;
                 box-sizing: border-box !important;
                 overflow: hidden !important;
@@ -3497,8 +3622,8 @@ export function GeneralRequestsPage({
                 width: 100% !important;
                 max-width: 100% !important;
                 position: absolute !important;
-                object-position: center top !important;
-                transform: translateY(-20%) !important;
+                object-position: center 35% !important;
+                transform: none !important;
               }
               
               /* Ensure background divs (gradients, cover photos) are properly aligned */
@@ -3523,7 +3648,7 @@ export function GeneralRequestsPage({
               /* Content overlay - must respect boundaries but allow content to flow */
               .desktop-content-wrapper > div[class*="relative w-full"] > div[class*="relative z-20"] {
                 width: 100% !important;
-                max-width: 359px !important;
+                max-width: 100% !important;
                 box-sizing: border-box !important;
                 overflow: visible !important;
               }
@@ -3668,8 +3793,8 @@ export function GeneralRequestsPage({
           <div 
             className={`relative w-full overflow-visible top-0 bg-black ${
               minimalHeader 
-                ? 'h-[120px] sm:h-[140px] min-h-[100px] sm:min-h-[120px]' 
-                : 'h-[40vh] sm:h-[50vh] md:min-h-[280px] lg:min-h-[300px] min-h-[250px] sm:min-h-[350px] max-h-[600px]'
+                ? 'h-[80px] sm:h-[100px] min-h-[70px] sm:min-h-[90px]' 
+                : 'h-[25vh] sm:h-[30vh] md:min-h-[180px] lg:min-h-[200px] min-h-[150px] sm:min-h-[200px] max-h-[350px]'
             }`}
             style={{ 
               zIndex: 0
@@ -3689,7 +3814,7 @@ export function GeneralRequestsPage({
                 disablePictureInPicture
                 preload="metadata"
                 poster={coverPhoto}
-                style={{ zIndex: 0, objectPosition: 'center 40%' }}
+                style={{ zIndex: 0, objectPosition: 'center 35%' }}
                 onLoadStart={() => {
                   // Clear timeout when video starts loading
                   if (mobileVideoTimeoutRef.current) {
@@ -3729,7 +3854,7 @@ export function GeneralRequestsPage({
                 src={coverPhoto}
                 alt="Header background"
                 className="absolute inset-0 w-full h-full object-cover"
-                style={{ zIndex: 0, objectPosition: 'center 40%' }}
+                style={{ zIndex: 0, objectPosition: 'center 35%' }}
                 onError={(e) => {
                   console.warn('⚠️ [VIDEO] Poster image also failed to load');
                   // Fall through to animated gradient
@@ -3963,7 +4088,7 @@ export function GeneralRequestsPage({
               
               {/* Bottom section with social icons - Hide on minimal header */}
               {!minimalHeader && (
-              <div className="w-full flex flex-col items-center gap-4 mt-4 sm:mt-6">
+              <div className="w-full flex flex-col items-center gap-2 mt-0.5 sm:mt-1">
                 {/* Social Links - Positioned at bottom */}
                 {((previewSocialLinks && previewSocialLinks.length > 0) || (organizationData?.social_links && Array.isArray(organizationData.social_links) && organizationData.social_links.length > 0)) ? (
                   <div className="flex items-center justify-center gap-3">
@@ -3972,7 +4097,7 @@ export function GeneralRequestsPage({
                       .sort((a, b) => (a.order || 0) - (b.order || 0))
                       .map((link, index) => {
                         const getSocialIcon = (platform) => {
-                          const iconProps = { className: "w-5 h-5", strokeWidth: 2, fill: "none" };
+                          const iconProps = { className: "w-4 h-4", strokeWidth: 1.5, fill: "none" };
                           switch (platform?.toLowerCase()) {
                             case 'facebook':
                               return <Facebook {...iconProps} />;
@@ -4003,7 +4128,7 @@ export function GeneralRequestsPage({
                                 e.stopPropagation();
                                 handleSocialClick(e, platform);
                               }}
-                              className="flex items-center justify-center w-8 h-8 text-white/90 hover:text-white transition-opacity hover:opacity-70 cursor-pointer border-0 bg-transparent p-0"
+                              className="flex items-center justify-center w-7 h-7 text-white hover:text-white transition-opacity hover:opacity-90 cursor-pointer border-0 bg-transparent p-0"
                               aria-label={link.label || link.platform}
                             >
                               {getSocialIcon(link.platform)}
@@ -4017,7 +4142,7 @@ export function GeneralRequestsPage({
                             href={link.url}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="flex items-center justify-center w-8 h-8 text-white/90 hover:text-white transition-opacity hover:opacity-70"
+                            className="flex items-center justify-center w-7 h-7 text-white hover:text-white transition-opacity hover:opacity-90"
                             aria-label={link.label || link.platform}
                           >
                             {getSocialIcon(link.platform)}
@@ -4063,8 +4188,8 @@ export function GeneralRequestsPage({
           </div>
         )}
         
-        <main className={`section-container relative z-10 ${showPaymentMethods ? 'py-8 sm:py-12 md:py-16' : 'py-3 sm:py-6 md:py-8 lg:py-12'} px-3 sm:px-4 md:px-8 lg:px-12 overflow-x-hidden`} style={{ minHeight: embedMode ? '100vh' : (showPaymentMethods ? '100vh' : 'auto'), display: 'flex', flexDirection: 'column', maxWidth: '100vw' }}>
-          <div className={`${showPaymentMethods ? 'max-w-lg' : 'max-w-xl md:max-w-2xl lg:max-w-3xl'} mx-auto w-full flex-1 flex flex-col overflow-x-hidden`}>
+        <main className={`section-container relative z-10 ${showPaymentMethods ? 'py-8 sm:py-12 md:py-16' : 'py-2 sm:py-3 md:py-4'} px-3 sm:px-4 md:px-8 lg:px-12 overflow-x-hidden`} style={{ minHeight: embedMode ? '100vh' : (showPaymentMethods ? '100vh' : 'auto'), display: 'flex', flexDirection: 'column', maxWidth: '100vw', height: embedMode ? '100vh' : (showPaymentMethods ? '100vh' : '100%'), maxHeight: embedMode ? '100vh' : (showPaymentMethods ? '100vh' : '100%') }}>
+          <div className={`${showPaymentMethods ? 'max-w-lg' : 'max-w-xl md:max-w-2xl lg:max-w-3xl'} mx-auto w-full flex-1 flex flex-col overflow-x-hidden`} style={{ minHeight: 0, maxHeight: '100%', overflow: 'hidden' }}>
             {/* Header - Compact for no-scroll design - Hide when hero image is shown */}
             {false && (
               <div className="text-center mb-2 sm:mb-3">
@@ -4089,12 +4214,12 @@ export function GeneralRequestsPage({
             
             {/* Step Indicator - Show below hero image when hero is present - Compact on mobile */}
             {!showPaymentMethods && (
-              <div className="text-center mb-1 sm:mb-3 md:mb-4 lg:mb-6">
-                <div className="flex items-center justify-center gap-1.5 sm:gap-2">
-                  <div className={`h-1 sm:h-1.5 rounded-full transition-all ${currentStep >= 1 ? 'bg-white w-6 sm:w-8' : 'bg-white/30 w-1.5 sm:w-2'}`}></div>
-                  <div className={`h-1 sm:h-1.5 rounded-full transition-all ${currentStep >= 2 ? 'bg-white w-6 sm:w-8' : 'bg-white/30 w-1.5 sm:w-2'}`}></div>
+              <div className="text-center mb-1 sm:mb-2">
+                <div className="flex items-center justify-center gap-1">
+                  <div className={`h-1 rounded-full transition-all ${currentStep >= 1 ? 'bg-white w-5 sm:w-6' : 'bg-white/30 w-1.5'}`}></div>
+                  <div className={`h-1 rounded-full transition-all ${currentStep >= 2 ? 'bg-white w-5 sm:w-6' : 'bg-white/30 w-1.5'}`}></div>
                 </div>
-                <p className="text-[9px] sm:text-[10px] md:text-xs text-white/80 mt-0.5 sm:mt-1 md:mt-2">
+                <p className="text-[9px] sm:text-[10px] text-white/70 mt-0.5">
                   {currentStep === 1 && (organizationData?.requests_step_1_text || 'Step 1 of 2: Choose your request')}
                   {currentStep === 2 && (organizationData?.requests_step_2_text || 'Step 2 of 2: Payment')}
                 </p>
@@ -4266,13 +4391,6 @@ export function GeneralRequestsPage({
                               Song info extracted successfully
                             </p>
                           )}
-                          {/* Subtle hint always visible when empty */}
-                          {!formData.songTitle && !isExtractedFromLink && !extractingSong && (
-                            <p className="mt-1.5 text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1.5">
-                              <Link2 className="w-3 h-3 flex-shrink-0" />
-                              <span>Type a song name or paste a music link</span>
-                            </p>
-                          )}
                           {/* Autocomplete suggestions */}
                           {showAutocomplete && suggestions.length > 0 && (
                             <div className="mt-2 bg-white dark:!bg-black border-2 border-gray-200 dark:border-gray-700 rounded-lg shadow-lg max-h-64 overflow-y-auto z-50">
@@ -4412,12 +4530,6 @@ export function GeneralRequestsPage({
                                           <p className="mt-1 text-xs text-green-600 dark:text-green-400 flex items-center gap-1">
                                             <CheckCircle className="w-3 h-3" />
                                             Song info extracted successfully
-                                          </p>
-                                        )}
-                                        {!song.songTitle && !bundleIsExtractedFromLink[index] && !bundleExtractingSong[index] && (
-                                          <p className="mt-1.5 text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1.5">
-                                            <Link2 className="w-3 h-3 flex-shrink-0" />
-                                            <span>Type a song name or paste a music link</span>
                                           </p>
                                         )}
                                         {/* Autocomplete suggestions */}
@@ -4813,41 +4925,41 @@ export function GeneralRequestsPage({
                 }}
               />
               ) : (
-              <form onSubmit={handleSubmit} className="flex-1 flex flex-col space-y-3 sm:space-y-4 overflow-y-auto">
+              <form onSubmit={handleSubmit} className="flex-1 flex flex-col space-y-2 sm:space-y-3 overflow-y-auto" style={{ minHeight: 0, maxHeight: '100%' }}>
                 {/* Request Type Selection */}
-                <div className="bg-white/70 dark:!bg-black/70 backdrop-blur-xl rounded-xl sm:rounded-2xl md:rounded-2xl shadow-2xl border border-gray-200/50 dark:border-gray-800/50 p-3 sm:p-4 md:p-5 flex-shrink-0">
-                  <h2 className="text-base sm:text-xl md:text-xl font-bold text-gray-900 dark:text-white mb-2 sm:mb-3 md:mb-4 flex items-center gap-2 sm:gap-3">
-                    <div className="w-1 h-5 sm:h-6 bg-brand rounded-full hidden sm:block"></div>
+                <div className="bg-white/70 dark:!bg-black/70 backdrop-blur-xl rounded-xl sm:rounded-2xl shadow-2xl border border-gray-200/50 dark:border-gray-800/50 p-2.5 sm:p-3 md:p-4 flex-shrink-0">
+                  <h2 className="text-sm sm:text-base md:text-lg font-bold text-gray-900 dark:text-white mb-2 sm:mb-2.5 flex items-center gap-1.5 sm:gap-2">
+                    <div className="w-1 h-4 sm:h-5 bg-brand rounded-full hidden sm:block"></div>
                     <span className="leading-tight">{organizationData?.requests_main_heading || 'What would you like to request?'}</span>
                   </h2>
                   
                   {/* Request Type Selection - Hide if only one type is allowed */}
                   {(!allowedRequestTypes || allowedRequestTypes.length > 1) && (
-                    <div className="grid grid-cols-3 gap-2 sm:gap-3 md:gap-4 lg:gap-6 mb-4 sm:mb-5 md:mb-6">
+                    <div className="grid grid-cols-3 gap-1.5 sm:gap-2 md:gap-3 mb-2 sm:mb-3">
                       {(!allowedRequestTypes || allowedRequestTypes.includes('song_request')) && (
                         <button
                           type="button"
                           onClick={() => handleRequestTypeChange('song_request')}
-                          className={`group relative p-2.5 sm:p-3 md:p-4 lg:p-5 rounded-xl sm:rounded-xl border-2 transition-all duration-300 touch-manipulation overflow-hidden ${
+                          className={`group relative p-1.5 sm:p-2 rounded-lg sm:rounded-xl border-2 transition-all duration-200 touch-manipulation overflow-hidden ${
                             requestType === 'song_request'
-                              ? 'border-brand bg-brand/10 dark:bg-brand/10 shadow-lg shadow-brand/20 scale-105'
-                              : 'border-gray-200 dark:border-gray-800 bg-white/50 dark:!bg-black/50 hover:border-brand/50 hover:scale-[1.02] hover:shadow-md'
+                              ? 'border-brand bg-brand/10 dark:bg-brand/10 shadow-md shadow-brand/20'
+                              : 'border-gray-200 dark:border-gray-800 bg-white/50 dark:!bg-black/50 hover:border-brand/50 hover:shadow-sm'
                           }`}
                         >
                           {requestType === 'song_request' && (
                             <div className="absolute inset-0 bg-gradient-to-br from-brand/10 to-transparent"></div>
                           )}
-                          <div className="relative flex flex-col items-center justify-center">
-                            <div className={`inline-flex items-center justify-center w-9 h-9 sm:w-10 sm:h-10 rounded-lg mb-1.5 sm:mb-2 transition-all duration-300 ${
+                          <div className="relative flex flex-col items-center justify-center gap-1">
+                            <div className={`inline-flex items-center justify-center w-6 h-6 sm:w-7 sm:h-7 rounded-md transition-all duration-200 ${
                               requestType === 'song_request'
-                                ? 'bg-brand shadow-lg shadow-brand/30'
+                                ? 'bg-brand shadow-sm shadow-brand/20'
                                 : 'bg-gray-100 dark:!bg-black/50 group-hover:bg-brand/10'
                             }`}>
-                              <Music className={`w-4 h-4 sm:w-5 sm:h-5 transition-colors ${
+                              <Music className={`w-3.5 h-3.5 sm:w-4 sm:h-4 transition-colors ${
                                 requestType === 'song_request' ? 'text-black' : 'text-gray-400 group-hover:text-brand'
                               }`} />
                             </div>
-                            <h3 className="font-bold text-[11px] sm:text-xs text-gray-900 dark:text-white text-center leading-tight">{organizationData?.requests_song_request_label || 'Song Request'}</h3>
+                            <h3 className="font-semibold text-[10px] sm:text-[11px] text-gray-900 dark:text-white text-center leading-tight">{organizationData?.requests_song_request_label || 'Song Request'}</h3>
                           </div>
                         </button>
                       )}
@@ -4856,26 +4968,26 @@ export function GeneralRequestsPage({
                         <button
                           type="button"
                           onClick={() => handleRequestTypeChange('shoutout')}
-                          className={`group relative p-2.5 sm:p-3 rounded-xl sm:rounded-xl border-2 transition-all duration-300 touch-manipulation overflow-hidden ${
+                          className={`group relative p-1.5 sm:p-2 rounded-lg sm:rounded-xl border-2 transition-all duration-200 touch-manipulation overflow-hidden ${
                             requestType === 'shoutout'
-                              ? 'border-brand bg-brand/10 dark:bg-brand/10 shadow-lg shadow-brand/20 scale-105'
-                              : 'border-gray-200 dark:border-gray-800 bg-white/50 dark:!bg-black/50 hover:border-brand/50 hover:scale-[1.02] hover:shadow-md'
+                              ? 'border-brand bg-brand/10 dark:bg-brand/10 shadow-md shadow-brand/20'
+                              : 'border-gray-200 dark:border-gray-800 bg-white/50 dark:!bg-black/50 hover:border-brand/50 hover:shadow-sm'
                           }`}
                         >
                           {requestType === 'shoutout' && (
                             <div className="absolute inset-0 bg-gradient-to-br from-brand/10 to-transparent"></div>
                           )}
-                          <div className="relative flex flex-col items-center justify-center">
-                            <div className={`inline-flex items-center justify-center w-9 h-9 sm:w-10 sm:h-10 rounded-lg mb-1.5 sm:mb-2 transition-all duration-300 ${
+                          <div className="relative flex flex-col items-center justify-center gap-1">
+                            <div className={`inline-flex items-center justify-center w-6 h-6 sm:w-7 sm:h-7 rounded-md transition-all duration-200 ${
                               requestType === 'shoutout'
-                                ? 'bg-brand shadow-lg shadow-brand/30'
+                                ? 'bg-brand shadow-sm shadow-brand/20'
                                 : 'bg-gray-100 dark:bg-gray-700 group-hover:bg-brand/10'
                             }`}>
-                              <Mic className={`w-4 h-4 sm:w-5 sm:h-5 transition-colors ${
+                              <Mic className={`w-3.5 h-3.5 sm:w-4 sm:h-4 transition-colors ${
                                 requestType === 'shoutout' ? 'text-black' : 'text-gray-400 group-hover:text-brand'
                               }`} />
                             </div>
-                            <h3 className="font-bold text-[11px] sm:text-xs text-gray-900 dark:text-white text-center leading-tight">{organizationData?.requests_shoutout_label || 'Shoutout'}</h3>
+                            <h3 className="font-semibold text-[10px] sm:text-[11px] text-gray-900 dark:text-white text-center leading-tight">{organizationData?.requests_shoutout_label || 'Shoutout'}</h3>
                           </div>
                         </button>
                       )}
@@ -4884,26 +4996,26 @@ export function GeneralRequestsPage({
                         <button
                           type="button"
                           onClick={() => handleRequestTypeChange('tip')}
-                          className={`group relative p-2.5 sm:p-3 rounded-xl sm:rounded-xl border-2 transition-all duration-300 touch-manipulation overflow-hidden ${
+                          className={`group relative p-1.5 sm:p-2 rounded-lg sm:rounded-xl border-2 transition-all duration-200 touch-manipulation overflow-hidden ${
                             requestType === 'tip'
-                              ? 'border-brand bg-brand/10 dark:bg-brand/10 shadow-lg shadow-brand/20 scale-105'
-                              : 'border-gray-200 dark:border-gray-800 bg-white/50 dark:!bg-black/50 hover:border-brand/50 hover:scale-[1.02] hover:shadow-md'
+                              ? 'border-brand bg-brand/10 dark:bg-brand/10 shadow-md shadow-brand/20'
+                              : 'border-gray-200 dark:border-gray-800 bg-white/50 dark:!bg-black/50 hover:border-brand/50 hover:shadow-sm'
                           }`}
                         >
                           {requestType === 'tip' && (
                             <div className="absolute inset-0 bg-gradient-to-br from-brand/10 to-transparent"></div>
                           )}
-                          <div className="relative flex flex-col items-center justify-center">
-                            <div className={`inline-flex items-center justify-center w-9 h-9 sm:w-10 sm:h-10 rounded-lg mb-1.5 sm:mb-2 transition-all duration-300 ${
+                          <div className="relative flex flex-col items-center justify-center gap-1">
+                            <div className={`inline-flex items-center justify-center w-6 h-6 sm:w-7 sm:h-7 rounded-md transition-all duration-200 ${
                               requestType === 'tip'
-                                ? 'bg-brand shadow-lg shadow-brand/30'
+                                ? 'bg-brand shadow-sm shadow-brand/20'
                                 : 'bg-gray-100 dark:bg-gray-700 group-hover:bg-brand/10'
                             }`}>
-                              <Gift className={`w-4 h-4 sm:w-5 sm:h-5 transition-colors ${
+                              <Gift className={`w-3.5 h-3.5 sm:w-4 sm:h-4 transition-colors ${
                                 requestType === 'tip' ? 'text-black' : 'text-gray-400 group-hover:text-brand'
                               }`} />
                             </div>
-                            <h3 className="font-bold text-[11px] sm:text-xs text-gray-900 dark:text-white text-center leading-tight">Tip Me</h3>
+                            <h3 className="font-semibold text-[10px] sm:text-[11px] text-gray-900 dark:text-white text-center leading-tight">Tip Me</h3>
                           </div>
                         </button>
                       )}
@@ -4912,11 +5024,11 @@ export function GeneralRequestsPage({
 
                   {/* Song Request Fields */}
                   {requestType === 'song_request' && (
-                    <div className="space-y-2 sm:space-y-3 md:space-y-4">
+                    <div className="space-y-2 sm:space-y-2.5">
                       {/* Unified Song Name/URL Input */}
                       <div>
-                        <label className="block text-xs sm:text-sm font-semibold text-gray-900 dark:text-white mb-1 sm:mb-2">
-                          <Music className="w-3 h-3 sm:w-4 sm:h-4 inline mr-1" />
+                        <label className="block text-xs font-semibold text-gray-900 dark:text-white mb-1">
+                          <Music className="w-3 h-3 inline mr-1" />
                           {organizationData?.requests_song_title_label || 'Song Name or Link'} <span className="text-red-500">*</span>
                         </label>
                         <div className="relative">
@@ -4940,16 +5052,16 @@ export function GeneralRequestsPage({
                               }, 200);
                               handleSongTitleBlur(e);
                             }}
-                            className={`w-full px-3 py-2.5 sm:px-4 sm:py-3 md:px-5 md:py-4 text-sm sm:text-base rounded-lg sm:rounded-xl border-2 border-gray-200 dark:border-gray-800 bg-white/80 dark:!bg-black backdrop-blur-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-brand focus:border-brand focus:shadow-lg focus:shadow-brand/20 transition-all duration-200 touch-manipulation ${
-                              extractingSong ? 'pr-20 sm:pr-24 md:pr-28' : isExtractedFromLink ? 'pr-20 sm:pr-24' : 'pr-3 sm:pr-4'
+                            className={`w-full px-3 py-2 sm:px-3.5 sm:py-2.5 text-sm rounded-lg border-2 border-gray-200 dark:border-gray-800 bg-white/80 dark:!bg-black backdrop-blur-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-brand focus:border-brand focus:shadow-md focus:shadow-brand/20 transition-all duration-200 touch-manipulation ${
+                              extractingSong ? 'pr-20 sm:pr-24' : isExtractedFromLink ? 'pr-20 sm:pr-24' : 'pr-3'
                             }`}
                             placeholder={organizationData?.requests_song_title_placeholder || "Type song name or paste a link"}
                             required
                             autoComplete="off"
                           />
                           {extractingSong && (
-                            <div className="absolute right-2 sm:right-3 md:right-4 top-1/2 -translate-y-1/2 flex items-center gap-1 sm:gap-2 pointer-events-none">
-                              <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin text-brand flex-shrink-0" />
+                            <div className="absolute right-2 sm:right-3 top-1/2 -translate-y-1/2 flex items-center gap-1 pointer-events-none">
+                              <Loader2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 animate-spin text-brand flex-shrink-0" />
                               <span className="text-xs text-gray-700 dark:text-gray-300 hidden sm:inline whitespace-nowrap">Extracting...</span>
                             </div>
                           )}
@@ -4957,32 +5069,25 @@ export function GeneralRequestsPage({
                             <button
                               type="button"
                               onClick={handleClearExtraction}
-                              className="absolute right-2 sm:right-3 top-1/2 -translate-y-1/2 p-1.5 sm:p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                              className="absolute right-2 sm:right-3 top-1/2 -translate-y-1/2 p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
                               title="Clear and start over"
                             >
-                              <X className="w-4 h-4 sm:w-5 sm:h-5 text-gray-500 dark:text-gray-400" />
+                              <X className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-gray-500 dark:text-gray-400" />
                             </button>
                           )}
                         </div>
                         {extractionError && (
                           <p className="mt-1 text-xs text-red-600 dark:text-red-400 flex items-center gap-1">
-                            <AlertCircle className="w-3 h-3 sm:w-4 sm:h-4" />
+                            <AlertCircle className="w-3 h-3" />
                             {extractionError}
                           </p>
                         )}
                         {isExtractedFromLink && !extractionError && (
                           <p className="mt-1 text-xs text-green-600 dark:text-green-400 flex items-center gap-1">
-                            <CheckCircle className="w-3 h-3 sm:w-4 sm:h-4" />
+                            <CheckCircle className="w-3 h-3" />
                             Song info extracted successfully
                           </p>
                         )}
-                         {/* Subtle hint always visible when empty */}
-                         {!formData.songTitle && !isExtractedFromLink && !extractingSong && (
-                           <p className="mt-1.5 text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1.5">
-                             <Link2 className="w-3 h-3 flex-shrink-0" />
-                             <span>Type a song name or paste a music link</span>
-                           </p>
-                         )}
                          {/* Autocomplete suggestions */}
                          {showAutocomplete && suggestions.length > 0 && (
                            <div className="mt-2 bg-white dark:!bg-black border-2 border-gray-200 dark:border-gray-700 rounded-lg shadow-lg max-h-64 overflow-y-auto z-50">
@@ -5023,7 +5128,7 @@ export function GeneralRequestsPage({
                        </div>
                       
                       <div>
-                        <label className="block text-xs sm:text-sm font-semibold text-gray-900 dark:text-white mb-1 sm:mb-2">
+                        <label className="block text-xs font-semibold text-gray-900 dark:text-white mb-1">
                           {organizationData?.requests_artist_name_label || 'Artist Name'}
                           <span className="text-red-500">*</span>
                         </label>
@@ -5032,7 +5137,7 @@ export function GeneralRequestsPage({
                           name="songArtist"
                           value={formData.songArtist}
                           onChange={handleInputChange}
-                          className="w-full px-3 py-2.5 sm:px-4 sm:py-3 md:px-5 md:py-4 text-sm sm:text-base rounded-lg sm:rounded-xl border-2 border-gray-200 dark:border-gray-800 bg-white/80 dark:!bg-black backdrop-blur-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-brand-500 focus:border-brand-500 focus:shadow-lg focus:shadow-brand-500/20 transition-all duration-200"
+                          className="w-full px-3 py-2 sm:px-3.5 sm:py-2.5 text-sm rounded-lg border-2 border-gray-200 dark:border-gray-800 bg-white/80 dark:!bg-black backdrop-blur-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-brand focus:border-brand focus:shadow-md focus:shadow-brand/20 transition-all duration-200"
                           placeholder={organizationData?.requests_artist_name_placeholder || "Enter artist name"}
                           required
                           autoComplete="off"
@@ -5267,9 +5372,9 @@ export function GeneralRequestsPage({
 
                   {/* Shoutout Fields */}
                   {requestType === 'shoutout' && (
-                    <div className="space-y-2 sm:space-y-3 md:space-y-4">
+                    <div className="space-y-2">
                       <div>
-                        <label className="block text-xs sm:text-sm font-semibold text-gray-900 dark:text-white mb-1 sm:mb-2">
+                        <label className="block text-xs font-semibold text-gray-900 dark:text-white mb-1">
                           {organizationData?.requests_recipient_name_label || 'Recipient Name'} <span className="text-red-500">*</span>
                         </label>
                         <input
@@ -5277,14 +5382,18 @@ export function GeneralRequestsPage({
                           name="recipientName"
                           value={formData.recipientName}
                           onChange={handleInputChange}
-                          className="w-full px-3 py-2.5 sm:px-4 sm:py-3 text-sm sm:text-base rounded-lg border border-gray-300 dark:border-gray-800 bg-white dark:!bg-black text-gray-900 dark:text-white focus:ring-2 focus:ring-brand-500 focus:border-transparent"
+                          className="w-full px-3 py-2 sm:px-3.5 sm:py-2.5 text-sm rounded-lg border border-gray-300 dark:border-gray-800 bg-white text-gray-900 dark:text-white focus:ring-2 focus:ring-brand focus:border-transparent"
+                          style={{ 
+                            backgroundColor: 'var(--input-bg, white)',
+                          }}
+                          data-dark-bg="black"
                           placeholder={organizationData?.requests_recipient_name_placeholder || "Who is this shoutout for?"}
                           required
                         />
                       </div>
                       
                       <div>
-                        <label className="block text-xs sm:text-sm font-semibold text-gray-900 dark:text-white mb-1 sm:mb-2">
+                        <label className="block text-xs font-semibold text-gray-900 dark:text-white mb-1">
                           {organizationData?.requests_message_label || 'Message'} <span className="text-red-500">*</span>
                         </label>
                         <textarea
@@ -5292,7 +5401,11 @@ export function GeneralRequestsPage({
                           value={formData.recipientMessage}
                           onChange={handleInputChange}
                           rows={3}
-                          className="w-full px-3 py-2.5 sm:px-4 sm:py-3 text-sm sm:text-base rounded-lg border border-gray-300 dark:border-gray-800 bg-white dark:!bg-black text-gray-900 dark:text-white focus:ring-2 focus:ring-brand-500 focus:border-transparent resize-none"
+                          className="w-full px-3 py-2 sm:px-3.5 sm:py-2.5 text-sm rounded-lg border border-gray-300 dark:border-gray-800 bg-white text-gray-900 dark:text-white focus:ring-2 focus:ring-brand focus:border-transparent resize-none"
+                          style={{ 
+                            backgroundColor: 'var(--input-bg, white)',
+                          }}
+                          data-dark-bg="black"
                           placeholder={organizationData?.requests_message_placeholder || "What would you like to say?"}
                           required
                         />
@@ -5302,9 +5415,9 @@ export function GeneralRequestsPage({
 
                   {/* Tip Fields - Show payment amount selector immediately */}
                   {requestType === 'tip' && (
-                    <div className="space-y-2 sm:space-y-3 md:space-y-4">
-                      <div className="text-center py-2 sm:py-4">
-                        <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 mb-4">
+                    <div className="space-y-2">
+                      <div className="text-center py-1">
+                        <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mb-2">
                           Show your appreciation with a tip!
                         </p>
                       </div>
@@ -5335,21 +5448,21 @@ export function GeneralRequestsPage({
                       />
                       {/* Fallback payment options for tips only */}
                       {((paymentSettings?.cashAppTag && paymentSettings.cashAppTag.trim()) || (paymentSettings?.venmoUsername && paymentSettings.venmoUsername.trim())) && (
-                        <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
-                          <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mb-3 text-center">
+                        <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
+                          <p className="text-xs text-gray-600 dark:text-gray-400 mb-2 text-center">
                             Having trouble with card payment? You can also tip via:
                           </p>
-                          <div className="flex flex-col sm:flex-row gap-3 justify-center items-center">
+                          <div className="flex flex-col gap-2 w-full">
                             {paymentSettings?.cashAppTag && paymentSettings.cashAppTag.trim() && (
-                              <div className="flex items-center gap-2 px-4 py-2 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
-                                <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">CashApp:</span>
-                                <span className="text-base font-bold text-green-600 dark:text-green-400">{paymentSettings.cashAppTag}</span>
+                              <div className="flex items-center gap-2 px-3 py-2 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800 w-full min-w-0">
+                                <span className="text-xs font-semibold text-gray-700 dark:text-gray-300 whitespace-nowrap flex-shrink-0">CashApp:</span>
+                                <span className="text-sm font-bold text-green-600 dark:text-green-400 truncate min-w-0 flex-1">{paymentSettings.cashAppTag}</span>
                               </div>
                             )}
                             {paymentSettings?.venmoUsername && paymentSettings.venmoUsername.trim() && (
-                              <div className="flex items-center gap-2 px-4 py-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
-                                <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">Venmo:</span>
-                                <span className="text-base font-bold text-blue-600 dark:text-blue-400">{paymentSettings.venmoUsername}</span>
+                              <div className="flex items-center gap-2 px-3 py-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800 w-full min-w-0">
+                                <span className="text-xs font-semibold text-gray-700 dark:text-gray-300 whitespace-nowrap flex-shrink-0">Venmo:</span>
+                                <span className="text-sm font-bold text-blue-600 dark:text-blue-400 truncate min-w-0 flex-1">{paymentSettings.venmoUsername}</span>
                               </div>
                             )}
                           </div>
@@ -5358,46 +5471,8 @@ export function GeneralRequestsPage({
                     </div>
                   )}
 
-                  {/* Requester Information - Optional for tips, required for song requests, hidden for shoutouts */}
-                  {/* Always show name field - it's optional for tips but required for other request types (except shoutouts) */}
-                  {requestType !== 'shoutout' && (
-                    <div className="mt-2 sm:mt-3 md:mt-4 space-y-2 sm:space-y-3">
-                      <div>
-                        <label className="block text-xs sm:text-sm font-semibold text-gray-900 dark:text-white mb-1 sm:mb-2">
-                          Your Name {requestType !== 'tip' && <span className="text-red-500">*</span>}
-                        </label>
-                        <input
-                          type="text"
-                          name="requesterName"
-                          value={formData.requesterName}
-                          onChange={handleInputChange}
-                          className="w-full px-3 py-2.5 sm:px-4 sm:py-3 text-sm sm:text-base rounded-lg border border-gray-300 dark:border-gray-800 bg-white dark:!bg-black text-gray-900 dark:text-white focus:ring-2 focus:ring-brand-500 focus:border-transparent"
-                          placeholder={requestType === 'tip' ? "Enter your name (optional)" : "Enter your name"}
-                          required={requestType !== 'tip'}
-                          autoComplete="name"
-                        />
-                        {/* Only show help text when there's a name validation error */}
-                        {error === 'Please enter your name' && (
-                          <p className="text-xs text-red-500 dark:text-red-400 mt-1">
-                            Required: Helps us match your payment to your request
-                          </p>
-                        )}
-                      </div>
-                      <div>
-                        <label className="block text-xs sm:text-sm font-semibold text-gray-900 dark:text-white mb-1 sm:mb-2">
-                          Additional Notes (optional)
-                        </label>
-                        <textarea
-                          name="message"
-                          value={formData.message}
-                          onChange={handleInputChange}
-                          rows={2}
-                          className="w-full px-3 py-2.5 sm:px-4 sm:py-3 text-sm sm:text-base rounded-lg border border-gray-300 dark:border-gray-800 bg-white dark:!bg-black text-gray-900 dark:text-white focus:ring-2 focus:ring-brand-500 focus:border-transparent resize-none"
-                          placeholder="Any additional information..."
-                        />
-                      </div>
-                    </div>
-                  )}
+                  {/* Requester Information - Removed from initial view for simplicity */}
+                  {/* Name and notes will be collected during checkout if needed */}
 
                 </div>
 
@@ -5411,7 +5486,7 @@ export function GeneralRequestsPage({
                   // In bidding mode, show as soon as title is filled
                   if (isBiddingMode && hasSongTitle) {
                     return (
-                      <div data-payment-section className="mt-4">
+                      <div data-payment-section className="mt-2 sm:mt-3">
                         <PaymentAmountSelector
                           amountType={amountType}
                           setAmountType={setAmountType}
@@ -5482,9 +5557,9 @@ export function GeneralRequestsPage({
                 {/* Submit Button - Sticky at bottom, appears when selection is complete */}
                 {((requestType === 'tip') || isSongSelectionComplete()) && (
                 <div 
-                  className="sticky bottom-0 left-0 right-0 z-50 bg-transparent dark:bg-transparent pt-2 sm:pt-3 pb-3 sm:pb-4 border-0 shadow-none flex-shrink-0 mt-auto focus:outline-none focus:ring-0"
+                  className="sticky bottom-0 left-0 right-0 z-50 bg-transparent dark:bg-transparent pt-1.5 sm:pt-2 pb-2 sm:pb-3 border-0 shadow-none flex-shrink-0 mt-auto focus:outline-none focus:ring-0"
                   style={{ 
-                    paddingBottom: 'max(0.75rem, calc(env(safe-area-inset-bottom, 0px) + 0.75rem))',
+                    paddingBottom: 'max(0.5rem, calc(env(safe-area-inset-bottom, 0px) + 0.5rem))',
                     position: 'sticky',
                     scrollbarWidth: 'none',
                     msOverflowStyle: 'none',
@@ -5496,7 +5571,7 @@ export function GeneralRequestsPage({
                   <button
                     type="button"
                     disabled={submitting}
-                    className="group relative w-full py-3 sm:py-4 md:py-5 lg:py-6 text-sm sm:text-base md:text-lg font-bold inline-flex items-center justify-center gap-2 sm:gap-3 min-h-[48px] sm:min-h-[56px] md:min-h-[64px] touch-manipulation disabled:opacity-50 disabled:cursor-not-allowed rounded-xl sm:rounded-2xl bg-gradient-to-r from-brand-600 via-brand-500 to-brand-700 hover:from-brand-500 hover:via-brand-400 hover:to-brand-600 text-white shadow-2xl shadow-brand-500/40 hover:shadow-brand-500/60 transform hover:scale-[1.02] active:scale-[0.98] transition-all duration-300 overflow-hidden focus:outline-none focus:ring-0 focus:ring-offset-0 focus-visible:outline-none focus-visible:ring-0 active:outline-none border-0 outline-none !border-0 !outline-none"
+                    className="group relative w-full py-2.5 sm:py-3 text-sm sm:text-base font-bold inline-flex items-center justify-center gap-2 min-h-[44px] sm:min-h-[48px] touch-manipulation disabled:opacity-50 disabled:cursor-not-allowed rounded-lg sm:rounded-xl bg-gradient-to-r from-brand-600 via-brand-500 to-brand-700 hover:from-brand-500 hover:via-brand-400 hover:to-brand-600 text-white shadow-lg shadow-brand-500/30 hover:shadow-brand-500/50 active:scale-[0.98] transition-all duration-200 overflow-hidden focus:outline-none focus:ring-0 focus:ring-offset-0 focus-visible:outline-none focus-visible:ring-0 active:outline-none border-0 outline-none !border-0 !outline-none"
                     style={{ border: 'none', outline: 'none' }}
                     onClick={(e) => {
                       // Always log the click for debugging

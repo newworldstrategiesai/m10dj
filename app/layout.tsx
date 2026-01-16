@@ -1,6 +1,6 @@
 import { Metadata } from 'next';
+import dynamic from 'next/dynamic';
 import Footer from '@/components/company/Footer';
-import FloatingAdminAssistant from '@/components/admin/FloatingAdminAssistant';
 import Navbar from '@/components/ui/Navbar';
 import { Toaster } from '@/components/ui/Toasts/toaster';
 import { Providers } from '@/components/providers';
@@ -8,6 +8,12 @@ import { SkipLink } from '@/components/ui/skip-link';
 import { PropsWithChildren, Suspense } from 'react';
 import { getURL } from '@/utils/helpers';
 import { headers } from 'next/headers';
+
+// Dynamically import FloatingAdminAssistant to prevent SSR issues with next/navigation
+const FloatingAdminAssistant = dynamic(
+  () => import('@/components/admin/FloatingAdminAssistant'),
+  { ssr: false }
+);
 // Performance components disabled during SEO recovery
 // import EnhancedTracking from '@/components/EnhancedTracking';
 // import PerformanceOptimizations from '@/components/PerformanceOptimizations';
