@@ -71,13 +71,25 @@ export default async function handler(req, res) {
       res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
       res.setHeader('Pragma', 'no-cache');
       res.setHeader('Expires', '0');
+      // Format event_date to ensure it's YYYY-MM-DD without time component
+      let formattedEventDate = null;
+      if (submissionData.event_date) {
+        const dateStr = String(submissionData.event_date);
+        const dateMatch = dateStr.match(/^(\d{4}-\d{2}-\d{2})/);
+        if (dateMatch) {
+          formattedEventDate = dateMatch[1];
+        } else {
+          formattedEventDate = dateStr;
+        }
+      }
+
       return res.status(200).json({
         id: submissionData.id,
         name: submissionData.name || 'Valued Customer',
         email: submissionData.email,
         phone: submissionData.phone,
         eventType: submissionData.event_type,
-        eventDate: submissionData.event_date,
+        eventDate: formattedEventDate,
         location: submissionData.location,
         createdAt: submissionData.created_at
       });
@@ -93,6 +105,22 @@ export default async function handler(req, res) {
     const grandEntranceTime = customFields.grand_entrance_time || null;
     const grandExitTime = customFields.grand_exit_time || null;
 
+    // Format event_date to ensure it's YYYY-MM-DD without time component
+    // This prevents timezone conversion issues when the date is parsed on the client
+    let formattedEventDate = null;
+    if (data.event_date) {
+      const dateStr = String(data.event_date);
+      // Extract just the date part (YYYY-MM-DD) if there's a time component
+      const dateMatch = dateStr.match(/^(\d{4}-\d{2}-\d{2})/);
+      if (dateMatch) {
+        formattedEventDate = dateMatch[1];
+      } else {
+        formattedEventDate = dateStr;
+      }
+      // Debug logging to verify date formatting
+      console.log('[get-lead] Raw event_date:', data.event_date, 'Formatted:', formattedEventDate);
+    }
+
     // Set cache-control headers to prevent caching
     res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
     res.setHeader('Pragma', 'no-cache');
@@ -104,7 +132,7 @@ export default async function handler(req, res) {
       email: data.email_address,
       phone: data.phone,
       eventType: data.event_type,
-      eventDate: data.event_date,
+      eventDate: formattedEventDate,
       eventTime: data.event_time || '',
       endTime: data.end_time || '',
       location: data.venue_address || data.venue_name || '',

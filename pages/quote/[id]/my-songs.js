@@ -10,6 +10,26 @@ import { useToast } from '@/components/ui/Toasts/use-toast';
 import { Badge } from '@/components/ui/badge';
 import { normalizeSongInput, cleanSongInput } from '../../../utils/song-normalizer';
 
+// Helper function to format date without timezone conversion issues
+// Parses YYYY-MM-DD strings as local dates to prevent day shifting
+const formatEventDate = (dateStr) => {
+  if (!dateStr) return '';
+  try {
+    // If it's a date string in YYYY-MM-DD format, parse it as local date
+    if (typeof dateStr === 'string' && /^\d{4}-\d{2}-\d{2}/.test(dateStr)) {
+      const datePart = dateStr.split('T')[0]; // Remove time if present
+      const [year, month, day] = datePart.split('-');
+      // Create date in local timezone, not UTC (prevents day from shifting)
+      const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+      return date.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+    }
+    // Fallback for other date formats
+    return new Date(dateStr).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+  } catch (e) {
+    return '';
+  }
+};
+
 export default function MySongsPage() {
   const router = useRouter();
   const { id } = router.query;
@@ -459,7 +479,7 @@ export default function MySongsPage() {
                 {leadData.eventDate && (
                   <div className="flex items-center gap-2">
                     <Calendar className="w-4 h-4" />
-                    <span>{new Date(leadData.eventDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</span>
+                    <span>{formatEventDate(leadData.eventDate)}</span>
                   </div>
                 )}
                 {leadData.venueName && (
