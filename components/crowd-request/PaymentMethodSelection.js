@@ -376,10 +376,22 @@ function PaymentMethodSelection({
   };
 
   const handleCashClick = async () => {
-    if (!(await validateBeforePayment())) return;
+    // For cash payments, validation is less strict since they're manual
+    // But we still need requestId to proceed
+    if (!requestId) {
+      if (onError) {
+        onError('Request not created yet. Please fill out the form first.');
+      }
+      return;
+    }
+
     try {
-      if (!requestId) {
-        throw new Error('Request not created yet. Please fill out the form first.');
+      // Try to validate, but don't block cash payments if validation fails
+      // (cash payments are manual, so admin can verify details)
+      const isValid = await validateBeforePayment();
+      if (!isValid && requestType !== 'tip') {
+        // For non-tip requests, show warning but allow cash payment to proceed
+        console.warn('Validation warnings for cash payment, but proceeding anyway (cash payments are manual)');
       }
       
       // Use getPaymentAmount() to ensure we include all fees (fast-track, next, bundle, etc.)
@@ -394,20 +406,35 @@ function PaymentMethodSelection({
         throw new Error('Invalid payment amount');
       }
       
-      // Update additional songs before payment
-      handleProceedWithPayment('cash');
+      // Ensure parent is notified of payment method selection
+      // This is important for state management in parent component
+      if (onPaymentMethodSelected) {
+        onPaymentMethodSelected('cash');
+      }
+      
+      // Update additional songs if needed (this handles the bundling logic)
+      try {
+        await handleProceedWithPayment('cash');
+      } catch (err) {
+        // Don't block cash payment if handleProceedWithPayment fails
+        // (it may fail if validation issues, but cash is manual)
+        console.warn('handleProceedWithPayment had issues, but continuing with cash payment:', err);
+      }
       
       // Update payment method to cash
-      fetch('/api/crowd-request/update-payment-method', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          requestId,
-          paymentMethod: 'cash'
-        })
-      }).catch(err => {
+      try {
+        await fetch('/api/crowd-request/update-payment-method', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            requestId,
+            paymentMethod: 'cash'
+          })
+        });
+      } catch (err) {
         console.error('Error updating payment method:', err);
-      });
+        // Continue anyway - cash payments are manual
+      }
       
       // For cash payments, show a success message and redirect to thank you page
       // Cash payments are manual - no verification needed
@@ -420,7 +447,9 @@ function PaymentMethodSelection({
       }
     } catch (err) {
       console.error('Cash payment error:', err);
-      if (onError) onError(err.message || 'Failed to process cash payment. Please try again.');
+      if (onError) {
+        onError(err.message || 'Failed to process cash payment. Please try again.');
+      }
     }
   };
 
