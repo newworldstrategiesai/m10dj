@@ -11,6 +11,22 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/Toasts/use-toast';
 import VenueAutocomplete from '@/components/VenueAutocomplete';
 
+// Helper function to format date without timezone conversion issues
+const formatEventDate = (dateStr) => {
+  if (!dateStr) return '';
+  try {
+    if (typeof dateStr === 'string' && /^\d{4}-\d{2}-\d{2}/.test(dateStr)) {
+      const datePart = dateStr.split('T')[0];
+      const [year, month, day] = datePart.split('-');
+      const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+      return date.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+    }
+    return new Date(dateStr).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+  } catch (e) {
+    return '';
+  }
+};
+
 export default function InvoicePage() {
   const router = useRouter();
   const { id } = router.query;
@@ -767,7 +783,7 @@ export default function InvoicePage() {
             </p>
             {leadData.eventDate && (
               <p className="text-sm text-gray-500 dark:text-gray-500 mb-6">
-                Event Date: {new Date(leadData.eventDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
+                Event Date: {formatEventDate(leadData.eventDate)}
               </p>
             )}
             <div className="flex gap-4 justify-center">
@@ -1083,7 +1099,7 @@ export default function InvoicePage() {
         <meta property="og:type" content="website" />
         <meta property="og:url" content={`${process.env.NEXT_PUBLIC_SITE_URL || 'https://m10djcompany.com'}/quote/${id}/invoice`} />
         <meta property="og:title" content={`Invoice ${invoiceNumber} - ${leadData?.name || 'Your Invoice'}`} />
-        <meta property="og:description" content={`View your invoice for ${leadData?.eventType || 'your event'}${leadData?.eventDate ? ` on ${new Date(leadData.eventDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}` : ''}. Total: $${totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} />
+        <meta property="og:description" content={`View your invoice for ${leadData?.eventType || 'your event'}${leadData?.eventDate ? ` on ${formatEventDate(leadData.eventDate)}` : ''}. Total: $${totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} />
         <meta property="og:image" content={`${process.env.NEXT_PUBLIC_SITE_URL || 'https://m10djcompany.com'}/logo-static.jpg`} />
         <meta property="og:image:width" content="1200" />
         <meta property="og:image:height" content="630" />

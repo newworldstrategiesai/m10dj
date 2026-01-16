@@ -7,6 +7,26 @@ import QuoteBottomNav from '../../../components/quote/QuoteBottomNav';
 import { CheckCircle, Sparkles, Music, Calendar, MapPin, Users, Heart, Star, ArrowLeft, Loader2, ChevronDown, ChevronUp, FileText, Menu, X, Tag, XCircle, Settings, Trash2 } from 'lucide-react';
 import { createClient } from '@supabase/supabase-js';
 
+// Helper function to format date without timezone conversion issues
+// Parses YYYY-MM-DD strings as local dates to prevent day shifting
+const formatEventDate = (dateStr) => {
+  if (!dateStr) return '';
+  try {
+    // If it's a date string in YYYY-MM-DD format, parse it as local date
+    if (typeof dateStr === 'string' && /^\d{4}-\d{2}-\d{2}/.test(dateStr)) {
+      const datePart = dateStr.split('T')[0]; // Remove time if present
+      const [year, month, day] = datePart.split('-');
+      // Create date in local timezone, not UTC (prevents day from shifting)
+      const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+      return date.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+    }
+    // Fallback for other date formats
+    return new Date(dateStr).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+  } catch (e) {
+    return '';
+  }
+};
+
 export default function PersonalizedQuote() {
   const router = useRouter();
   const { id } = router.query;
@@ -94,7 +114,16 @@ export default function PersonalizedQuote() {
           
           // Check if event date has passed (expiration check)
           if (data.eventDate || data.event_date) {
-            const eventDate = new Date(data.eventDate || data.event_date);
+            // Parse date string as local date to avoid timezone issues
+            const eventDateStr = data.eventDate || data.event_date;
+            let eventDate;
+            if (typeof eventDateStr === 'string' && /^\d{4}-\d{2}-\d{2}/.test(eventDateStr)) {
+              const datePart = eventDateStr.split('T')[0];
+              const [year, month, day] = datePart.split('-');
+              eventDate = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+            } else {
+              eventDate = new Date(eventDateStr);
+            }
             const today = new Date();
             today.setHours(0, 0, 0, 0); // Reset time to start of day for comparison
             eventDate.setHours(0, 0, 0, 0);
@@ -666,7 +695,15 @@ export default function PersonalizedQuote() {
     if (!eventDateStr) return null;
 
     try {
-      const eventDate = new Date(eventDateStr);
+      // Parse date string as local date to avoid timezone issues
+      let eventDate;
+      if (typeof eventDateStr === 'string' && /^\d{4}-\d{2}-\d{2}/.test(eventDateStr)) {
+        const datePart = eventDateStr.split('T')[0];
+        const [year, month, day] = datePart.split('-');
+        eventDate = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+      } else {
+        eventDate = new Date(eventDateStr);
+      }
       const month = eventDate.getMonth() + 1; // 1-12
       const day = eventDate.getDate(); // 1-31
 
@@ -2397,10 +2434,13 @@ export default function PersonalizedQuote() {
         <meta property="og:type" content="website" />
         <meta property="og:url" content={`${process.env.NEXT_PUBLIC_SITE_URL || 'https://m10djcompany.com'}/quote/${id}`} />
         <meta property="og:title" content={`Your Personalized ${isHoliday ? 'Holiday Party' : isSchool ? 'School Event' : isCorporate ? 'Corporate Event' : 'Wedding'} Quote`} />
-        <meta property="og:description" content={`Custom DJ services quote for ${leadData.name}'s ${isHoliday ? 'holiday party' : isCorporate ? 'corporate event' : isSchool ? 'school event' : 'wedding'}${leadData.eventDate ? ` on ${new Date(leadData.eventDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}` : ''}`} />
-        <meta property="og:image" content={`${process.env.NEXT_PUBLIC_SITE_URL || 'https://m10djcompany.com'}/logo-static.jpg`} />
+        <meta property="og:description" content={`Custom DJ services quote for ${leadData.name}'s ${isHoliday ? 'holiday party' : isCorporate ? 'corporate event' : isSchool ? 'school event' : 'wedding'}${leadData.eventDate ? ` on ${formatEventDate(leadData.eventDate)}` : ''}`} />
+        <meta property="og:image" content={`${process.env.NEXT_PUBLIC_SITE_URL || 'https://m10djcompany.com'}/assets/service-selection-og-image.png`} />
+        <meta property="og:image:secure_url" content={`${process.env.NEXT_PUBLIC_SITE_URL || 'https://m10djcompany.com'}/assets/service-selection-og-image.png`} />
         <meta property="og:image:width" content="1200" />
         <meta property="og:image:height" content="630" />
+        <meta property="og:image:alt" content={`Service Selection - M10 DJ Company`} />
+        <meta property="og:image:type" content="image/png" />
         <meta property="og:site_name" content="M10 DJ Company" />
         
         {/* Twitter Card */}
@@ -2408,7 +2448,7 @@ export default function PersonalizedQuote() {
         <meta name="twitter:url" content={`${process.env.NEXT_PUBLIC_SITE_URL || 'https://m10djcompany.com'}/quote/${id}`} />
         <meta name="twitter:title" content={`Your Personalized ${isHoliday ? 'Holiday Party' : isSchool ? 'School Event' : isCorporate ? 'Corporate Event' : 'Wedding'} Quote`} />
         <meta name="twitter:description" content={`Custom DJ services quote for ${leadData.name}'s ${isHoliday ? 'holiday party' : isCorporate ? 'corporate event' : isSchool ? 'school event' : 'wedding'}`} />
-        <meta name="twitter:image" content={`${process.env.NEXT_PUBLIC_SITE_URL || 'https://m10djcompany.com'}/logo-static.jpg`} />
+        <meta name="twitter:image" content={`${process.env.NEXT_PUBLIC_SITE_URL || 'https://m10djcompany.com'}/assets/service-selection-og-image.png`} />
       </Head>
       {/* Simplified Header with Logo Only */}
       <header className="sticky top-0 z-50 bg-white border-b border-gray-200 dark:bg-gray-900 dark:border-gray-800 h-10 md:h-12">
@@ -2523,7 +2563,7 @@ export default function PersonalizedQuote() {
               {leadData.eventDate && (
                 <div className="flex items-center gap-2">
                   <Calendar className="w-5 h-5" />
-                  <span>{new Date(leadData.eventDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</span>
+                  <span>{formatEventDate(leadData.eventDate)}</span>
                 </div>
               )}
               {leadData.location && (

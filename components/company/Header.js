@@ -634,6 +634,12 @@ export default function Header({
                     
                     // Show M10 DJ Company logo only on m10djcompany.com domain
                     // Hide if hideM10Logo prop is set (for super admin control)
+                    // On requests pages, always respect hideM10Logo setting regardless of domain
+                    // Debug: Log hideM10Logo value for troubleshooting
+                    if (isRequestsPage && hideM10Logo) {
+                      // On requests pages, hide logo if hideM10Logo is true, regardless of domain
+                      return null;
+                    }
                     if (isM10DJCompanyDomain() && !hideM10Logo) {
                       if (shouldBeTransparent) {
                         return (

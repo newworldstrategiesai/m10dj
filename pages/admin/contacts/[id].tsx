@@ -1304,19 +1304,24 @@ export default function ContactDetailPage() {
                   <label className="block text-sm font-medium text-gray-700 mb-1">First Name</label>
                   {isEditing ? (
                     <Input
+                      type="text"
                       value={contact.first_name || ''}
                       onChange={(e) => handleInputChange('first_name', e.target.value)}
+                      className="w-full"
+                      autoFocus={false}
                     />
                   ) : (
                     <p className="text-gray-900">{contact.first_name || 'Not provided'}</p>
-                              )}
-                            </div>
+                  )}
+                </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Last Name</label>
                   {isEditing ? (
                     <Input
+                      type="text"
                       value={contact.last_name || ''}
                       onChange={(e) => handleInputChange('last_name', e.target.value)}
+                      className="w-full"
                     />
                   ) : (
                     <p className="text-gray-900">{contact.last_name || 'Not provided'}</p>

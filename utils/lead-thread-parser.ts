@@ -283,9 +283,57 @@ function extractContactInfo(thread: string): ParsedLeadContact {
 
   let eventDate = structured.eventDate || null;
   if (!eventDate) {
+    // First try the standard regex patterns
     const dateMatch = thread.match(DATE_REGEX);
     if (dateMatch) {
       eventDate = normalizeFlexibleDate(dateMatch[0]);
+    }
+    
+    // If no date found, try conversational patterns
+    if (!eventDate) {
+      // Pattern: "wedding on March 15" or "wedding on the 15th"
+      const conversationalPatterns = [
+        // "wedding on March 15" or "wedding on March 15th" or "wedding on the 15th of March"
+        /(?:wedding|event|ceremony|reception|party|celebration)\s+(?:on|is|will\s+be|is\s+on)\s+(?:the\s+)?(?:(\d{1,2})(?:st|nd|rd|th)?\s+(?:of\s+)?)?(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec|January|February|March|April|June|July|August|September|October|November|December)[a-z]*\.?\s+(?:the\s+)?(\d{1,2})(?:st|nd|rd|th)?(?:\s*,?\s*(\d{4}))?/i,
+        // "March 15" or "March 15th" (standalone)
+        /\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec|January|February|March|April|June|July|August|September|October|November|December)[a-z]*\.?\s+(?:the\s+)?(\d{1,2})(?:st|nd|rd|th)?(?:\s*,?\s*(\d{4}))?/i,
+        // "the 15th of March" or "15th of March"
+        /\b(?:the\s+)?(\d{1,2})(?:st|nd|rd|th)\s+of\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec|January|February|March|April|June|July|August|September|October|November|December)[a-z]*\.?(?:\s+,?\s*(\d{4}))?/i,
+        // "on the 15th" with context of wedding/event nearby (within 50 chars)
+        /\b(?:wedding|event|ceremony|reception|party)(?:[^.]{0,50}?)?\s+(?:on|is|will\s+be|is\s+on)\s+the\s+(\d{1,2})(?:st|nd|rd|th)\b/i,
+      ];
+      
+      for (const pattern of conversationalPatterns) {
+        const match = thread.match(pattern);
+        if (match) {
+          // Try to construct a date string from the match
+          let dateStr = '';
+          if (match[1] && match[2]) {
+            // Pattern with day first: "15th of March"
+            dateStr = `${match[2]} ${match[1]}`;
+            if (match[3]) dateStr += `, ${match[3]}`;
+          } else if (match[2] && match[3]) {
+            // Pattern with month first: "March 15"
+            dateStr = `${match[2]} ${match[3]}`;
+            if (match[4]) dateStr += `, ${match[4]}`;
+          } else if (match[1] && match[2] && match[3]) {
+            // Pattern like "wedding on March 15"
+            dateStr = `${match[2]} ${match[3]}`;
+            if (match[4]) dateStr += `, ${match[4]}`;
+          } else if (match[1]) {
+            // Just day number - need more context, skip for now
+            continue;
+          }
+          
+          if (dateStr) {
+            const normalized = normalizeFlexibleDate(dateStr);
+            if (normalized) {
+              eventDate = normalized;
+              break;
+            }
+          }
+        }
+      }
     }
   }
 
@@ -1079,22 +1127,31 @@ function extractStructuredFields(thread: string): StructuredFields {
     // Updated regex to be more permissive with label format (allows numbers, hyphens, etc.)
     // Pattern: Start with letter, then allow letters, numbers, spaces, hyphens, underscores
     // Also handle cases where there might be extra whitespace or formatting
+    // IMPORTANT: Only match known field labels to avoid false positives from conversational text
     const labeledMatch = trimmed.match(/^([A-Za-z][A-Za-z0-9\s\-_]{0,49}):\s*(.+)$/);
     if (labeledMatch) {
       const label = labeledMatch[1].toLowerCase().trim().replace(/\s+/g, ' ');
       const value = labeledMatch[2].trim();
       
-      // Debug logging for structured field detection
-      if (process.env.NODE_ENV === 'development') {
-        console.log('[Structured Field Detection] Label:', label, 'Value:', value.substring(0, 50));
-      }
+      // Filter out common conversational words that shouldn't be treated as labels
+      // This prevents lines like "Yes, my new house..." from being treated as "Yes: my new house..."
+      const conversationalLabels = ['yes', 'no', 'my', 'your', 'our', 'their', 'this', 'that', 'these', 'those', 'here', 'there', 'ok', 'okay', 'sure', 'maybe', 'thanks', 'thank', 'hi', 'hey', 'hello', 'bye', 'goodbye'];
       
-      // Debug logging for venue name detection
-      if (label.includes('venue') && label.includes('name')) {
-        console.log('[Venue Name Detection] Label:', label, 'Value:', value);
-      }
+      if (conversationalLabels.includes(label)) {
+        // Skip this match - it's conversational text, not a structured field
+        // Continue to natural language extraction below
+      } else {
+        // Debug logging for structured field detection
+        if (process.env.NODE_ENV === 'development') {
+          console.log('[Structured Field Detection] Label:', label, 'Value:', value.substring(0, 50));
+        }
+        
+        // Debug logging for venue name detection
+        if (label.includes('venue') && label.includes('name')) {
+          console.log('[Venue Name Detection] Label:', label, 'Value:', value);
+        }
 
-      switch (label) {
+        switch (label) {
         case 'name':
           if (!fields.name) {
             const candidate = sanitizeNameCandidate(value);
@@ -1203,8 +1260,9 @@ function extractStructuredFields(thread: string): StructuredFields {
           break;
         default:
           break;
+        }
+        continue; // Only continue if we found a valid structured field
       }
-      continue;
     }
 
     if (

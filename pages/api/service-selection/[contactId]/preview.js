@@ -1,59 +1,15 @@
-/**
- * Service Selection Link Helper
- * 
- * Utility functions for generating and sending service selection links to leads
- */
-
+// Preview route for service selection emails
 import { createClient } from '@supabase/supabase-js';
-import crypto from 'crypto';
-import { Resend } from 'resend';
+import { requireAdmin } from '@/utils/auth-helpers/api-auth';
+import { generateServiceSelectionLink } from '@/utils/service-selection-helper';
 
-const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
-
-/**
- * Generate a secure service selection token for a contact
- * @param {Object} contact - Contact object from database
- * @returns {string} Base64URL encoded token
- */
-export function generateServiceSelectionToken(contact) {
-  const tokenData = {
-    contactId: contact.id,
-    email: contact.email_address,
-    timestamp: Date.now(),
-    // Add a secret hash to prevent tampering
-    hash: crypto
-      .createHash('sha256')
-      .update(`${contact.id}${contact.email_address}${process.env.NEXTAUTH_SECRET || 'default-secret'}`)
-      .digest('hex')
-      .substring(0, 16)
-  };
-
-  return Buffer.from(JSON.stringify(tokenData)).toString('base64url');
-}
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 /**
- * Generate service selection link for a contact
- * @param {Object} contact - Contact object from database
- * @returns {string} Full URL to service selection page
+ * Generate service selection email HTML
  */
-export function generateServiceSelectionLink(contact) {
-  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.m10djcompany.com';
-  // Use the new quote builder route instead of token-based route
-  return `${baseUrl}/quote/${contact.id}`;
-}
-
-/**
- * Send service selection email to a lead
- * @param {Object} contact - Contact object with first_name, last_name, email_address
- * @param {string} serviceSelectionLink - Full URL to service selection page
- * @returns {Promise<Object>} Result of email send
- */
-export async function sendServiceSelectionEmail(contact, serviceSelectionLink) {
-  if (!resend) {
-    console.error('⚠️ Resend API key not configured - cannot send service selection email');
-    return { success: false, error: 'Email service not configured' };
-  }
-
+function generateServiceSelectionEmailHtml(contact, serviceSelectionLink) {
   const firstName = contact.first_name || 'there';
   const eventType = contact.event_type || 'event';
   
@@ -79,8 +35,7 @@ export async function sendServiceSelectionEmail(contact, serviceSelectionLink) {
   const venue = (contact.venue_name || '').trim();
   const shouldIncludeVenue = venue && !venue.toLowerCase().includes("client's home") && !venue.toLowerCase().includes("clients home");
 
-  // Create professional HTML email
-  const emailHtml = `
+  return `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
       <div style="background: linear-gradient(135deg, #fcba00, #e6a800); padding: 30px; text-align: center; border-radius: 8px 8px 0 0;">
         <img src="https://m10djcompany.com/m10-black-clear-png.png" alt="M10 DJ Company" style="max-width: 200px; height: auto; margin-bottom: 15px; display: block; margin-left: auto; margin-right: auto;">
@@ -166,106 +121,101 @@ export async function sendServiceSelectionEmail(contact, serviceSelectionLink) {
       </div>
     </div>
   `;
-
-  // Plain text version
-  const emailText = `
-Hi ${firstName},
-
-Thank you for reaching out about DJ services for ${eventDate}${shouldIncludeVenue ? ` at ${venue}` : ''}! I'm excited to help make your ${eventType} unforgettable.
-
-To help me prepare the perfect proposal for you, I've created a personalized service selection page where you can:
-
-✨ Compare our 3 wedding packages side-by-side
-🎵 Choose premium add-ons (uplighting, monogram projection, special effects)
-💰 See your total investment in real-time
-📝 Add any special requests or questions
-
-SELECT YOUR SERVICES NOW:
-${serviceSelectionLink}
-
-This will only take 2-3 minutes. All prices are shown upfront, and no signup is required.
-
-⚡ WHAT HAPPENS NEXT?
-Once you submit your selections, I'll review your choices and prepare a detailed custom proposal. You'll hear back from me within 24 hours with pricing, next steps, and answers to any questions you have.
-
-Have questions right now? Feel free to call or text me anytime at (901) 410-2020. I'm here to help!
-
-Looking forward to making your celebration unforgettable! 🎉
-
-Best,
-Ben Murray
-M10 DJ Company
-(901) 410-2020
-www.m10djcompany.com
-
----
-You're receiving this email because you contacted us about DJ services.
-If you have any questions, just reply to this email or give us a call.
-  `;
-
-  try {
-    const result = await resend.emails.send({
-      from: 'M10 DJ Company <hello@m10djcompany.com>',
-      to: [contact.email_address],
-      subject: `🎵 Select Your ${eventType.charAt(0).toUpperCase() + eventType.slice(1)} DJ Package - M10 DJ Company`,
-      html: emailHtml,
-      text: emailText
-    });
-
-    console.log(`✅ Service selection email sent to ${contact.email_address}`);
-    return { success: true, emailId: result.data?.id };
-  } catch (error) {
-    console.error('❌ Failed to send service selection email:', error);
-    return { success: false, error: error.message };
-  }
 }
 
 /**
- * Complete flow: Generate link, save to database, and send email
- * @param {Object} contact - Contact object from database
- * @param {Object} supabase - Supabase client instance
- * @returns {Promise<Object>} Result with link and email status
+ * Preview the service selection email HTML
+ * Returns the rendered HTML without sending
  */
-export async function sendServiceSelectionToLead(contact, supabase) {
+export default async function handler(req, res) {
+  // Always set JSON content type first
+  if (!res.headersSent) {
+    res.setHeader('Content-Type', 'application/json');
+  }
+
+  // Set CORS headers
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+  // Handle OPTIONS request
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  // Validate environment variables
+  if (!supabaseUrl || !supabaseServiceKey) {
+    return res.status(500).json({ 
+      error: 'Server configuration error',
+      message: 'Missing required environment variables'
+    });
+  }
+
+  // Require admin authentication
   try {
-    // Generate the link
-    const token = generateServiceSelectionToken(contact);
-    const link = generateServiceSelectionLink(contact);
+    await requireAdmin(req, res);
+  } catch (authError) {
+    if (res.headersSent) return;
+    return res.status(401).json({ 
+      error: 'Unauthorized',
+      message: 'Authentication failed'
+    });
+  }
 
-    // Save token to contact's custom_fields
-    const { error: updateError } = await supabase
+  const { contactId } = req.query;
+
+  if (!contactId) {
+    return res.status(400).json({ error: 'Contact ID is required' });
+  }
+
+  const contactIdString = Array.isArray(contactId) ? contactId[0] : contactId;
+
+  if (!contactIdString || typeof contactIdString !== 'string') {
+    return res.status(400).json({ error: 'Invalid contact ID format' });
+  }
+
+  try {
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+
+    // Fetch contact
+    const { data: contact, error: contactError } = await supabaseAdmin
       .from('contacts')
-      .update({
-        custom_fields: {
-          ...contact.custom_fields,
-          service_selection_token: token,
-          service_selection_link: link,
-          token_generated_at: new Date().toISOString(),
-          link_sent_at: new Date().toISOString()
-        },
-        lead_status: 'Service Selection Sent'
-      })
-      .eq('id', contact.id);
+      .select('*')
+      .eq('id', contactIdString)
+      .single();
 
-    if (updateError) {
-      console.error('Error saving token to contact:', updateError);
+    if (contactError || !contact) {
+      return res.status(404).json({ error: 'Contact not found' });
     }
 
-    // Send the email
-    const emailResult = await sendServiceSelectionEmail(contact, link);
+    // Generate service selection link
+    const serviceSelectionLink = generateServiceSelectionLink(contact);
 
-    return {
+    // Generate email subject
+    const eventType = contact.event_type || 'Event';
+    const eventTypeCapitalized = eventType.charAt(0).toUpperCase() + eventType.slice(1);
+    const subject = `🎵 Select Your ${eventTypeCapitalized} DJ Package - M10 DJ Company`;
+
+    // Generate email HTML
+    const html = generateServiceSelectionEmailHtml(contact, serviceSelectionLink);
+
+    return res.status(200).json({
       success: true,
-      link,
-      emailSent: emailResult.success,
-      emailError: emailResult.error
-    };
+      html,
+      subject,
+      email: contact.email_address || null,
+      hasEmail: !!contact.email_address,
+      contactId: contact.id
+    });
   } catch (error) {
-    console.error('Error in sendServiceSelectionToLead:', error);
-    return {
-      success: false,
-      error: error.message
-    };
+    console.error('Error previewing service selection email:', error);
+    return res.status(500).json({ 
+      error: 'Internal server error',
+      message: error.message 
+    });
   }
 }
-

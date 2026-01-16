@@ -869,7 +869,8 @@ export default function FloatingAdminAssistant() {
         },
         body: JSON.stringify({ 
           thread: threadText,
-          overrides: existingContact && Object.keys(fieldsToUse).length > 0 ? fieldsToUse : undefined,
+          // Always send overrides if we have edited fields, for both new and existing contacts
+          overrides: Object.keys(fieldsToUse).length > 0 ? fieldsToUse : undefined,
           contactId: targetContactId || undefined,
           leadSource: importOptions.leadSource,
           leadStatus: importOptions.leadStatus,
@@ -1683,7 +1684,7 @@ export default function FloatingAdminAssistant() {
                           </Button>
                         </div>
                         <CardDescription className="text-xs">
-                          Review detected data and choose which fields to update or keep
+                          Review detected data and click any field to edit before importing
                         </CardDescription>
                       </CardHeader>
                       {showComparison && (
@@ -1763,23 +1764,130 @@ export default function FloatingAdminAssistant() {
                                               </div>
                                             </div>
 
-                                            {/* Detected/Imported Value Column */}
+                                            {/* Detected/Imported Value Column - Editable */}
                                             <div className="space-y-1">
                                               <div className="text-xs font-medium text-zinc-600 dark:text-zinc-400 flex items-center gap-1">
                                                 <span className="w-2 h-2 rounded-full bg-green-500"></span>
                                                 Imported Value
                                               </div>
-                                              <div className={cn(
-                                                "text-sm rounded px-2 py-2 min-h-[2.5rem] flex items-center",
-                                                detectedValue
-                                                  ? (valuesMatch
-                                                      ? "bg-emerald-100 text-emerald-900 dark:bg-emerald-900/40 dark:text-emerald-200 font-medium border border-emerald-300 dark:border-emerald-700"
-                                                      : (choice === 'update' || choice === 'new')
-                                                        ? "bg-green-100 text-green-900 dark:bg-green-900/40 dark:text-green-200 font-medium border border-green-300 dark:border-green-700"
-                                                        : "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400 border border-zinc-200 dark:border-zinc-700")
-                                                  : "bg-zinc-50 text-zinc-400 dark:bg-zinc-900 dark:text-zinc-600 italic border border-zinc-200 dark:border-zinc-700"
-                                              )}>
-                                                {detectedValue || 'Not detected'}
+                                              <div className="min-h-[2.5rem]">
+                                                {(() => {
+                                                  // Determine field type based on field key
+                                                  let fieldType: 'text' | 'date' | 'time' | 'email' | 'tel' | 'select' = 'text';
+                                                  let selectOptions: string[] | undefined;
+                                                  
+                                                  if (field.key === 'eventDate') {
+                                                    fieldType = 'date';
+                                                  } else if (field.key === 'eventTime' || field.key === 'endTime' || field.key === 'setupTime' || field.key === 'guestArrivalTime') {
+                                                    fieldType = 'time';
+                                                  } else if (field.key === 'email') {
+                                                    fieldType = 'email';
+                                                  } else if (field.key === 'phone') {
+                                                    fieldType = 'tel';
+                                                  } else if (field.key === 'eventType') {
+                                                    fieldType = 'select';
+                                                    selectOptions = ['wedding', 'corporate', 'school_dance', 'holiday_party', 'private_party'];
+                                                  } else if (field.key === 'isSurprise') {
+                                                    fieldType = 'select';
+                                                    selectOptions = ['true', 'false'];
+                                                  }
+                                                  
+                                                  // Use FieldEditor for editable field
+                                                  const isEditing = editingField === field.key;
+                                                  const currentValue = editableFields[field.key] !== undefined ? editableFields[field.key] : detectedValue;
+                                                  
+                                                  if (isEditing) {
+                                                    if (fieldType === 'select' && selectOptions) {
+                                                      return (
+                                                        <Select
+                                                          value={currentValue || ''}
+                                                          onValueChange={(val) => updateField(field.key, val)}
+                                                          onOpenChange={(open) => !open && setEditingField(null)}
+                                                        >
+                                                          <SelectTrigger className={cn(
+                                                            "h-8 text-sm",
+                                                            validationErrors[field.key] && "border-red-500"
+                                                          )}>
+                                                            <SelectValue placeholder={`Select ${field.label.toLowerCase()}`} />
+                                                          </SelectTrigger>
+                                                          <SelectContent>
+                                                            {selectOptions.map(opt => (
+                                                              <SelectItem key={opt} value={opt}>
+                                                                {opt.replace('_', ' ')}
+                                                              </SelectItem>
+                                                            ))}
+                                                          </SelectContent>
+                                                        </Select>
+                                                      );
+                                                    }
+                                                    
+                                                    return (
+                                                      <div className="flex items-center gap-2">
+                                                        <Input
+                                                          type={fieldType === 'date' ? 'date' : fieldType === 'time' ? 'time' : fieldType === 'email' ? 'email' : fieldType === 'tel' ? 'tel' : 'text'}
+                                                          value={currentValue || ''}
+                                                          onChange={(e) => setEditableFields(prev => ({ ...prev, [field.key]: e.target.value }))}
+                                                          onBlur={() => setEditingField(null)}
+                                                          onKeyDown={(e) => {
+                                                            if (e.key === 'Enter') {
+                                                              e.preventDefault();
+                                                              updateField(field.key, e.currentTarget.value);
+                                                            }
+                                                            if (e.key === 'Escape') {
+                                                              setEditingField(null);
+                                                            }
+                                                          }}
+                                                          className={cn(
+                                                            "h-8 text-sm",
+                                                            validationErrors[field.key] && "border-red-500"
+                                                          )}
+                                                          autoFocus
+                                                        />
+                                                        <Button
+                                                          size="sm"
+                                                          variant="ghost"
+                                                          onClick={() => setEditingField(null)}
+                                                          className="h-8 w-8 p-0"
+                                                        >
+                                                          <IconX className="h-4 w-4" />
+                                                        </Button>
+                                                        <Button
+                                                          size="sm"
+                                                          variant="ghost"
+                                                          onClick={() => updateField(field.key, editableFields[field.key] || detectedValue || '')}
+                                                          className="h-8 w-8 p-0"
+                                                        >
+                                                          <IconCheck className="h-4 w-4" />
+                                                        </Button>
+                                                      </div>
+                                                    );
+                                                  }
+                                                  
+                                                  // Display mode - clickable to edit
+                                                  return (
+                                                    <div 
+                                                      className={cn(
+                                                        "text-sm rounded px-2 py-2 min-h-[2.5rem] flex items-center justify-between group cursor-pointer transition-colors",
+                                                        currentValue
+                                                          ? (valuesMatch
+                                                              ? "bg-emerald-100 text-emerald-900 dark:bg-emerald-900/40 dark:text-emerald-200 font-medium border border-emerald-300 dark:border-emerald-700 hover:bg-emerald-200 dark:hover:bg-emerald-900/60"
+                                                              : (choice === 'update' || choice === 'new')
+                                                                ? "bg-green-100 text-green-900 dark:bg-green-900/40 dark:text-green-200 font-medium border border-green-300 dark:border-green-700 hover:bg-green-200 dark:hover:bg-green-900/60"
+                                                                : "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400 border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-200 dark:hover:bg-zinc-700")
+                                                          : "bg-zinc-50 text-zinc-400 dark:bg-zinc-900 dark:text-zinc-600 italic border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                                                      )}
+                                                      onClick={() => setEditingField(field.key)}
+                                                    >
+                                                      <span className="flex-1">
+                                                        {currentValue || 'Not detected'}
+                                                        {validationErrors[field.key] && (
+                                                          <span className="ml-2 text-red-500 text-xs">⚠️ {validationErrors[field.key]}</span>
+                                                        )}
+                                                      </span>
+                                                      <IconEdit className="h-3.5 w-3.5 opacity-0 group-hover:opacity-100 transition-opacity text-zinc-500 dark:text-zinc-400" />
+                                                    </div>
+                                                  );
+                                                })()}
                                               </div>
                                             </div>
                                           </div>

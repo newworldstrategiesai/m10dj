@@ -14,6 +14,22 @@ import QuestionnaireQueue from '../../../utils/questionnaire-queue';
 import { normalizeSongInput, cleanSongInput } from '../../../utils/song-normalizer';
 import { getQuestionnaireConfig } from '../../../utils/questionnaire-config';
 
+// Helper function to format date without timezone conversion issues
+const formatEventDate = (dateStr) => {
+  if (!dateStr) return '';
+  try {
+    if (typeof dateStr === 'string' && /^\d{4}-\d{2}-\d{2}/.test(dateStr)) {
+      const datePart = dateStr.split('T')[0];
+      const [year, month, day] = datePart.split('-');
+      const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+      return date.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+    }
+    return new Date(dateStr).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+  } catch (e) {
+    return '';
+  }
+};
+
 export default function MusicQuestionnaire() {
   const router = useRouter();
   const { id, focused } = router.query;
@@ -1241,9 +1257,9 @@ export default function MusicQuestionnaire() {
   if (saved) {
     // Get personalized details for success message
     const eventDateStr = formData.eventDate 
-      ? new Date(formData.eventDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+      ? formatEventDate(formData.eventDate)
       : leadData?.eventDate 
-        ? new Date(leadData.eventDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+        ? formatEventDate(leadData.eventDate)
         : 'your special day';
     
     const hasSpecialDances = formData.specialDances.length > 0;

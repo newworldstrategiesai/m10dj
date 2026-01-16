@@ -356,6 +356,111 @@
       font-weight: bold;
     }
     
+    /* Service Selection OG Image */
+    .service-selection-og {
+      background: linear-gradient(135deg, #fef3c7 0%, #fde68a 25%, #fcd34d 50%, #fbbf24 75%, #f59e0b 100%);
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-start;
+      align-items: center;
+      padding: 50px 60px 80px;
+      color: #000;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .service-selection-og .logo {
+      width: 200px;
+      height: auto;
+      margin-bottom: 30px;
+      position: relative;
+      z-index: 2;
+      filter: drop-shadow(0 4px 12px rgba(0,0,0,0.2));
+      object-fit: contain;
+    }
+    
+    .service-selection-og::before {
+      content: '';
+      position: absolute;
+      top: -30%;
+      right: -10%;
+      width: 500px;
+      height: 500px;
+      background: radial-gradient(circle, rgba(252, 186, 0, 0.3) 0%, transparent 70%);
+      border-radius: 50%;
+      animation: pulse 4s ease-in-out infinite;
+    }
+    
+    .service-selection-og::after {
+      content: '';
+      position: absolute;
+      bottom: -20%;
+      left: -5%;
+      width: 450px;
+      height: 450px;
+      background: radial-gradient(circle, rgba(245, 158, 11, 0.25) 0%, transparent 70%);
+      border-radius: 50%;
+      animation: pulse 5s ease-in-out infinite reverse;
+    }
+    
+    .service-selection-og .content {
+      position: relative;
+      z-index: 2;
+      max-width: 900px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .service-selection-og .icon {
+      font-size: 80px;
+      margin: 20px auto 20px;
+      filter: drop-shadow(0 4px 20px rgba(0,0,0,0.2));
+    }
+    
+    .service-selection-og h1 {
+      font-size: 84px;
+      font-weight: 900;
+      margin: 0 0 24px 0;
+      text-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      letter-spacing: -2px;
+      color: #000;
+    }
+    
+    .service-selection-og p {
+      font-size: 36px;
+      margin: 0 0 40px 0;
+      font-weight: 600;
+      line-height: 1.4;
+      color: #1f2937;
+      text-shadow: 0 1px 5px rgba(0,0,0,0.1);
+    }
+    
+    .service-selection-og .features {
+      display: flex;
+      gap: 40px;
+      justify-content: center;
+      margin-top: 30px;
+      font-size: 22px;
+      font-weight: 600;
+      color: #374151;
+    }
+    
+    .service-selection-og .features span {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    .service-selection-og .features span::before {
+      content: '✓';
+      font-size: 24px;
+      color: #059669;
+      font-weight: bold;
+    }
+    
     .hidden {
       display: none;
     }
@@ -408,6 +513,21 @@
         <span>Electronic Signature</span>
         <span>Legally Binding</span>
         <span>Secure & Encrypted</span>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Service Selection OG Image -->
+  <div class="og-container service-selection-og" id="service-selection">
+    <img src="../m10-black-clear-png.png" alt="M10 DJ Company" class="logo" />
+    <div class="content">
+      <div class="icon">🎵</div>
+      <h1>Select Your Services</h1>
+      <p>Choose your perfect DJ package and customize your event</p>
+      <div class="features">
+        <span>Package Selection</span>
+        <span>Custom Quote</span>
+        <span>Add-Ons Available</span>
       </div>
     </div>
   </div>
@@ -473,6 +593,9 @@
     const buttonContainer = document.createElement('div');
     buttonContainer.style.cssText = 'position: fixed; top: 20px; right: 20px; z-index: 10000; display: flex; flex-direction: column; gap: 10px;';
     buttonContainer.innerHTML = `
+      <button onclick="downloadImage('service-selection', 'service-selection-og-image.png')" style="padding: 12px 24px; background: #fbbf24; color: #000; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 600; box-shadow: 0 4px 12px rgba(0,0,0,0.3);">
+        Download Service Selection OG Image
+      </button>
       <button onclick="downloadImage('contract', 'contract-og-image.png')" style="padding: 12px 24px; background: #fbbf24; color: #000; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 600; box-shadow: 0 4px 12px rgba(0,0,0,0.3);">
         Download Contract OG Image
       </button>
@@ -488,11 +611,12 @@
     `;
     document.body.appendChild(buttonContainer);
     
-    // Hide other OG images by default, show Contract
+    // Hide other OG images by default, show Service Selection
     document.getElementById('djdash').classList.add('hidden');
     document.getElementById('tipjar').classList.add('hidden');
     document.getElementById('payment').classList.add('hidden');
-    document.getElementById('contract').classList.remove('hidden');
+    document.getElementById('contract').classList.add('hidden');
+    document.getElementById('service-selection').classList.remove('hidden');
     
     console.log('OG Image Generator Ready');
     console.log('Click the buttons in the top-right corner to download images');

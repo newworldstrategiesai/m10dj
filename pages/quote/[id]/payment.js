@@ -7,6 +7,22 @@ import QuoteBottomNav from '../../../components/quote/QuoteBottomNav';
 import { CreditCard, ArrowLeft, Loader2, CheckCircle, Lock, AlertCircle, FileText, X, Clock, Calendar } from 'lucide-react';
 import EventPaymentMethodSelection from '../../../components/quote/EventPaymentMethodSelection';
 
+// Helper function to format date without timezone conversion issues
+const formatEventDate = (dateStr) => {
+  if (!dateStr) return '';
+  try {
+    if (typeof dateStr === 'string' && /^\d{4}-\d{2}-\d{2}/.test(dateStr)) {
+      const datePart = dateStr.split('T')[0];
+      const [year, month, day] = datePart.split('-');
+      const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+      return date.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+    }
+    return new Date(dateStr).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+  } catch (e) {
+    return '';
+  }
+};
+
 export default function PaymentPage() {
   const router = useRouter();
   const { id } = router.query;
@@ -542,7 +558,7 @@ export default function PaymentPage() {
             </p>
             {leadData.eventDate && (
               <p className="text-sm text-gray-500 dark:text-gray-500 mb-6">
-                Event Date: {new Date(leadData.eventDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
+                Event Date: {formatEventDate(leadData.eventDate)}
               </p>
             )}
             <div className="flex gap-4 justify-center">

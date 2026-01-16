@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/router';
 import AdminPageLayout from '@/components/layouts/AdminPageLayout';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
@@ -197,6 +197,12 @@ export default function RequestsPageSettings() {
   const [m10LogoMinWidthMobile, setM10LogoMinWidthMobile] = useState(120);
   const [m10LogoMinWidthDesktop, setM10LogoMinWidthDesktop] = useState(150);
   const [m10LogoPosition, setM10LogoPosition] = useState<'left' | 'center' | 'right'>('left');
+  
+  // Aspect ratio lock for logo sizing
+  const [lockAspectRatioMobile, setLockAspectRatioMobile] = useState(false);
+  const [lockAspectRatioDesktop, setLockAspectRatioDesktop] = useState(false);
+  const aspectRatioMobileRef = useRef<number | null>(null);
+  const aspectRatioDesktopRef = useRef<number | null>(null);
   
   // Custom company logo (super admin or organization owner)
   const [companyLogoUrl, setCompanyLogoUrl] = useState('');
@@ -650,6 +656,15 @@ export default function RequestsPageSettings() {
         setM10LogoMinWidthMobile(org.requests_m10_logo_min_width_mobile || 120);
         setM10LogoMinWidthDesktop(org.requests_m10_logo_min_width_desktop || 150);
         setM10LogoPosition(org.requests_m10_logo_position || 'left');
+        
+        // Calculate and store initial aspect ratios
+        const heightMobile = org.requests_m10_logo_height_mobile || 54;
+        const widthMobile = org.requests_m10_logo_min_width_mobile || 120;
+        aspectRatioMobileRef.current = widthMobile / heightMobile;
+        
+        const heightDesktop = org.requests_m10_logo_height_desktop || 68;
+        const widthDesktop = org.requests_m10_logo_min_width_desktop || 150;
+        aspectRatioDesktopRef.current = widthDesktop / heightDesktop;
         
         // Set custom company logo (super admin or organization owner)
         setCompanyLogoUrl(org.requests_company_logo_url || '');
@@ -1846,9 +1861,29 @@ export default function RequestsPageSettings() {
                             
                             {/* Logo Size - Mobile */}
                             <div>
-                              <label className="block text-sm font-medium text-gray-900 dark:text-white mb-2">
-                                Logo Size (Mobile)
-                              </label>
+                              <div className="flex items-center justify-between mb-2">
+                                <label className="block text-sm font-medium text-gray-900 dark:text-white">
+                                  Logo Size (Mobile)
+                                </label>
+                                <label className="flex items-center gap-2 cursor-pointer">
+                                  <input
+                                    type="checkbox"
+                                    checked={lockAspectRatioMobile}
+                                    onChange={(e) => {
+                                      const locked = e.target.checked;
+                                      setLockAspectRatioMobile(locked);
+                                      if (locked && aspectRatioMobileRef.current === null) {
+                                        // Store current aspect ratio when first locked
+                                        aspectRatioMobileRef.current = m10LogoMinWidthMobile / m10LogoHeightMobile;
+                                      }
+                                      setError(null);
+                                      setSuccess(false);
+                                    }}
+                                    className="w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-purple-600 focus:ring-purple-500"
+                                  />
+                                  <span className="text-xs text-gray-500 dark:text-gray-400">Lock Aspect Ratio</span>
+                                </label>
+                              </div>
                               <div className="grid grid-cols-2 gap-4">
                                 <div>
                                   <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Height (px)</label>
@@ -1860,6 +1895,11 @@ export default function RequestsPageSettings() {
                                     onChange={(e) => {
                                       const val = parseInt(e.target.value) || 54;
                                       setM10LogoHeightMobile(val);
+                                      // If aspect ratio is locked, update width proportionally
+                                      if (lockAspectRatioMobile && aspectRatioMobileRef.current) {
+                                        const newWidth = Math.round(val * aspectRatioMobileRef.current);
+                                        setM10LogoMinWidthMobile(newWidth);
+                                      }
                                       setError(null);
                                       setSuccess(false);
                                     }}
@@ -1876,6 +1916,14 @@ export default function RequestsPageSettings() {
                                     onChange={(e) => {
                                       const val = parseInt(e.target.value) || 120;
                                       setM10LogoMinWidthMobile(val);
+                                      // If aspect ratio is locked, update height proportionally
+                                      if (lockAspectRatioMobile && aspectRatioMobileRef.current) {
+                                        const newHeight = Math.round(val / aspectRatioMobileRef.current);
+                                        setM10LogoHeightMobile(newHeight);
+                                      } else if (lockAspectRatioMobile && aspectRatioMobileRef.current === null) {
+                                        // Store aspect ratio if not already stored
+                                        aspectRatioMobileRef.current = val / m10LogoHeightMobile;
+                                      }
                                       setError(null);
                                       setSuccess(false);
                                     }}
@@ -1887,9 +1935,29 @@ export default function RequestsPageSettings() {
                             
                             {/* Logo Size - Desktop */}
                             <div>
-                              <label className="block text-sm font-medium text-gray-900 dark:text-white mb-2">
-                                Logo Size (Desktop)
-                              </label>
+                              <div className="flex items-center justify-between mb-2">
+                                <label className="block text-sm font-medium text-gray-900 dark:text-white">
+                                  Logo Size (Desktop)
+                                </label>
+                                <label className="flex items-center gap-2 cursor-pointer">
+                                  <input
+                                    type="checkbox"
+                                    checked={lockAspectRatioDesktop}
+                                    onChange={(e) => {
+                                      const locked = e.target.checked;
+                                      setLockAspectRatioDesktop(locked);
+                                      if (locked && aspectRatioDesktopRef.current === null) {
+                                        // Store current aspect ratio when first locked
+                                        aspectRatioDesktopRef.current = m10LogoMinWidthDesktop / m10LogoHeightDesktop;
+                                      }
+                                      setError(null);
+                                      setSuccess(false);
+                                    }}
+                                    className="w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-purple-600 focus:ring-purple-500"
+                                  />
+                                  <span className="text-xs text-gray-500 dark:text-gray-400">Lock Aspect Ratio</span>
+                                </label>
+                              </div>
                               <div className="grid grid-cols-2 gap-4">
                                 <div>
                                   <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Height (px)</label>
@@ -1901,6 +1969,11 @@ export default function RequestsPageSettings() {
                                     onChange={(e) => {
                                       const val = parseInt(e.target.value) || 68;
                                       setM10LogoHeightDesktop(val);
+                                      // If aspect ratio is locked, update width proportionally
+                                      if (lockAspectRatioDesktop && aspectRatioDesktopRef.current) {
+                                        const newWidth = Math.round(val * aspectRatioDesktopRef.current);
+                                        setM10LogoMinWidthDesktop(newWidth);
+                                      }
                                       setError(null);
                                       setSuccess(false);
                                     }}
@@ -1917,6 +1990,14 @@ export default function RequestsPageSettings() {
                                     onChange={(e) => {
                                       const val = parseInt(e.target.value) || 150;
                                       setM10LogoMinWidthDesktop(val);
+                                      // If aspect ratio is locked, update height proportionally
+                                      if (lockAspectRatioDesktop && aspectRatioDesktopRef.current) {
+                                        const newHeight = Math.round(val / aspectRatioDesktopRef.current);
+                                        setM10LogoHeightDesktop(newHeight);
+                                      } else if (lockAspectRatioDesktop && aspectRatioDesktopRef.current === null) {
+                                        // Store aspect ratio if not already stored
+                                        aspectRatioDesktopRef.current = val / m10LogoHeightDesktop;
+                                      }
                                       setError(null);
                                       setSuccess(false);
                                     }}

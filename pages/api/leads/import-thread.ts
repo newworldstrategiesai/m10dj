@@ -1022,28 +1022,40 @@ export default async function handler(
         console.log('[lead-import-thread] Updating last_contacted_date to:', lastContactedDate);
       }
 
-      // Update fields intelligently - fill missing or update with more specific info
-      if (parsed.contact.firstName) {
-        if (!existingContact.first_name || existingContact.first_name.trim() === '') {
-          updatePayload.first_name = parsed.contact.firstName;
+      // Update fields intelligently - use overrides if provided (user edited fields), otherwise use parsed data
+      // For firstName and lastName, always respect overrides if provided (user explicitly edited them)
+      const firstNameToUse = overrides?.firstName !== undefined ? overrides.firstName : parsed.contact.firstName;
+      const lastNameToUse = overrides?.lastName !== undefined ? overrides.lastName : parsed.contact.lastName;
+      
+      if (firstNameToUse) {
+        // If override is provided, always update. Otherwise, only update if existing is empty.
+        if (overrides?.firstName !== undefined || !existingContact.first_name || existingContact.first_name.trim() === '') {
+          updatePayload.first_name = firstNameToUse;
         }
       }
 
-      if (parsed.contact.lastName) {
-        if (!existingContact.last_name || existingContact.last_name.trim() === '') {
-          updatePayload.last_name = parsed.contact.lastName;
+      if (lastNameToUse) {
+        // If override is provided, always update. Otherwise, only update if existing is empty.
+        if (overrides?.lastName !== undefined || !existingContact.last_name || existingContact.last_name.trim() === '') {
+          updatePayload.last_name = lastNameToUse;
         }
       }
 
-      if (parsed.contact.email) {
-        if (!existingContact.email_address || existingContact.email_address.trim() === '') {
-          updatePayload.email_address = parsed.contact.email;
+      // Use overrides for email and phone if provided, otherwise use parsed data
+      const emailToUse = overrides?.email !== undefined ? overrides.email : parsed.contact.email;
+      const phoneToUse = overrides?.phone !== undefined ? overrides.phone : (parsed.contact.phoneE164 || parsed.contact.phoneDigits);
+      
+      if (emailToUse) {
+        // If override is provided, always update. Otherwise, only update if existing is empty.
+        if (overrides?.email !== undefined || !existingContact.email_address || existingContact.email_address.trim() === '') {
+          updatePayload.email_address = emailToUse;
         }
       }
 
-      if (parsed.contact.phoneE164 || parsed.contact.phoneDigits) {
-        if (!existingContact.phone || existingContact.phone.trim() === '') {
-          updatePayload.phone = parsed.contact.phoneE164 || parsed.contact.phoneDigits;
+      if (phoneToUse) {
+        // If override is provided, always update. Otherwise, only update if existing is empty.
+        if (overrides?.phone !== undefined || !existingContact.phone || existingContact.phone.trim() === '') {
+          updatePayload.phone = phoneToUse;
         }
       }
 
@@ -1473,13 +1485,20 @@ export default async function handler(
 
         // Use overrides if provided (user edited fields in UI)
         const eventDateToUseForMigrated = overrides?.eventDate !== undefined ? overrides.eventDate : parsed.contact.eventDate;
+        const firstNameToUseForMigrated = overrides?.firstName !== undefined ? overrides.firstName : parsed.contact.firstName;
+        const lastNameToUseForMigrated = overrides?.lastName !== undefined ? overrides.lastName : parsed.contact.lastName;
         
-        // Merge thread data with migrated submission data (thread takes precedence for missing fields)
-        if (parsed.contact.firstName && existingContact && !existingContact.first_name) {
-          updatePayload.first_name = parsed.contact.firstName;
+        // Merge thread data with migrated submission data (use overrides if provided, otherwise use parsed data)
+        // If override is provided, always update. Otherwise, only update if existing is empty.
+        if (firstNameToUseForMigrated && existingContact) {
+          if (overrides?.firstName !== undefined || !existingContact.first_name) {
+            updatePayload.first_name = firstNameToUseForMigrated;
+          }
         }
-        if (parsed.contact.lastName && existingContact && !existingContact.last_name) {
-          updatePayload.last_name = parsed.contact.lastName;
+        if (lastNameToUseForMigrated && existingContact) {
+          if (overrides?.lastName !== undefined || !existingContact.last_name) {
+            updatePayload.last_name = lastNameToUseForMigrated;
+          }
         }
         if (eventDateToUseForMigrated && existingContact) {
           // Always update event_date if we have a new date (from override or parsed)
@@ -1601,30 +1620,38 @@ export default async function handler(
 
     // If we still don't have a contact, create a new one
     if (!existingContact) {
+      // Use overrides if provided (user edited fields), otherwise use parsed data
+      const firstNameToUse = overrides?.firstName !== undefined ? overrides.firstName : parsed.contact.firstName;
+      const lastNameToUse = overrides?.lastName !== undefined ? overrides.lastName : parsed.contact.lastName;
+      const emailToUse = overrides?.email !== undefined ? overrides.email : parsed.contact.email;
+      const phoneToUse = overrides?.phone !== undefined ? overrides.phone : (parsed.contact.phoneE164 || parsed.contact.phoneDigits);
+      
       const insertPayload: Record<string, any> = {
         user_id: session.user.id,
-        first_name: parsed.contact.firstName || null,
-        last_name: parsed.contact.lastName || null,
-        email_address: parsed.contact.email || null,
-        phone: parsed.contact.phoneE164 || parsed.contact.phoneDigits || null,
-        event_type: parsed.contact.eventType || null,
-        event_date: parsed.contact.eventDate || null,
-        venue_name: parsed.contact.venueName || null,
-        venue_address: parsed.contact.venueAddress || null,
-        venue_type: parsed.contact.venueType || null,
-        venue_room: parsed.contact.venueRoom || null,
-        event_time: parsed.contact.eventTime ? normalizeTime(parsed.contact.eventTime) : null,
-        end_time: parsed.contact.endTime ? normalizeTime(parsed.contact.endTime) : null,
-        setup_time: parsed.contact.setupTime ? normalizeTime(parsed.contact.setupTime) : null,
-        guest_arrival_time: parsed.contact.guestArrivalTime ? normalizeTime(parsed.contact.guestArrivalTime) : null,
-        guest_count: parsed.contact.guestCount !== null && parsed.contact.guestCount !== undefined
-          ? (typeof parsed.contact.guestCount === 'number' 
-              ? parsed.contact.guestCount 
-              : (() => {
-                  const num = parseInt(String(parsed.contact.guestCount), 10);
-                  return !isNaN(num) && num > 0 ? num : null;
-                })())
-          : null,
+        first_name: firstNameToUse || null,
+        last_name: lastNameToUse || null,
+        email_address: emailToUse || null,
+        phone: phoneToUse || null,
+        event_type: overrides?.eventType !== undefined ? overrides.eventType : parsed.contact.eventType || null,
+        event_date: overrides?.eventDate !== undefined ? overrides.eventDate : parsed.contact.eventDate || null,
+        venue_name: overrides?.venueName !== undefined ? overrides.venueName : parsed.contact.venueName || null,
+        venue_address: overrides?.venueAddress !== undefined ? overrides.venueAddress : parsed.contact.venueAddress || null,
+        venue_type: overrides?.venueType !== undefined ? overrides.venueType : parsed.contact.venueType || null,
+        venue_room: overrides?.venueRoom !== undefined ? overrides.venueRoom : parsed.contact.venueRoom || null,
+        event_time: overrides?.eventTime !== undefined ? normalizeTime(overrides.eventTime) : (parsed.contact.eventTime ? normalizeTime(parsed.contact.eventTime) : null),
+        end_time: overrides?.endTime !== undefined ? normalizeTime(overrides.endTime) : (parsed.contact.endTime ? normalizeTime(parsed.contact.endTime) : null),
+        setup_time: overrides?.setupTime !== undefined ? normalizeTime(overrides.setupTime) : (parsed.contact.setupTime ? normalizeTime(parsed.contact.setupTime) : null),
+        guest_arrival_time: overrides?.guestArrivalTime !== undefined ? normalizeTime(overrides.guestArrivalTime) : (parsed.contact.guestArrivalTime ? normalizeTime(parsed.contact.guestArrivalTime) : null),
+        guest_count: overrides?.guestCount !== undefined 
+          ? (typeof overrides.guestCount === 'string' ? parseInt(overrides.guestCount, 10) : overrides.guestCount)
+          : (parsed.contact.guestCount !== null && parsed.contact.guestCount !== undefined
+              ? (typeof parsed.contact.guestCount === 'number' 
+                  ? parsed.contact.guestCount 
+                  : (() => {
+                      const num = parseInt(String(parsed.contact.guestCount), 10);
+                      return !isNaN(num) && num > 0 ? num : null;
+                    })())
+              : null),
         budget_range: parsed.contact.budgetRange || null,
         event_occasion: parsed.contact.eventOccasion || null,
         event_for: parsed.contact.eventFor || null,

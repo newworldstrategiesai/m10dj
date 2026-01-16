@@ -1,59 +1,16 @@
-/**
- * Service Selection Link Helper
- * 
- * Utility functions for generating and sending service selection links to leads
- */
-
 import { createClient } from '@supabase/supabase-js';
-import crypto from 'crypto';
+import { requireAdmin } from '@/utils/auth-helpers/api-auth';
+import { generateServiceSelectionLink } from '@/utils/service-selection-helper';
 import { Resend } from 'resend';
 
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 
 /**
- * Generate a secure service selection token for a contact
- * @param {Object} contact - Contact object from database
- * @returns {string} Base64URL encoded token
+ * Generate service selection email HTML (same as preview)
  */
-export function generateServiceSelectionToken(contact) {
-  const tokenData = {
-    contactId: contact.id,
-    email: contact.email_address,
-    timestamp: Date.now(),
-    // Add a secret hash to prevent tampering
-    hash: crypto
-      .createHash('sha256')
-      .update(`${contact.id}${contact.email_address}${process.env.NEXTAUTH_SECRET || 'default-secret'}`)
-      .digest('hex')
-      .substring(0, 16)
-  };
-
-  return Buffer.from(JSON.stringify(tokenData)).toString('base64url');
-}
-
-/**
- * Generate service selection link for a contact
- * @param {Object} contact - Contact object from database
- * @returns {string} Full URL to service selection page
- */
-export function generateServiceSelectionLink(contact) {
-  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.m10djcompany.com';
-  // Use the new quote builder route instead of token-based route
-  return `${baseUrl}/quote/${contact.id}`;
-}
-
-/**
- * Send service selection email to a lead
- * @param {Object} contact - Contact object with first_name, last_name, email_address
- * @param {string} serviceSelectionLink - Full URL to service selection page
- * @returns {Promise<Object>} Result of email send
- */
-export async function sendServiceSelectionEmail(contact, serviceSelectionLink) {
-  if (!resend) {
-    console.error('⚠️ Resend API key not configured - cannot send service selection email');
-    return { success: false, error: 'Email service not configured' };
-  }
-
+function generateServiceSelectionEmailHtml(contact, serviceSelectionLink) {
   const firstName = contact.first_name || 'there';
   const eventType = contact.event_type || 'event';
   
@@ -79,8 +36,7 @@ export async function sendServiceSelectionEmail(contact, serviceSelectionLink) {
   const venue = (contact.venue_name || '').trim();
   const shouldIncludeVenue = venue && !venue.toLowerCase().includes("client's home") && !venue.toLowerCase().includes("clients home");
 
-  // Create professional HTML email
-  const emailHtml = `
+  return `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
       <div style="background: linear-gradient(135deg, #fcba00, #e6a800); padding: 30px; text-align: center; border-radius: 8px 8px 0 0;">
         <img src="https://m10djcompany.com/m10-black-clear-png.png" alt="M10 DJ Company" style="max-width: 200px; height: auto; margin-bottom: 15px; display: block; margin-left: auto; margin-right: auto;">
@@ -166,12 +122,98 @@ export async function sendServiceSelectionEmail(contact, serviceSelectionLink) {
       </div>
     </div>
   `;
+}
 
-  // Plain text version
-  const emailText = `
+/**
+ * Send test service selection email to admin
+ */
+export default async function handler(req, res) {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  let testEmail = 'djbenmurray@gmail.com'; // Default admin email
+
+  try {
+    // Require admin authentication
+    const user = await requireAdmin(req, res);
+    testEmail = user?.email || testEmail;
+  } catch (error) {
+    if (res.headersSent) return;
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+
+  const { contactId } = req.query;
+  const { testEmails } = req.body;
+
+  if (!contactId) {
+    return res.status(400).json({ error: 'Contact ID is required' });
+  }
+
+  // Use provided test emails or default to admin email
+  let testEmailAddresses = [testEmail];
+  if (testEmails && Array.isArray(testEmails) && testEmails.length > 0) {
+    testEmailAddresses = testEmails;
+  } else if (testEmails && typeof testEmails === 'string') {
+    // Handle single email string or comma-separated
+    testEmailAddresses = testEmails.split(',').map(e => e.trim()).filter(e => e);
+  }
+
+  if (!resend) {
+    return res.status(500).json({ error: 'Email service not configured' });
+  }
+
+  try {
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+
+    // Fetch contact
+    const { data: contact, error: contactError } = await supabaseAdmin
+      .from('contacts')
+      .select('*')
+      .eq('id', contactId)
+      .single();
+
+    if (contactError || !contact) {
+      return res.status(404).json({ error: 'Contact not found' });
+    }
+
+    // Generate service selection link
+    const serviceSelectionLink = generateServiceSelectionLink(contact);
+
+    // Generate email subject
+    const eventType = contact.event_type || 'Event';
+    const eventTypeCapitalized = eventType.charAt(0).toUpperCase() + eventType.slice(1);
+    const subject = `🎵 [TEST] Select Your ${eventTypeCapitalized} DJ Package - M10 DJ Company`;
+
+    // Generate email HTML (this function already handles date and venue formatting)
+    const html = generateServiceSelectionEmailHtml(contact, serviceSelectionLink);
+
+    // Plain text version - extract date and venue from the HTML generation function
+    // The generateServiceSelectionEmailHtml function already has eventDate and shouldIncludeVenue
+    // We need to calculate them here for the plain text version
+    const firstName = contact.first_name || 'there';
+    let eventDate = 'your upcoming event';
+    if (contact.event_date) {
+      try {
+        if (typeof contact.event_date === 'string' && /^\d{4}-\d{2}-\d{2}/.test(contact.event_date)) {
+          const datePart = contact.event_date.split('T')[0];
+          const [year, month, day] = datePart.split('-');
+          const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+          eventDate = date.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+        } else {
+          eventDate = new Date(contact.event_date).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+        }
+      } catch (e) {
+        eventDate = 'your upcoming event';
+      }
+    }
+    const venue = (contact.venue_name || '').trim();
+    const shouldIncludeVenue = venue && !venue.toLowerCase().includes("client's home") && !venue.toLowerCase().includes("clients home");
+
+    const text = `
 Hi ${firstName},
 
-Thank you for reaching out about DJ services for ${eventDate}${shouldIncludeVenue ? ` at ${venue}` : ''}! I'm excited to help make your ${eventType} unforgettable.
+Thank you for reaching out about DJ services for ${eventDate}${shouldIncludeVenue ? ` at ${venue}` : ''}! I'm excited to help make your ${contact.event_type || 'event'} unforgettable.
 
 To help me prepare the perfect proposal for you, I've created a personalized service selection page where you can:
 
@@ -201,71 +243,32 @@ www.m10djcompany.com
 ---
 You're receiving this email because you contacted us about DJ services.
 If you have any questions, just reply to this email or give us a call.
-  `;
+    `;
 
-  try {
-    const result = await resend.emails.send({
-      from: 'M10 DJ Company <hello@m10djcompany.com>',
-      to: [contact.email_address],
-      subject: `🎵 Select Your ${eventType.charAt(0).toUpperCase() + eventType.slice(1)} DJ Package - M10 DJ Company`,
-      html: emailHtml,
-      text: emailText
-    });
-
-    console.log(`✅ Service selection email sent to ${contact.email_address}`);
-    return { success: true, emailId: result.data?.id };
-  } catch (error) {
-    console.error('❌ Failed to send service selection email:', error);
-    return { success: false, error: error.message };
-  }
-}
-
-/**
- * Complete flow: Generate link, save to database, and send email
- * @param {Object} contact - Contact object from database
- * @param {Object} supabase - Supabase client instance
- * @returns {Promise<Object>} Result with link and email status
- */
-export async function sendServiceSelectionToLead(contact, supabase) {
-  try {
-    // Generate the link
-    const token = generateServiceSelectionToken(contact);
-    const link = generateServiceSelectionLink(contact);
-
-    // Save token to contact's custom_fields
-    const { error: updateError } = await supabase
-      .from('contacts')
-      .update({
-        custom_fields: {
-          ...contact.custom_fields,
-          service_selection_token: token,
-          service_selection_link: link,
-          token_generated_at: new Date().toISOString(),
-          link_sent_at: new Date().toISOString()
-        },
-        lead_status: 'Service Selection Sent'
+    // Send test emails to all specified addresses
+    const emailPromises = testEmailAddresses.map(email => 
+      resend.emails.send({
+        from: 'M10 DJ Company <hello@m10djcompany.com>',
+        to: [email],
+        subject,
+        html,
+        text
       })
-      .eq('id', contact.id);
+    );
 
-    if (updateError) {
-      console.error('Error saving token to contact:', updateError);
-    }
+    const results = await Promise.all(emailPromises);
 
-    // Send the email
-    const emailResult = await sendServiceSelectionEmail(contact, link);
-
-    return {
+    res.status(200).json({
       success: true,
-      link,
-      emailSent: emailResult.success,
-      emailError: emailResult.error
-    };
+      message: `Test email sent successfully to ${testEmailAddresses.length} recipient(s)`,
+      testEmails: testEmailAddresses,
+      results: results.map(r => ({ id: r.data?.id, error: r.error }))
+    });
   } catch (error) {
-    console.error('Error in sendServiceSelectionToLead:', error);
-    return {
-      success: false,
-      error: error.message
-    };
+    console.error('Error sending test email:', error);
+    res.status(500).json({ 
+      error: 'Failed to send test email',
+      message: error.message 
+    });
   }
 }
-
