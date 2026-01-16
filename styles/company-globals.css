@@ -440,6 +440,16 @@ section:first-child {
   box-shadow: 0 0 0 3px rgba(252, 186, 0, 0.1) !important;
 }
 
+/* Custom Amount Input - Force pure black in dark mode */
+.dark input[type="number"].custom-amount-input {
+  background-color: #000000 !important;
+}
+
+/* Custom Amount Wrapper - Force pure black in dark mode */
+.dark .custom-amount-wrapper {
+  background-color: #000000 !important;
+}
+
 /* Sections */
 .section-light {
   background-color: var(--bg-primary) !important;

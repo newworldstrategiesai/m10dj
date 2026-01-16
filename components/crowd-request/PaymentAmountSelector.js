@@ -200,7 +200,7 @@ function PaymentAmountSelector({
             {isMobile && amountType === 'custom' ? (
               // Mobile: Native-like wheel picker with stepper controls (only visible when custom amount is selected)
               <div className="space-y-3">
-                <div className="flex items-center gap-2 bg-gray-50 dark:bg-black rounded-xl p-2 border-2 border-gray-200 dark:border-gray-700">
+                <div className="flex items-center gap-2 bg-gray-50 dark:!bg-black custom-amount-wrapper rounded-xl p-2 border-2 border-gray-200 dark:border-gray-700">
                   <button
                     type="button"
                     onClick={() => adjustAmount(-1)}
@@ -226,7 +226,7 @@ function PaymentAmountSelector({
                           return customAmount && parseFloat(customAmount) > 0 && parseFloat(customAmount) < minAmount;
                         })()
                           ? 'border-red-500 dark:border-red-500 bg-red-50 dark:bg-red-900/20'
-                          : 'border-brand-500 dark:border-brand-500 bg-white dark:bg-black'
+                          : 'border-brand-500 dark:border-brand-500 bg-white dark:!bg-black custom-amount-input'
                       } text-gray-900 dark:text-white focus:ring-2 focus:ring-brand-500 focus:border-transparent touch-manipulation`}
                       placeholder={requestType === 'tip' ? '0.00' : (() => {
                         const minAmount = minimumAmount > 0 ? minimumAmount / 100 : (presetAmounts.length > 0 ? presetAmounts[0].value / 100 : 0);
@@ -266,7 +266,7 @@ function PaymentAmountSelector({
                       return customAmount && parseFloat(customAmount) > 0 && parseFloat(customAmount) < minAmount;
                     })()
                       ? 'border-red-500 dark:border-red-500 bg-red-50 dark:bg-red-900/20'
-                      : 'border-gray-300 dark:border-gray-600 bg-white dark:bg-black'
+                      : 'border-gray-300 dark:border-gray-800 bg-white dark:!bg-black custom-amount-input'
                   } text-gray-900 dark:text-white focus:ring-2 focus:ring-brand-500 focus:border-transparent touch-manipulation`}
                   placeholder={requestType === 'tip' ? '0.00' : (() => {
                     const minAmount = minimumAmount > 0 ? minimumAmount / 100 : (presetAmounts.length > 0 ? presetAmounts[0].value / 100 : 0);

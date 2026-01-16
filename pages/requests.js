@@ -4124,7 +4124,7 @@ export function GeneralRequestsPage({
             {/* Content overlay */}
             <div             className={`relative z-20 h-full flex flex-col justify-between items-center text-center px-4 ${
               minimalHeader ? 'justify-center' : ''
-            }`} style={{ paddingTop: minimalHeader ? '60px' : '80px', paddingBottom: minimalHeader ? '10px' : '20px', overflow: 'visible' }}>
+            }`} style={{ paddingTop: minimalHeader ? '60px' : '80px', paddingBottom: minimalHeader ? '10px' : '4px', overflow: 'visible' }}>
               {/* Top content section */}
               <div className={`flex flex-col items-center justify-center ${minimalHeader ? '' : 'flex-1'}`}>
                 {/* Artist Name - Show based on settings. If video playing and showArtistNameOverVideo is false, hide it */}
@@ -5117,10 +5117,20 @@ export function GeneralRequestsPage({
               }} className="flex-1 flex flex-col space-y-2 sm:space-y-3 overflow-y-auto" style={{ minHeight: 0, maxHeight: '100%' }}>
                 {/* Request Type Selection */}
                 <div className="bg-white/70 dark:!bg-black/70 backdrop-blur-xl rounded-xl sm:rounded-2xl shadow-2xl border border-gray-200/50 dark:border-gray-800/50 p-2.5 sm:p-3 md:p-4 flex-shrink-0">
-                  <h2 className="text-sm sm:text-base md:text-lg font-bold text-gray-900 dark:text-white mb-2 sm:mb-2.5 flex items-center gap-1.5 sm:gap-2">
-                    <div className="w-1 h-4 sm:h-5 bg-brand rounded-full hidden sm:block"></div>
-                    <span className="leading-tight">{organizationData?.requests_main_heading || 'What would you like to request?'}</span>
-                  </h2>
+                  {(() => {
+                    const mainHeading = organizationData?.requests_main_heading;
+                    const defaultHeading = 'What would you like to request?';
+                    // Only show heading if it exists, is not empty, and is NOT the default value
+                    if (mainHeading && mainHeading.trim() && mainHeading.trim() !== defaultHeading) {
+                      return (
+                        <h2 className="text-sm sm:text-base md:text-lg font-bold text-gray-900 dark:text-white mb-2 sm:mb-2.5 flex items-center gap-1.5 sm:gap-2">
+                          <div className="w-1 h-4 sm:h-5 bg-brand rounded-full hidden sm:block"></div>
+                          <span className="leading-tight">{mainHeading}</span>
+                        </h2>
+                      );
+                    }
+                    return null;
+                  })()}
                   
                   {/* Request Type Selection - Hide if only one type is allowed */}
                   {(!allowedRequestTypes || allowedRequestTypes.length > 1) && (
@@ -5204,7 +5214,7 @@ export function GeneralRequestsPage({
                                 requestType === 'tip' ? 'text-black' : 'text-gray-400 group-hover:text-brand'
                               }`} />
                             </div>
-                            <h3 className="font-semibold text-[10px] sm:text-[11px] text-gray-900 dark:text-white text-center leading-tight">Tip Me</h3>
+                            <h3 className="font-semibold text-[10px] sm:text-[11px] text-gray-900 dark:text-white text-center leading-tight">{organizationData?.requests_tip_label || 'Tip'}</h3>
                           </div>
                         </button>
                       )}

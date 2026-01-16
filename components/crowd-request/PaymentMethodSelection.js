@@ -745,8 +745,8 @@ function PaymentMethodSelection({
           </button>
           )}
 
-          {/* Cash Button - Only show if enabled */}
-          {paymentSettings?.paymentMethodCashEnabled !== false && (
+          {/* Cash Button - Only show if enabled and NOT tip request */}
+          {paymentSettings?.paymentMethodCashEnabled !== false && requestType !== 'tip' && (
           <button
             type="button"
             onClick={handleCashClick}
