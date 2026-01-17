@@ -2834,7 +2834,7 @@ export default function PersonalizedQuote() {
 
           {/* Savings Explanation */}
           {(!existingSelection || showEditMode) && (
-            <div className="bg-gradient-to-r from-brand/10 to-brand/5 dark:from-brand/20 dark:to-brand/10 rounded-xl p-6 mb-8 border border-brand/20">
+            <div className="bg-white dark:bg-gray-800 rounded-xl p-6 mb-8 border border-gray-200 dark:border-gray-700">
               <p className="text-center text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
                 Our packages bundle services at a discounted rate. Compare the package price to a la carte pricing and see your savings! 🎉
               </p>
