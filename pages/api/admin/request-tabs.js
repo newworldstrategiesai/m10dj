@@ -131,23 +131,35 @@ export default async function handler(req, res) {
         return res.status(403).json({ error: 'Organization admin access required or TipJar organization required' });
       }
 
-      // Build update object (only include fields that are provided)
+      // Get existing row to preserve values not being updated
+      let existingData = null;
+      if (organizationId) {
+        const { data: existing } = await supabase
+          .from('request_tab_defaults')
+          .select('*')
+          .eq('organization_id', organizationId)
+          .maybeSingle();
+        existingData = existing;
+      } else {
+        const { data: existing } = await supabase
+          .from('request_tab_defaults')
+          .select('*')
+          .is('organization_id', null)
+          .maybeSingle();
+        existingData = existing;
+      }
+
+      // Build update object - always include all boolean fields
       const updateData = {
         organization_id: organizationId || null,
         updated_by: user.id,
         updated_at: new Date().toISOString(),
-        notes: notes || null,
+        notes: notes !== undefined ? (notes || null) : (existingData?.notes || null),
+        // Always set all three boolean fields - use provided value or existing value or default to true
+        song_request_enabled: song_request_enabled !== undefined ? song_request_enabled : (existingData?.song_request_enabled ?? true),
+        shoutout_enabled: shoutout_enabled !== undefined ? shoutout_enabled : (existingData?.shoutout_enabled ?? true),
+        tip_enabled: tip_enabled !== undefined ? tip_enabled : (existingData?.tip_enabled ?? true),
       };
-
-      if (song_request_enabled !== undefined) {
-        updateData.song_request_enabled = song_request_enabled;
-      }
-      if (shoutout_enabled !== undefined) {
-        updateData.shoutout_enabled = shoutout_enabled;
-      }
-      if (tip_enabled !== undefined) {
-        updateData.tip_enabled = tip_enabled;
-      }
 
       // Upsert request tab defaults
       const { data, error } = await supabase

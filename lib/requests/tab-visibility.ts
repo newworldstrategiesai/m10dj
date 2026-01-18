@@ -88,6 +88,7 @@ export async function getRequestTabSettings(
         console.warn('[Request Tabs] Error fetching org defaults:', orgError);
       } else if (orgDefaults) {
         const defaults = orgDefaults as any;
+        // Use nullish coalescing - preserves false, defaults null/undefined to true
         return {
           song_request_enabled: defaults.song_request_enabled ?? true,
           shoutout_enabled: defaults.shoutout_enabled ?? true,
@@ -107,6 +108,7 @@ export async function getRequestTabSettings(
       console.warn('[Request Tabs] Error fetching platform defaults:', platformError);
     } else if (platformDefaults) {
       const defaults = platformDefaults as any;
+      // Use nullish coalescing - preserves false, defaults null/undefined to true
       return {
         song_request_enabled: defaults.song_request_enabled ?? true,
         shoutout_enabled: defaults.shoutout_enabled ?? true,
