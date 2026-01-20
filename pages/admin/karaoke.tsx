@@ -73,6 +73,7 @@ export default function KaraokeAdminPage() {
   const [qrEventName, setQrEventName] = useState('');
   const [qrEventDate, setQrEventDate] = useState('');
   const [generatedQR, setGeneratedQR] = useState<string | null>(null);
+  const [generatedSignupUrl, setGeneratedSignupUrl] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [showDisplaySetup, setShowDisplaySetup] = useState(false);
   const [displayUrl, setDisplayUrl] = useState<string | null>(null);
@@ -302,11 +303,15 @@ export default function KaraokeAdminPage() {
 
     try {
       const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
-      const qrUrl = qrEventCode.trim()
+      const signupUrl = qrEventCode.trim()
         ? `${baseUrl}/organizations/${organization.slug}/sing?eventCode=${qrEventCode.trim()}`
         : `${baseUrl}/organizations/${organization.slug}/sing`;
 
-      setGeneratedQR(qrUrl);
+      // Generate QR code image URL
+      const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(signupUrl)}`;
+
+      setGeneratedQR(qrCodeUrl);
+      setGeneratedSignupUrl(signupUrl);
       toast({
         title: 'Success',
         description: 'QR code generated',
@@ -1206,13 +1211,13 @@ export default function KaraokeAdminPage() {
                     <div className="flex items-center gap-2">
                       <Input
                         readOnly
-                        value={generatedQR}
+                        value={generatedSignupUrl || ''}
                         className="flex-1"
                       />
                       <Button
                         variant="outline"
                         onClick={() => {
-                          navigator.clipboard.writeText(generatedQR);
+                          navigator.clipboard.writeText(generatedSignupUrl || '');
                           setCopied(true);
                           setTimeout(() => setCopied(false), 2000);
                         }}
