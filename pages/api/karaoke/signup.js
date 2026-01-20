@@ -111,7 +111,7 @@ export default async function handler(req, res) {
     }
 
     // Get or create karaoke settings
-    let { data: settings, error: settingsError } = await supabase
+    let { data: settings, error: createSettingsError } = await supabase
       .from('karaoke_settings')
       .select('*')
       .eq('organization_id', organization_id)
