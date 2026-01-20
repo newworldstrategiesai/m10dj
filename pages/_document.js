@@ -8,8 +8,8 @@ export default function Document() {
         <meta name="robots" content="index, follow" />
         <meta name="author" content="M10 DJ Company" />
         {/* Favicon will be set dynamically in _app.js based on domain */}
-        {/* Default fallback favicon */}
-        <link rel="icon" href="/favicon.ico" />
+        {/* Default fallback favicon - using M10 DJ logo PNG instead of generic favicon.ico */}
+        <link rel="icon" type="image/png" href="/m10-black-clear-png.png" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="true" />
         {/* Optimized Google Analytics - Defer Loading */}

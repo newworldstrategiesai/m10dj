@@ -167,9 +167,9 @@ export default function App({ Component, pageProps }) {
           </>
         ) : (
           <>
-            <link rel="icon" href="/logo-static.jpg" />
-            <link rel="apple-touch-icon" href="/logo-static.jpg" />
-            <link rel="shortcut icon" href="/logo-static.jpg" />
+            <link rel="icon" type="image/png" href="/m10-black-clear-png.png" />
+            <link rel="apple-touch-icon" href="/m10-black-clear-png.png" />
+            <link rel="shortcut icon" type="image/png" href="/m10-black-clear-png.png" />
           </>
         )}
         

@@ -34,9 +34,9 @@ export const metadata: Metadata = {
   },
   description: description,
   icons: {
-    icon: '/logo-static.jpg',
-    shortcut: '/logo-static.jpg',
-    apple: '/logo-static.jpg',
+    icon: '/m10-black-clear-png.png',
+    shortcut: '/m10-black-clear-png.png',
+    apple: '/m10-black-clear-png.png',
   },
   keywords: [
     'Memphis DJ',
