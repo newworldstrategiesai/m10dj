@@ -28,6 +28,26 @@ export default function ContactFormChat({ formData, submissionId, onClose, isMin
   // State for info banner visibility
   const [showInfoBanner, setShowInfoBanner] = useState(true);
 
+  // Theme colors based on page type - moved to component level
+  const isKaraokePage = router.pathname?.includes('/organizations/') && router.pathname?.includes('/sing');
+  const themeClasses = isKaraokePage
+    ? {
+        button: 'bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700',
+        header: 'bg-gradient-to-r from-cyan-500 to-blue-600',
+        messageBg: 'bg-cyan-500',
+        messageHover: 'hover:bg-cyan-600',
+        focusRing: 'focus:ring-cyan-500 focus:border-cyan-500',
+        badge: 'text-cyan-600'
+      }
+    : {
+        button: 'bg-gradient-to-r from-brand to-brand-600 hover:from-brand-600 hover:to-brand-700',
+        header: 'bg-gradient-to-r from-brand to-brand-600',
+        messageBg: 'bg-brand',
+        messageHover: 'hover:bg-brand-600',
+        focusRing: 'focus:ring-brand focus:border-brand',
+        badge: 'text-brand'
+      };
+
   // Initialize chat with AI greeting
   useEffect(() => {
     const initializeChat = async () => {
@@ -35,26 +55,6 @@ export default function ContactFormChat({ formData, submissionId, onClose, isMin
         // Customize greeting based on context
         let greetingMessage;
         const isPaymentPage = paymentContext?.pageType === 'payment' && paymentContext?.invoice;
-        const isKaraokePage = router.pathname?.includes('/organizations/') && router.pathname?.includes('/sing');
-
-        // Theme colors based on page type
-        const themeClasses = isKaraokePage
-          ? {
-              button: 'bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700',
-              header: 'bg-gradient-to-r from-cyan-500 to-blue-600',
-              messageBg: 'bg-cyan-500',
-              messageHover: 'hover:bg-cyan-600',
-              focusRing: 'focus:ring-cyan-500 focus:border-cyan-500',
-              badge: 'text-cyan-600'
-            }
-          : {
-              button: 'bg-gradient-to-r from-brand to-brand-600 hover:from-brand-600 hover:to-brand-700',
-              header: 'bg-gradient-to-r from-brand to-brand-600',
-              messageBg: 'bg-brand',
-              messageHover: 'hover:bg-brand-600',
-              focusRing: 'focus:ring-brand focus:border-brand',
-              badge: 'text-brand'
-            };
         
         if (isPaymentPage) {
           const invoice = paymentContext.invoice;
