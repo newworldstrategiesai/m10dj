@@ -1062,7 +1062,11 @@ export default function KaraokeAdminPage() {
                   return (
                     <div
                       key={signup.id}
-                      className="group p-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
+                      className="group p-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors cursor-pointer"
+                      onClick={() => {
+                        setSelectedSignup(signup);
+                        setShowDetailModal(true);
+                      }}
                     >
                       <div className="flex items-start justify-between gap-4">
                         <div className="flex items-start gap-3 flex-1 min-w-0">
@@ -1175,7 +1179,10 @@ export default function KaraokeAdminPage() {
                                   <Button
                                     size="sm"
                                     variant="outline"
-                                    onClick={() => window.open(`https://www.youtube.com/watch?v=${videoData.youtube_video_id}`, '_blank')}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      window.open(`https://www.youtube.com/watch?v=${videoData.youtube_video_id}`, '_blank');
+                                    }}
                                     className="h-8 px-2 bg-blue-50 hover:bg-blue-100 border-blue-200 text-blue-700 hover:text-blue-800"
                                     title="Open video on YouTube"
                                   >
@@ -1184,7 +1191,10 @@ export default function KaraokeAdminPage() {
                                   <Button
                                     size="sm"
                                     variant="outline"
-                                    onClick={() => window.open(`/karaoke/video-display?videoId=${videoData.youtube_video_id}&title=${encodeURIComponent(signup.song_title)}&artist=${encodeURIComponent(signup.song_artist || '')}`, 'karaokeVideoDisplay', 'width=1280,height=720,scrollbars=no,resizable=yes,status=no,toolbar=no,menubar=no,location=no,directories=no')}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      window.open(`/karaoke/video-display?videoId=${videoData.youtube_video_id}&title=${encodeURIComponent(signup.song_title)}&artist=${encodeURIComponent(signup.song_artist || '')}`, 'karaokeVideoDisplay', 'width=1280,height=720,scrollbars=no,resizable=yes,status=no,toolbar=no,menubar=no,location=no,directories=no');
+                                    }}
                                     className="h-8 px-2 bg-green-50 hover:bg-green-100 border-green-200 text-green-700 hover:text-green-800"
                                     title="Open in display window"
                                   >
@@ -1197,7 +1207,8 @@ export default function KaraokeAdminPage() {
                               <Button
                                 size="sm"
                                 variant="outline"
-                                onClick={() => {
+                                onClick={(e) => {
+                                  e.stopPropagation();
                                   // Open videos tab in settings
                                   setShowSettings(true);
                                   setSettingsTab('videos');
@@ -1216,7 +1227,10 @@ export default function KaraokeAdminPage() {
                               <Button
                                 size="sm"
                                 variant="outline"
-                                onClick={() => updateStatus(signup.id, 'next')}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  updateStatus(signup.id, 'next');
+                                }}
                                 className="h-8 px-2"
                                 title="Mark as Next"
                               >
@@ -1226,7 +1240,10 @@ export default function KaraokeAdminPage() {
                             {signup.status === 'next' && (
                               <Button
                                 size="sm"
-                                onClick={() => updateStatus(signup.id, 'singing')}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  updateStatus(signup.id, 'singing');
+                                }}
                                 className="h-8 px-2 bg-yellow-600 hover:bg-yellow-700"
                                 title="Start Now"
                               >
@@ -1236,7 +1253,10 @@ export default function KaraokeAdminPage() {
                             {signup.status === 'singing' && (
                               <Button
                                 size="sm"
-                                onClick={() => updateStatus(signup.id, 'completed')}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  updateStatus(signup.id, 'completed');
+                                }}
                                 className="h-8 px-2 bg-green-600 hover:bg-green-700"
                                 title="Mark Complete"
                               >
@@ -1246,24 +1266,40 @@ export default function KaraokeAdminPage() {
                           </div>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                              <Button variant="outline" size="sm">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={(e) => e.stopPropagation()}
+                              >
                                 <MoreVertical className="w-4 h-4" />
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                              <DropdownMenuItem onClick={() => updateStatus(signup.id, 'next')}>
+                              <DropdownMenuItem onClick={(e) => {
+                                e.stopPropagation();
+                                updateStatus(signup.id, 'next');
+                              }}>
                                 <ArrowUp className="w-4 h-4 mr-2" />
                                 Mark as Next
                               </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => updateStatus(signup.id, 'singing')}>
+                              <DropdownMenuItem onClick={(e) => {
+                                e.stopPropagation();
+                                updateStatus(signup.id, 'singing');
+                              }}>
                                 <Play className="w-4 h-4 mr-2" />
                                 Start Now
                               </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => reorderQueue(signup.id, signup.priority_order - 100)}>
+                              <DropdownMenuItem onClick={(e) => {
+                                e.stopPropagation();
+                                reorderQueue(signup.id, signup.priority_order - 100);
+                              }}>
                                 <ArrowUp className="w-4 h-4 mr-2" />
                                 Move Up
                               </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => reorderQueue(signup.id, signup.priority_order + 100)}>
+                              <DropdownMenuItem onClick={(e) => {
+                                e.stopPropagation();
+                                reorderQueue(signup.id, signup.priority_order + 100);
+                              }}>
                                 <ArrowDown className="w-4 h-4 mr-2" />
                                 Move Down
                               </DropdownMenuItem>
@@ -1276,12 +1312,18 @@ export default function KaraokeAdminPage() {
                                 View Details
                               </DropdownMenuItem>
                               <DropdownMenuSeparator />
-                              <DropdownMenuItem onClick={() => updateStatus(signup.id, 'skipped')}>
+                              <DropdownMenuItem onClick={(e) => {
+                                e.stopPropagation();
+                                updateStatus(signup.id, 'skipped');
+                              }}>
                                 <SkipForward className="w-4 h-4 mr-2" />
                                 Skip
                               </DropdownMenuItem>
                               <DropdownMenuItem
-                                onClick={() => deleteSignup(signup.id)}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  deleteSignup(signup.id);
+                                }}
                                 className="text-red-600 dark:text-red-400"
                               >
                                 <Trash2 className="w-4 h-4 mr-2" />
