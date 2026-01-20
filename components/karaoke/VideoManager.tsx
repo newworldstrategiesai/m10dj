@@ -86,7 +86,11 @@ export default function VideoManager({ organizationId }: VideoManagerProps) {
   const loadVideos = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`/api/karaoke/videos?organizationId=${organizationId}`);
+      const response = await fetch('/api/karaoke/videos', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ organizationId })
+      });
       if (response.ok) {
         const data = await response.json();
         setVideos(data.videos || []);
@@ -193,7 +197,11 @@ export default function VideoManager({ organizationId }: VideoManagerProps) {
   const bulkLinkVideos = async () => {
     try {
       // Get unlinked signups
-      const response = await fetch(`/api/karaoke/unlinked-songs?organizationId=${organizationId}`);
+      const response = await fetch('/api/karaoke/unlinked-songs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ organizationId })
+      });
       if (!response.ok) throw new Error('Failed to get unlinked songs');
 
       const data = await response.json();

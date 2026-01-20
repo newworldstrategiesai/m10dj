@@ -4,15 +4,15 @@ import { withSecurity } from '@/utils/rate-limiting';
 
 /**
  * Get karaoke signups that don't have video links
- * GET /api/karaoke/unlinked-songs?organizationId=...
+ * POST /api/karaoke/unlinked-songs
  */
 export default async function handler(req, res) {
-  if (req.method !== 'GET') {
+  if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
   try {
-    const { organizationId, limit = 100 } = req.query;
+    const { organizationId, limit = 100 } = req.body;
 
     if (!organizationId) {
       return res.status(400).json({ error: 'Organization ID is required' });

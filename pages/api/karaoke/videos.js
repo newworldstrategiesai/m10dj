@@ -4,10 +4,10 @@ import { withSecurity } from '@/utils/rate-limiting';
 
 /**
  * Get karaoke videos for an organization
- * GET /api/karaoke/videos?organizationId=...
+ * POST /api/karaoke/videos
  */
 export default async function handler(req, res) {
-  if (req.method !== 'GET') {
+  if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
@@ -20,7 +20,7 @@ export default async function handler(req, res) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
 
-    const { organizationId, limit = 50, offset = 0, status, search } = req.query;
+    const { organizationId, limit = 50, offset = 0, status, search } = req.body;
 
     if (!organizationId) {
       return res.status(400).json({ error: 'Organization ID is required' });
