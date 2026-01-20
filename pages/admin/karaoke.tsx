@@ -317,22 +317,32 @@ export default function KaraokeAdminPage() {
   };
 
   // Generate Display URL and QR
-  const generateDisplayURL = (eventCode: string) => {
-    if (!eventCode || !organization) return;
+  const generateDisplayURL = (eventCode?: string) => {
+    if (!organization) return;
 
     const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
-    const url = `${baseUrl}/karaoke/display/${eventCode}${organization.id ? `?org_id=${organization.id}` : ''}`;
+
+    // If eventCode is provided, create event-specific display
+    // If no eventCode, create organization-wide display
+    const url = eventCode
+      ? `${baseUrl}/karaoke/display/${eventCode}?org_id=${organization.id}`
+      : `${baseUrl}/karaoke/display/all?org_id=${organization.id}`;
+
     setDisplayUrl(url);
-    
+
     // Generate QR code for display URL
     const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(url)}`;
     setDisplayQR(qrCodeUrl);
   };
 
-  // Auto-generate display URL when modal opens with event code selected
+  // Auto-generate display URL when modal opens
   useEffect(() => {
-    if (showDisplaySetup && eventCodeFilter && organization) {
-      generateDisplayURL(eventCodeFilter);
+    if (showDisplaySetup && organization) {
+      if (eventCodeFilter) {
+        generateDisplayURL(eventCodeFilter);
+      } else {
+        generateDisplayURL(); // Generate all-events display
+      }
     }
   }, [showDisplaySetup, eventCodeFilter, organization]);
 
@@ -1206,31 +1216,33 @@ export default function KaraokeAdminPage() {
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-6">
-                {/* Event Code Selection */}
+                {/* Display Type Selection */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Select Event Code
+                    Display Type
                   </label>
                   <select
-                    value={eventCodeFilter || ''}
+                    value={eventCodeFilter || 'all'}
                     onChange={(e) => {
-                      setEventCodeFilter(e.target.value);
-                      if (e.target.value) {
-                        generateDisplayURL(e.target.value);
+                      const value = e.target.value;
+                      if (value === 'all') {
+                        setEventCodeFilter('');
+                        generateDisplayURL(); // No event code = all events
+                      } else {
+                        setEventCodeFilter(value);
+                        generateDisplayURL(value);
                       }
                     }}
                     className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                   >
-                    <option value="">Select an event...</option>
+                    <option value="all">All Events (Organization-wide)</option>
                     {availableEvents.map(code => (
                       <option key={code} value={code}>{code}</option>
                     ))}
                   </select>
-                  {availableEvents.length === 0 && (
-                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
-                      No events found. Create a karaoke signup first to generate a display URL.
-                    </p>
-                  )}
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    Organization-wide display shows karaoke from all events. Event-specific display shows only that event's karaoke.
+                  </p>
                 </div>
 
                 {/* Display URL */}

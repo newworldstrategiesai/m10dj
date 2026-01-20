@@ -27,11 +27,16 @@ export default function KaraokeDisplayPage() {
   }, [eventCode, organizationId]);
 
   const fetchQueue = async () => {
-    if (!eventCode || !organizationId) return;
+    if (!organizationId) return;
 
     try {
-      const response = await fetch(`/api/karaoke/queue?event_code=${eventCode}&organization_id=${organizationId}`);
-      
+      // If eventCode is "all", fetch all organization karaoke, otherwise fetch specific event
+      const queryParams = eventCode === 'all'
+        ? `organization_id=${organizationId}`
+        : `event_code=${eventCode}&organization_id=${organizationId}`;
+
+      const response = await fetch(`/api/karaoke/queue?${queryParams}`);
+
       if (response.ok) {
         const data = await response.json();
         setCurrentSinger(data.current);
@@ -44,36 +49,27 @@ export default function KaraokeDisplayPage() {
     }
   };
 
-  // Get organization ID from event code
+  // Get organization ID
   useEffect(() => {
     async function getOrganization() {
-      if (!eventCode) return;
-
       try {
-        // Look up via event info API (shared with crowd-requests)
-        const lookupResponse = await fetch(`/api/crowd-request/event-info?code=${eventCode}`);
-        if (lookupResponse.ok) {
-          const eventData = await lookupResponse.json();
-          if (eventData.organization_id) {
-            setOrganizationId(eventData.organization_id);
-            setOrganizationName(eventData.organization_name || eventData.organization?.name || '');
-          }
-        } else {
-          // If event-info doesn't work, try to get org from a signup
-          const urlParams = new URLSearchParams(window.location.search);
-          const orgId = urlParams.get('org_id');
-          if (orgId) {
-            setOrganizationId(orgId);
+        const urlParams = new URLSearchParams(window.location.search);
+        const orgId = urlParams.get('org_id');
+
+        if (orgId) {
+          setOrganizationId(orgId);
+          // For "all" events, we don't need an organization name, but for specific events we can try to get it
+          if (eventCode !== 'all') {
+            // Look up via event info API (shared with crowd-requests)
+            const lookupResponse = await fetch(`/api/crowd-request/event-info?code=${eventCode}`);
+            if (lookupResponse.ok) {
+              const eventData = await lookupResponse.json();
+              setOrganizationName(eventData.organization_name || eventData.organization?.name || '');
+            }
           }
         }
       } catch (error) {
         console.error('Error getting organization:', error);
-        // Try URL param as fallback
-        const urlParams = new URLSearchParams(window.location.search);
-        const orgId = urlParams.get('org_id');
-        if (orgId) {
-          setOrganizationId(orgId);
-        }
       }
     }
     getOrganization();
@@ -96,7 +92,7 @@ export default function KaraokeDisplayPage() {
   return (
     <>
       <Head>
-        <title>Karaoke Queue | {organizationName || eventCode}</title>
+        <title>Karaoke Queue | {eventCode === 'all' ? (organizationName || 'All Events') : eventCode}</title>
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
         <style>{`
           /* TV Display Optimizations */
@@ -129,9 +125,13 @@ export default function KaraokeDisplayPage() {
                 <Mic className="w-10 h-10" />
               </div>
               <div>
-                <h1 className="text-5xl sm:text-6xl font-black tracking-tight mb-1">KARAOKE QUEUE</h1>
+                <h1 className="text-5xl sm:text-6xl font-black tracking-tight mb-1">
+                  {eventCode === 'all' ? 'ALL EVENTS KARAOKE' : 'KARAOKE QUEUE'}
+                </h1>
                 {organizationName && (
-                  <p className="text-2xl sm:text-3xl text-purple-300 font-bold">{organizationName}</p>
+                  <p className="text-2xl sm:text-3xl text-purple-300 font-bold">
+                    {eventCode === 'all' ? organizationName : `${organizationName} - ${eventCode}`}
+                  </p>
                 )}
               </div>
             </div>

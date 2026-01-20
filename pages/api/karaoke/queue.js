@@ -20,21 +20,27 @@ export default async function handler(req, res) {
     const supabase = createClient();
     const { event_code, organization_id } = req.query;
 
-    if (!event_code || !organization_id) {
+    if (!organization_id) {
       return res.status(400).json({
         error: 'Missing required parameters',
-        required: ['event_code', 'organization_id']
+        required: ['organization_id']
       });
     }
 
-    // Get all signups for this event
-    const { data: signups, error: signupsError } = await supabase
+    // Get all signups - either for specific event or all organization events
+    let query = supabase
       .from('karaoke_signups')
       .select('*')
       .eq('organization_id', organization_id)
-      .eq('event_qr_code', event_code)
       .in('status', ['queued', 'next', 'singing', 'completed'])
       .order('created_at', { ascending: true });
+
+    // If event_code is provided and not 'all', filter by event
+    if (event_code && event_code !== 'all') {
+      query = query.eq('event_qr_code', event_code);
+    }
+
+    const { data: signups, error: signupsError } = await query;
 
     if (signupsError) {
       console.error('Error fetching karaoke signups:', signupsError);
