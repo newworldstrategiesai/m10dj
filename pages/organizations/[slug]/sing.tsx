@@ -27,7 +27,6 @@ export default function OrganizationKaraokePage() {
   const [error, setError] = useState<string | null>(null);
   
   // Form state
-  const [groupSize, setGroupSize] = useState(1);
   const [groupMembers, setGroupMembers] = useState<string[]>(['']);
   const [singerName, setSingerName] = useState('');
   const [songTitle, setSongTitle] = useState('');
@@ -599,11 +598,8 @@ export default function OrganizationKaraokePage() {
                 </div>
               </div>
 
-              {/* Group Member Names - Compact */}
+              {/* Singer Names */}
               <div>
-                <label className="block text-xs font-semibold text-gray-900 dark:text-white mb-2 uppercase tracking-wider">
-                  {groupSize === 1 ? 'Your Name' : 'Group Members'}
-                </label>
                 <div className="space-y-2">
                   {groupMembers.map((member, index) => (
                     <Input
@@ -611,7 +607,7 @@ export default function OrganizationKaraokePage() {
                       type="text"
                       value={member}
                       onChange={(e) => handleMemberChange(index, e.target.value)}
-                      placeholder={groupSize === 1 ? 'Enter your name' : `Member ${index + 1}`}
+                      placeholder={index === 0 ? 'Your name' : `Singer ${index + 1} name`}
                       required
                       className="w-full h-10 text-sm bg-white/70 dark:bg-gray-800/70 border-2 border-gray-200 dark:border-gray-700 rounded-lg focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500/20 transition-all duration-200"
                     />
