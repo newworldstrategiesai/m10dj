@@ -298,14 +298,15 @@ export default function OrganizationKaraokePage() {
         <Head>
           <title>Karaoke Sign-Up | Loading...</title>
           <style>{`
-            html, body {
+            html, body, #__next {
               margin: 0;
               padding: 0;
               height: 100%;
+              overflow: hidden;
             }
           `}</style>
         </Head>
-        <div className="h-screen bg-gradient-to-br from-purple-50 to-blue-50 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center">
+        <div className="h-screen bg-gradient-to-br from-purple-50 to-blue-50 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center overflow-auto">
           <Loader2 className="w-8 h-8 animate-spin text-purple-600 dark:text-purple-400" />
         </div>
       </>
@@ -318,14 +319,15 @@ export default function OrganizationKaraokePage() {
         <Head>
           <title>Organization Not Found</title>
           <style>{`
-            html, body {
+            html, body, #__next {
               margin: 0;
               padding: 0;
               height: 100%;
+              overflow: hidden;
             }
           `}</style>
         </Head>
-        <div className="h-screen bg-gradient-to-br from-purple-50 to-blue-50 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center p-4">
+        <div className="h-screen bg-gradient-to-br from-purple-50 to-blue-50 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center overflow-auto">
           <div className="max-w-md w-full bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8 text-center">
             <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
             <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
@@ -344,14 +346,15 @@ export default function OrganizationKaraokePage() {
         <Head>
           <title>Signed Up! | {organization?.name || 'Karaoke'}</title>
           <style>{`
-            html, body {
+            html, body, #__next {
               margin: 0;
               padding: 0;
               height: 100%;
+              overflow: hidden;
             }
           `}</style>
         </Head>
-        <div className="h-screen bg-gradient-to-br from-purple-50 to-blue-50 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center p-4">
+        <div className="h-screen bg-gradient-to-br from-purple-50 to-blue-50 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center overflow-auto">
           <div className="max-w-md w-full bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8 text-center">
             <CheckCircle2 className="w-16 h-16 text-green-500 mx-auto mb-4" />
             <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
@@ -469,14 +472,15 @@ export default function OrganizationKaraokePage() {
       <Head>
         <title>Karaoke Sign-Up | {organization?.name || slug}</title>
         <style>{`
-          html, body {
+          html, body, #__next {
             margin: 0;
             padding: 0;
             height: 100%;
+            overflow: hidden;
           }
         `}</style>
       </Head>
-      <div className="h-screen bg-gradient-to-br from-purple-50 to-blue-50 dark:from-gray-900 dark:to-gray-800 overflow-y-auto py-8 px-4">
+      <div className="h-screen bg-gradient-to-br from-purple-50 to-blue-50 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center p-4 overflow-auto">
         <div className="max-w-2xl mx-auto">
           <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6 md:p-8">
             <div className="text-center mb-8">
