@@ -1168,28 +1168,31 @@ export default function KaraokeAdminPage() {
                         <div className="flex items-center gap-2 flex-shrink-0">
                           {/* Video Action Buttons - Always visible if video available */}
                           <div className="flex items-center gap-1 mr-2">
-                            {signup.video_data?.youtube_video_id && (
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => window.open(`https://www.youtube.com/watch?v=${signup.video_data.youtube_video_id}`, '_blank')}
-                                className="h-8 px-2 bg-blue-50 hover:bg-blue-100 border-blue-200 text-blue-700 hover:text-blue-800"
-                                title="Open video on YouTube"
-                              >
-                                <ExternalLink className="w-3 h-3" />
-                              </Button>
-                            )}
-                            {signup.video_data?.youtube_video_id && (
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => window.open(`/karaoke/video-display?videoId=${signup.video_data.youtube_video_id}&title=${encodeURIComponent(signup.song_title)}&artist=${encodeURIComponent(signup.song_artist || '')}`, 'karaokeVideoDisplay', 'width=1280,height=720,scrollbars=no,resizable=yes,status=no,toolbar=no,menubar=no,location=no,directories=no')}
-                                className="h-8 px-2 bg-green-50 hover:bg-green-100 border-green-200 text-green-700 hover:text-green-800"
-                                title="Open in display window"
-                              >
-                                <Monitor className="w-3 h-3" />
-                              </Button>
-                            )}
+                            {(() => {
+                              const videoData = signup.video_data;
+                              return videoData?.youtube_video_id ? (
+                                <>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => window.open(`https://www.youtube.com/watch?v=${videoData.youtube_video_id}`, '_blank')}
+                                    className="h-8 px-2 bg-blue-50 hover:bg-blue-100 border-blue-200 text-blue-700 hover:text-blue-800"
+                                    title="Open video on YouTube"
+                                  >
+                                    <ExternalLink className="w-3 h-3" />
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => window.open(`/karaoke/video-display?videoId=${videoData.youtube_video_id}&title=${encodeURIComponent(signup.song_title)}&artist=${encodeURIComponent(signup.song_artist || '')}`, 'karaokeVideoDisplay', 'width=1280,height=720,scrollbars=no,resizable=yes,status=no,toolbar=no,menubar=no,location=no,directories=no')}
+                                    className="h-8 px-2 bg-green-50 hover:bg-green-100 border-green-200 text-green-700 hover:text-green-800"
+                                    title="Open in display window"
+                                  >
+                                    <Monitor className="w-3 h-3" />
+                                  </Button>
+                                </>
+                              ) : null;
+                            })()}
                             {!signup.video_id && (
                               <Button
                                 size="sm"
@@ -1366,7 +1369,7 @@ export default function KaraokeAdminPage() {
                             <Button
                               size="sm"
                               variant="outline"
-                              onClick={() => window.open(`https://www.youtube.com/watch?v=${selectedSignup.video_data.youtube_video_id}`, '_blank')}
+                              onClick={() => window.open(`https://www.youtube.com/watch?v=${selectedSignup.video_data!.youtube_video_id}`, '_blank')}
                               className="text-green-700 border-green-300 hover:bg-green-100"
                             >
                               <ExternalLink className="w-4 h-4" />
@@ -1374,7 +1377,7 @@ export default function KaraokeAdminPage() {
                             <Button
                               size="sm"
                               variant="outline"
-                              onClick={() => window.open(`/karaoke/video-display?videoId=${selectedSignup.video_data.youtube_video_id}&title=${encodeURIComponent(selectedSignup.song_title)}&artist=${encodeURIComponent(selectedSignup.song_artist || '')}`, 'karaokeVideoDisplay', 'width=1280,height=720,scrollbars=no,resizable=yes,status=no,toolbar=no,menubar=no,location=no,directories=no')}
+                              onClick={() => window.open(`/karaoke/video-display?videoId=${selectedSignup.video_data!.youtube_video_id}&title=${encodeURIComponent(selectedSignup.song_title)}&artist=${encodeURIComponent(selectedSignup.song_artist || '')}`, 'karaokeVideoDisplay', 'width=1280,height=720,scrollbars=no,resizable=yes,status=no,toolbar=no,menubar=no,location=no,directories=no')}
                               className="text-green-700 border-green-300 hover:bg-green-100"
                             >
                               <Monitor className="w-4 h-4" />
@@ -1465,7 +1468,7 @@ export default function KaraokeAdminPage() {
                           <Button
                             size="sm"
                             variant="outline"
-                            onClick={() => window.open(`/karaoke/video-display?videoId=${selectedSignup.video_data.youtube_video_id}&title=${encodeURIComponent(selectedSignup.song_title)}&artist=${encodeURIComponent(selectedSignup.song_artist || '')}`, 'karaokeVideoDisplay', 'width=1280,height=720,scrollbars=no,resizable=yes,status=no,toolbar=no,menubar=no,location=no,directories=no')}
+                            onClick={() => window.open(`/karaoke/video-display?videoId=${selectedSignup.video_data!.youtube_video_id}&title=${encodeURIComponent(selectedSignup.song_title)}&artist=${encodeURIComponent(selectedSignup.song_artist || '')}`, 'karaokeVideoDisplay', 'width=1280,height=720,scrollbars=no,resizable=yes,status=no,toolbar=no,menubar=no,location=no,directories=no')}
                             className="text-blue-600 hover:text-blue-700"
                           >
                             <Monitor className="w-4 h-4 mr-1" />
