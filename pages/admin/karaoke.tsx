@@ -82,7 +82,7 @@ export default function KaraokeAdminPage() {
   // Load organization
   useEffect(() => {
     async function loadOrganization() {
-      const org = await getCurrentOrganization();
+      const org = await getCurrentOrganization(supabase);
       setOrganization(org);
       if (org) {
         loadSettings(org.id);
@@ -116,8 +116,8 @@ export default function KaraokeAdminPage() {
       if (data) {
         setSettings(data);
       } else {
-        const { data: newSettings } = await supabase
-          .from('karaoke_settings')
+        const { data: newSettings } = await (supabase
+          .from('karaoke_settings') as any)
           .insert({
             organization_id: orgId,
             karaoke_enabled: true,
@@ -163,7 +163,7 @@ export default function KaraokeAdminPage() {
 
       setSignups(data || []);
 
-      const eventCodes = [...new Set((data || []).map(s => s.event_qr_code).filter(Boolean))];
+      const eventCodes = Array.from(new Set((data || []).map((s: any) => s.event_qr_code).filter(Boolean)));
       setAvailableEvents(eventCodes as string[]);
     } catch (error: any) {
       console.error('Error loading signups:', error);
@@ -232,8 +232,8 @@ export default function KaraokeAdminPage() {
 
   const reorderQueue = async (signupId: string, newPriorityOrder: number) => {
     try {
-      const { error } = await supabase
-        .from('karaoke_signups')
+      const { error } = await (supabase
+        .from('karaoke_signups') as any)
         .update({ priority_order: newPriorityOrder })
         .eq('id', signupId);
 
@@ -336,12 +336,40 @@ export default function KaraokeAdminPage() {
     }
   }, [showDisplaySetup, eventCodeFilter, organization]);
 
+  // Filter signups (reused pattern from crowd-requests)
+  const filteredSignups = signups.filter(signup => {
+    if (statusFilter === 'active') {
+      if (!['queued', 'next', 'singing'].includes(signup.status)) return false;
+    } else if (statusFilter === 'completed') {
+      if (signup.status !== 'completed') return false;
+    }
+
+    if (searchTerm) {
+      const search = searchTerm.toLowerCase();
+      const matchesName = signup.singer_name?.toLowerCase().includes(search);
+      const matchesSong = signup.song_title?.toLowerCase().includes(search);
+      const matchesArtist = signup.song_artist?.toLowerCase().includes(search);
+      const matchesPhone = signup.singer_phone?.includes(search);
+      const matchesEmail = signup.singer_email?.toLowerCase().includes(search);
+
+      if (!matchesName && !matchesSong && !matchesArtist && !matchesPhone && !matchesEmail) {
+        return false;
+      }
+    }
+
+    return true;
+  });
+
+  const currentSinger = getCurrentSinger(filteredSignups);
+  const nextSinger = getNextSinger(filteredSignups);
+  const queue = getQueue(filteredSignups);
+
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyPress = (e: KeyboardEvent) => {
       // Don't trigger if typing in input, textarea, or if a modal is open
       if (
-        e.target instanceof HTMLInputElement || 
+        e.target instanceof HTMLInputElement ||
         e.target instanceof HTMLTextAreaElement ||
         showDetailModal ||
         showSettings ||
@@ -389,34 +417,6 @@ export default function KaraokeAdminPage() {
     window.addEventListener('keydown', handleKeyPress);
     return () => window.removeEventListener('keydown', handleKeyPress);
   }, [currentSinger, nextSinger, updateStatus, showDetailModal, showSettings, showQRGenerator, showDisplaySetup]);
-
-  // Filter signups (reused pattern from crowd-requests)
-  const filteredSignups = signups.filter(signup => {
-    if (statusFilter === 'active') {
-      if (!['queued', 'next', 'singing'].includes(signup.status)) return false;
-    } else if (statusFilter === 'completed') {
-      if (signup.status !== 'completed') return false;
-    }
-
-    if (searchTerm) {
-      const search = searchTerm.toLowerCase();
-      const matchesName = signup.singer_name?.toLowerCase().includes(search);
-      const matchesSong = signup.song_title?.toLowerCase().includes(search);
-      const matchesArtist = signup.song_artist?.toLowerCase().includes(search);
-      const matchesPhone = signup.singer_phone?.includes(search);
-      const matchesEmail = signup.singer_email?.toLowerCase().includes(search);
-      
-      if (!matchesName && !matchesSong && !matchesArtist && !matchesPhone && !matchesEmail) {
-        return false;
-      }
-    }
-
-    return true;
-  });
-
-  const currentSinger = getCurrentSinger(filteredSignups);
-  const nextSinger = getNextSinger(filteredSignups);
-  const queue = getQueue(filteredSignups);
 
   // Status badge component (reused from crowd-requests pattern)
   const getStatusBadge = (status: string) => {
@@ -1166,7 +1166,7 @@ export default function KaraokeAdminPage() {
                   <div className="space-y-4 pt-4 border-t">
                     <div className="flex justify-center">
                       <DecoratedQRCode
-                        url={generatedQR}
+                        qrCodeUrl={generatedQR}
                         size={200}
                       />
                     </div>
@@ -1389,8 +1389,8 @@ export default function KaraokeAdminPage() {
                       <Switch
                         checked={settings.karaoke_enabled}
                         onCheckedChange={async (checked) => {
-                          const { error } = await supabase
-                            .from('karaoke_settings')
+                          const { error } = await (supabase
+                            .from('karaoke_settings') as any)
                             .update({ karaoke_enabled: checked })
                             .eq('organization_id', organization.id);
                           if (!error) {
@@ -1411,8 +1411,8 @@ export default function KaraokeAdminPage() {
                       <Switch
                         checked={settings.auto_advance}
                         onCheckedChange={async (checked) => {
-                          const { error } = await supabase
-                            .from('karaoke_settings')
+                          const { error } = await (supabase
+                            .from('karaoke_settings') as any)
                             .update({ auto_advance: checked })
                             .eq('organization_id', organization.id);
                           if (!error) {
@@ -1436,8 +1436,8 @@ export default function KaraokeAdminPage() {
                       <Switch
                         checked={settings.priority_pricing_enabled}
                         onCheckedChange={async (checked) => {
-                          const { error } = await supabase
-                            .from('karaoke_settings')
+                          const { error } = await (supabase
+                            .from('karaoke_settings') as any)
                             .update({ priority_pricing_enabled: checked })
                             .eq('organization_id', organization.id);
                           if (!error) {
@@ -1458,8 +1458,8 @@ export default function KaraokeAdminPage() {
                           value={(settings.priority_fee_cents / 100).toFixed(2)}
                           onChange={async (e) => {
                             const dollars = parseFloat(e.target.value) || 0;
-                            const { error } = await supabase
-                              .from('karaoke_settings')
+                            const { error } = await (supabase
+                              .from('karaoke_settings') as any)
                               .update({ priority_fee_cents: Math.round(dollars * 100) })
                               .eq('organization_id', organization.id);
                             if (!error) {
@@ -1485,8 +1485,8 @@ export default function KaraokeAdminPage() {
                       <Switch
                         checked={settings.rotation_enabled}
                         onCheckedChange={async (checked) => {
-                          const { error } = await supabase
-                            .from('karaoke_settings')
+                          const { error } = await (supabase
+                            .from('karaoke_settings') as any)
                             .update({ rotation_enabled: checked })
                             .eq('organization_id', organization.id);
                           if (!error) {
@@ -1504,8 +1504,8 @@ export default function KaraokeAdminPage() {
                         value={settings.max_singers_before_repeat}
                         onChange={async (e) => {
                           const value = parseInt(e.target.value) || 3;
-                          const { error } = await supabase
-                            .from('karaoke_settings')
+                          const { error } = await (supabase
+                            .from('karaoke_settings') as any)
                             .update({ max_singers_before_repeat: value })
                             .eq('organization_id', organization.id);
                           if (!error) {

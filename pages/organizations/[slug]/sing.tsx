@@ -112,7 +112,7 @@ export default function OrganizationKaraokePage() {
           }
         }
 
-        setEventQrCode(eventCodeToUse);
+        setEventQrCode(eventCodeToUse || 'general');
         
         // Fetch queue info
         if (eventCodeToUse) {

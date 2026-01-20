@@ -64,12 +64,19 @@ export interface KaraokeSignup {
   times_sung: number;
   last_sung_at: string | null;
   
+  // SMS Notifications
+  next_up_notification_sent: boolean;
+  next_up_notification_sent_at: string | null;
+  currently_singing_notification_sent: boolean;
+  currently_singing_notification_sent_at: string | null;
+  sms_notification_error: string | null;
+
   // Timestamps
   created_at: string;
   updated_at: string;
   started_at: string | null;
   completed_at: string | null;
-  
+
   // Admin
   admin_notes: string | null;
   crowd_request_id: string | null;
