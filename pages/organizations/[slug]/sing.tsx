@@ -10,7 +10,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
-import { Mic, Users, Loader2, AlertCircle, CheckCircle2, Zap } from 'lucide-react';
+import { Mic, Users, Loader2, AlertCircle, CheckCircle2, Zap, Plus, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
@@ -142,22 +142,6 @@ export default function OrganizationKaraokePage() {
     loadOrganization();
   }, [slug, eventCode, supabase]);
 
-  // Update group members array when group size changes
-  useEffect(() => {
-    if (groupSize > 1) {
-      const newMembers = Array(groupSize).fill('').map((_, i) => groupMembers[i] || '');
-      setGroupMembers(newMembers);
-      if (!singerName && newMembers[0]) {
-        setSingerName(newMembers[0]);
-      }
-    } else {
-      setGroupMembers(['']);
-      if (singerName) {
-        setGroupMembers([singerName]);
-      }
-    }
-  }, [groupSize]);
-
   const fetchQueue = async (eventCode: string, orgId: string) => {
     try {
       const response = await fetch(`/api/karaoke/queue?event_code=${eventCode}&organization_id=${orgId}`);
@@ -171,33 +155,42 @@ export default function OrganizationKaraokePage() {
     }
   };
 
-  const handleGroupSizeChange = (size: number) => {
-    setGroupSize(size);
-    setError(null);
+  // Add a new group member
+  const addMember = () => {
+    setGroupMembers([...groupMembers, '']);
+  };
+
+  // Remove a group member
+  const removeMember = (index: number) => {
+    if (groupMembers.length > 1) {
+      const newMembers = groupMembers.filter((_, i) => i !== index);
+      setGroupMembers(newMembers);
+    }
   };
 
   const handleMemberChange = (index: number, value: string) => {
     const newMembers = [...groupMembers];
     newMembers[index] = value;
     setGroupMembers(newMembers);
-    
+
     if (index === 0) {
       setSingerName(value);
     }
   };
 
   const validateForm = (): boolean => {
-    if (!singerName.trim()) {
-      setError('Please enter your name');
+    // Check that all non-empty member fields are filled
+    const filledMembers = groupMembers.filter(m => m.trim() !== '');
+    if (filledMembers.length === 0) {
+      setError('Please enter at least your name');
       return false;
     }
 
-    if (groupSize > 1) {
-      const allMembersFilled = groupMembers.every(m => m.trim() !== '');
-      if (!allMembersFilled) {
-        setError(`Please enter all ${groupSize} group member names`);
-        return false;
-      }
+    // Check that all entered names are non-empty (no half-filled forms)
+    const allEnteredNamesFilled = groupMembers.slice(0, filledMembers.length).every(m => m.trim() !== '');
+    if (!allEnteredNamesFilled) {
+      setError('Please fill in all singer names or remove empty fields');
+      return false;
     }
 
     if (!songTitle.trim()) {
@@ -251,9 +244,9 @@ export default function OrganizationKaraokePage() {
         body: JSON.stringify({
           event_qr_code: eventQrCode,
           organization_id: organization.id,
-          group_size: groupSize,
-          singer_name: singerName.trim(),
-          group_members: groupSize > 1 ? groupMembers.map(m => m.trim()) : [singerName.trim()],
+          group_size: groupMembers.filter(m => m.trim() !== '').length,
+          singer_name: groupMembers[0]?.trim() || '',
+          group_members: groupMembers.slice(1).filter(m => m.trim() !== ''),
           song_title: songTitle.trim(),
           song_artist: songArtist.trim() || null,
           singer_email: singerEmail.trim() || null,
@@ -393,7 +386,11 @@ export default function OrganizationKaraokePage() {
                 You're On Stage!
               </h1>
               <p className="text-sm text-gray-600 dark:text-gray-300 mb-4">
-                {formatGroupDisplayName(singerName, groupSize > 1 ? groupMembers : null, groupSize)}
+                {formatGroupDisplayName(
+                  groupMembers[0] || '',
+                  groupMembers.length > 1 ? groupMembers.slice(1) : null,
+                  groupMembers.filter(m => m.trim() !== '').length
+                )}
               </p>
               <div className="bg-gradient-to-r from-slate-100/60 to-gray-100/60 dark:from-slate-800/60 dark:to-gray-800/60 rounded-lg p-4 mb-4 border border-slate-200/50 dark:border-slate-700/50">
                 <p className="text-xs font-semibold text-gray-900 dark:text-white mb-1 uppercase tracking-wider">Your Song</p>
@@ -469,7 +466,6 @@ export default function OrganizationKaraokePage() {
                     setSongArtist('');
                     setSingerEmail('');
                     setSingerPhone('');
-                    setGroupSize(1);
                     setIsPriority(false);
                     setSignupId(null);
                     setQueuePosition(null);
@@ -560,49 +556,47 @@ export default function OrganizationKaraokePage() {
             {/* Form content */}
             <div className="flex-1 px-6 py-4">
               <form onSubmit={handleSubmit} className="space-y-5">
-              {/* Group Size Selection - Compact horizontal layout */}
+              {/* Dynamic Group Member Names */}
               <div>
                 <label className="block text-xs font-semibold text-gray-900 dark:text-white mb-2 uppercase tracking-wider">
-                  Group Size
+                  Singer Names
                 </label>
-                <div className="flex gap-2 mb-2">
-                  {[1, 2, 3, 4].map((size) => (
-                    <button
-                      key={size}
-                      type="button"
-                      onClick={() => handleGroupSizeChange(size)}
-                      className={`flex-1 relative p-3 rounded-xl border-2 transition-all duration-200 ${
-                        groupSize === size
-                          ? 'border-cyan-500 bg-gradient-to-br from-cyan-50 to-blue-50 dark:from-cyan-900/20 dark:to-blue-900/20 shadow-md'
-                          : 'border-gray-200 dark:border-gray-700 hover:border-cyan-400'
-                      }`}
-                    >
-                      <Users className={`w-5 h-5 mx-auto mb-1 transition-colors duration-200 ${
-                        groupSize === size
-                          ? 'text-cyan-600 dark:text-cyan-400'
-                          : 'text-gray-400 dark:text-gray-500'
-                      }`} />
-                      <p className={`text-xs font-semibold transition-colors duration-200 ${
-                        groupSize === size
-                          ? 'text-cyan-700 dark:text-cyan-300'
-                          : 'text-gray-600 dark:text-gray-400'
-                      }`}>
-                        {getGroupLabel(size)}
-                      </p>
-                    </button>
+                <div className="space-y-2">
+                  {groupMembers.map((member, index) => (
+                    <div key={index} className="flex gap-2 items-center">
+                      <Input
+                        type="text"
+                        value={member}
+                        onChange={(e) => handleMemberChange(index, e.target.value)}
+                        placeholder={index === 0 ? 'Your name' : `Group member ${index + 1}`}
+                        required
+                        className="flex-1 h-10 text-sm bg-white/70 dark:bg-gray-800/70 border-2 border-gray-200 dark:border-gray-700 rounded-lg focus:border-cyan-500"
+                      />
+                      {index > 0 && (
+                        <Button
+                          type="button"
+                          onClick={() => removeMember(index)}
+                          variant="outline"
+                          size="sm"
+                          className="h-10 px-3 border-red-200 text-red-600 hover:bg-red-50 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-900/20"
+                        >
+                          <X className="w-4 h-4" />
+                        </Button>
+                      )}
+                    </div>
                   ))}
+
+                  {/* Add member button */}
+                  <Button
+                    type="button"
+                    onClick={addMember}
+                    variant="outline"
+                    className="w-full h-10 mt-2 border-cyan-200 text-cyan-600 hover:bg-cyan-50 dark:border-cyan-800 dark:text-cyan-400 dark:hover:bg-cyan-900/20"
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    Add another singer
+                  </Button>
                 </div>
-                {groupSize > 4 && (
-                  <Input
-                    type="number"
-                    min="5"
-                    max="10"
-                    value={groupSize}
-                    onChange={(e) => handleGroupSizeChange(parseInt(e.target.value) || 5)}
-                    className="w-full h-10 mt-2 text-sm"
-                    placeholder="Group size (5-10)"
-                  />
-                )}
               </div>
 
               {/* Group Member Names - Compact */}
