@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 import { cn } from '@/utils/cn';
+import { DashboardLink } from './support/DashboardLink';
 
 interface FAQItem {
   question: string;
@@ -12,9 +13,10 @@ interface FAQItem {
 interface FAQProps {
   items: FAQItem[];
   className?: string;
+  isLoggedIn?: boolean;
 }
 
-export function FAQ({ items, className }: FAQProps) {
+export function FAQ({ items, className, isLoggedIn }: FAQProps) {
   const [openItems, setOpenItems] = useState<Set<number>>(new Set());
 
   const toggleItem = (index: number) => {
@@ -52,7 +54,7 @@ export function FAQ({ items, className }: FAQProps) {
             <div className="px-6 pb-4">
               <div className="pt-2 border-t border-gray-200 dark:border-gray-700">
                 <p className="text-gray-600 dark:text-gray-400 leading-relaxed">
-                  {item.answer}
+                  <DashboardLink text={item.answer} isLoggedIn={isLoggedIn ?? false} />
                 </p>
               </div>
             </div>

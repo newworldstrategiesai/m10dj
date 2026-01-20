@@ -81,7 +81,7 @@ export default function SignPage() {
       }
 
       setContractData(data.contract);
-      setSignatureName(`${data.contract.contact.first_name} ${data.contract.contact.last_name}`.trim());
+      setSignatureName(''); // Client must type their name
 
       // Mark as viewed
       await fetch('/api/contracts/mark-viewed', {
@@ -286,7 +286,7 @@ export default function SignPage() {
                 </label>
                 <SignatureCapture 
                   onSignatureChange={handleSignatureChange}
-                  initialName={signatureName}
+                  initialName="" // Client must type their name
                 />
               </div>
 

@@ -375,7 +375,7 @@ export default function PayoutsPage() {
               </p>
             </div>
             <Button
-              onClick={loadPayoutData}
+              onClick={() => loadPayoutData()}
               disabled={refreshing}
               variant="outline"
               className="flex items-center gap-2"

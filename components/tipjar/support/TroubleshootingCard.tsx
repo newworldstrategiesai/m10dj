@@ -2,6 +2,7 @@
 
 import { AlertCircle, CheckCircle, XCircle, Info } from 'lucide-react';
 import { cn } from '@/utils/cn';
+import { DashboardLink } from './DashboardLink';
 
 interface Solution {
   step: number;
@@ -16,6 +17,7 @@ interface TroubleshootingCardProps {
   solutions: Solution[];
   severity?: 'low' | 'medium' | 'high';
   className?: string;
+  isLoggedIn?: boolean;
 }
 
 const severityConfig = {
@@ -46,6 +48,7 @@ export function TroubleshootingCard({
   solutions,
   severity = 'medium',
   className,
+  isLoggedIn = false,
 }: TroubleshootingCardProps) {
   const config = severityConfig[severity];
   const Icon = config.icon;
@@ -118,9 +121,13 @@ export function TroubleshootingCard({
                 <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">{solution.step}</span>
               </div>
               <div className="flex-1">
-                <p className="text-sm font-medium text-gray-900 dark:text-white">{solution.action}</p>
+                <p className="text-sm font-medium text-gray-900 dark:text-white">
+                  <DashboardLink text={solution.action} isLoggedIn={isLoggedIn} />
+                </p>
                 {solution.details && (
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{solution.details}</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                    <DashboardLink text={solution.details} isLoggedIn={isLoggedIn} />
+                  </p>
                 )}
               </div>
             </li>

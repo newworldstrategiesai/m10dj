@@ -2035,7 +2035,7 @@ export default function SignContractPage() {
               <SignatureCapture
                 onSignatureChange={(data, method, isComplete) => handleSignatureChange(data, method, isComplete)}
                 defaultMethod="type"
-                initialName={signingFor === 'client' ? signatureName : ''}
+                initialName="" // Client must type their name
                 label={signingFor === 'client' ? 'Your Signature' : 'Signature'}
                 requireAgreement={signingFor === 'client'}
                 agreedToTerms={agreeToTerms}

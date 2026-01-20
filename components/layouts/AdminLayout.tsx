@@ -175,11 +175,6 @@ export default function AdminLayout({ children, title, description, showPageTitl
   const effectiveSecondaryColor1 = getEffectiveBrandColor('secondary1');
   const effectiveBrandColorHover = `${effectiveBrandColor}dd`;
 
-  // Also check domain directly as fallback for product context
-  const hostname = typeof window !== 'undefined' ? window.location.hostname.toLowerCase() : '';
-  const isTipJarDomain = hostname.includes('tipjar.live') || hostname.includes('tipjar.com');
-  const effectiveProductContext = productContext || (isTipJarDomain ? 'tipjar' : null);
-
   return (
     <>
       <Head>

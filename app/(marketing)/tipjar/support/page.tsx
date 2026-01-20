@@ -1,8 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, Fragment } from 'react';
 import { Search, Mail, HelpCircle, CreditCard, User, Settings, Smartphone, DollarSign, FileText, Users, QrCode, Video, AlertCircle, CheckCircle, Rocket, BookOpen, Wrench, ArrowRight, Code, Music, Palette, BarChart3, Lightbulb, Radio, ExternalLink } from 'lucide-react';
 import Link from 'next/link';
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { FAQ } from '@/components/tipjar/FAQ';
 import TipJarHeader from '@/components/tipjar/Header';
 import TipJarFooter from '@/components/tipjar/Footer';
@@ -15,6 +16,21 @@ import { FAQSchema } from '@/components/shared/marketing/StructuredData';
 export default function SupportPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const supabase = createClientComponentClient();
+
+  // Check if user is logged in
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        setIsLoggedIn(!!user);
+      } catch (error) {
+        setIsLoggedIn(false);
+      }
+    };
+    checkAuth();
+  }, [supabase]);
 
   const categories = [
     { id: 'account', name: 'Account & Login', icon: User, color: 'text-blue-500' },
@@ -534,7 +550,7 @@ export default function SupportPage() {
   };
 
   return (
-    <>
+    <Fragment>
       {/* Structured Data for SEO */}
       <FAQSchema questions={faqStructuredData} />
       <script
@@ -585,9 +601,9 @@ export default function SupportPage() {
 
       <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
         <TipJarHeader />
-      
-      {/* Header */}
-      <div className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800">
+        
+        {/* Header */}
+        <div className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800">
         <div className="container mx-auto px-4 py-12">
           <div className="max-w-3xl mx-auto text-center">
             <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-emerald-100 dark:bg-emerald-900/30 mb-6">
@@ -667,11 +683,12 @@ export default function SupportPage() {
             <p className="text-lg text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
               Get up and running in 5 minutes. Follow these simple steps to start collecting tips.
             </p>
-          </div>
+          </header>
 
           <StepByStepGuide
             title="5-Minute Quick Start Guide"
             description="Get your TipJar page live and start accepting tips in just 5 minutes"
+            isLoggedIn={isLoggedIn}
             steps={[
               {
                 number: 1,
@@ -799,7 +816,10 @@ export default function SupportPage() {
         {/* FAQ List */}
         <div className="max-w-4xl mx-auto">
           {filteredFAQs.length > 0 ? (
-            <FAQ items={filteredFAQs.map(faq => ({ question: faq.question, answer: faq.answer }))} />
+            <FAQ 
+              items={filteredFAQs.map(faq => ({ question: faq.question, answer: faq.answer }))} 
+              isLoggedIn={isLoggedIn}
+            />
           ) : (
             <div className="text-center py-12">
               <AlertCircle className="w-12 h-12 text-gray-400 mx-auto mb-4" />
@@ -821,6 +841,7 @@ export default function SupportPage() {
             </div>
           )}
         </div>
+      </div>
 
         {/* Feature Guides Section */}
         <section id="feature-guides" className="max-w-4xl mx-auto mt-16 mb-16 scroll-mt-20">
@@ -834,7 +855,7 @@ export default function SupportPage() {
             <p className="text-lg text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
               Detailed guides for all TipJar features. Click to expand and learn more.
             </p>
-          </div>
+          </header>
 
           <div className="space-y-4">
             {/* Payment Processing Guide */}
@@ -844,6 +865,7 @@ export default function SupportPage() {
               title="Payment Processing & Stripe Connect Setup"
               description="Complete guide to setting up payments and receiving payouts"
               overview="Stripe Connect allows you to receive tips directly to your bank account. This guide walks you through the complete setup process, from creating your account to receiving your first payout."
+              isLoggedIn={isLoggedIn}
               steps={[
                 {
                   number: 1,
@@ -1028,6 +1050,7 @@ export default function SupportPage() {
               title="QR Codes & Shareable Links"
               description="Create, customize, and share QR codes for your events"
               overview="QR codes make it easy for guests to access your TipJar page. Generate unique QR codes for each event, customize them to match your brand, and share them anywhere."
+              isLoggedIn={isLoggedIn}
               steps={[
                 {
                   number: 1,
@@ -1172,6 +1195,7 @@ export default function SupportPage() {
               title="Stream Alerts Setup"
               description="Set up beautiful alerts for OBS, Streamlabs, TikTok LIVE, and YouTube Live"
               overview="Stream alerts display animated notifications when you receive tips, song requests, or other interactions. Works with all major streaming software that supports browser sources."
+              isLoggedIn={isLoggedIn}
               steps={[
                 {
                   number: 1,
@@ -1342,6 +1366,7 @@ export default function SupportPage() {
               title="Embed Widget Setup"
               description="Add TipJar to your website or streaming software (Embed Pro only)"
               overview="The embed widget lets you display your TipJar page directly on your website or in your streaming software. Perfect for seamless integration without redirecting guests to a separate page."
+              isLoggedIn={isLoggedIn}
               steps={[
                 {
                   number: 1,
@@ -1498,6 +1523,7 @@ export default function SupportPage() {
               title="Song Requests & Queue Management"
               description="How song requests work and how to manage your request queue"
               overview="Guests can request songs through your TipJar page. Learn how the request system works, how to prioritize requests, and how to manage your queue effectively. Tip: Connect Serato DJ Pro for automatic song detection and notifications—see the 'Serato DJ Pro Integration' guide below for setup instructions."
+              isLoggedIn={isLoggedIn}
               steps={[
                 {
                   number: 1,
@@ -1648,6 +1674,7 @@ export default function SupportPage() {
               title="Serato DJ Pro Integration - Automatic Song Detection"
               description="Automatically detect when requested songs play in Serato and notify requesters"
               overview="Connect your Serato DJ Pro to TipJar to automatically detect when you play requested songs. The system matches played tracks to active song requests and sends automatic notifications to requesters. No separate app needed—works entirely through your browser using Serato's Live Playlist feature."
+              isLoggedIn={isLoggedIn}
               steps={[
                 {
                   number: 1,
@@ -1956,6 +1983,7 @@ export default function SupportPage() {
               title="Custom Branding & White-Label"
               description="Customize your TipJar page to match your brand (Pro & Embed Pro)"
               overview="Make your TipJar page uniquely yours with custom branding. Upload your logo, choose your colors, customize backgrounds, and create a professional appearance that matches your brand identity."
+              isLoggedIn={isLoggedIn}
               steps={[
                 {
                   number: 1,
@@ -2134,6 +2162,7 @@ export default function SupportPage() {
               title="Analytics & Reports"
               description="Understand your tips, requests, and audience insights (Pro & Embed Pro)"
               overview="Analytics help you understand your performance, track revenue, and make data-driven decisions. View detailed reports on tips, requests, events, and more."
+              isLoggedIn={isLoggedIn}
               steps={[
                 {
                   number: 1,
@@ -2301,7 +2330,7 @@ export default function SupportPage() {
             <p className="text-lg text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
               Tips and strategies to maximize your tips and get the most out of TipJar
             </p>
-          </div>
+          </header>
 
           <div className="space-y-6">
             {/* Maximizing Tips */}
@@ -2322,7 +2351,7 @@ export default function SupportPage() {
                   <CheckCircle className="w-5 h-5 text-emerald-500 mt-0.5 flex-shrink-0" />
                   <div>
                     <p className="font-semibold text-gray-900 dark:text-white">Announce Your TipJar</p>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">Mention your TipJar during events or streams. Let people know it's available and how to access it.</p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">Mention your TipJar during events or streams. Let people know it&apos;s available and how to access it.</p>
                   </div>
                 </li>
                 <li className="flex items-start gap-3">
@@ -2360,7 +2389,7 @@ export default function SupportPage() {
                   <CheckCircle className="w-5 h-5 text-emerald-500 mt-0.5 flex-shrink-0" />
                   <div>
                     <p className="font-semibold text-gray-900 dark:text-white">Print Large Enough</p>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">Print QR codes at least 3\"x3\" (7.5cm). Larger is better—4\"x4\" or 5\"x5\" works great for events.</p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">Print QR codes at least 3&Prime;x3&Prime; (7.5cm). Larger is better—4&Prime;x4&Prime; or 5&Prime;x5&Prime; works great for events.</p>
                   </div>
                 </li>
                 <li className="flex items-start gap-3">
@@ -2433,7 +2462,7 @@ export default function SupportPage() {
                   <CheckCircle className="w-5 h-5 text-emerald-500 mt-0.5 flex-shrink-0" />
                   <div>
                     <p className="font-semibold text-gray-900 dark:text-white">Update Request Status</p>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">Mark requests as 'Playing' and 'Played' to keep your queue organized and show guests you're responsive.</p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">Mark requests as &apos;Playing&apos; and &apos;Played&apos; to keep your queue organized and show guests you&apos;re responsive.</p>
                   </div>
                 </li>
               </ul>
@@ -2491,7 +2520,7 @@ export default function SupportPage() {
             <p className="text-lg text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
               Quick solutions to the most common problems
             </p>
-          </div>
+          </header>
 
           <div className="space-y-6">
             <TroubleshootingCard
@@ -2675,7 +2704,7 @@ export default function SupportPage() {
                 Still need help?
               </h2>
               <p className="text-gray-600 dark:text-gray-400 mb-6 max-w-2xl mx-auto">
-                Can't find what you're looking for? Our support team is here to help. Send us a message and we'll get back to you as soon as possible.
+                Can&apos;t find what you&apos;re looking for? Our support team is here to help. Send us a message and we&apos;ll get back to you as soon as possible.
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
                 <a
@@ -2735,10 +2764,10 @@ export default function SupportPage() {
             </Link>
           </div>
         </nav>
+        
+        <TipJarFooter />
       </div>
-      
-      <TipJarFooter />
-    </>
+    </Fragment>
   );
 }
 

@@ -2,6 +2,7 @@
 
 import { CheckCircle, Circle } from 'lucide-react';
 import { cn } from '@/utils/cn';
+import { DashboardLink } from './DashboardLink';
 
 interface Step {
   number: number;
@@ -17,9 +18,10 @@ interface StepByStepGuideProps {
   description?: string;
   steps: Step[];
   className?: string;
+  isLoggedIn?: boolean;
 }
 
-export function StepByStepGuide({ title, description, steps, className }: StepByStepGuideProps) {
+export function StepByStepGuide({ title, description, steps, className, isLoggedIn = false }: StepByStepGuideProps) {
   return (
     <div className={cn("bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-6 md:p-8", className)}>
       <div className="mb-6">
@@ -56,7 +58,7 @@ export function StepByStepGuide({ title, description, steps, className }: StepBy
                   {step.details.map((detail, idx) => (
                     <li key={idx} className="flex items-start gap-2 text-sm text-gray-600 dark:text-gray-400">
                       <CheckCircle className="w-4 h-4 text-emerald-500 mt-0.5 flex-shrink-0" />
-                      <span>{detail}</span>
+                      <DashboardLink text={detail} isLoggedIn={isLoggedIn} />
                     </li>
                   ))}
                 </ul>
@@ -69,7 +71,7 @@ export function StepByStepGuide({ title, description, steps, className }: StepBy
                     {step.tips.map((tip, idx) => (
                       <li key={idx} className="text-sm text-blue-800 dark:text-blue-200 flex items-start gap-2">
                         <Circle className="w-3 h-3 mt-1 flex-shrink-0" />
-                        <span>{tip}</span>
+                        <DashboardLink text={tip} isLoggedIn={isLoggedIn} />
                       </li>
                     ))}
                   </ul>

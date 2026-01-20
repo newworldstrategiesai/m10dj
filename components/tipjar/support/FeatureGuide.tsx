@@ -36,6 +36,7 @@ interface FeatureGuideProps {
     answer: string;
   }>;
   className?: string;
+  isLoggedIn?: boolean;
 }
 
 export function FeatureGuide({
@@ -48,6 +49,7 @@ export function FeatureGuide({
   troubleshooting,
   faqs,
   className,
+  isLoggedIn = false,
 }: FeatureGuideProps) {
   const [isExpanded, setIsExpanded] = useState(false);
 
@@ -103,6 +105,7 @@ export function FeatureGuide({
                 title={`${title} Setup Guide`}
                 steps={steps}
                 className="border-0 p-0 shadow-none"
+                isLoggedIn={isLoggedIn}
               />
             </div>
           )}
@@ -123,6 +126,7 @@ export function FeatureGuide({
                     solutions={issue.solutions}
                     severity={issue.severity || 'medium'}
                     className="border-0 shadow-none"
+                    isLoggedIn={isLoggedIn}
                   />
                 ))}
               </div>
