@@ -85,6 +85,7 @@ export default async function handler(req, res) {
     trialEndsAt.setDate(trialEndsAt.getDate() + 14);
 
     // Create organization using admin client (bypasses RLS)
+    // Audio upload is disabled by default during onboarding
     const { data: organization, error: orgError } = await supabaseAdmin
       .from('organizations')
       .insert({
@@ -94,6 +95,7 @@ export default async function handler(req, res) {
         subscription_tier: 'starter',
         subscription_status: 'trial',
         trial_ends_at: trialEndsAt.toISOString(),
+        requests_show_audio_upload: false, // Disabled by default during onboarding
       })
       .select()
       .single();

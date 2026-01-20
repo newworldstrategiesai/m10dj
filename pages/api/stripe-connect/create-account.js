@@ -89,20 +89,21 @@ export default async function handler(req, res) {
         }
       }
       
-      const { data: newOrg, error: createError } = await supabaseAdmin
-        .from('organizations')
-        .insert({
-          name: defaultName,
-          slug: finalSlug,
-          owner_id: user.id,
-          subscription_tier: 'starter',
-          subscription_status: 'trial',
-          trial_ends_at: trialEndsAt.toISOString(),
-          requests_header_artist_name: defaultName,
-          product_context: productContext,
-        })
-        .select('id, name, slug, stripe_connect_account_id, product_context')
-        .single();
+        const { data: newOrg, error: createError } = await supabaseAdmin
+          .from('organizations')
+          .insert({
+            name: defaultName,
+            slug: finalSlug,
+            owner_id: user.id,
+            subscription_tier: 'starter',
+            subscription_status: 'trial',
+            trial_ends_at: trialEndsAt.toISOString(),
+            requests_header_artist_name: defaultName,
+            product_context: productContext,
+            requests_show_audio_upload: false, // Disabled by default during onboarding
+          })
+          .select('id, name, slug, stripe_connect_account_id, product_context')
+          .single();
       
       if (createError || !newOrg) {
         console.error('Error creating organization:', createError);

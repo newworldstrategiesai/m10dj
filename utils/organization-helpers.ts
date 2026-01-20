@@ -246,6 +246,7 @@ export async function createOrganizationForUser(
         subscription_tier: 'starter',
         subscription_status: 'trial',
         trial_ends_at: trialEndsAt.toISOString(),
+        requests_show_audio_upload: false, // Disabled by default during onboarding
       })
       .select()
       .single();

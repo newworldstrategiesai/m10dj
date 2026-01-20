@@ -240,6 +240,8 @@ export default async function handler(req, res) {
           requests_accent_color: '#10b981', // TipJar emerald green
           // No social links until admin claims and sets them
           social_links: [],
+          // Audio upload disabled by default during onboarding
+          requests_show_audio_upload: false,
           ...prospect.configuration || {}
         };
         

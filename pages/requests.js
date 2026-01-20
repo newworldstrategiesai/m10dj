@@ -2389,8 +2389,33 @@ export function GeneralRequestsPage({
   };
   
   // Convert cover photo to absolute URL if it's relative
-  // For TipJar pages without custom cover photo, use TipJar OG image
+  // For TipJar pages, always use TipJar OG image unless there's a truly custom cover photo
+  // (not the default M10 DJ Company image)
   const getAbsoluteImageUrl = (imageUrl) => {
+    // For TipJar domains, always use TipJar OG image unless there's a custom cover photo
+    // that's not the default M10 DJ Company image
+    if (isTipJarDomain) {
+      // If no cover photo or it's the M10 default, use TipJar OG image
+      if (!imageUrl || 
+          imageUrl === DEFAULT_COVER_PHOTO || 
+          imageUrl.includes('DJ-Ben-Murray') ||
+          imageUrl === `${siteUrl}${DEFAULT_COVER_PHOTO}` ||
+          imageUrl.includes('m10djcompany.com')) {
+        return 'https://tipjar.live/assets/tipjar-public-requests-og.png';
+      }
+      // If there's a custom cover photo, use it
+      if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
+        return imageUrl;
+      }
+      // If it starts with /, it's a relative path
+      if (imageUrl.startsWith('/')) {
+        return `${siteUrl}${imageUrl}`;
+      }
+      // Otherwise, assume it's a relative path
+      return `${siteUrl}/${imageUrl}`;
+    }
+    
+    // For non-TipJar domains, use the standard logic
     if (!imageUrl) {
       // No cover photo - use domain-appropriate default OG image
       return getDefaultOGImage();

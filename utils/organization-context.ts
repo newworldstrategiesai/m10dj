@@ -328,6 +328,7 @@ async function createOrganizationWithSlug(
         trial_ends_at: trialEndsAt.toISOString(),
         // Set requests_header_artist_name to the organization name so it displays in the requests page header
         requests_header_artist_name: name,
+        requests_show_audio_upload: false, // Disabled by default during onboarding
       })
       .select()
       .single();

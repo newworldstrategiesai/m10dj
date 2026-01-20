@@ -290,8 +290,39 @@ export default function OrganizationRequestsPage() {
   const siteUrl = typeof window !== 'undefined' 
     ? window.location.origin 
     : (process.env.NEXT_PUBLIC_SITE_URL || 'https://m10djcompany.com');
+  
+  // Detect if we're on TipJar domain
+  const isTipJarDomain = typeof window !== 'undefined' && (
+    window.location.hostname.includes('tipjar.live') || 
+    window.location.hostname.includes('tipjar.com')
+  ) || organization?.product_context === 'tipjar';
+  
   const coverPhoto = getCoverPhotoUrl(organization, '/assets/DJ-Ben-Murray-Dodge-Poster.png');
   const getAbsoluteImageUrl = (imageUrl) => {
+    // For TipJar domains, always use TipJar OG image unless there's a custom cover photo
+    // that's not the default M10 DJ Company image
+    if (isTipJarDomain) {
+      const defaultM10Image = '/assets/DJ-Ben-Murray-Dodge-Poster.png';
+      // If no cover photo or it's the M10 default, use TipJar OG image
+      if (!imageUrl || 
+          imageUrl === defaultM10Image || 
+          imageUrl.includes('DJ-Ben-Murray') ||
+          imageUrl === `${siteUrl}${defaultM10Image}` ||
+          imageUrl.includes('m10djcompany.com')) {
+        return 'https://tipjar.live/assets/tipjar-public-requests-og.png';
+      }
+      // If there's a custom cover photo, use it
+      if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
+        return imageUrl;
+      }
+      // If it starts with /, it's a relative path
+      if (imageUrl.startsWith('/')) {
+        return `${siteUrl}${imageUrl}`;
+      }
+      return `${siteUrl}/${imageUrl}`;
+    }
+    
+    // For non-TipJar domains, use standard logic
     if (!imageUrl) return `${siteUrl}/assets/DJ-Ben-Murray-Dodge-Poster.png`;
     if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
       return imageUrl;
@@ -326,7 +357,7 @@ export default function OrganizationRequestsPage() {
         <meta property="og:image:width" content="1200" />
         <meta property="og:image:height" content="630" />
         <meta property="og:image:alt" content={organization.requests_header_artist_name || organization.name || 'Request a Song or Shoutout'} />
-        <meta property="og:site_name" content={organization.name || 'M10 DJ Company'} />
+        <meta property="og:site_name" content={isTipJarDomain ? (organization.name || 'TipJar.Live') : (organization.name || 'M10 DJ Company')} />
         <meta property="og:locale" content="en_US" />
         
         {/* Twitter Card */}

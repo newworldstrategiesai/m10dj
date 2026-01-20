@@ -59,20 +59,23 @@ BEGIN
     IF NOT EXISTS (SELECT 1 FROM public.organizations WHERE owner_id = NEW.id) THEN
       -- Create organization
       -- Use ON CONFLICT to handle slug conflicts gracefully
+      -- Audio upload is disabled by default during onboarding
       INSERT INTO public.organizations (
         name,
         slug,
         owner_id,
         subscription_tier,
         subscription_status,
-        trial_ends_at
+        trial_ends_at,
+        requests_show_audio_upload
       ) VALUES (
         org_name,
         org_slug,
         NEW.id,
         'starter',
         'trial',
-        trial_end_date
+        trial_end_date,
+        FALSE
       )
       ON CONFLICT (slug) DO UPDATE SET
         slug = EXCLUDED.slug || '-' || SUBSTRING(REPLACE(NEW.id::TEXT, '-', ''), 1, 6);

@@ -5,7 +5,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import Link from 'next/link';
+import { useRouter } from 'next/router';
 import { Zap, ArrowRight, Crown, Sparkles, Lock, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -22,6 +22,7 @@ export default function UpgradePrompt({
   tier = 'professional',
   className = '' 
 }: UpgradePromptProps) {
+  const router = useRouter();
   const [isDismissed, setIsDismissed] = useState(false);
 
   useEffect(() => {
@@ -35,6 +36,26 @@ export default function UpgradePrompt({
     const dismissedKey = `upgrade_prompt_dismissed_${tier}`;
     localStorage.setItem(dismissedKey, 'true');
     setIsDismissed(true);
+  };
+
+  const handleUpgrade = (e?: React.MouseEvent<HTMLButtonElement>) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    
+    try {
+      // Use router.push for client-side navigation
+      router.push('/onboarding/select-plan').catch((error) => {
+        console.error('Router navigation failed:', error);
+        // Fallback to window.location if router fails
+        window.location.href = '/onboarding/select-plan';
+      });
+    } catch (error) {
+      console.error('Error navigating to upgrade page:', error);
+      // Fallback to window.location if router fails
+      window.location.href = '/onboarding/select-plan';
+    }
   };
 
   if (isDismissed) {
@@ -67,18 +88,14 @@ export default function UpgradePrompt({
             <p className="text-sm opacity-90">{message || defaultMessage}</p>
           </div>
         </div>
-        <Link href="/onboarding/select-plan" className="flex-shrink-0">
-          <Button 
-            className="bg-white text-purple-600 font-semibold hover:bg-gray-100 transition-colors"
-            onClick={(e) => {
-              // Ensure navigation works - let Link handle it
-              e.stopPropagation();
-            }}
-          >
-            Upgrade Now
-            <ArrowRight className="h-4 w-4 ml-2" />
-          </Button>
-        </Link>
+        <Button 
+          onClick={handleUpgrade}
+          type="button"
+          className="bg-white text-purple-600 font-semibold hover:bg-gray-100 transition-colors flex-shrink-0"
+        >
+          Upgrade Now
+          <ArrowRight className="h-4 w-4 ml-2" />
+        </Button>
       </div>
     </div>
   );
@@ -97,6 +114,28 @@ export function FeatureLock({
   description?: string;
   requiredTier?: 'professional' | 'enterprise';
 }) {
+  const router = useRouter();
+  
+  const handleUpgrade = (e?: React.MouseEvent<HTMLButtonElement>) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    
+    try {
+      // Use router.push for client-side navigation
+      router.push('/onboarding/select-plan').catch((error) => {
+        console.error('Router navigation failed:', error);
+        // Fallback to window.location if router fails
+        window.location.href = '/onboarding/select-plan';
+      });
+    } catch (error) {
+      console.error('Error navigating to upgrade page:', error);
+      // Fallback to window.location if router fails
+      window.location.href = '/onboarding/select-plan';
+    }
+  };
+  
   return (
     <div className="bg-gray-50 dark:bg-gray-800 rounded-xl p-8 border-2 border-dashed border-gray-300 dark:border-gray-700 text-center">
       <div className="bg-gray-200 dark:bg-gray-700 rounded-full p-4 w-16 h-16 mx-auto mb-4 flex items-center justify-center">
@@ -108,12 +147,14 @@ export function FeatureLock({
       <p className="text-gray-600 dark:text-gray-400 mb-6 max-w-md mx-auto">
         {description || `This feature is available on ${requiredTier === 'enterprise' ? 'Professional or Enterprise' : requiredTier} plans. Upgrade to unlock it.`}
       </p>
-      <Link href="/onboarding/select-plan">
-        <Button className="bg-purple-600 hover:bg-purple-700 text-white">
-          <Crown className="h-4 w-4 mr-2" />
-          Upgrade to {requiredTier === 'enterprise' ? 'Professional+' : requiredTier.charAt(0).toUpperCase() + requiredTier.slice(1)}
-        </Button>
-      </Link>
+      <Button 
+        onClick={handleUpgrade}
+        type="button"
+        className="bg-purple-600 hover:bg-purple-700 text-white"
+      >
+        <Crown className="h-4 w-4 mr-2" />
+        Upgrade to {requiredTier === 'enterprise' ? 'Professional+' : requiredTier.charAt(0).toUpperCase() + requiredTier.slice(1)}
+      </Button>
     </div>
   );
 }
