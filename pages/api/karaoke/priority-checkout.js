@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import Stripe from 'stripe';
 import { withSecurity } from '@/utils/rate-limiting';
+import { createPriorityCheckout } from '@/utils/karaoke-payments';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
   apiVersion: '2024-11-20.acacia',
@@ -70,7 +71,7 @@ async function handler(req, res) {
       });
     }
 
-    // Create Stripe checkout session
+    // Create secure Stripe checkout session with Connect support
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
       line_items: [
@@ -102,14 +103,43 @@ async function handler(req, res) {
       }
     });
 
-    // Update signup with Stripe session ID
+    // Securely update signup with session ID using our payment utilities
+    const updateResult = await createPriorityCheckout(
+      {
+        signupId: signup_id,
+        singerName: signup.singer_name,
+        songTitle: signup.song_title,
+        organizationId: organization_id,
+        amount: settings.priority_fee_cents
+      },
+      `${req.headers.origin || process.env.NEXT_PUBLIC_SITE_URL}/karaoke/success?session_id={CHECKOUT_SESSION_ID}`,
+      `${req.headers.origin || process.env.NEXT_PUBLIC_SITE_URL}/karaoke/${signup.event_qr_code}`
+    );
+
+    // For Stripe Connect, we still need to manually update the session ID
+    // since our utility expects direct Stripe calls
     await supabase
       .from('karaoke_signups')
       .update({
         stripe_session_id: session.id,
-        payment_status: 'pending'
+        payment_status: 'pending',
+        updated_at: new Date().toISOString()
       })
       .eq('id', signup_id);
+
+    // Log the checkout creation for audit
+    await supabase.from('karaoke_audit_log').insert({
+      organization_id: organization_id,
+      signup_id: signup_id,
+      action: 'checkout_created',
+      new_value: {
+        session_id: session.id,
+        amount: settings.priority_fee_cents,
+        stripe_account: organization.stripe_account_id
+      },
+      performed_by_email: 'system', // Would be user email if authenticated
+      created_at: new Date().toISOString()
+    });
 
     return res.status(200).json({
       checkout_url: session.url,
