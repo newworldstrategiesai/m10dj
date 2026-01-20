@@ -3,6 +3,11 @@ import { PropsWithChildren } from 'react';
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://www.djdash.net'),
+  icons: {
+    icon: '/assets/DJ-Dash-Logo-Black-1.PNG',
+    shortcut: '/assets/DJ-Dash-Logo-Black-1.PNG',
+    apple: '/assets/DJ-Dash-Logo-Black-1.PNG',
+  },
   openGraph: {
     type: 'website',
     locale: 'en_US',

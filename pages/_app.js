@@ -152,14 +152,44 @@ export default function App({ Component, pageProps }) {
         message="Something went wrong. Please refresh the page or contact support if the problem persists."
       >
       <Head>
-        {/* Favicon and app icons */}
-        <link rel="icon" href="/logo-static.jpg" />
-        <link rel="apple-touch-icon" href="/logo-static.jpg" />
-        <link rel="shortcut icon" href="/logo-static.jpg" />
+        {/* Favicon and app icons - Domain-aware */}
+        {isTipJarDomain ? (
+          <>
+            <link rel="icon" href="/assets/TipJar-Logo-Icon.png" />
+            <link rel="apple-touch-icon" href="/assets/TipJar-Logo-Icon.png" />
+            <link rel="shortcut icon" href="/assets/TipJar-Logo-Icon.png" />
+          </>
+        ) : isDJDashDomain ? (
+          <>
+            <link rel="icon" href="/assets/DJ-Dash-Logo-Black-1.PNG" />
+            <link rel="apple-touch-icon" href="/assets/DJ-Dash-Logo-Black-1.PNG" />
+            <link rel="shortcut icon" href="/assets/DJ-Dash-Logo-Black-1.PNG" />
+          </>
+        ) : (
+          <>
+            <link rel="icon" href="/logo-static.jpg" />
+            <link rel="apple-touch-icon" href="/logo-static.jpg" />
+            <link rel="shortcut icon" href="/logo-static.jpg" />
+          </>
+        )}
         
-        {/* PWA and mobile app configuration */}
-        <meta name="theme-color" content="#fcba00" />
-        <meta name="msapplication-TileColor" content="#fcba00" />
+        {/* PWA and mobile app configuration - Domain-aware */}
+        {isTipJarDomain ? (
+          <>
+            <meta name="theme-color" content="#000000" />
+            <meta name="msapplication-TileColor" content="#000000" />
+          </>
+        ) : isDJDashDomain ? (
+          <>
+            <meta name="theme-color" content="#667eea" />
+            <meta name="msapplication-TileColor" content="#667eea" />
+          </>
+        ) : (
+          <>
+            <meta name="theme-color" content="#fcba00" />
+            <meta name="msapplication-TileColor" content="#fcba00" />
+          </>
+        )}
         <meta name="msapplication-config" content="/browserconfig.xml" />
         
         {/* Open Graph default image - Domain-aware with custom OG images excluded */}

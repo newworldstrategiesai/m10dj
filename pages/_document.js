@@ -7,6 +7,8 @@ export default function Document() {
         <meta charSet="utf-8" />
         <meta name="robots" content="index, follow" />
         <meta name="author" content="M10 DJ Company" />
+        {/* Favicon will be set dynamically in _app.js based on domain */}
+        {/* Default fallback favicon */}
         <link rel="icon" href="/favicon.ico" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="true" />

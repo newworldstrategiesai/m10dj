@@ -33,6 +33,11 @@ export const metadata: Metadata = {
     template: '%s | M10 DJ Company'
   },
   description: description,
+  icons: {
+    icon: '/logo-static.jpg',
+    shortcut: '/logo-static.jpg',
+    apple: '/logo-static.jpg',
+  },
   keywords: [
     'Memphis DJ',
     'wedding DJ Memphis',

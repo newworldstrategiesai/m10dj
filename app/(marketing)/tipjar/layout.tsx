@@ -23,6 +23,11 @@ export const metadata: Metadata = {
   authors: [{ name: 'TipJar Live' }],
   creator: 'TipJar Live',
   publisher: 'TipJar Live',
+  icons: {
+    icon: '/assets/TipJar-Logo-Icon.png',
+    shortcut: '/assets/TipJar-Logo-Icon.png',
+    apple: '/assets/TipJar-Logo-Icon.png',
+  },
   openGraph: {
     type: 'website',
     locale: 'en_US',
