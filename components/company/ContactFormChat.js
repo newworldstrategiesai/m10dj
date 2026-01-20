@@ -722,24 +722,55 @@ export default function ContactFormChat({ formData, submissionId, onClose, isMin
       <div className="px-4 sm:px-6 py-4 bg-gray-50 dark:bg-gray-800/50 border-t border-gray-200 dark:border-gray-700">
         <p className="text-xs text-gray-600 dark:text-gray-400 mb-3 font-semibold">Quick actions:</p>
         <div className="flex flex-wrap gap-2">
-          <button
-            onClick={() => window.location.href = 'tel:+19014102020'}
-            className="text-sm px-4 py-2 bg-white dark:bg-gray-800 border-2 border-gray-300 dark:border-gray-600 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 hover:border-brand transition-all"
-          >
-            📞 Call Now
-          </button>
-          <button
-            onClick={() => setInputValue('Tell me more about your packages')}
-            className="text-sm px-4 py-2 bg-white dark:bg-gray-800 border-2 border-gray-300 dark:border-gray-600 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 hover:border-brand transition-all"
-          >
-            📦 Packages
-          </button>
-          <button
-            onClick={() => setInputValue('What are your add-ons?')}
-            className="text-sm px-4 py-2 bg-white dark:bg-gray-800 border-2 border-gray-300 dark:border-gray-600 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 hover:border-brand transition-all"
-          >
-            ✨ Add-ons
-          </button>
+          {isKaraokePage ? (
+            <>
+              <button
+                onClick={() => setInputValue('How does karaoke work here?')}
+                className={`text-sm px-4 py-2 bg-white dark:bg-gray-800 border-2 border-gray-300 dark:border-gray-600 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-all ${themeClasses.focusRing.replace('focus:ring-', 'hover:border-')}`}
+              >
+                🎤 How it works
+              </button>
+              <button
+                onClick={() => setInputValue('What\'s the current wait time?')}
+                className={`text-sm px-4 py-2 bg-white dark:bg-gray-800 border-2 border-gray-300 dark:border-gray-600 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-all ${themeClasses.focusRing.replace('focus:ring-', 'hover:border-')}`}
+              >
+                ⏱️ Wait time
+              </button>
+              <button
+                onClick={() => setInputValue('How much does karaoke cost?')}
+                className={`text-sm px-4 py-2 bg-white dark:bg-gray-800 border-2 border-gray-300 dark:border-gray-600 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-all ${themeClasses.focusRing.replace('focus:ring-', 'hover:border-')}`}
+              >
+                💰 Pricing
+              </button>
+              <button
+                onClick={() => setInputValue('Can I request any song?')}
+                className={`text-sm px-4 py-2 bg-white dark:bg-gray-800 border-2 border-gray-300 dark:border-gray-600 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-all ${themeClasses.focusRing.replace('focus:ring-', 'hover:border-')}`}
+              >
+                🎵 Song requests
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                onClick={() => window.location.href = 'tel:+19014102020'}
+                className={`text-sm px-4 py-2 bg-white dark:bg-gray-800 border-2 border-gray-300 dark:border-gray-600 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-all ${themeClasses.focusRing.replace('focus:ring-', 'hover:border-')}`}
+              >
+                📞 Call Now
+              </button>
+              <button
+                onClick={() => setInputValue('Tell me more about your packages')}
+                className={`text-sm px-4 py-2 bg-white dark:bg-gray-800 border-2 border-gray-300 dark:border-gray-600 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-all ${themeClasses.focusRing.replace('focus:ring-', 'hover:border-')}`}
+              >
+                📦 Packages
+              </button>
+              <button
+                onClick={() => setInputValue('What are your add-ons?')}
+                className={`text-sm px-4 py-2 bg-white dark:bg-gray-800 border-2 border-gray-300 dark:border-gray-600 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-all ${themeClasses.focusRing.replace('focus:ring-', 'hover:border-')}`}
+              >
+                ✨ Add-ons
+              </button>
+            </>
+          )}
         </div>
       </div>
     </div>
