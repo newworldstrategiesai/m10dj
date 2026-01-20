@@ -67,6 +67,17 @@ export default function KaraokeLookupPage() {
     <>
       <Head>
         <title>Look Up Your Queue Status | Karaoke</title>
+        <meta property="og:title" content="Find Your Karaoke Queue Position" />
+        <meta property="og:description" content="Look up your position in the karaoke queue. Enter your name and phone number to find your signup status!" />
+        <meta property="og:image" content="https://tipjar.live/assets/tipjar-karaoke-status-og.png" />
+        <meta property="og:image:width" content="1200" />
+        <meta property="og:image:height" content="630" />
+        <meta property="og:image:alt" content="Karaoke Queue Lookup - Find your position and status!" />
+        <meta property="og:type" content="website" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content="Find Your Karaoke Queue Position" />
+        <meta name="twitter:description" content="Look up your karaoke queue status and see when it's your turn to sing!" />
+        <meta name="twitter:image" content="https://tipjar.live/assets/tipjar-karaoke-status-og.png" />
       </Head>
       <div className="min-h-screen bg-gradient-to-br from-purple-50 to-blue-50 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center p-4">
         <div className="max-w-md w-full bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8">

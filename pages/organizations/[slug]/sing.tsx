@@ -580,6 +580,17 @@ export default function OrganizationKaraokePage() {
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+        <meta property="og:title" content={`Join Karaoke with ${organization?.name || 'DJ'}`} />
+        <meta property="og:description" content="Sign up for karaoke! Choose your song and join the queue. Get notified when it's your turn to sing!" />
+        <meta property="og:image" content="https://tipjar.live/assets/tipjar-karaoke-signup-og.png" />
+        <meta property="og:image:width" content="1200" />
+        <meta property="og:image:height" content="630" />
+        <meta property="og:image:alt" content="Karaoke Sign-Up - Join the stage and sing your heart out!" />
+        <meta property="og:type" content="website" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content={`Join Karaoke with ${organization?.name || 'DJ'}`} />
+        <meta name="twitter:description" content="Sign up for karaoke! Choose your song and join the queue. Get notified when it's your turn!" />
+        <meta name="twitter:image" content="https://tipjar.live/assets/tipjar-karaoke-signup-og.png" />
         <style>{`
           html, body, #__next {
             margin: 0;

@@ -95,6 +95,17 @@ export default function KaraokeDisplayPage() {
       <Head>
         <title>Karaoke Queue | {eventCode === 'all' ? (organizationName || 'All Events') : eventCode}</title>
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+        <meta property="og:title" content={`Karaoke Queue - ${eventCode === 'all' ? (organizationName || 'All Events') : eventCode}`} />
+        <meta property="og:description" content="Live karaoke queue display. See who's singing next and track the lineup in real-time!" />
+        <meta property="og:image" content="https://tipjar.live/assets/tipjar-karaoke-display-og.png" />
+        <meta property="og:image:width" content="1200" />
+        <meta property="og:image:height" content="630" />
+        <meta property="og:image:alt" content="Karaoke Queue Display - Live lineup and who's singing next!" />
+        <meta property="og:type" content="website" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content={`Karaoke Queue - ${eventCode === 'all' ? (organizationName || 'All Events') : eventCode}`} />
+        <meta name="twitter:description" content="Live karaoke queue display. See who's singing next in real-time!" />
+        <meta name="twitter:image" content="https://tipjar.live/assets/tipjar-karaoke-display-og.png" />
         <style>{`
           /* TV Display Optimizations */
           html, body {

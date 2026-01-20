@@ -335,6 +335,17 @@ export default function KaraokeSignupPage() {
     <>
       <Head>
         <title>Karaoke Sign-Up | {code}</title>
+        <meta property="og:title" content={`Join Karaoke Event: ${code}`} />
+        <meta property="og:description" content="Sign up for karaoke! Choose your song, join the queue, and get notified when it's your turn to perform!" />
+        <meta property="og:image" content="https://tipjar.live/assets/tipjar-karaoke-signup-og.png" />
+        <meta property="og:image:width" content="1200" />
+        <meta property="og:image:height" content="630" />
+        <meta property="og:image:alt" content="Karaoke Sign-Up - Join the karaoke queue and sing your favorite song!" />
+        <meta property="og:type" content="website" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content={`Join Karaoke Event: ${code}`} />
+        <meta name="twitter:description" content="Sign up for karaoke! Choose your song and join the queue!" />
+        <meta name="twitter:image" content="https://tipjar.live/assets/tipjar-karaoke-signup-og.png" />
       </Head>
       <div className="min-h-screen bg-gradient-to-br from-purple-50 to-blue-50 dark:from-gray-900 dark:to-gray-800 py-8 px-4">
         <div className="max-w-2xl mx-auto">

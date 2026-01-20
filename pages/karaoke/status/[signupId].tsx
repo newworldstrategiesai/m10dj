@@ -220,6 +220,17 @@ export default function KaraokeStatusPage() {
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+        <meta property="og:title" content="Your Karaoke Queue Status" />
+        <meta property="og:description" content="Check your position in the karaoke queue. Get real-time updates and notifications when it's your turn to sing!" />
+        <meta property="og:image" content="https://tipjar.live/assets/tipjar-karaoke-status-og.png" />
+        <meta property="og:image:width" content="1200" />
+        <meta property="og:image:height" content="630" />
+        <meta property="og:image:alt" content="Karaoke Queue Status - Track your position and get ready to sing!" />
+        <meta property="og:type" content="website" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content="Your Karaoke Queue Status" />
+        <meta name="twitter:description" content="Check your position in the karaoke queue. Get real-time updates when it's your turn!" />
+        <meta name="twitter:image" content="https://tipjar.live/assets/tipjar-karaoke-status-og.png" />
         <style>{`
           html, body, #__next {
             margin: 0;
