@@ -47,6 +47,17 @@ export default function AdminLayout({ children, title, description, showPageTitl
     
     const checkProductContextAndBrandColors = async () => {
       try {
+        // First, check domain as primary source (more reliable for domain-based routing)
+        const hostname = typeof window !== 'undefined' ? window.location.hostname : '';
+        let detectedProductContext: string | null = null;
+        
+        if (hostname.includes('tipjar.live') || hostname.includes('tipjar.com')) {
+          detectedProductContext = 'tipjar';
+        } else if (hostname.includes('djdash.net') || hostname.includes('djdash.com')) {
+          detectedProductContext = 'djdash';
+        }
+        
+        // Check user metadata as secondary source
         const { data: { user }, error: userError } = await supabase.auth.getUser();
         
         // Handle AbortError gracefully (component unmounted or request cancelled)
@@ -56,8 +67,10 @@ export default function AdminLayout({ children, title, description, showPageTitl
         
         if (!isMounted) return;
         
-        if (user?.user_metadata?.product_context) {
-          setProductContext(user.user_metadata.product_context);
+        // Use domain detection if available, otherwise fall back to user metadata
+        const finalProductContext = detectedProductContext || user?.user_metadata?.product_context || null;
+        if (finalProductContext) {
+          setProductContext(finalProductContext);
         }
 
         // Fetch organization to get brand colors
@@ -68,9 +81,12 @@ export default function AdminLayout({ children, title, description, showPageTitl
         if (org) {
           setOrganization(org);
           
+          // Use organization product_context if available, otherwise use detected context
+          const orgProductContext = org.product_context || finalProductContext;
+          
           // Get effective brand colors with black fallback for TipJar
           // Type assertion needed because Organization interface doesn't include all DB fields
-          const isTipJar = org.product_context === 'tipjar';
+          const isTipJar = orgProductContext === 'tipjar';
           const defaultAccent = isTipJar ? '#000000' : '#fcba00';
           const accent = org.requests_accent_color || defaultAccent;
           const secondary1 = org.requests_secondary_color_1 || accent || defaultAccent;
@@ -81,6 +97,11 @@ export default function AdminLayout({ children, title, description, showPageTitl
             secondary1,
             secondary2
           });
+          
+          // Update product context from organization if it's more accurate
+          if (orgProductContext && orgProductContext !== finalProductContext) {
+            setProductContext(orgProductContext);
+          }
         }
       } catch (error: any) {
         // Handle AbortError gracefully (component unmounted or request cancelled)

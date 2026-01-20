@@ -94,15 +94,32 @@ export default function AdminSidebar({ onSignOut, isMobileOpen: externalIsMobile
 
   const checkSubscriptionTier = async () => {
     try {
+      // First, check domain as primary source (more reliable for domain-based routing)
+      const hostname = typeof window !== 'undefined' ? window.location.hostname : '';
+      let detectedProductContext: string | null = null;
+      
+      if (hostname.includes('tipjar.live') || hostname.includes('tipjar.com')) {
+        detectedProductContext = 'tipjar';
+      } else if (hostname.includes('djdash.net') || hostname.includes('djdash.com')) {
+        detectedProductContext = 'djdash';
+      }
+      
       const { createClientComponentClient } = await import('@supabase/auth-helpers-nextjs');
       const supabase = createClientComponentClient();
       const { data: { user } } = await supabase.auth.getUser();
       
-      if (!user) return;
+      if (!user) {
+        // Still set product context from domain even if no user
+        if (detectedProductContext) {
+          setProductContext(detectedProductContext);
+        }
+        return;
+      }
 
-      // Check product context
+      // Check product context - use domain detection first, then user metadata
       const userProductContext = user.user_metadata?.product_context;
-      setProductContext(userProductContext || null);
+      const finalProductContext = detectedProductContext || userProductContext || null;
+      setProductContext(finalProductContext);
 
       // Check if platform admin
       const adminEmails = [
@@ -127,6 +144,11 @@ export default function AdminSidebar({ onSignOut, isMobileOpen: externalIsMobile
       
       if (org) {
         setSubscriptionTier(org.subscription_tier);
+        
+        // Update product context from organization if it's more accurate
+        if (org.product_context && org.product_context !== finalProductContext) {
+          setProductContext(org.product_context);
+        }
       }
     } catch (error) {
       console.error('Error checking subscription tier:', error);

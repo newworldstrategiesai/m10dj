@@ -70,10 +70,13 @@ export default function AdminNavbar() {
   // Get the actual theme to display (resolve system theme)
   const displayTheme = mounted && theme !== 'system' ? theme : (mounted && systemTheme || 'dark');
 
-  // Determine logo based on theme - theme-aware M10 logo GIFs
-  const logoSrc = displayTheme === 'dark'
-    ? '/assets/m10 dj company logo white.gif'
-    : '/assets/m10 dj company logo black.gif';
+  // Determine logo based on theme and product context
+  // TipJar users should not see M10 DJ Company logos
+  const logoSrc = productContext === 'tipjar'
+    ? '/assets/TipJar-Logo-Icon.png'
+    : displayTheme === 'dark'
+      ? '/assets/m10 dj company logo white.gif'
+      : '/assets/m10 dj company logo black.gif';
 
   useEffect(() => {
     checkUser();
@@ -89,6 +92,21 @@ export default function AdminNavbar() {
   }, []);
 
   const checkUser = async () => {
+    // First, check domain as primary source (more reliable for domain-based routing)
+    const hostname = typeof window !== 'undefined' ? window.location.hostname : '';
+    let detectedProductContext: string | null = null;
+    
+    if (hostname.includes('tipjar.live') || hostname.includes('tipjar.com')) {
+      detectedProductContext = 'tipjar';
+    } else if (hostname.includes('djdash.net') || hostname.includes('djdash.com')) {
+      detectedProductContext = 'djdash';
+    }
+    
+    // Set product context from domain immediately (for immediate UI update)
+    if (detectedProductContext) {
+      setProductContext(detectedProductContext);
+    }
+    
     const { data: { user } } = await supabase.auth.getUser();
     setUser(user);
     
@@ -98,20 +116,23 @@ export default function AdminNavbar() {
       setIsAdmin(isPlatformAdmin(user.email));
     }
     
-    // Get product context
-    if (user?.user_metadata?.product_context) {
-      setProductContext(user.user_metadata.product_context);
-    } else {
-      // Also check organization product context as fallback
-      try {
-        const { getCurrentOrganization } = await import('@/utils/organization-context');
-        const org = await getCurrentOrganization(supabase);
-        if (org?.product_context) {
-          setProductContext(org.product_context);
-        }
-      } catch (error) {
-        console.error('Error checking organization product context:', error);
+    // Get product context - use domain detection first, then user metadata, then organization
+    const userProductContext = user?.user_metadata?.product_context;
+    const finalProductContext = detectedProductContext || userProductContext || null;
+    
+    if (finalProductContext && finalProductContext !== detectedProductContext) {
+      setProductContext(finalProductContext);
+    }
+    
+    // Also check organization product context as fallback
+    try {
+      const { getCurrentOrganization } = await import('@/utils/organization-context');
+      const org = await getCurrentOrganization(supabase);
+      if (org?.product_context && org.product_context !== finalProductContext) {
+        setProductContext(org.product_context);
       }
+    } catch (error) {
+      console.error('Error checking organization product context:', error);
     }
   };
 
