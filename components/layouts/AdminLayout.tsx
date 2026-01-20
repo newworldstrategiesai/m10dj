@@ -123,7 +123,12 @@ export default function AdminLayout({ children, title, description, showPageTitl
 
   // Determine logo based on theme and product context
   // TipJar users should not see M10 DJ Company logos
-  const logoSrc = productContext === 'tipjar'
+  // Also check domain directly as fallback
+  const hostname = typeof window !== 'undefined' ? window.location.hostname.toLowerCase() : '';
+  const isTipJarDomain = hostname.includes('tipjar.live') || hostname.includes('tipjar.com');
+  const effectiveProductContext = productContext || (isTipJarDomain ? 'tipjar' : null);
+  
+  const logoSrc = effectiveProductContext === 'tipjar'
     ? '/assets/TipJar-Logo-Icon.png'
     : displayTheme === 'dark'
       ? '/assets/m10 dj company logo white.gif'
@@ -170,10 +175,15 @@ export default function AdminLayout({ children, title, description, showPageTitl
   const effectiveSecondaryColor1 = getEffectiveBrandColor('secondary1');
   const effectiveBrandColorHover = `${effectiveBrandColor}dd`;
 
+  // Also check domain directly as fallback for product context
+  const hostname = typeof window !== 'undefined' ? window.location.hostname.toLowerCase() : '';
+  const isTipJarDomain = hostname.includes('tipjar.live') || hostname.includes('tipjar.com');
+  const effectiveProductContext = productContext || (isTipJarDomain ? 'tipjar' : null);
+
   return (
     <>
       <Head>
-        <title>{title ? `${title} - ${productContext === 'tipjar' ? 'TipJar' : 'M10 DJ Admin'}` : (productContext === 'tipjar' ? 'TipJar Admin' : 'M10 DJ Admin')}</title>
+        <title>{title ? `${title} - ${effectiveProductContext === 'tipjar' ? 'TipJar' : 'M10 DJ Admin'}` : (effectiveProductContext === 'tipjar' ? 'TipJar Admin' : 'M10 DJ Admin')}</title>
         {description && <meta name="description" content={description} />}
         <meta name="robots" content="noindex, nofollow" />
       </Head>
@@ -242,8 +252,8 @@ export default function AdminLayout({ children, title, description, showPageTitl
                       <>
                         <div className="w-10 h-10 flex items-center justify-center flex-shrink-0">
                           <img
-                            src={mounted ? logoSrc : (productContext === 'tipjar' ? '/assets/TipJar-Logo-Icon.png' : '/assets/m10 dj company logo black.gif')}
-                            alt={productContext === 'tipjar' ? 'TipJar Logo' : 'M10 DJ Company Logo'}
+                            src={mounted ? logoSrc : (effectiveProductContext === 'tipjar' ? '/assets/TipJar-Logo-Icon.png' : '/assets/m10 dj company logo black.gif')}
+                            alt={effectiveProductContext === 'tipjar' ? 'TipJar Logo' : 'M10 DJ Company Logo'}
                             className="w-10 h-10 object-contain"
                           />
                         </div>

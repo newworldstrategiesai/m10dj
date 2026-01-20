@@ -19,7 +19,8 @@ import {
   ArrowRight,
   RefreshCw,
   Download,
-  Loader2
+  Loader2,
+  Zap
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -62,6 +63,44 @@ export default function PayoutsPage() {
   const [requestingPayout, setRequestingPayout] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Calculate fee breakdown for display (simplified - single fee)
+  const calculatePayoutBreakdown = (amount: number) => {
+    if (!amount || isNaN(amount) || amount <= 0) return null;
+    
+    if (organization?.product_context === 'tipjar') {
+      // Calculate total fee but present as single combined fee
+      const tipjarFeePercentage = 1.0;
+      const tipjarFeeFixed = 0.25;
+      const stripeFeePercentage = 1.50;
+      
+      const tipjarFee = (amount * tipjarFeePercentage / 100) + tipjarFeeFixed;
+      const amountAfterTipJarFee = amount - tipjarFee;
+      const stripeFeeOnReduced = Math.max(amountAfterTipJarFee * stripeFeePercentage / 100, 0.50);
+      const totalFee = stripeFeeOnReduced + tipjarFee;
+      const payoutAmount = Math.max(amount - totalFee, 0);
+      const feePercentage = (totalFee / amount) * 100;
+      
+      return {
+        requestedAmount: amount,
+        feeAmount: totalFee,
+        feePercentage: feePercentage,
+        payoutAmount: payoutAmount
+      };
+    } else {
+      // Standard fee structure
+      const feePercentage = 1.5;
+      const feeAmount = Math.max(amount * (feePercentage / 100), 0.50);
+      const payoutAmount = Math.max(amount - feeAmount, 0);
+      
+      return {
+        requestedAmount: amount,
+        feeAmount: feeAmount,
+        feePercentage: feePercentage,
+        payoutAmount: payoutAmount
+      };
+    }
+  };
+
   useEffect(() => {
     checkAuthAndLoad();
   }, []);
@@ -89,7 +128,8 @@ export default function PayoutsPage() {
       }
 
       setOrganization(org);
-      await loadPayoutData();
+      // Pass org directly to avoid race condition with state update
+      await loadPayoutData(org);
     } catch (error) {
       console.error('Error checking auth:', error);
       router.push('/signin');
@@ -98,16 +138,18 @@ export default function PayoutsPage() {
     }
   };
 
-  const loadPayoutData = async () => {
+  const loadPayoutData = async (orgOverride?: Organization | null) => {
     try {
       setRefreshing(true);
       setError(null);
 
-      if (!organization) return;
+      // Use passed organization or fall back to state
+      const orgToUse = orgOverride || organization;
+      if (!orgToUse) return;
 
       // Only load if Stripe Connect is set up
       // Access optional fields with type assertion
-      const orgData = organization as any;
+      const orgData = orgToUse as any;
       if (orgData.stripe_connect_account_id && orgData.stripe_connect_payouts_enabled) {
         // Load balance
         const balanceResponse = await fetch('/api/stripe-connect/balance');
@@ -136,10 +178,12 @@ export default function PayoutsPage() {
     if (!organization || !instantPayoutAmount) return;
 
     const amount = parseFloat(instantPayoutAmount);
-    if (isNaN(amount) || amount < 0.50) {
+    const minAmount = organization?.product_context === 'tipjar' ? 0.75 : 0.50;
+    
+    if (isNaN(amount) || amount < minAmount || amount > instantAvailableAmount) {
       toast({
         title: 'Invalid Amount',
-        description: 'Minimum instant payout is $0.50',
+        description: `Amount must be between ${formatCurrency(minAmount)} and ${formatCurrency(instantAvailableAmount)}`,
         variant: 'destructive',
       });
       return;
@@ -298,6 +342,24 @@ export default function PayoutsPage() {
   const instantAvailableAmount = balance ? (balance.instant_available || 0) / 100 : 0;
   const pendingAmount = balance ? balance.pending / 100 : 0;
 
+  // Auto-fill max amount when instant available amount changes
+  useEffect(() => {
+    if (instantAvailableAmount > 0 && !instantPayoutAmount) {
+      setInstantPayoutAmount(instantAvailableAmount.toFixed(2));
+    }
+  }, [instantAvailableAmount]);
+
+  // Calculate breakdown for current amount
+  const currentAmount = parseFloat(instantPayoutAmount) || 0;
+  const breakdown = calculatePayoutBreakdown(currentAmount);
+  
+  // Generate preset amounts (only show if less than max)
+  const presetAmounts = [10, 25, 50, 100].filter(amt => amt <= instantAvailableAmount);
+  
+  // Validation
+  const minAmount = organization?.product_context === 'tipjar' ? 0.75 : 0.50;
+  const isValidAmount = currentAmount >= minAmount && currentAmount <= instantAvailableAmount;
+
   return (
     <AdminLayout>
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 lg:p-8">
@@ -377,113 +439,147 @@ export default function PayoutsPage() {
           {/* Instant Payout */}
           {instantAvailableAmount > 0 && (
             <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 mb-6">
-              <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-4">
-                Request Instant Payout
-              </h2>
-              <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-                {organization?.product_context === 'tipjar' ? (
+              <div className="flex items-start justify-between mb-6">
+                <div>
+                  <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-1">
+                    Request Instant Payout
+                  </h2>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                    Get your money in 30 minutes
+                  </p>
+                </div>
+                <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-3 py-1.5 rounded-full">
+                  <Zap className="h-3.5 w-3.5 text-yellow-500" />
+                  <span>Instant Processing</span>
+                </div>
+              </div>
+
+              {/* Quick Action Buttons */}
+              <div className="flex flex-wrap gap-2 mb-4">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setInstantPayoutAmount(instantAvailableAmount.toFixed(2))}
+                  className="font-semibold border-2 border-purple-200 dark:border-purple-700 hover:bg-purple-50 dark:hover:bg-purple-900/30"
+                >
+                  Use Max ({formatCurrency(instantAvailableAmount)})
+                </Button>
+                {presetAmounts.map((amount) => (
+                  <Button
+                    key={amount}
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setInstantPayoutAmount(amount.toFixed(2))}
+                    className={instantPayoutAmount === amount.toFixed(2) 
+                      ? "bg-purple-100 dark:bg-purple-900/50 border-purple-300 dark:border-purple-600" 
+                      : "hover:bg-gray-50 dark:hover:bg-gray-700"
+                    }
+                  >
+                    {formatCurrency(amount)}
+                  </Button>
+                ))}
+              </div>
+
+              {/* Amount Input */}
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Payout Amount
+                </label>
+                <div className="relative">
+                  <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400">
+                    <DollarSign className="h-5 w-5" />
+                  </div>
+                  <Input
+                    type="number"
+                    placeholder="0.00"
+                    value={instantPayoutAmount}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      // Allow empty string for clearing
+                      if (value === '') {
+                        setInstantPayoutAmount('');
+                        return;
+                      }
+                      const numValue = parseFloat(value);
+                      if (!isNaN(numValue) && numValue >= 0) {
+                        // Cap at maximum available
+                        const cappedValue = Math.min(numValue, instantAvailableAmount);
+                        setInstantPayoutAmount(cappedValue.toFixed(2));
+                      }
+                    }}
+                    min={minAmount}
+                    step="0.01"
+                    max={instantAvailableAmount.toFixed(2)}
+                    className={`w-full pl-10 text-lg font-semibold ${
+                      !isValidAmount && currentAmount > 0
+                        ? 'border-red-300 dark:border-red-700 focus:border-red-500 focus:ring-red-500'
+                        : 'border-gray-300 dark:border-gray-600'
+                    }`}
+                  />
+                </div>
+                {!isValidAmount && currentAmount > 0 && (
+                  <p className="mt-1 text-xs text-red-600 dark:text-red-400">
+                    {currentAmount < minAmount 
+                      ? `Minimum amount is ${formatCurrency(minAmount)}`
+                      : `Maximum amount is ${formatCurrency(instantAvailableAmount)}`
+                    }
+                  </p>
+                )}
+              </div>
+
+              {/* Real-time Fee Preview */}
+              {breakdown && isValidAmount && (
+                <div className="mb-4 p-4 bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 rounded-lg border border-green-200 dark:border-green-800">
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">You'll Receive:</span>
+                    <span className="text-2xl font-bold text-green-600 dark:text-green-400">
+                      {formatCurrency(breakdown.payoutAmount)}
+                    </span>
+                  </div>
+                  <div className="pt-3 border-t border-green-200 dark:border-green-800">
+                    <div className="flex justify-between text-xs text-gray-600 dark:text-gray-400 mb-1">
+                      <span>Requested Amount:</span>
+                      <span className="font-medium">{formatCurrency(breakdown.requestedAmount)}</span>
+                    </div>
+                    <div className="flex justify-between text-xs text-gray-600 dark:text-gray-400">
+                      <span>Processing Fee (~{breakdown.feePercentage.toFixed(1)}%):</span>
+                      <span className="text-red-600 dark:text-red-400">-{formatCurrency(breakdown.feeAmount)}</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Submit Button */}
+              <Button
+                onClick={handleInstantPayout}
+                disabled={requestingPayout || !isValidAmount || currentAmount === 0}
+                className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-semibold py-6 text-lg shadow-lg hover:shadow-xl transition-all"
+                size="lg"
+              >
+                {requestingPayout ? (
                   <>
-                    Get your money immediately. TipJar instant payouts include Stripe's fee (1.5%) plus TipJar's processing fee (1% + $0.25).
+                    <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+                    Processing...
                   </>
                 ) : (
                   <>
-                    Get your money immediately (1.5% fee for US, minimum $0.50).
+                    <Zap className="h-5 w-5 mr-2" />
+                    Request Instant Payout
                   </>
                 )}
-                <span className="block mt-2 font-medium">
-                  Available for instant payout: {formatCurrency(instantAvailableAmount)}
-                </span>
-                {availableAmount > instantAvailableAmount && (
-                  <span className="block mt-1 text-xs text-gray-500">
-                    Standard balance: {formatCurrency(availableAmount)} (available for standard payouts)
-                  </span>
-                )}
-              </p>
-              <div className="flex flex-col sm:flex-row gap-3">
-                <div className="flex-1">
-                  <Input
-                    type="number"
-                    placeholder="Amount (e.g., 50.00)"
-                    value={instantPayoutAmount}
-                    onChange={(e) => setInstantPayoutAmount(e.target.value)}
-                    min={organization?.product_context === 'tipjar' ? "0.75" : "0.50"}
-                    step="0.01"
-                    max={instantAvailableAmount.toFixed(2)}
-                    className="w-full"
-                  />
-                </div>
-                <Button
-                  onClick={handleInstantPayout}
-                  disabled={requestingPayout || !instantPayoutAmount}
-                  className="bg-purple-600 hover:bg-purple-700 text-white"
-                >
-                  {requestingPayout ? (
-                    <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Processing...
-                    </>
-                  ) : (
-                    <>
-                      <DollarSign className="h-4 w-4 mr-2" />
-                      Request Payout
-                    </>
-                  )}
-                </Button>
-              </div>
-              {instantPayoutAmount && parseFloat(instantPayoutAmount) > 0 && organization?.product_context === 'tipjar' && (() => {
-                const requestedAmount = parseFloat(instantPayoutAmount);
-                if (isNaN(requestedAmount) || requestedAmount <= 0) return null;
-                
-                // Calculate fees using the same logic as the API
-                // Note: The actual Stripe fee will be slightly less because it's calculated on (amount - tipjarFee)
-                // But for display purposes, we show the estimate
-                const tipjarFeePercentage = 1.0; // 1%
-                const tipjarFeeFixed = 0.25; // $0.25
-                const stripeFeePercentage = 1.50; // 1.5%
-                
-                // Calculate TipJar fee on requested amount
-                const tipjarFee = (requestedAmount * tipjarFeePercentage / 100) + tipjarFeeFixed;
-                
-                // Calculate what Stripe fee would be on the reduced amount (for accuracy)
-                const amountAfterTipJarFee = requestedAmount - tipjarFee;
-                const stripeFeeOnReduced = Math.max(amountAfterTipJarFee * stripeFeePercentage / 100, 0.50);
-                
-                // Total fees
-                const totalFee = stripeFeeOnReduced + tipjarFee;
-                const payoutAmount = Math.max(requestedAmount - totalFee, 0);
-                
-                return (
-                  <div className="mt-4 p-4 bg-gray-50 dark:bg-gray-900/50 rounded-lg border border-gray-200 dark:border-gray-700">
-                    <p className="text-sm font-medium text-gray-900 dark:text-white mb-2">Fee Breakdown:</p>
-                    <div className="space-y-1 text-sm text-gray-600 dark:text-gray-400">
-                      <div className="flex justify-between">
-                        <span>Requested Amount:</span>
-                        <span className="font-medium">{formatCurrency(requestedAmount)}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Stripe Fee (1.5%):</span>
-                        <span className="text-red-600 dark:text-red-400">-{formatCurrency(stripeFeeOnReduced)}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>TipJar Fee (1% + $0.25):</span>
-                        <span className="text-red-600 dark:text-red-400">-{formatCurrency(tipjarFee)}</span>
-                      </div>
-                      <div className="pt-2 border-t border-gray-200 dark:border-gray-700 flex justify-between font-semibold text-gray-900 dark:text-white">
-                        <span>You'll Receive:</span>
-                        <span className="text-green-600 dark:text-green-400">{formatCurrency(payoutAmount)}</span>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })()}
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
-                Instant payouts arrive within 30 minutes. Standard payouts are free and arrive in 2-7 business days.
-              </p>
-              {instantAvailableAmount < availableAmount && (
-                <p className="text-xs text-yellow-600 dark:text-yellow-400 mt-1">
-                  Note: Only {formatCurrency(instantAvailableAmount)} is eligible for instant payouts. The remaining {formatCurrency(availableAmount - instantAvailableAmount)} will be paid out on your regular schedule.
+              </Button>
+
+              {/* Info Footer */}
+              <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+                <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
+                  💰 Instant payouts arrive within 30 minutes. Standard payouts are free and arrive in 2-7 business days.
                 </p>
-              )}
+                {instantAvailableAmount < availableAmount && (
+                  <p className="text-xs text-amber-600 dark:text-amber-400">
+                    ℹ️ Only {formatCurrency(instantAvailableAmount)} is eligible for instant payout. The remaining {formatCurrency(availableAmount - instantAvailableAmount)} will process on your regular schedule.
+                  </p>
+                )}
+              </div>
             </div>
           )}
 

@@ -24,7 +24,8 @@ import {
   CheckCircle,
   TrendingUp,
   QrCode,
-  Sparkles
+  Sparkles,
+  Radio
 } from 'lucide-react';
 
 export const metadata: Metadata = {
@@ -220,6 +221,11 @@ export default function FeaturesPage() {
                   title="Multi-Event Management"
                   description="Use the same TipJar link for all events, or create separate ones for tracking. Organize and manage multiple events from one dashboard."
                   icon={<Users className="w-8 h-8" />}
+                />
+                <FeatureCard
+                  title="Serato DJ Pro Integration"
+                  description="Automatically detect when you play requested songs in Serato DJ Pro. The system matches tracks to requests and notifies requesters automatically—no separate app needed."
+                  icon={<Radio className="w-8 h-8" />}
                 />
               </div>
             </TabsContent>

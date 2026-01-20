@@ -85,7 +85,12 @@ export default function AdminSidebar({ onSignOut, isMobileOpen: externalIsMobile
 
   // Determine logo based on theme and product context
   // TipJar users should not see M10 DJ Company logos
-  const logoSrc = productContext === 'tipjar'
+  // Also check domain directly as fallback
+  const hostname = typeof window !== 'undefined' ? window.location.hostname.toLowerCase() : '';
+  const isTipJarDomain = hostname.includes('tipjar.live') || hostname.includes('tipjar.com');
+  const effectiveProductContext = productContext || (isTipJarDomain ? 'tipjar' : null);
+  
+  const logoSrc = effectiveProductContext === 'tipjar'
     ? '/assets/TipJar-Logo-Icon.png'
     : displayTheme === 'dark'
       ? '/assets/m10 dj company logo white.gif'
@@ -298,11 +303,11 @@ export default function AdminSidebar({ onSignOut, isMobileOpen: externalIsMobile
         <div className={`h-16 flex items-center justify-center border-b ${
           displayTheme === 'dark' ? 'border-gray-700' : 'border-gray-300'
         }`}>
-          <Link href={productContext === 'tipjar' ? '/admin/crowd-requests' : '/admin/dashboard'} className="flex items-center gap-3 px-4">
+          <Link href={effectiveProductContext === 'tipjar' ? '/admin/crowd-requests' : '/admin/dashboard'} className="flex items-center gap-3 px-4">
             <div className="w-8 h-8 flex items-center justify-center flex-shrink-0">
               <img
                 src={logoSrc}
-                alt={productContext === 'tipjar' ? 'TipJar Logo' : 'M10 DJ Company Logo'}
+                alt={effectiveProductContext === 'tipjar' ? 'TipJar Logo' : 'M10 DJ Company Logo'}
                 className="w-8 h-8 object-contain"
               />
             </div>
@@ -313,7 +318,7 @@ export default function AdminSidebar({ onSignOut, isMobileOpen: externalIsMobile
                 ${isExpanded ? 'opacity-100 w-auto' : 'opacity-0 w-0'}
               `}
             >
-              {productContext === 'tipjar' ? 'TipJar' : 'M10 DJ'}
+              {effectiveProductContext === 'tipjar' ? 'TipJar' : 'M10 DJ'}
             </span>
           </Link>
         </div>

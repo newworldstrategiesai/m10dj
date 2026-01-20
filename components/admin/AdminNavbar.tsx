@@ -72,7 +72,12 @@ export default function AdminNavbar() {
 
   // Determine logo based on theme and product context
   // TipJar users should not see M10 DJ Company logos
-  const logoSrc = productContext === 'tipjar'
+  // Also check domain directly as fallback
+  const hostname = typeof window !== 'undefined' ? window.location.hostname.toLowerCase() : '';
+  const isTipJarDomain = hostname.includes('tipjar.live') || hostname.includes('tipjar.com');
+  const effectiveProductContext = productContext || (isTipJarDomain ? 'tipjar' : null);
+  
+  const logoSrc = effectiveProductContext === 'tipjar'
     ? '/assets/TipJar-Logo-Icon.png'
     : displayTheme === 'dark'
       ? '/assets/m10 dj company logo white.gif'
@@ -271,11 +276,11 @@ export default function AdminNavbar() {
           <div className="flex items-center flex-1 min-w-0 gap-4 relative" style={{ overflow: 'visible' }}>
             {/* Logo - Theme-aware M10 logo for M10 context, emoji for TipJar */}
             <Link
-              href={productContext === 'tipjar' ? '/admin/crowd-requests' : '/admin/dashboard'}
+              href={effectiveProductContext === 'tipjar' ? '/admin/crowd-requests' : '/admin/dashboard'}
               className="flex items-center gap-2 mr-6 flex-shrink-0 hover:opacity-80 transition-opacity"
             >
               <div className="w-8 h-8 flex items-center justify-center flex-shrink-0">
-                {productContext === 'tipjar' ? (
+                {effectiveProductContext === 'tipjar' ? (
                   <span className="text-2xl">💸</span>
                 ) : (
                   <img
@@ -286,7 +291,7 @@ export default function AdminNavbar() {
                 )}
               </div>
               <span className="hidden sm:block font-bold text-lg text-gray-900 dark:text-white">
-                {productContext === 'tipjar' ? 'TipJar' : 'M10 DJ Admin'}
+                {effectiveProductContext === 'tipjar' ? 'TipJar' : 'M10 DJ Admin'}
               </span>
             </Link>
 

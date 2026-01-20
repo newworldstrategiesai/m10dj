@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Search, Mail, HelpCircle, CreditCard, User, Settings, Smartphone, DollarSign, FileText, Users, QrCode, Video, AlertCircle, CheckCircle, Rocket, BookOpen, Wrench, ArrowRight, Code, Music, Palette, BarChart3, Lightbulb } from 'lucide-react';
+import { Search, Mail, HelpCircle, CreditCard, User, Settings, Smartphone, DollarSign, FileText, Users, QrCode, Video, AlertCircle, CheckCircle, Rocket, BookOpen, Wrench, ArrowRight, Code, Music, Palette, BarChart3, Lightbulb, Radio, ExternalLink } from 'lucide-react';
 import Link from 'next/link';
 import { FAQ } from '@/components/tipjar/FAQ';
 import TipJarHeader from '@/components/tipjar/Header';
@@ -10,6 +10,7 @@ import { StepByStepGuide } from '@/components/tipjar/support/StepByStepGuide';
 import { TroubleshootingCard } from '@/components/tipjar/support/TroubleshootingCard';
 import { QuickActionButton } from '@/components/tipjar/support/QuickActionButton';
 import { FeatureGuide } from '@/components/tipjar/support/FeatureGuide';
+import { FAQSchema } from '@/components/shared/marketing/StructuredData';
 
 export default function SupportPage() {
   const [searchQuery, setSearchQuery] = useState('');
@@ -486,9 +487,104 @@ export default function SupportPage() {
 
   const selectedCategoryData = categories.find(cat => cat.id === selectedCategory);
 
+  // Generate FAQ structured data for SEO
+  const faqStructuredData = allFAQs.map(faq => ({
+    question: faq.question,
+    answer: faq.answer,
+  }));
+
+  // Generate HowTo structured data for Getting Started guide
+  const gettingStartedHowTo = {
+    '@context': 'https://schema.org',
+    '@type': 'HowTo',
+    name: 'How to Get Started with TipJar in 5 Minutes',
+    description: 'Complete step-by-step guide to setting up your TipJar account and starting to collect tips',
+    step: [
+      {
+        '@type': 'HowToStep',
+        position: 1,
+        name: 'Sign Up for Free',
+        text: 'Create your TipJar account with just your email and business name. Go to tipjar.live/signup, enter your email and business name, create a secure password, and confirm your email address.',
+      },
+      {
+        '@type': 'HowToStep',
+        position: 2,
+        name: 'Complete Your Profile',
+        text: 'Add your information to personalize your TipJar page. Add your name or stage name, upload a profile picture or logo, write a brief bio (optional), and set your page URL/slug.',
+      },
+      {
+        '@type': 'HowToStep',
+        position: 3,
+        name: 'Get Your QR Code & Link',
+        text: 'Generate your unique TipJar link and QR code to share with your audience. Go to Dashboard → QR Code, download your QR code (PNG or SVG), copy your shareable link, and test the link on your phone.',
+      },
+      {
+        '@type': 'HowToStep',
+        position: 4,
+        name: 'Set Up Payments (Optional but Recommended)',
+        text: 'Connect your Stripe account to receive payouts automatically. Go to Dashboard → Settings → Payments, click "Set Up Payment Processing", complete Stripe Connect onboarding, and add your bank account details.',
+      },
+      {
+        '@type': 'HowToStep',
+        position: 5,
+        name: 'Share & Start Collecting Tips',
+        text: 'Share your TipJar link and QR code with your audience. Display QR code at events or on stream, share link in social media bio, add to email signature, and print on business cards or flyers.',
+      },
+    ],
+  };
+
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
-      <TipJarHeader />
+    <>
+      {/* Structured Data for SEO */}
+      <FAQSchema questions={faqStructuredData} />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(gettingStartedHowTo) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            '@context': 'https://schema.org',
+            '@type': 'WebPage',
+            name: 'TipJar Help & Support Center',
+            description: 'Get help with TipJar. Find answers to common questions, step-by-step guides, troubleshooting tips, and best practices for maximizing your tips.',
+            url: 'https://www.tipjar.live/tipjar/support',
+            mainEntity: {
+              '@type': 'ItemList',
+              itemListElement: [
+                {
+                  '@type': 'ListItem',
+                  position: 1,
+                  name: 'Getting Started',
+                  url: 'https://www.tipjar.live/tipjar/support#getting-started',
+                },
+                {
+                  '@type': 'ListItem',
+                  position: 2,
+                  name: 'Feature Guides',
+                  url: 'https://www.tipjar.live/tipjar/support#feature-guides',
+                },
+                {
+                  '@type': 'ListItem',
+                  position: 3,
+                  name: 'Troubleshooting',
+                  url: 'https://www.tipjar.live/tipjar/support#troubleshooting',
+                },
+                {
+                  '@type': 'ListItem',
+                  position: 4,
+                  name: 'Best Practices',
+                  url: 'https://www.tipjar.live/tipjar/support#best-practices',
+                },
+              ],
+            },
+          }),
+        }}
+      />
+
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
+        <TipJarHeader />
       
       {/* Header */}
       <div className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800">
@@ -559,15 +655,15 @@ export default function SupportPage() {
       </div>
 
       {/* Getting Started Section */}
-      <div id="getting-started" className="container mx-auto px-4 py-12 scroll-mt-20">
+      <article id="getting-started" className="container mx-auto px-4 py-12 scroll-mt-20">
         <div className="max-w-4xl mx-auto mb-12">
-          <div className="text-center mb-8">
+          <header className="text-center mb-8">
             <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-emerald-100 dark:bg-emerald-900/30 mb-4">
               <Rocket className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
             </div>
-            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-3">
+            <h1 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-3">
               Getting Started with TipJar
-            </h2>
+            </h1>
             <p className="text-lg text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
               Get up and running in 5 minutes. Follow these simple steps to start collecting tips.
             </p>
@@ -656,7 +752,7 @@ export default function SupportPage() {
             ]}
           />
         </div>
-      </div>
+      </article>
 
       {/* Category Filters */}
       <div className="container mx-auto px-4 py-8">
@@ -727,8 +823,8 @@ export default function SupportPage() {
         </div>
 
         {/* Feature Guides Section */}
-        <div id="feature-guides" className="max-w-4xl mx-auto mt-16 mb-16 scroll-mt-20">
-          <div className="text-center mb-12">
+        <section id="feature-guides" className="max-w-4xl mx-auto mt-16 mb-16 scroll-mt-20">
+          <header className="text-center mb-12">
             <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-purple-100 dark:bg-purple-900/30 mb-4">
               <BookOpen className="w-6 h-6 text-purple-600 dark:text-purple-400" />
             </div>
@@ -1401,7 +1497,7 @@ export default function SupportPage() {
               icon={Music}
               title="Song Requests & Queue Management"
               description="How song requests work and how to manage your request queue"
-              overview="Guests can request songs through your TipJar page. Learn how the request system works, how to prioritize requests, and how to manage your queue effectively."
+              overview="Guests can request songs through your TipJar page. Learn how the request system works, how to prioritize requests, and how to manage your queue effectively. Tip: Connect Serato DJ Pro for automatic song detection and notifications—see the 'Serato DJ Pro Integration' guide below for setup instructions."
               steps={[
                 {
                   number: 1,
@@ -1537,6 +1633,318 @@ export default function SupportPage() {
                 {
                   question: "Can I blacklist certain songs?",
                   answer: "Yes! Go to Dashboard → Music Library to add songs to your blacklist. Blacklisted songs will be immediately denied if requested."
+                },
+                {
+                  question: "Can I automate request tracking with Serato?",
+                  answer: "Yes! TipJar can automatically detect when you play requested songs in Serato DJ Pro and notify requesters. Check out the 'Serato DJ Pro Integration' guide below for complete setup instructions. No separate app needed—works entirely through your browser."
+                }
+              ]}
+            />
+
+            {/* Serato Integration Guide */}
+            <FeatureGuide
+              id="serato-integration-guide"
+              icon={Radio}
+              title="Serato DJ Pro Integration - Automatic Song Detection"
+              description="Automatically detect when requested songs play in Serato and notify requesters"
+              overview="Connect your Serato DJ Pro to TipJar to automatically detect when you play requested songs. The system matches played tracks to active song requests and sends automatic notifications to requesters. No separate app needed—works entirely through your browser using Serato's Live Playlist feature."
+              steps={[
+                {
+                  number: 1,
+                  title: "Enable Live Playlists in Serato DJ Pro",
+                  description: "First, you need to enable Live Playlists in your Serato settings.",
+                  details: [
+                    "Open Serato DJ Pro",
+                    "Go to Settings → Expansion Packs",
+                    "Enable 'Serato Playlists' expansion pack",
+                    "Navigate to Settings → Serato Playlists",
+                    "Check 'Enable Live Playlists' option",
+                    "Save settings"
+                  ],
+                  tips: [
+                    "Live Playlists requires a Serato account (free to create)",
+                    "The expansion pack is included with Serato DJ Pro",
+                    "You may need to restart Serato after enabling"
+                  ],
+                  warning: "Without Live Playlists enabled, the integration won't work"
+                },
+                {
+                  number: 2,
+                  title: "Start a Live Playlist Session",
+                  description: "Begin a Live Playlist session in Serato to start tracking your plays.",
+                  details: [
+                    "In Serato DJ Pro, go to the History panel",
+                    "Click on 'Live Playlist' tab or button",
+                    "Click 'Start Live Playlist'",
+                    "Your session will begin automatically",
+                    "Tracks you play will be added to the playlist"
+                  ],
+                  tips: [
+                    "Start the Live Playlist before your event begins",
+                    "The playlist updates in real-time as you play songs",
+                    "You can view it on serato.com while you DJ"
+                  ]
+                },
+                {
+                  number: 3,
+                  title: "Make Your Live Playlist Public",
+                  description: "Your Live Playlist must be public for TipJar to access it.",
+                  details: [
+                    "Go to serato.com and sign in with your Serato account",
+                    "Navigate to your profile or playlists section",
+                    "Find your active Live Playlist",
+                    "Click 'Edit Details' or settings",
+                    "Change visibility from 'Private' to 'Public'",
+                    "Save changes"
+                  ],
+                  tips: [
+                    "Public playlists can be viewed by anyone on serato.com",
+                    "Only the playlist is public—your account remains private",
+                    "The playlist URL will look like: serato.com/playlists/YOUR_USERNAME/live"
+                  ],
+                  warning: "If your playlist isn't public, TipJar won't be able to detect your tracks"
+                },
+                {
+                  number: 4,
+                  title: "Find Your Serato Username",
+                  description: "Get your Serato username to connect it to TipJar.",
+                  details: [
+                    "Check your serato.com profile page",
+                    "Your username appears in the URL: serato.com/USERNAME",
+                    "It's also displayed on your profile",
+                    "Copy your exact username (case-sensitive)"
+                  ],
+                  tips: [
+                    "Usernames are usually your display name (e.g., 'DJ_Ben_Murray')",
+                    "Make sure there are no extra spaces or characters",
+                    "Test by visiting: serato.com/playlists/YOUR_USERNAME/live"
+                  ]
+                },
+                {
+                  number: 5,
+                  title: "Connect Serato in TipJar Dashboard",
+                  description: "Set up the connection in your TipJar dashboard.",
+                  details: [
+                    "Go to your TipJar Dashboard",
+                    "Navigate to Settings → DJ Software or Dashboard → Requests",
+                    "Look for 'Serato Integration' or 'DJ Software Setup' section",
+                    "Select 'Serato DJ Pro' as your software",
+                    "Enter your Serato username in the provided field",
+                    "Click 'Start Watching' or 'Enable Detection'"
+                  ],
+                  tips: [
+                    "The connection works entirely in your browser—no downloads needed",
+                    "Your dashboard will check for new tracks every 5 seconds",
+                    "Keep the dashboard page open or in a browser tab during your event"
+                  ]
+                },
+                {
+                  number: 6,
+                  title: "Verify Connection Status",
+                  description: "Confirm that TipJar is successfully detecting your tracks.",
+                  details: [
+                    "After clicking 'Start Watching', you should see a status indicator",
+                    "Green status = Connected and detecting",
+                    "Test by playing a song in Serato",
+                    "Within 5-10 seconds, you should see it appear in your TipJar dashboard",
+                    "Check the 'Now Playing' section for current track"
+                  ],
+                  tips: [
+                    "Status updates every 5 seconds",
+                    "You can manually test detection using the test track feature",
+                    "If status shows as disconnected, check your Serato settings"
+                  ]
+                },
+                {
+                  number: 7,
+                  title: "Automatic Request Matching",
+                  description: "How TipJar automatically matches played songs to requests.",
+                  details: [
+                    "When you play a song, TipJar detects it within 5-10 seconds",
+                    "The system uses fuzzy matching (85% similarity) to match tracks",
+                    "Matched requests are automatically updated to 'Playing' status",
+                    "Requesters receive automatic SMS/Email notifications",
+                    "The request is marked as 'Played' after completion"
+                  ],
+                  tips: [
+                    "Matching works even with slight variations in artist/song names",
+                    "Only active requests ('new', 'acknowledged', 'paid') are matched",
+                    "Each request is only notified once—no duplicate notifications"
+                  ]
+                },
+                {
+                  number: 8,
+                  title: "Monitor Your Integration",
+                  description: "Keep an eye on your connection and track detection.",
+                  details: [
+                    "Watch the connection status indicator during your event",
+                    "View 'Recent Tracks' to see what's been detected",
+                    "Check request queue to see which requests have been matched",
+                    "Review notification history in your dashboard"
+                  ],
+                  tips: [
+                    "If detection stops working, check that Live Playlist is still active",
+                    "Ensure your Serato username hasn't changed",
+                    "Refresh your dashboard page if connection seems stuck"
+                  ]
+                }
+              ]}
+              troubleshooting={[
+                {
+                  issue: "Tracks Not Being Detected",
+                  symptoms: [
+                    "Songs play in Serato but don't appear in TipJar",
+                    "Status shows 'Watching' but no tracks detected",
+                    "Connection status shows as disconnected"
+                  ],
+                  causes: [
+                    "Live Playlist not enabled in Serato",
+                    "Live Playlist not set to Public",
+                    "Incorrect Serato username",
+                    "Live Playlist session not started",
+                    "Browser tab closed or dashboard page not open"
+                  ],
+                  solutions: [
+                    {
+                      step: 1,
+                      action: "Verify Live Playlist is enabled",
+                      details: "Check Serato Settings → Expansion Packs → Serato Playlists → Enable Live Playlists"
+                    },
+                    {
+                      step: 2,
+                      action: "Confirm Live Playlist is Public",
+                      details: "Visit serato.com/playlists/YOUR_USERNAME/live - it should be publicly accessible"
+                    },
+                    {
+                      step: 3,
+                      action: "Double-check your Serato username",
+                      details: "Make sure username matches exactly (case-sensitive) and has no extra spaces"
+                    },
+                    {
+                      step: 4,
+                      action: "Ensure Live Playlist session is active",
+                      details: "In Serato, check History panel - Live Playlist should show as 'Active'"
+                    },
+                    {
+                      step: 5,
+                      action: "Keep dashboard page open",
+                      details: "The browser-based detection requires the dashboard page to be open in a tab"
+                    },
+                    {
+                      step: 6,
+                      action: "Test connection manually",
+                      details: "Use the 'Test Track Detection' feature in dashboard to verify API is working"
+                    }
+                  ],
+                  severity: "high"
+                },
+                {
+                  issue: "Songs Not Matching to Requests",
+                  symptoms: [
+                    "Tracks are detected but requests aren't being matched",
+                    "Status shows 'Playing' but requester wasn't notified",
+                    "Matches not happening even for exact song names"
+                  ],
+                  causes: [
+                    "Song name/artist doesn't match exactly",
+                    "Request doesn't exist or is already 'played'",
+                    "Fuzzy matching threshold too strict",
+                    "Request in wrong status (not 'new', 'acknowledged', or 'paid')"
+                  ],
+                  solutions: [
+                    {
+                      step: 1,
+                      action: "Check song name formatting",
+                      details: "Serato track name must closely match request (85% similarity required)"
+                    },
+                    {
+                      step: 2,
+                      action: "Verify request exists and is active",
+                      details: "Check your request queue - request must be in 'new', 'acknowledged', or 'paid' status"
+                    },
+                    {
+                      step: 3,
+                      action: "Manually match if needed",
+                      details: "If auto-match fails, you can manually update request status in dashboard"
+                    },
+                    {
+                      step: 4,
+                      action: "Check notification settings",
+                      details: "Ensure requesters provided phone or email for notifications"
+                    }
+                  ],
+                  severity: "medium"
+                },
+                {
+                  issue: "Connection Drops During Event",
+                  symptoms: [
+                    "Connection was working but stopped detecting",
+                    "Status shows 'Disconnected' after being connected",
+                    "Tracks stopped appearing in dashboard"
+                  ],
+                  causes: [
+                    "Browser tab closed or computer went to sleep",
+                    "Internet connection lost",
+                    "Live Playlist session ended in Serato",
+                    "Serato username changed or account issue"
+                  ],
+                  solutions: [
+                    {
+                      step: 1,
+                      action: "Check browser tab is still open",
+                      details: "Ensure TipJar dashboard page is open and active in browser"
+                    },
+                    {
+                      step: 2,
+                      action: "Verify internet connection",
+                      details: "Check that your computer/laptop has active internet connection"
+                    },
+                    {
+                      step: 3,
+                      action: "Restart Live Playlist session",
+                      details: "In Serato, stop and restart the Live Playlist session"
+                    },
+                    {
+                      step: 4,
+                      action: "Reconnect in dashboard",
+                      details: "Click 'Stop Watching' then 'Start Watching' again in TipJar dashboard"
+                    }
+                  ],
+                  severity: "medium"
+                }
+              ]}
+              faqs={[
+                {
+                  question: "Do I need to download any software or apps?",
+                  answer: "No! The Serato integration works entirely through your browser. Just enable Live Playlists in Serato, make it public, and enter your username in your TipJar dashboard. No separate app or software installation required."
+                },
+                {
+                  question: "Will this work if I'm using Virtual DJ or other DJ software?",
+                  answer: "The browser-based integration currently works with Serato DJ Pro via Live Playlists. Virtual DJ support is available through a different method. Check your dashboard for Virtual DJ setup options."
+                },
+                {
+                  question: "How accurate is the song matching?",
+                  answer: "The system uses fuzzy matching with an 85% similarity threshold, so it can match songs even with slight variations in formatting. However, for best results, ensure your Serato track metadata (artist and title) matches the request as closely as possible."
+                },
+                {
+                  question: "What happens if a song matches multiple requests?",
+                  answer: "If multiple requests exist for the same song, the system will match to the highest priority request first (Fast-Track or Next Song requests take priority). Only one request is marked as 'playing' per track."
+                },
+                {
+                  question: "Do requesters get notified immediately?",
+                  answer: "Yes! When a song is detected and matched, requesters receive SMS/Email notifications within seconds (if they provided contact information when making the request)."
+                },
+                {
+                  question: "Can I use this integration during livestreams?",
+                  answer: "Yes! The integration works perfectly for live events and streams. Just make sure to start the Live Playlist session before you begin and keep your dashboard page open in a browser tab."
+                },
+                {
+                  question: "What if my Serato username changes?",
+                  answer: "If you change your Serato username, you'll need to update it in your TipJar dashboard settings. The old username will no longer work for detection."
+                },
+                {
+                  question: "Is there a delay in detection?",
+                  answer: "Tracks are typically detected within 5-10 seconds of playing in Serato. This slight delay is normal and ensures accurate detection."
                 }
               ]}
             />
@@ -1879,11 +2287,11 @@ export default function SupportPage() {
               ]}
             />
           </div>
-        </div>
+        </section>
 
         {/* Best Practices Section */}
-        <div id="best-practices" className="max-w-4xl mx-auto mt-16 mb-16 scroll-mt-20">
-          <div className="text-center mb-12">
+        <section id="best-practices" className="max-w-4xl mx-auto mt-16 mb-16 scroll-mt-20">
+          <header className="text-center mb-12">
             <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-yellow-100 dark:bg-yellow-900/30 mb-4">
               <Lightbulb className="w-6 h-6 text-yellow-600 dark:text-yellow-400" />
             </div>
@@ -2069,11 +2477,11 @@ export default function SupportPage() {
               </ul>
             </div>
           </div>
-        </div>
+        </section>
 
         {/* Troubleshooting Section */}
-        <div id="troubleshooting" className="max-w-4xl mx-auto mt-16 mb-16 scroll-mt-20">
-          <div className="text-center mb-12">
+        <section id="troubleshooting" className="max-w-4xl mx-auto mt-16 mb-16 scroll-mt-20">
+          <header className="text-center mb-12">
             <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-red-100 dark:bg-red-900/30 mb-4">
               <Wrench className="w-6 h-6 text-red-600 dark:text-red-400" />
             </div>
@@ -2256,10 +2664,10 @@ export default function SupportPage() {
               severity="high"
             />
           </div>
-        </div>
+        </section>
 
         {/* Contact Support */}
-        <div id="contact" className="max-w-4xl mx-auto mt-16 mb-16 scroll-mt-20">
+        <section id="contact" className="max-w-4xl mx-auto mt-16 mb-16 scroll-mt-20">
           <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-8 md:p-12">
             <div className="text-center">
               <Mail className="w-12 h-12 text-emerald-600 dark:text-emerald-400 mx-auto mb-4" />
@@ -2287,10 +2695,10 @@ export default function SupportPage() {
               </div>
             </div>
           </div>
-        </div>
+        </section>
 
         {/* Quick Links */}
-        <div className="max-w-4xl mx-auto mb-16">
+        <nav className="max-w-4xl mx-auto mb-16" aria-label="Quick Links">
           <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-6 text-center">
             Quick Links
           </h3>
@@ -2326,11 +2734,11 @@ export default function SupportPage() {
               </p>
             </Link>
           </div>
-        </div>
+        </nav>
       </div>
       
       <TipJarFooter />
-    </div>
+    </>
   );
 }
 
