@@ -290,17 +290,22 @@ export default function KaraokeAdminPage() {
 
   // Generate QR Code (reused pattern from crowd-requests)
   const generateQRCode = async () => {
-    if (!qrEventCode.trim()) {
+    // Allow empty event code for organization-wide karaoke
+    if (!organization?.slug) {
       toast({
         title: 'Error',
-        description: 'Please enter an event code',
+        description: 'Organization not found',
         variant: 'destructive'
       });
       return;
     }
 
     try {
-      const qrUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/organizations/${organization?.slug}/sing${qrEventCode ? `?eventCode=${qrEventCode}` : ''}`;
+      const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
+      const qrUrl = qrEventCode.trim()
+        ? `${baseUrl}/organizations/${organization.slug}/sing?eventCode=${qrEventCode.trim()}`
+        : `${baseUrl}/organizations/${organization.slug}/sing`;
+
       setGeneratedQR(qrUrl);
       toast({
         title: 'Success',
@@ -500,7 +505,7 @@ export default function KaraokeAdminPage() {
                 onClick={() => setShowQRGenerator(true)}
               >
                 <QrCode className="w-4 h-4 mr-2" />
-                Signup QR
+                Karaoke QR
               </Button>
               <Button
                 variant="outline"
@@ -1135,20 +1140,38 @@ export default function KaraokeAdminPage() {
               <DialogHeader>
                 <DialogTitle>Generate Karaoke QR Code</DialogTitle>
                 <DialogDescription>
-                  Create a QR code for karaoke signups
+                  Create a QR code for karaoke signups - works for all events or specific events
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Event Code
+                    Signup Type
                   </label>
-                  <Input
-                    value={qrEventCode}
-                    onChange={(e) => setQrEventCode(e.target.value)}
-                    placeholder="wedding-2025-01-15"
-                  />
+                  <select
+                    value={qrEventCode || 'general'}
+                    onChange={(e) => setQrEventCode(e.target.value === 'general' ? '' : e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  >
+                    <option value="general">General Karaoke (All Events)</option>
+                    <option value="">Specific Event (enter code below)</option>
+                  </select>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    General QR codes work for any karaoke event. Event-specific codes are tied to one event.
+                  </p>
                 </div>
+                {qrEventCode !== '' && qrEventCode !== 'general' && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Event Code
+                    </label>
+                    <Input
+                      value={qrEventCode}
+                      onChange={(e) => setQrEventCode(e.target.value)}
+                      placeholder="wedding-2025-01-15"
+                    />
+                  </div>
+                )}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Event Name (Optional)
