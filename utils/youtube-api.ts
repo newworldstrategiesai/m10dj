@@ -250,9 +250,21 @@ export function calculateKaraokeScore(video: YouTubeVideo, songTitle: string, so
   );
   if (hasKaraokeTerms) score += 25;
 
-  // Channel reputation (+10 points)
+  // Karafun channel priority (+50 points - highest priority!)
+  const karafunChannels = (process.env.KARAFUN_CHANNEL_IDS || 'karafun').split(',');
+  const isKarafunChannel = karafunChannels.some(karafunTerm =>
+    video.channelId?.toLowerCase().includes(karafunTerm.toLowerCase()) ||
+    channel.toLowerCase().includes(karafunTerm.toLowerCase())
+  );
+  if (isKarafunChannel) {
+    score += 50; // Massive boost for Karafun videos
+  }
+
+  // Other reputable channels (+10 points)
   const reputableTerms = ['karaoke', 'sing', 'music', 'official', 'instrumental'];
-  const isReputable = reputableTerms.some(term => channel.includes(term));
+  const isReputable = reputableTerms.some(term =>
+    channel.toLowerCase().includes(term.toLowerCase()) && !isKarafunChannel // Don't double-count Karafun
+  );
   if (isReputable) score += 10;
 
   // View count bonus (+10 points max)
@@ -282,8 +294,9 @@ export async function searchKaraokeVideos(
 ): Promise<VideoSearchResult[]> {
   const api = new YouTubeAPI();
 
-  // Build search queries with fallbacks
-  const queries = [
+  // Build search queries with Karafun prioritized
+  const karafunQueries: string[] = [];
+  const generalQueries = [
     // Primary: exact song + artist + karaoke
     `"${songTitle}"${songArtist ? ` "${songArtist}"` : ''} karaoke instrumental backing track`,
     // Fallback 1: song + artist + karaoke
@@ -293,6 +306,16 @@ export async function searchKaraokeVideos(
     // Fallback 3: song title only
     `"${songTitle}" instrumental backing track`
   ];
+
+  // Add Karafun-specific searches first (highest priority)
+  const karafunTerms = (process.env.KARAFUN_CHANNEL_IDS || 'karafun').split(',');
+  karafunTerms.forEach(term => {
+    karafunQueries.push(`"${songTitle}"${songArtist ? ` "${songArtist}"` : ''} ${term}`);
+    karafunQueries.push(`"${songTitle}" ${term} karaoke`);
+    karafunQueries.push(`"${songTitle}" ${term}`);
+  });
+
+  const queries = [...karafunQueries, ...generalQueries];
 
   const allResults: VideoSearchResult[] = [];
 

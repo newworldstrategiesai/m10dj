@@ -31,6 +31,7 @@ interface KaraokeVideo {
   youtube_video_id: string;
   youtube_video_title: string;
   youtube_channel_name?: string;
+  youtube_channel_id?: string;
   video_quality_score: number;
   confidence_score: number;
   link_status: 'active' | 'broken' | 'removed' | 'flagged';
@@ -338,6 +339,16 @@ export default function VideoManager({ organizationId }: VideoManagerProps) {
     }
   };
 
+  // Check if video is from Karafun
+  const isKarafunVideo = (channelName?: string, channelId?: string) => {
+    if (!channelName && !channelId) return false;
+    const karafunTerms = (process.env.NEXT_PUBLIC_KARAFUN_CHANNEL_IDS || 'karafun').split(',');
+    return karafunTerms.some(term =>
+      channelId?.toLowerCase().includes(term.toLowerCase()) ||
+      channelName?.toLowerCase().includes(term.toLowerCase())
+    );
+  };
+
   // Get quality color
   const getQualityColor = (score: number) => {
     if (score >= 80) return 'text-green-600';
@@ -474,6 +485,12 @@ export default function VideoManager({ organizationId }: VideoManagerProps) {
                         {video.song_artist && ` - ${video.song_artist}`}
                       </h3>
                       {getStatusBadge(video.link_status)}
+                      {isKarafunVideo(video.youtube_channel_name, video.youtube_channel_id) && (
+                        <Badge className="bg-purple-500 text-white flex items-center gap-1 px-2 py-0.5 text-xs font-semibold">
+                          <Music className="w-3 h-3" />
+                          Karafun
+                        </Badge>
+                      )}
                     </div>
 
                     <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
@@ -484,6 +501,11 @@ export default function VideoManager({ organizationId }: VideoManagerProps) {
                       <span className="flex items-center gap-1">
                         <Star className={`w-4 h-4 ${getQualityColor(video.video_quality_score)}`} />
                         Quality: {video.video_quality_score}/100
+                        {isKarafunVideo(video.youtube_channel_name, video.youtube_channel_id) && (
+                          <span className="text-purple-600 dark:text-purple-400 font-medium">
+                            (Karafun Boosted)
+                          </span>
+                        )}
                       </span>
                       {video.youtube_channel_name && (
                         <span>Channel: {video.youtube_channel_name}</span>

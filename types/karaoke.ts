@@ -80,6 +80,21 @@ export interface KaraokeSignup {
   // Admin
   admin_notes: string | null;
   crowd_request_id: string | null;
+
+  // Video linking (added via API joins)
+  video_id?: string | null;
+  video_url?: string | null;
+  video_embed_allowed?: boolean;
+  video_data?: {
+    id: string;
+    youtube_video_id: string;
+    youtube_video_title: string;
+    youtube_channel_name?: string;
+    youtube_channel_id?: string;
+    video_quality_score: number;
+    confidence_score: number;
+    link_status: 'active' | 'broken' | 'removed' | 'flagged';
+  } | null;
 }
 
 export interface KaraokeSettings {

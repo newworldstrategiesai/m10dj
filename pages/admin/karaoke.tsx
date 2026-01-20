@@ -16,6 +16,7 @@ import {
   CheckCircle2,
   Clock,
   Play,
+  Pause,
   SkipForward,
   X,
   Settings,
@@ -51,6 +52,7 @@ import { getSortedQueue, getCurrentSinger, getNextSinger, getQueue, calculateQue
 import { getCurrentOrganization } from '@/utils/organization-context';
 import { DecoratedQRCode } from '@/components/ui/DecoratedQRCode';
 import { logSettingsChange, getClientInfo } from '@/utils/karaoke-audit';
+import YouTubePlayer from '@/components/karaoke/YouTubePlayer';
 
 export default function KaraokeAdminPage() {
   const router = useRouter();
@@ -111,6 +113,19 @@ export default function KaraokeAdminPage() {
   const [displayUrl, setDisplayUrl] = useState<string | null>(null);
   const [displayQR, setDisplayQR] = useState<string | null>(null);
   const [displayCopied, setDisplayCopied] = useState(false);
+
+  // Video playback state for modal
+  const [modalVideoPlaying, setModalVideoPlaying] = useState(false);
+
+  // Check if video is from Karafun
+  const isKarafunVideo = (channelName?: string, channelId?: string) => {
+    if (!channelName && !channelId) return false;
+    const karafunTerms = (process.env.NEXT_PUBLIC_KARAFUN_CHANNEL_IDS || 'karafun').split(',');
+    return karafunTerms.some(term =>
+      channelId?.toLowerCase().includes(term.toLowerCase()) ||
+      channelName?.toLowerCase().includes(term.toLowerCase())
+    );
+  };
 
   // Load organization
   useEffect(() => {
@@ -1070,6 +1085,35 @@ export default function KaraokeAdminPage() {
                                   {getGroupLabel(signup.group_size)}
                                 </Badge>
                               )}
+                              {/* Video Status Badge */}
+                              {signup.video_data ? (
+                                <>
+                                  <Badge className={`flex items-center gap-1 px-2 py-0.5 text-xs font-semibold ${
+                                    signup.video_data.link_status === 'active' ? 'bg-green-500 text-white' :
+                                    signup.video_data.link_status === 'broken' ? 'bg-red-500 text-white' :
+                                    'bg-yellow-500 text-white'
+                                  }`}>
+                                    <Music className="w-3 h-3" />
+                                    Video {signup.video_data.video_quality_score ? `${signup.video_data.video_quality_score}%` : ''}
+                                  </Badge>
+                                  {isKarafunVideo(signup.video_data.youtube_channel_name, signup.video_data.youtube_channel_id) && (
+                                    <Badge className="bg-purple-500 text-white flex items-center gap-1 px-2 py-0.5 text-xs font-semibold">
+                                      <Music className="w-3 h-3" />
+                                      Karafun
+                                    </Badge>
+                                  )}
+                                </>
+                              ) : signup.video_id ? (
+                                <Badge className="bg-blue-500 text-white flex items-center gap-1 px-2 py-0.5 text-xs font-semibold">
+                                  <Music className="w-3 h-3" />
+                                  Video Linked
+                                </Badge>
+                              ) : (
+                                <Badge variant="outline" className="flex items-center gap-1 px-2 py-0.5 text-xs text-gray-500">
+                                  <Music className="w-3 h-3" />
+                                  No Video
+                                </Badge>
+                              )}
                               {estimatedWait > 0 && (
                                 <Badge variant="outline" className="text-xs">
                                   <Clock className="w-3 h-3 mr-1" />
@@ -1122,6 +1166,47 @@ export default function KaraokeAdminPage() {
                           </div>
                         </div>
                         <div className="flex items-center gap-2 flex-shrink-0">
+                          {/* Video Action Buttons - Always visible if video available */}
+                          <div className="flex items-center gap-1 mr-2">
+                            {signup.video_data?.youtube_video_id && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => window.open(`https://www.youtube.com/watch?v=${signup.video_data.youtube_video_id}`, '_blank')}
+                                className="h-8 px-2 bg-blue-50 hover:bg-blue-100 border-blue-200 text-blue-700 hover:text-blue-800"
+                                title="Open video on YouTube"
+                              >
+                                <ExternalLink className="w-3 h-3" />
+                              </Button>
+                            )}
+                            {signup.video_data?.youtube_video_id && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => window.open(`/karaoke/video-display?videoId=${signup.video_data.youtube_video_id}&title=${encodeURIComponent(signup.song_title)}&artist=${encodeURIComponent(signup.song_artist || '')}`, 'karaokeVideoDisplay', 'width=1280,height=720,scrollbars=no,resizable=yes,status=no,toolbar=no,menubar=no,location=no,directories=no')}
+                                className="h-8 px-2 bg-green-50 hover:bg-green-100 border-green-200 text-green-700 hover:text-green-800"
+                                title="Open in display window"
+                              >
+                                <Monitor className="w-3 h-3" />
+                              </Button>
+                            )}
+                            {!signup.video_id && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => {
+                                  // Open videos tab in settings
+                                  setShowSettings(true);
+                                  setSettingsTab('videos');
+                                }}
+                                className="h-8 px-2 bg-orange-50 hover:bg-orange-100 border-orange-200 text-orange-700 hover:text-orange-800"
+                                title="Link video in settings"
+                              >
+                                <Music className="w-3 h-3" />
+                              </Button>
+                            )}
+                          </div>
+
                           {/* Quick Action Buttons - Visible on hover */}
                           <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                             {signup.status === 'queued' && (
@@ -1211,8 +1296,13 @@ export default function KaraokeAdminPage() {
           </div>
 
           {/* Detail Modal - Reused pattern from crowd-requests */}
-          <Dialog open={showDetailModal} onOpenChange={setShowDetailModal}>
-            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <Dialog open={showDetailModal} onOpenChange={(open) => {
+            setShowDetailModal(open);
+            if (!open) {
+              setModalVideoPlaying(false); // Reset video state when modal closes
+            }
+          }}>
+            <DialogContent className="max-w-4xl max-h-[95vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>Signup Details</DialogTitle>
               </DialogHeader>
@@ -1245,6 +1335,144 @@ export default function KaraokeAdminPage() {
                     </p>
                     {selectedSignup.song_artist && (
                       <p className="text-gray-700 dark:text-gray-300">by {selectedSignup.song_artist}</p>
+                    )}
+                  </div>
+
+                  {/* Video Information */}
+                  <div>
+                    <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Video Status</label>
+                    <div className="mt-2 space-y-2">
+                      {selectedSignup.video_data ? (
+                        <div className="flex items-center gap-3 p-3 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
+                          <CheckCircle2 className="w-5 h-5 text-green-600 dark:text-green-400" />
+                          <div className="flex-1">
+                            <p className="font-medium text-green-900 dark:text-green-100">Video Linked</p>
+                            <p className="text-sm text-green-700 dark:text-green-300">
+                              Quality: {selectedSignup.video_data.video_quality_score}/100 •
+                              Status: {selectedSignup.video_data.link_status}
+                              {isKarafunVideo(selectedSignup.video_data.youtube_channel_name, selectedSignup.video_data.youtube_channel_id) && (
+                                <span className="ml-2 px-2 py-0.5 bg-purple-500 text-white text-xs rounded">
+                                  Karafun
+                                </span>
+                              )}
+                            </p>
+                            {selectedSignup.video_data.youtube_channel_name && (
+                              <p className="text-sm text-green-600 dark:text-green-400">
+                                Channel: {selectedSignup.video_data.youtube_channel_name}
+                              </p>
+                            )}
+                          </div>
+                          <div className="flex gap-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => window.open(`https://www.youtube.com/watch?v=${selectedSignup.video_data.youtube_video_id}`, '_blank')}
+                              className="text-green-700 border-green-300 hover:bg-green-100"
+                            >
+                              <ExternalLink className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => window.open(`/karaoke/video-display?videoId=${selectedSignup.video_data.youtube_video_id}&title=${encodeURIComponent(selectedSignup.song_title)}&artist=${encodeURIComponent(selectedSignup.song_artist || '')}`, 'karaokeVideoDisplay', 'width=1280,height=720,scrollbars=no,resizable=yes,status=no,toolbar=no,menubar=no,location=no,directories=no')}
+                              className="text-green-700 border-green-300 hover:bg-green-100"
+                            >
+                              <Monitor className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      ) : selectedSignup.video_id ? (
+                        <div className="flex items-center gap-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                          <Music className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                          <div className="flex-1">
+                            <p className="font-medium text-blue-900 dark:text-blue-100">Video Linked</p>
+                            <p className="text-sm text-blue-700 dark:text-blue-300">
+                              Video is linked but details not loaded
+                            </p>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-900/20 rounded-lg border border-gray-200 dark:border-gray-800">
+                          <Music className="w-5 h-5 text-gray-400" />
+                          <div className="flex-1">
+                            <p className="font-medium text-gray-900 dark:text-gray-100">No Video Linked</p>
+                            <p className="text-sm text-gray-600 dark:text-gray-400">
+                              Link a YouTube video in the Videos tab
+                            </p>
+                          </div>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              setShowSettings(true);
+                              setSettingsTab('videos');
+                              setShowDetailModal(false);
+                            }}
+                            className="text-gray-700 border-gray-300 hover:bg-gray-100"
+                          >
+                            Link Video
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Video Embed Player */}
+                    {selectedSignup.video_data?.youtube_video_id && (
+                      <div className="mt-6">
+                        <div className="flex items-center justify-between mb-3">
+                          <label className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                            Video Preview
+                          </label>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => setModalVideoPlaying(!modalVideoPlaying)}
+                            className="text-blue-600 hover:text-blue-700"
+                          >
+                            {modalVideoPlaying ? (
+                              <>
+                                <Pause className="w-4 h-4 mr-1" />
+                                Pause
+                              </>
+                            ) : (
+                              <>
+                                <Play className="w-4 h-4 mr-1" />
+                                Play
+                              </>
+                            )}
+                          </Button>
+                        </div>
+                        <div className="aspect-video w-full max-w-2xl mx-auto bg-black rounded-lg overflow-hidden">
+                          <YouTubePlayer
+                            videoId={selectedSignup.video_data.youtube_video_id}
+                            isPlaying={modalVideoPlaying}
+                            onStateChange={(state) => {
+                              if (state === 'ended') {
+                                setModalVideoPlaying(false);
+                              }
+                            }}
+                            showControls={true}
+                            autoPlay={false}
+                            volume={30} // Lower volume for modal preview
+                            className="w-full h-full"
+                          />
+                        </div>
+                        <div className="mt-2 flex items-center justify-center gap-4 text-sm text-gray-600 dark:text-gray-400">
+                          <span>Quality: {selectedSignup.video_data.video_quality_score}/100</span>
+                          {selectedSignup.video_data.youtube_channel_name && (
+                            <span>Channel: {selectedSignup.video_data.youtube_channel_name}</span>
+                          )}
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => window.open(`/karaoke/video-display?videoId=${selectedSignup.video_data.youtube_video_id}&title=${encodeURIComponent(selectedSignup.song_title)}&artist=${encodeURIComponent(selectedSignup.song_artist || '')}`, 'karaokeVideoDisplay', 'width=1280,height=720,scrollbars=no,resizable=yes,status=no,toolbar=no,menubar=no,location=no,directories=no')}
+                            className="text-blue-600 hover:text-blue-700"
+                          >
+                            <Monitor className="w-4 h-4 mr-1" />
+                            Open in Display Window
+                          </Button>
+                        </div>
+                      </div>
                     )}
                   </div>
                   <div className="grid grid-cols-2 gap-4">
