@@ -1,3 +1,4 @@
+import { createServerSupabaseClient } from '@supabase/auth-helpers-nextjs';
 import { createClient } from '@supabase/supabase-js';
 import { searchKaraokeVideos, validateVideo } from '@/utils/youtube-api';
 import { withSecurity } from '@/utils/rate-limiting';
@@ -6,12 +7,20 @@ import { withSecurity } from '@/utils/rate-limiting';
  * Search for YouTube karaoke videos for songs
  * POST /api/karaoke/search-videos
  */
-async function handler(req, res) {
+export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
   try {
+    // Authenticate user
+    const supabase = createServerSupabaseClient({ req, res });
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+
+    if (userError || !user) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
     const { songTitle, songArtist, organizationId, maxResults = 10 } = req.body;
 
     if (!songTitle || songTitle.trim().length < 1) {
@@ -23,16 +32,11 @@ async function handler(req, res) {
     }
 
     // Verify organization access
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL,
-      process.env.SUPABASE_SERVICE_ROLE_KEY
-    );
-
     const { data: orgMember, error: orgError } = await supabase
       .from('organization_members')
       .select('organization_id')
       .eq('organization_id', organizationId)
-      .eq('user_id', req.user?.id)
+      .eq('user_id', user.id)
       .single();
 
     if (orgError || !orgMember) {
@@ -91,5 +95,3 @@ async function handler(req, res) {
     });
   }
 }
-
-export default withSecurity(handler, 'search');

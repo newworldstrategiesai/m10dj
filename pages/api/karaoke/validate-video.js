@@ -1,3 +1,4 @@
+import { createServerSupabaseClient } from '@supabase/auth-helpers-nextjs';
 import { createClient } from '@supabase/supabase-js';
 import { validateVideo } from '@/utils/youtube-api';
 import { withSecurity } from '@/utils/rate-limiting';
@@ -6,7 +7,7 @@ import { withSecurity } from '@/utils/rate-limiting';
  * Validate YouTube video links and update metadata
  * POST /api/karaoke/validate-video
  */
-async function handler(req, res) {
+export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
@@ -28,17 +29,20 @@ async function handler(req, res) {
       return res.status(400).json({ error: 'Organization ID is required' });
     }
 
-    // Verify organization access
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL,
-      process.env.SUPABASE_SERVICE_ROLE_KEY
-    );
+    // Authenticate user
+    const supabase = createServerSupabaseClient({ req, res });
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
 
+    if (userError || !user) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    // Verify organization access
     const { data: orgMember, error: orgError } = await supabase
       .from('organization_members')
       .select('organization_id')
       .eq('organization_id', organizationId)
-      .eq('user_id', req.user?.id)
+      .eq('user_id', user.id)
       .single();
 
     if (orgError || !orgMember) {
@@ -120,7 +124,7 @@ async function handler(req, res) {
     console.error('Video validation error:', error);
     return res.status(500).json({
       error: 'Video validation failed',
-      details: error.message
+      details: error instanceof Error ? error.message : String(error)
     });
   }
 }
@@ -136,5 +140,3 @@ function parseDuration(duration) {
 
   return hours * 3600 + minutes * 60 + seconds;
 }
-
-export default withSecurity(handler, 'search');

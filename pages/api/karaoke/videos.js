@@ -1,3 +1,4 @@
+import { createServerSupabaseClient } from '@supabase/auth-helpers-nextjs';
 import { createClient } from '@supabase/supabase-js';
 import { withSecurity } from '@/utils/rate-limiting';
 
@@ -5,12 +6,20 @@ import { withSecurity } from '@/utils/rate-limiting';
  * Get karaoke videos for an organization
  * GET /api/karaoke/videos?organizationId=...
  */
-async function handler(req, res) {
+export default async function handler(req, res) {
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
   try {
+    // Authenticate user
+    const supabase = createServerSupabaseClient({ req, res });
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+
+    if (userError || !user) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
     const { organizationId, limit = 50, offset = 0, status, search } = req.query;
 
     if (!organizationId) {
@@ -18,16 +27,11 @@ async function handler(req, res) {
     }
 
     // Verify organization access
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL,
-      process.env.SUPABASE_SERVICE_ROLE_KEY
-    );
-
     const { data: orgMember, error: orgError } = await supabase
       .from('organization_members')
       .select('organization_id')
       .eq('organization_id', organizationId)
-      .eq('user_id', req.user?.id)
+      .eq('user_id', user.id)
       .single();
 
     if (orgError || !orgMember) {
@@ -76,9 +80,7 @@ async function handler(req, res) {
     console.error('Videos API error:', error);
     return res.status(500).json({
       error: 'Failed to fetch videos',
-      details: error.message
+      details: error instanceof Error ? error.message : String(error)
     });
   }
 }
-
-export default withSecurity(handler, 'search');
