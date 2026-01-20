@@ -16,12 +16,13 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Query must be at least 2 characters' });
     }
 
-    const supabase = createClient();
     const searchQuery = query.trim().toLowerCase();
     const suggestions = [];
 
     // 1. Search database (previously requested songs)
+    let supabase;
     try {
+      supabase = createClient();
       let dbQuery = supabase
         .from('crowd_requests')
         .select('song_title, song_artist, created_at')
@@ -183,9 +184,10 @@ export default async function handler(req, res) {
 
         if (itunesResponse.ok) {
           const itunesData = await itunesResponse.json();
+
           if (itunesData.results && itunesData.results.length > 0) {
             itunesData.results.forEach((result) => {
-              const isDuplicate = suggestions.some(s => 
+              const isDuplicate = suggestions.some(s =>
                 s.title.toLowerCase() === result.trackName?.toLowerCase() &&
                 s.artist.toLowerCase() === result.artistName?.toLowerCase()
               );
