@@ -1,4 +1,4 @@
-import { createClient } from '@/utils/supabase/server';
+import { createClient } from '@supabase/supabase-js';
 
 /**
  * Enhanced song search API for karaoke and song requests
@@ -22,7 +22,10 @@ export default async function handler(req, res) {
     // 1. Search database (previously requested songs)
     let supabase;
     try {
-      supabase = createClient();
+      supabase = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+      );
       let dbQuery = supabase
         .from('crowd_requests')
         .select('song_title, song_artist, created_at')

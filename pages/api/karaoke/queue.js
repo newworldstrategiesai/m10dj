@@ -1,4 +1,4 @@
-import { createClient } from '@/utils/supabase/server';
+import { createClient } from '@supabase/supabase-js';
 import {
   getCurrentSinger,
   getNextSinger,
@@ -18,7 +18,10 @@ export default async function handler(req, res) {
 
   try {
     console.log('Queue API called with:', req.query);
-    const supabase = createClient();
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+    );
 
     // Wrap the entire handler logic in try-catch
     try {
