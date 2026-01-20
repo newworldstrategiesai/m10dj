@@ -3,34 +3,37 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
-import { Mic, Users, Music, Loader2, Play, ArrowUp, Zap } from 'lucide-react';
+import { Mic, Users, Music, Loader2, Play, ArrowUp, Zap, Wifi, WifiOff } from 'lucide-react';
 import { formatGroupDisplayName, getGroupLabel } from '@/types/karaoke';
+import { useRealtimeKaraoke } from '@/hooks/useRealtimeKaraoke';
 
 export default function KaraokeDisplayPage() {
   const router = useRouter();
   const { eventCode } = router.query;
 
-  const [currentSinger, setCurrentSinger] = useState<any>(null);
-  const [nextSinger, setNextSinger] = useState<any>(null);
-  const [queue, setQueue] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
   const [organizationId, setOrganizationId] = useState<string | null>(null);
   const [organizationName, setOrganizationName] = useState<string>('');
 
-  useEffect(() => {
-    if (eventCode && organizationId) {
-      fetchQueue();
-      // Auto-refresh every 3 seconds for TV display
-      const interval = setInterval(fetchQueue, 3000);
-      return () => clearInterval(interval);
-    }
-  }, [eventCode, organizationId]);
+  // Use real-time queue updates
+  const {
+    queueData,
+    isConnected,
+    lastUpdate,
+    error: realtimeError,
+    refreshQueue
+  } = useRealtimeKaraoke(organizationId, (Array.isArray(eventCode) ? eventCode[0] : eventCode) || null, !!organizationId && !!eventCode);
 
+  // Extract data from real-time updates
+  const currentSinger = queueData?.current || null;
+  const nextSinger = queueData?.next || null;
+  const queue = queueData?.queue || [];
+  const loading = !queueData && !realtimeError;
+
+  // Manual refresh fallback (for when real-time fails)
   const fetchQueue = async () => {
     if (!organizationId) return;
 
     try {
-      // If eventCode is "all", fetch all organization karaoke, otherwise fetch specific event
       const queryParams = eventCode === 'all'
         ? `organization_id=${organizationId}`
         : `event_code=${eventCode}&organization_id=${organizationId}`;
@@ -39,10 +42,8 @@ export default function KaraokeDisplayPage() {
 
       if (response.ok) {
         const data = await response.json();
-        setCurrentSinger(data.current);
-        setNextSinger(data.next);
-        setQueue(data.queue || []);
-        setLoading(false);
+        // This will trigger through the real-time hook if connected
+        refreshQueue();
       }
     } catch (error) {
       console.error('Error fetching queue:', error);
@@ -120,18 +121,40 @@ export default function KaraokeDisplayPage() {
         <div className="h-full w-full flex flex-col">
           {/* Header - Compact for TV */}
           <div className="flex-shrink-0 text-center py-4 px-6 bg-black/30 backdrop-blur-sm border-b-4 border-purple-500">
-            <div className="flex items-center justify-center gap-4">
-              <div className="w-16 h-16 bg-purple-600 rounded-full flex items-center justify-center shadow-lg">
-                <Mic className="w-10 h-10" />
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div className="w-16 h-16 bg-purple-600 rounded-full flex items-center justify-center shadow-lg">
+                  <Mic className="w-10 h-10" />
+                </div>
+                <div>
+                  <h1 className="text-5xl sm:text-6xl font-black tracking-tight mb-1">
+                    {eventCode === 'all' ? 'ALL EVENTS KARAOKE' : 'KARAOKE QUEUE'}
+                  </h1>
+                  {organizationName && (
+                    <p className="text-2xl sm:text-3xl text-purple-300 font-bold">
+                      {eventCode === 'all' ? organizationName : `${organizationName} - ${eventCode}`}
+                    </p>
+                  )}
+                </div>
               </div>
-              <div>
-                <h1 className="text-5xl sm:text-6xl font-black tracking-tight mb-1">
-                  {eventCode === 'all' ? 'ALL EVENTS KARAOKE' : 'KARAOKE QUEUE'}
-                </h1>
-                {organizationName && (
-                  <p className="text-2xl sm:text-3xl text-purple-300 font-bold">
-                    {eventCode === 'all' ? organizationName : `${organizationName} - ${eventCode}`}
-                  </p>
+
+              {/* Connection Status */}
+              <div className="flex items-center gap-2 text-sm">
+                {isConnected ? (
+                  <>
+                    <Wifi className="w-5 h-5 text-green-400" />
+                    <span className="text-green-400 font-semibold">LIVE</span>
+                  </>
+                ) : (
+                  <>
+                    <WifiOff className="w-5 h-5 text-red-400" />
+                    <span className="text-red-400 font-semibold">OFFLINE</span>
+                  </>
+                )}
+                {lastUpdate && (
+                  <span className="text-gray-400 text-xs ml-2">
+                    {lastUpdate.toLocaleTimeString()}
+                  </span>
                 )}
               </div>
             </div>

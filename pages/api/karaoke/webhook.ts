@@ -47,15 +47,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // Basic rate limiting - only process each event once
     // In production, you might want to use Redis for this
     const processedKey = `webhook_processed_${eventId}`;
-    if (global[processedKey]) {
+    const globalAny = global as any;
+    if (globalAny[processedKey]) {
       console.log('Webhook already processed:', eventId);
       return res.status(200).json({ received: true, duplicate: true });
     }
-    global[processedKey] = true;
+    globalAny[processedKey] = true;
 
     // Set timeout to clean up processed events (prevent memory leak)
     setTimeout(() => {
-      delete global[processedKey];
+      delete globalAny[processedKey];
     }, 5 * 60 * 1000); // 5 minutes
 
     // Log webhook reception

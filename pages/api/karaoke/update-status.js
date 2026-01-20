@@ -2,6 +2,7 @@ import { createClient } from '@supabase/supabase-js';
 import { sendNextUpNotification, sendCurrentlySingingNotification } from '@/utils/karaoke-notifications';
 import { withSecurity } from '@/utils/rate-limiting';
 import { karaokeQueueManager } from '@/utils/karaoke-atomic-operations';
+import { broadcastQueueUpdate } from './realtime/[...params]';
 
 /**
  * PATCH /api/karaoke/update-status
@@ -89,6 +90,29 @@ async function handler(req, res) {
         .from('karaoke_signups')
         .update({ admin_notes })
         .eq('id', signup_id);
+    }
+
+    // Broadcast real-time update to all connected clients
+    try {
+      broadcastQueueUpdate(updatedSignup.event_qr_code, updatedSignup.organization_id, {
+        updateType: 'status_change',
+        signupId: signup_id,
+        oldStatus: signupData.status,
+        newStatus: status,
+        signup: {
+          id: updatedSignup.id,
+          singer_name: updatedSignup.singer_name,
+          group_members: updatedSignup.group_members,
+          group_size: updatedSignup.group_size,
+          song_title: updatedSignup.song_title,
+          song_artist: updatedSignup.song_artist,
+          status: updatedSignup.status,
+          is_priority: updatedSignup.is_priority
+        }
+      });
+    } catch (broadcastError) {
+      console.error('Failed to broadcast update:', broadcastError);
+      // Don't fail the request if broadcast fails
     }
 
     // Send notifications based on status change
