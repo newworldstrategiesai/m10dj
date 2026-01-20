@@ -10,7 +10,7 @@ export const metadata: Metadata = {
     siteName: 'DJ Dash',
     images: [
       {
-        url: '/assets/DJ-Dash-Logo-Black-1.PNG', // Fallback to logo until OG image is created
+        url: '/assets/djdash-og-image.png',
         width: 1200,
         height: 630,
         alt: 'DJ Dash - DJ Booking Software & DJ CRM',
@@ -20,7 +20,7 @@ export const metadata: Metadata = {
   twitter: {
     card: 'summary_large_image',
     site: '@djdash',
-    images: ['/assets/DJ-Dash-Logo-Black-1.PNG'],
+    images: ['/assets/djdash-og-image.png'],
   },
 };
 

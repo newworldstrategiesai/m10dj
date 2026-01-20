@@ -124,7 +124,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
         },
       ] : [
         {
-          url: '/assets/DJ-Dash-Logo-Black-1.PNG',
+          url: '/assets/djdash-og-image.png',
           width: 1200,
           height: 630,
           alt: `${cityPage.city_name} DJs - DJ Dash`,
@@ -137,7 +137,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       card: 'summary_large_image',
       title: cityPage.meta_title || title,
       description: cityPage.meta_description || description,
-      images: cityPage.og_image_url ? [cityPage.og_image_url] : ['/assets/DJ-Dash-Logo-Black-1.PNG'],
+      images: cityPage.og_image_url ? [cityPage.og_image_url] : ['/assets/djdash-og-image.png'],
     },
   };
 }

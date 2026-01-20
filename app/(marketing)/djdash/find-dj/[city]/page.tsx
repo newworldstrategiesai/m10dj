@@ -111,7 +111,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       siteName: 'DJ Dash',
       images: [
         {
-          url: '/assets/DJ-Dash-Logo-Black-1.PNG',
+          url: '/assets/djdash-og-image.png',
           width: 1200,
           height: 630,
           alt: `DJs in ${name} ${stateAbbr} - DJ Dash`,
@@ -124,7 +124,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       card: 'summary_large_image',
       title: `DJs in ${name} ${stateAbbr} | Find a Professional DJ | DJ Dash`,
       description: `Find professional DJs in ${name}, ${state}. Browse ${cityData.djCount} verified DJs.`,
-      images: ['/assets/DJ-Dash-Logo-Black-1.PNG'],
+      images: ['/assets/djdash-og-image.png'],
     },
   };
 }

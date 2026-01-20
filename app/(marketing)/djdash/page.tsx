@@ -59,7 +59,7 @@ export async function generateMetadata(): Promise<Metadata> {
       siteName: 'DJ Dash',
       images: [
         {
-          url: '/assets/DJ-Dash-Logo-Black-1.PNG',
+          url: '/assets/djdash-og-image.png',
           width: 1200,
           height: 630,
           alt: 'DJ Dash - #1 DJ Directory & Booking Software',
@@ -72,7 +72,7 @@ export async function generateMetadata(): Promise<Metadata> {
       card: 'summary_large_image',
       title: 'DJ Dash - #1 DJ Directory & Booking Software | Find Professional DJs',
       description: `Find the perfect professional DJ for your wedding, party, or event. Browse ${formatStatNumber(platformStats.totalDJs)} verified DJs nationwide. Get free quotes and book instantly.`,
-      images: ['/assets/DJ-Dash-Logo-Black-1.PNG'],
+      images: ['/assets/djdash-og-image.png'],
     },
     alternates: {
       canonical: 'https://www.djdash.net',
