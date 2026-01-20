@@ -105,10 +105,12 @@ export default function App({ Component, pageProps }) {
   const isSignInPage = router.pathname.startsWith('/signin');
   const isSignContractPage = router.pathname.startsWith('/sign-contract');
   // Check for requests pages - includes both /requests and /organizations/[slug]/requests
-  const isRequestsPage = router.pathname === '/requests' || 
-    router.pathname.startsWith('/crowd-request') || 
+  const isRequestsPage = router.pathname === '/requests' ||
+    router.pathname.startsWith('/crowd-request') ||
     (router.pathname.includes('/organizations/') && router.pathname.includes('/requests'));
   const isBidPage = router.pathname === '/bid';
+  // Check if we're on karaoke signup pages
+  const isKaraokePage = router.pathname.includes('/organizations/') && router.pathname.includes('/sing');
   // Check if we're on DJ Dash pages (djdash.net domain or /djdash routes or /dj/ profile routes)
   const isDJDashPage = router.pathname.startsWith('/djdash') || router.pathname.startsWith('/dj/');
 
@@ -120,6 +122,15 @@ export default function App({ Component, pageProps }) {
       document.documentElement.removeAttribute('data-admin-page');
     }
   }, [isAdminRoute]);
+
+  // Set data attribute to remove body padding on karaoke pages
+  useEffect(() => {
+    if (isKaraokePage) {
+      document.documentElement.setAttribute('data-karaoke-page', 'true');
+    } else {
+      document.documentElement.removeAttribute('data-karaoke-page');
+    }
+  }, [isKaraokePage]);
 
   // Track page views for M10 DJ Company pages (customer journey tracking)
   // Skip admin pages and DJ Dash pages - only track public-facing M10 pages

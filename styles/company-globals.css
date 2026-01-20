@@ -66,6 +66,11 @@ html[data-admin-page="true"] body {
   padding-top: 0 !important;
 }
 
+/* Remove padding-top on karaoke pages */
+html[data-karaoke-page="true"] body {
+  padding-top: 0 !important;
+}
+
 /* Requests page GPU artifact / blur fix (scoped) */
 html[data-requests-page="true"] [class*="backdrop-blur"],
 html[data-requests-page="true"] .backdrop-blur,
