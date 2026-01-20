@@ -6,12 +6,13 @@ import {
   calculateEstimatedWait,
   formatEstimatedWait
 } from '@/utils/karaoke-queue';
+import { withSecurity } from '@/utils/rate-limiting';
 
 /**
  * GET /api/karaoke/queue
  * Get karaoke queue for an event
  */
-export default async function handler(req, res) {
+async function handler(req, res) {
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
@@ -167,3 +168,5 @@ export default async function handler(req, res) {
     });
   }
 }
+
+export default withSecurity(handler, 'queue', { requireOrgId: true });

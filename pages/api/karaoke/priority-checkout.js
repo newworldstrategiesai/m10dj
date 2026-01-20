@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import Stripe from 'stripe';
+import { withSecurity } from '@/utils/rate-limiting';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
   apiVersion: '2024-11-20.acacia',
@@ -9,7 +10,7 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
  * POST /api/karaoke/priority-checkout
  * Create Stripe checkout session for priority placement
  */
-export default async function handler(req, res) {
+async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
@@ -123,3 +124,5 @@ export default async function handler(req, res) {
     });
   }
 }
+
+export default withSecurity(handler, 'payment', { requireOrgId: true });

@@ -2,12 +2,13 @@ import { createClient } from '@supabase/supabase-js';
 import { generateRotationIdsForSignup } from '@/utils/karaoke-rotation';
 import { canSignupProceed } from '@/utils/karaoke-rotation';
 import { calculateQueuePosition } from '@/utils/karaoke-queue';
+import { withSecurity } from '@/utils/rate-limiting';
 
 /**
  * POST /api/karaoke/signup
  * Create a new karaoke signup
  */
-export default async function handler(req, res) {
+async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
@@ -287,3 +288,5 @@ export default async function handler(req, res) {
     });
   }
 }
+
+export default withSecurity(handler, 'signup', { requireOrgId: true });

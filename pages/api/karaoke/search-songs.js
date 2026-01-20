@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { withSecurity } from '@/utils/rate-limiting';
 
 /**
  * Enhanced song search API for karaoke and song requests
@@ -239,3 +240,5 @@ export default async function handler(req, res) {
     return res.status(200).json({ suggestions: [] }); // Graceful degradation
   }
 }
+
+export default withSecurity(handler, 'search');

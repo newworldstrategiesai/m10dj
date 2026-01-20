@@ -1,11 +1,13 @@
 import { createClient } from '@supabase/supabase-js';
 import { sendNextUpNotification, sendCurrentlySingingNotification } from '@/utils/karaoke-notifications';
+import { withSecurity } from '@/utils/rate-limiting';
+import { karaokeQueueManager } from '@/utils/karaoke-atomic-operations';
 
 /**
  * PATCH /api/karaoke/update-status
  * Update status of a karaoke signup (DJ only)
  */
-export default async function handler(req, res) {
+async function handler(req, res) {
   if (req.method !== 'PATCH') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
@@ -62,48 +64,37 @@ export default async function handler(req, res) {
       return res.status(403).json({ error: 'Forbidden: Admin access required' });
     }
 
-    // Prepare update data
-    const updateData = {
-      status,
-      updated_at: new Date().toISOString()
-    };
+    // Use atomic queue manager for status updates
+    const result = await karaokeQueueManager.updateSignupStatus({
+      type: 'status_update',
+      signupId: signup_id,
+      newStatus: status,
+      performedBy: user.email || user.id,
+      organizationId: signupData.organization_id,
+      eventQrCode: signupData.event_qr_code
+    });
 
-    // Add timestamps based on status
-    if (status === 'singing' && !signupData.started_at) {
-      updateData.started_at = new Date().toISOString();
-    }
-
-    if (status === 'completed') {
-      updateData.completed_at = new Date().toISOString();
-      updateData.last_sung_at = new Date().toISOString();
-      // Increment times_sung
-      updateData.times_sung = (signupData.times_sung || 0) + 1;
-    }
-
-    if (admin_notes !== undefined) {
-      updateData.admin_notes = admin_notes;
-    }
-
-    // Update the signup
-    const { data: updatedSignup, error: updateError } = await supabase
-      .from('karaoke_signups')
-      .update(updateData)
-      .eq('id', signup_id)
-      .select()
-      .single();
-
-    if (updateError) {
-      console.error('Error updating karaoke signup:', updateError);
-      return res.status(500).json({
-        error: 'Failed to update signup',
-        details: updateError.message
+    if (!result.success) {
+      return res.status(result.conflict ? 409 : 400).json({
+        error: result.error || 'Failed to update status',
+        conflict: result.conflict || false
       });
     }
 
+    const updatedSignup = result.signup!;
+
+    // Update admin_notes separately if provided
+    if (admin_notes !== undefined) {
+      await supabase
+        .from('karaoke_signups')
+        .update({ admin_notes })
+        .eq('id', signup_id);
+    }
+
     // Send notifications based on status change
-    if (signupData) {
+    if (updatedSignup) {
       // Send "next up" notification when status changes to 'next'
-      if (status === 'next' && signupData.status !== 'next' && signupData.singer_phone && !signupData.next_up_notification_sent) {
+      if (status === 'next' && signupData.status !== 'next' && updatedSignup.singer_phone && !updatedSignup.next_up_notification_sent) {
         // Get organization name for message
         const { data: org } = await supabase
           .from('organizations')
@@ -113,15 +104,15 @@ export default async function handler(req, res) {
 
         // Send notification (non-blocking)
         sendNextUpNotification({
-          id: signupData.id,
-          singer_name: signupData.singer_name,
-          group_members: signupData.group_members,
-          group_size: signupData.group_size,
-          song_title: signupData.song_title,
-          song_artist: signupData.song_artist,
-          singer_phone: signupData.singer_phone,
-          event_qr_code: signupData.event_qr_code,
-          organization_id: signupData.organization_id
+          id: updatedSignup.id,
+          singer_name: updatedSignup.singer_name,
+          group_members: updatedSignup.group_members,
+          group_size: updatedSignup.group_size,
+          song_title: updatedSignup.song_title,
+          song_artist: updatedSignup.song_artist,
+          singer_phone: updatedSignup.singer_phone,
+          event_qr_code: updatedSignup.event_qr_code,
+          organization_id: updatedSignup.organization_id
         }, org?.name).then(result => {
           // Mark notification as sent in database
           if (result.success) {
@@ -158,12 +149,12 @@ export default async function handler(req, res) {
       }
 
       // Send "currently singing" notification when status changes to 'singing'
-      if (status === 'singing' && signupData.status !== 'singing' && signupData.singer_phone && !signupData.currently_singing_notification_sent) {
+      if (status === 'singing' && signupData.status !== 'singing' && updatedSignup.singer_phone && !updatedSignup.currently_singing_notification_sent) {
         sendCurrentlySingingNotification({
-          singer_name: signupData.singer_name,
-          song_title: signupData.song_title,
-          song_artist: signupData.song_artist,
-          singer_phone: signupData.singer_phone
+          singer_name: updatedSignup.singer_name,
+          song_title: updatedSignup.song_title,
+          song_artist: updatedSignup.song_artist,
+          singer_phone: updatedSignup.singer_phone
         }).then(result => {
           // Mark notification as sent
           if (result.success) {
@@ -260,3 +251,5 @@ export default async function handler(req, res) {
     });
   }
 }
+
+export default withSecurity(handler, 'adminUpdate', { requireOrgId: true });

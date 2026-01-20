@@ -1,54 +1,62 @@
 -- Create karaoke_signups table for managing karaoke singer sign-ups
 CREATE TABLE IF NOT EXISTS karaoke_signups (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  organization_id UUID REFERENCES organizations(id) ON DELETE CASCADE,
-  event_id UUID REFERENCES contacts(id) ON DELETE SET NULL,
-  event_qr_code TEXT, -- Links to crowd_requests event system
-  
+  organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+  event_id UUID REFERENCES contacts(id) ON DELETE SET NULL, -- DEPRECATED: Use event_qr_code instead
+  event_qr_code TEXT NOT NULL, -- Links to crowd_requests event system
+
   -- Singer/Group info
-  group_size INTEGER DEFAULT 1 CHECK (group_size >= 1 AND group_size <= 10), -- 1 = solo, 2 = duo, etc.
+  group_size INTEGER NOT NULL DEFAULT 1 CHECK (group_size >= 1 AND group_size <= 10), -- 1 = solo, 2 = duo, etc.
   singer_name TEXT NOT NULL, -- Primary singer/group name
   group_members JSONB, -- Array of member names: ["John Doe", "Jane Smith"] for groups
   singer_email TEXT,
   singer_phone TEXT, -- Required for SMS notifications (enforced in application layer)
-  
+
   -- Song selection
   song_title TEXT NOT NULL,
   song_artist TEXT,
   song_key TEXT, -- Optional: key signature for karaoke
-  
+
   -- Queue management
-  queue_position INTEGER DEFAULT 0, -- Calculated dynamically, not stored
-  priority_order INTEGER DEFAULT 1000, -- Lower = higher priority
-  status TEXT DEFAULT 'queued' CHECK (status IN ('queued', 'next', 'singing', 'completed', 'skipped', 'cancelled')),
-  
+  queue_position INTEGER DEFAULT 0, -- Calculated dynamically, cached for performance
+  priority_order INTEGER NOT NULL DEFAULT 1000 CHECK (priority_order >= 0), -- Lower = higher priority
+  status TEXT NOT NULL DEFAULT 'queued' CHECK (status IN ('queued', 'next', 'singing', 'completed', 'skipped', 'cancelled')),
+
   -- Payment/priority
-  is_priority BOOLEAN DEFAULT FALSE,
-  priority_fee INTEGER DEFAULT 0, -- Amount paid for priority (in cents)
-  payment_status TEXT DEFAULT 'pending' CHECK (payment_status IN ('pending', 'paid', 'failed', 'cancelled', 'free')),
-  payment_intent_id TEXT,
-  stripe_session_id TEXT,
-  
+  is_priority BOOLEAN NOT NULL DEFAULT FALSE,
+  priority_fee INTEGER DEFAULT 0 CHECK (priority_fee >= 0), -- Amount paid for priority (in cents)
+  payment_status TEXT NOT NULL DEFAULT 'free' CHECK (payment_status IN ('pending', 'paid', 'failed', 'cancelled', 'free')),
+  payment_intent_id TEXT UNIQUE, -- Stripe payment intent ID
+  stripe_session_id TEXT UNIQUE, -- Stripe checkout session ID
+
   -- Rotation tracking
-  singer_rotation_id TEXT, -- Groups singers by name/phone for rotation tracking
+  singer_rotation_id TEXT NOT NULL, -- Groups singers by name/phone for rotation tracking
   group_rotation_ids TEXT[], -- Array of rotation IDs for all group members (for rotation fairness)
-  times_sung INTEGER DEFAULT 0, -- How many times this singer/group has sung
+  times_sung INTEGER NOT NULL DEFAULT 0 CHECK (times_sung >= 0), -- How many times this singer/group has sung
   last_sung_at TIMESTAMP WITH TIME ZONE,
-  
+
   -- Timestamps
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
   started_at TIMESTAMP WITH TIME ZONE, -- When they started singing
   completed_at TIMESTAMP WITH TIME ZONE, -- When they finished
-  
+
   -- Admin notes
   admin_notes TEXT,
-  
+
   -- Links to crowd_requests (if created through that system)
-  crowd_request_id UUID REFERENCES crowd_requests(id) ON DELETE SET NULL
+  crowd_request_id UUID REFERENCES crowd_requests(id) ON DELETE SET NULL,
+
+  -- Prevent duplicate signups: same singer, song, event within 24 hours
+  CONSTRAINT unique_active_signup EXCLUDE (
+    singer_rotation_id WITH =,
+    event_qr_code WITH =,
+    song_title WITH =,
+    tstzrange(created_at, created_at + INTERVAL '24 hours', '[]')
+  ) WHERE (status IN ('queued', 'next', 'singing'))
 );
 
--- Indexes
+-- Indexes for performance and data integrity
 CREATE INDEX IF NOT EXISTS idx_karaoke_signups_organization_id ON karaoke_signups(organization_id);
 CREATE INDEX IF NOT EXISTS idx_karaoke_signups_event_qr_code ON karaoke_signups(event_qr_code);
 CREATE INDEX IF NOT EXISTS idx_karaoke_signups_event_id ON karaoke_signups(event_id);
@@ -58,35 +66,62 @@ CREATE INDEX IF NOT EXISTS idx_karaoke_signups_singer_rotation_id ON karaoke_sig
 CREATE INDEX IF NOT EXISTS idx_karaoke_signups_group_rotation_ids ON karaoke_signups USING GIN(group_rotation_ids); -- GIN index for array searches
 CREATE INDEX IF NOT EXISTS idx_karaoke_signups_group_size ON karaoke_signups(group_size);
 CREATE INDEX IF NOT EXISTS idx_karaoke_signups_created_at ON karaoke_signups(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_karaoke_signups_updated_at ON karaoke_signups(updated_at DESC);
+CREATE INDEX IF NOT EXISTS idx_karaoke_signups_payment_status ON karaoke_signups(payment_status);
+CREATE INDEX IF NOT EXISTS idx_karaoke_signups_is_priority ON karaoke_signups(is_priority) WHERE is_priority = true;
+CREATE INDEX IF NOT EXISTS idx_karaoke_signups_active_queue ON karaoke_signups(organization_id, event_qr_code, status, priority_order, created_at) WHERE status IN ('queued', 'next', 'singing');
+CREATE INDEX IF NOT EXISTS idx_karaoke_signups_rotation_fairness ON karaoke_signups(organization_id, singer_rotation_id, times_sung, last_sung_at);
+CREATE INDEX IF NOT EXISTS idx_karaoke_signups_payment_intent ON karaoke_signups(payment_intent_id) WHERE payment_intent_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_karaoke_signups_stripe_session ON karaoke_signups(stripe_session_id) WHERE stripe_session_id IS NOT NULL;
 
 -- Create karaoke_settings table for organization-level karaoke configuration
 CREATE TABLE IF NOT EXISTS karaoke_settings (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  organization_id UUID REFERENCES organizations(id) ON DELETE CASCADE UNIQUE,
-  
+  organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE UNIQUE,
+
   -- Feature flags
-  karaoke_enabled BOOLEAN DEFAULT FALSE,
-  priority_pricing_enabled BOOLEAN DEFAULT TRUE,
-  rotation_enabled BOOLEAN DEFAULT TRUE,
-  
+  karaoke_enabled BOOLEAN NOT NULL DEFAULT FALSE,
+  priority_pricing_enabled BOOLEAN NOT NULL DEFAULT TRUE,
+  rotation_enabled BOOLEAN NOT NULL DEFAULT TRUE,
+
   -- Pricing
-  priority_fee_cents INTEGER DEFAULT 1000, -- $10.00 default
-  free_signups_allowed BOOLEAN DEFAULT TRUE,
-  
+  priority_fee_cents INTEGER NOT NULL DEFAULT 1000 CHECK (priority_fee_cents >= 0), -- $10.00 default
+  free_signups_allowed BOOLEAN NOT NULL DEFAULT TRUE,
+
+  -- Capacity and limits
+  max_concurrent_singers INTEGER DEFAULT NULL CHECK (max_concurrent_singers IS NULL OR max_concurrent_singers > 0),
+  phone_field_mode TEXT NOT NULL DEFAULT 'required' CHECK (phone_field_mode IN ('required', 'optional', 'hidden')),
+  sms_notifications_enabled BOOLEAN NOT NULL DEFAULT TRUE,
+
   -- Rotation settings
-  max_singers_before_repeat INTEGER DEFAULT 3, -- Must wait for 3 others before singing again
-  rotation_fairness_mode TEXT DEFAULT 'strict' CHECK (rotation_fairness_mode IN ('strict', 'flexible', 'disabled')),
-  
+  max_singers_before_repeat INTEGER NOT NULL DEFAULT 3 CHECK (max_singers_before_repeat >= 0), -- Must wait for N others before singing again
+  rotation_fairness_mode TEXT NOT NULL DEFAULT 'strict' CHECK (rotation_fairness_mode IN ('strict', 'flexible', 'disabled')),
+
   -- Display settings
-  display_show_queue_count INTEGER DEFAULT 5, -- Show next 5 in queue
-  display_theme TEXT DEFAULT 'default' CHECK (display_theme IN ('default', 'dark', 'colorful', 'minimal')),
-  
+  display_show_queue_count INTEGER NOT NULL DEFAULT 5 CHECK (display_show_queue_count >= 0), -- Show next N in queue
+  display_theme TEXT NOT NULL DEFAULT 'default' CHECK (display_theme IN ('default', 'dark', 'colorful', 'minimal')),
+
   -- Queue settings
-  auto_advance BOOLEAN DEFAULT FALSE, -- Auto-advance to next when current completes
-  allow_skips BOOLEAN DEFAULT TRUE,
-  
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+  auto_advance BOOLEAN NOT NULL DEFAULT FALSE, -- Auto-advance to next when current completes
+  allow_skips BOOLEAN NOT NULL DEFAULT TRUE,
+  auto_refresh_interval_seconds INTEGER NOT NULL DEFAULT 30 CHECK (auto_refresh_interval_seconds >= 5),
+
+  -- Page customization (added later via separate migration)
+  karaoke_page_title TEXT,
+  karaoke_page_description TEXT,
+  karaoke_main_heading TEXT,
+  karaoke_welcome_message TEXT,
+  karaoke_signup_success_message TEXT,
+  karaoke_queue_position_message TEXT,
+  karaoke_estimated_wait_message TEXT,
+  karaoke_show_welcome_message BOOLEAN DEFAULT TRUE,
+  karaoke_show_current_singer BOOLEAN DEFAULT TRUE,
+  karaoke_show_queue_preview BOOLEAN DEFAULT TRUE,
+  karaoke_show_estimated_wait BOOLEAN DEFAULT TRUE,
+  karaoke_theme TEXT DEFAULT 'default' CHECK (karaoke_theme IN ('default', 'dark', 'colorful', 'minimal')),
+
+  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
 );
 
 -- Index for karaoke_settings

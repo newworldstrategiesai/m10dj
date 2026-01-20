@@ -22,6 +22,15 @@ export default function KaraokeStatusPage() {
 
   // Karaoke theming detection
   const isKaraokePage = true; // This is always a karaoke page
+
+  // Remove body padding for karaoke pages
+  useEffect(() => {
+    document.body.style.paddingTop = '0px';
+    return () => {
+      // Restore default padding when component unmounts
+      document.body.style.paddingTop = '80px';
+    };
+  }, []);
   const themeClasses = isKaraokePage ? {
     bgGradient: 'bg-gradient-to-br from-cyan-50 to-blue-50 dark:from-gray-900 dark:to-gray-800',
     iconBg: 'bg-cyan-100 dark:bg-cyan-900',
@@ -177,7 +186,7 @@ export default function KaraokeStatusPage() {
       <Head>
         <title>Your Queue Status | Karaoke</title>
       </Head>
-      <div className={`min-h-screen ${themeClasses.bgGradient} py-8 px-4`}>
+      <div className={`min-h-screen ${themeClasses.bgGradient} py-8 px-4`} style={{ marginTop: 0, paddingTop: 0 }}>
         <div className="max-w-2xl mx-auto">
           <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6 md:p-8">
             {/* Header */}

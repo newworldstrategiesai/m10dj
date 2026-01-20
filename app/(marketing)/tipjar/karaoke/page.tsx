@@ -45,10 +45,10 @@ export const metadata: Metadata = {
     siteName: 'TipJar Live',
     images: [
       {
-        url: '/assets/tipjar-og-image.png',
+        url: '/assets/tipjar-karaoke-og.png',
         width: 1200,
         height: 630,
-        alt: 'Karaoke Mode Coming Soon to TipJar Live',
+        alt: 'Professional Karaoke Queue Management - TipJar Live',
       },
     ],
     locale: 'en_US',
@@ -58,7 +58,7 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: 'Karaoke Mode Coming Soon - TipJar Live',
     description: 'Professional karaoke queue management for DJs. Manage karaoke signups, SMS notifications, group requests, and display screens.',
-    images: ['/assets/tipjar-og-image.png'],
+    images: ['/assets/tipjar-karaoke-og.png'],
   },
 };
 
