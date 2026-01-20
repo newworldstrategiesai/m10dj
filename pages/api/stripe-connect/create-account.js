@@ -135,16 +135,16 @@ export default async function handler(req, res) {
     try {
       // Import branding config (use dynamic import for ES modules)
       const brandingModule = await import('@/utils/stripe/branding');
-      // Use product-specific branding based on organization's product context
-      // Fallback to null if product_context is not set (for backwards compatibility)
-      const productContext = organization.product_context || null;
+      // Use product-specific branding based on detected product context
       const brandingResult = brandingModule.getConnectAccountBranding(
         {}, // No custom overrides for now
-        productContext // Pass product context for product-specific branding
+        productContext // Pass detected product context for product-specific branding
       );
       
       // Only use branding if logo URL is absolute (Stripe requires absolute URLs)
       if (brandingResult.logo && (brandingResult.logo.startsWith('http://') || brandingResult.logo.startsWith('https://'))) {
+        // Validate logo URL by checking if it's accessible (optional check)
+        // We'll just use the logo URL if it's absolute - Stripe will validate it
         branding = brandingResult;
       } else {
         // If logo is relative, skip logo but keep colors (Stripe requires absolute URLs for logos)
@@ -170,55 +170,44 @@ export default async function handler(req, res) {
     // Determine correct domain based on product context
     // Check multiple sources to ensure we get the correct product context
     let productContext = organization.product_context || user.user_metadata?.product_context || null;
-    
-    // If product context is still not set, try to detect from request headers
+
+    // Default to 'tipjar' for new accounts if no product context is detected
+    // This ensures new users get TipJar branding by default
     if (!productContext) {
-      const origin = req.headers.origin || '';
-      const referer = req.headers.referer || '';
-      const host = req.headers.host || '';
-      
-      // Check all possible sources for product context
-      const combinedUrl = `${origin} ${referer} ${host}`.toLowerCase();
-      
-      if (combinedUrl.includes('tipjar.live')) {
-        productContext = 'tipjar';
-      } else if (combinedUrl.includes('djdash.net') || combinedUrl.includes('djdash.com')) {
-        productContext = 'djdash';
-      }
+      productContext = 'tipjar';
     }
-    
+
     // Determine baseUrl based on detected product context
-    let baseUrl = 'https://m10djcompany.com'; // Default fallback
-    
+    let baseUrl = 'https://tipjar.live'; // Default to TipJar for new accounts
+
     if (productContext === 'tipjar') {
       baseUrl = 'https://tipjar.live';
     } else if (productContext === 'djdash') {
       baseUrl = 'https://djdash.net';
-    } else {
-      // Fallback: check request origin/referer directly
-      const origin = req.headers.origin || req.headers.referer || '';
-      if (origin.includes('tipjar.live')) {
-        baseUrl = 'https://tipjar.live';
-        // Update organization product_context if it was missing
-        if (!organization.product_context) {
-          productContext = 'tipjar';
-        }
-      } else if (origin.includes('djdash.net') || origin.includes('djdash.com')) {
-        baseUrl = 'https://djdash.net';
-        // Update organization product_context if it was missing
-        if (!organization.product_context) {
-          productContext = 'djdash';
-        }
-      } else {
-        // Use environment variable if set
-        const envUrl = process.env.NEXT_PUBLIC_SITE_URL;
-        if (envUrl && (envUrl.includes('tipjar.live') || envUrl.includes('djdash.net') || envUrl.includes('djdash.com'))) {
-          baseUrl = envUrl.startsWith('http') ? envUrl : `https://${envUrl}`;
-        }
-      }
+    } else if (productContext === 'm10dj') {
+      baseUrl = 'https://m10djcompany.com';
+    }
+
+    // Additional check: override based on request origin if it clearly indicates a different product
+    const requestOrigin = req.headers.origin || '';
+    if (requestOrigin.includes('m10djcompany.com')) {
+      baseUrl = 'https://m10djcompany.com';
+      productContext = 'm10dj';
+    } else if (requestOrigin.includes('djdash.net') || requestOrigin.includes('djdash.com')) {
+      baseUrl = 'https://djdash.net';
+      productContext = 'djdash';
+    } else if (requestOrigin.includes('tipjar.live')) {
+      baseUrl = 'https://tipjar.live';
+      productContext = 'tipjar';
     }
     
-    console.log('Detected product context:', productContext, 'Using baseUrl:', baseUrl);
+    console.log('🔍 Product context detection:');
+    console.log('  - Detected product context:', productContext);
+    console.log('  - Organization product_context:', organization.product_context);
+    console.log('  - Using baseUrl:', baseUrl);
+    console.log('  - Request origin:', req.headers.origin);
+    console.log('  - Request referer:', req.headers.referer);
+    console.log('  - Request host:', req.headers.host);
     
     // Validate Stripe is configured for the detected product context
     const stripeInstance = getStripeInstance(productContext);
@@ -230,20 +219,19 @@ export default async function handler(req, res) {
       });
     }
     
-    // Update organization's product_context if it was missing but we detected it from request
-    if (productContext && !organization.product_context) {
-      console.log('Updating organization product_context from', organization.product_context, 'to', productContext);
-      const { error: updateContextError } = await supabaseAdmin
-        .from('organizations')
-        .update({ product_context: productContext })
-        .eq('id', organization.id);
-      
-      if (updateContextError) {
-        console.warn('Failed to update organization product_context:', updateContextError);
-      } else {
-        // Update local organization object
-        organization.product_context = productContext;
-      }
+    // Always update organization's product_context to ensure it's set correctly
+    console.log('📝 Updating organization product_context to:', productContext);
+    const { error: updateContextError } = await supabaseAdmin
+      .from('organizations')
+      .update({ product_context: productContext })
+      .eq('id', organization.id);
+
+    if (updateContextError) {
+      console.error('❌ Failed to update organization product_context:', updateContextError);
+    } else {
+      console.log('✅ Organization product_context updated successfully');
+      // Update local organization object
+      organization.product_context = productContext;
     }
     
     // Build business profile URL if organization has a slug
@@ -252,12 +240,13 @@ export default async function handler(req, res) {
       : undefined;
     
     const account = await createConnectAccount(
-      user.email || '', 
+      user.email || '',
       organization.name,
       organization.slug, // Pass slug for business profile URL
       branding,
       baseUrl, // Pass the correct baseUrl (detected from product context)
-      productContext || organization.product_context || null // Pass detected or existing product context for metadata
+      productContext || organization.product_context || null, // Pass detected or existing product context for metadata
+      businessProfileUrl // Pass the constructed business profile URL
     );
     console.log('Stripe Connect account created successfully:', account.id);
 

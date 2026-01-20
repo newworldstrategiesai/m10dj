@@ -68,7 +68,13 @@ export default function UpgradePrompt({
           </div>
         </div>
         <Link href="/onboarding/select-plan" className="flex-shrink-0">
-          <Button className="bg-white text-purple-600 font-semibold hover:bg-gray-100 transition-colors">
+          <Button 
+            className="bg-white text-purple-600 font-semibold hover:bg-gray-100 transition-colors"
+            onClick={(e) => {
+              // Ensure navigation works - let Link handle it
+              e.stopPropagation();
+            }}
+          >
             Upgrade Now
             <ArrowRight className="h-4 w-4 ml-2" />
           </Button>

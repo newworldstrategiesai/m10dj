@@ -61,20 +61,43 @@ export default async function handler(req, res) {
 
     // Determine correct base URL based on product context
     // This ensures TipJar users always return to tipjar.live, not m10djcompany.com
-    let baseUrl = process.env.NEXT_PUBLIC_SITE_URL || req.headers.origin || 'http://localhost:3000';
-    
-    // Override based on product context to ensure correct domain
-    if (organization.product_context === 'tipjar') {
+    let baseUrl = 'https://tipjar.live'; // Default to TipJar for new accounts
+
+    // Get product context from organization, with fallback detection
+    let productContext = organization.product_context || 'tipjar'; // Default to tipjar
+
+    // Override baseUrl based on product context
+    if (productContext === 'tipjar') {
       baseUrl = 'https://tipjar.live';
-    } else if (organization.product_context === 'djdash') {
+    } else if (productContext === 'djdash') {
       baseUrl = 'https://djdash.net';
-    } else if (!baseUrl.includes('tipjar.live') && !baseUrl.includes('djdash.net')) {
-      // Default to m10djcompany.com if not already set and not a product-specific domain
+    } else if (productContext === 'm10dj') {
       baseUrl = 'https://m10djcompany.com';
     }
 
-    // Get product context from organization
-    const productContext = organization.product_context || null;
+    // Additional check: if request is coming from a specific domain, use that as override
+    const origin = req.headers.origin || '';
+    const referer = req.headers.referer || '';
+    const host = req.headers.host || '';
+
+    // Check for explicit domain matches
+    if (origin.includes('tipjar.live') || referer.includes('tipjar.live') || host.includes('tipjar.live')) {
+      baseUrl = 'https://tipjar.live';
+      productContext = 'tipjar';
+    } else if (origin.includes('djdash.net') || referer.includes('djdash.net') || host.includes('djdash.net') ||
+               origin.includes('djdash.com') || referer.includes('djdash.com') || host.includes('djdash.com')) {
+      baseUrl = 'https://djdash.net';
+      productContext = 'djdash';
+    } else if (origin.includes('m10djcompany.com') || referer.includes('m10djcompany.com') || host.includes('m10djcompany.com')) {
+      baseUrl = 'https://m10djcompany.com';
+      productContext = 'm10dj';
+    } else {
+      // For localhost or unknown origins, default to tipjar.live for new accounts
+      // This prevents accidentally sending users to m10djcompany.com
+      console.log('⚠️ Unknown origin, defaulting to TipJar:', { origin, referer, host });
+      baseUrl = 'https://tipjar.live';
+      productContext = 'tipjar';
+    }
     
     // Create account onboarding link
     // According to Stripe docs:

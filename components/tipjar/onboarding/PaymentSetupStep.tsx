@@ -93,7 +93,19 @@ export default function PaymentSetupStep({
 
         if (!createResponse.ok) {
           const errorData = await createResponse.json();
-          throw new Error(errorData.error || 'Failed to create Stripe account');
+          // Show more detailed error message
+          const errorMessage = errorData.details || errorData.error || 'Failed to create Stripe account';
+          
+          // Handle specific error types
+          if (errorData.cannotCreateAccounts) {
+            throw new Error('Stripe Connect is not enabled for this account. Please contact Stripe support to enable Connect.');
+          } else if (errorData.isPlatformProfileError) {
+            throw new Error('Platform verification required. Please complete your Stripe platform profile first.');
+          } else if (errorMessage.includes('No such file upload')) {
+            throw new Error('Logo file error. Please contact support or try again later.');
+          }
+          
+          throw new Error(errorMessage);
         }
       }
 
@@ -102,10 +114,16 @@ export default function PaymentSetupStep({
 
       if (!linkResponse.ok) {
         const errorData = await linkResponse.json();
-        throw new Error(errorData.error || 'Failed to get onboarding link');
+        const errorMessage = errorData.details || errorData.error || 'Failed to get onboarding link';
+        throw new Error(errorMessage);
       }
 
       const linkData = await linkResponse.json();
+      
+      if (!linkData.onboardingUrl) {
+        throw new Error('No onboarding URL received. Please try again.');
+      }
+      
       setOnboardingUrl(linkData.onboardingUrl);
       setAccountStatus(linkData.accountStatus);
 
@@ -113,7 +131,9 @@ export default function PaymentSetupStep({
       window.location.href = linkData.onboardingUrl;
     } catch (err: any) {
       console.error('Error setting up payments:', err);
-      setError(err.message || 'Failed to set up payment processing');
+      // Show user-friendly error message
+      const errorMessage = err.message || 'Failed to set up payment processing. Please try again or contact support if the issue persists.';
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }

@@ -21,7 +21,11 @@ interface ConnectStatus {
   accountId?: string;
 }
 
-export default function StripeConnectSetup() {
+interface StripeConnectSetupProps {
+  onOrganizationUpdate?: () => void; // Callback to refresh organization data when setup completes
+}
+
+export default function StripeConnectSetup({ onOrganizationUpdate }: StripeConnectSetupProps = {}) {
   const supabase = createClientComponentClient();
   const [loading, setLoading] = useState(true);
   const [settingUp, setSettingUp] = useState(false);
@@ -29,6 +33,7 @@ export default function StripeConnectSetup() {
   const [connectStatus, setConnectStatus] = useState<ConnectStatus | null>(null);
   const [onboardingUrl, setOnboardingUrl] = useState<string | null>(null);
   const [isDismissed, setIsDismissed] = useState(false);
+  const [wasComplete, setWasComplete] = useState(false);
 
   useEffect(() => {
     loadStatus();
@@ -96,18 +101,32 @@ export default function StripeConnectSetup() {
             if (statusResponse.ok) {
               const statusData = await statusResponse.json();
               // Use fresh data from Stripe API
+              const isComplete = statusData.isComplete || false;
+              
               setConnectStatus({
                 hasAccount: true,
                 chargesEnabled: statusData.accountStatus?.chargesEnabled || false,
                 payoutsEnabled: statusData.accountStatus?.payoutsEnabled || false,
                 detailsSubmitted: statusData.accountStatus?.detailsSubmitted || false,
-                isComplete: statusData.isComplete || false,
+                isComplete: isComplete,
                 accountId: statusData.accountId || org.stripe_connect_account_id,
               });
 
               // If not complete, get onboarding URL
-              if (!statusData.isComplete) {
+              if (!isComplete) {
                 await fetchOnboardingUrl();
+              }
+              
+              // If setup just completed (wasn't complete before, but is now), trigger callback
+              if (isComplete && !wasComplete) {
+                setWasComplete(true);
+                // Reload organization data to get fresh Stripe status
+                const freshOrg = await getCurrentOrganization(supabase);
+                if (freshOrg) {
+                  setOrganization(freshOrg);
+                  // Trigger parent component to refresh organization data
+                  onOrganizationUpdate?.();
+                }
               }
               
               setLoading(false);
@@ -124,18 +143,26 @@ export default function StripeConnectSetup() {
       const chargesEnabled = orgData.stripe_connect_charges_enabled || false;
       const payoutsEnabled = orgData.stripe_connect_payouts_enabled || false;
       const detailsSubmitted = orgData.stripe_connect_details_submitted || false;
+      const isComplete = chargesEnabled && payoutsEnabled;
 
       setConnectStatus({
         hasAccount,
         chargesEnabled,
         payoutsEnabled,
         detailsSubmitted,
-        isComplete: chargesEnabled && payoutsEnabled,
+        isComplete: isComplete,
         accountId: org.stripe_connect_account_id || undefined,
       });
 
+      // If setup just completed (wasn't complete before, but is now), trigger callback
+      if (isComplete && !wasComplete) {
+        setWasComplete(true);
+        // Trigger parent component to refresh organization data
+        onOrganizationUpdate?.();
+      }
+
       // If account exists but not complete, get onboarding URL
-      if (hasAccount && !(chargesEnabled && payoutsEnabled)) {
+      if (hasAccount && !isComplete) {
         await fetchOnboardingUrl();
       }
     } catch (error) {
@@ -215,18 +242,24 @@ export default function StripeConnectSetup() {
       const linkResponse = await fetch('/api/stripe-connect/onboarding-link');
       if (!linkResponse.ok) {
         const errorData = await linkResponse.json();
-        throw new Error(errorData.error || 'Failed to get onboarding link');
+        const errorMessage = errorData.details || errorData.error || 'Failed to get onboarding link';
+        throw new Error(errorMessage);
       }
 
       const data = await linkResponse.json();
       
-      // Redirect to Stripe onboarding
-      if (data.onboardingUrl) {
-        window.location.href = data.onboardingUrl;
+      if (!data.onboardingUrl) {
+        throw new Error('No onboarding URL received. Please try again.');
       }
+      
+      // Redirect to Stripe onboarding
+      window.location.href = data.onboardingUrl;
     } catch (error: any) {
       console.error('Error setting up Stripe Connect:', error);
-      setError(error.message || 'Failed to start setup. Please try again.');
+      // Show user-friendly error message
+      const errorMessage = error.message || 'Failed to start setup. Please try again or contact support if the issue persists.';
+      setError(errorMessage);
+      setSettingUp(false);
     } finally {
       setSettingUp(false);
     }

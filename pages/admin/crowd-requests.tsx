@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/router';
+import Head from 'next/head';
 import { createClient } from '@/utils/supabase/client';
 import { 
   QrCode, 
@@ -377,6 +378,28 @@ export default function CrowdRequestsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Refresh organization data when page becomes visible (e.g., returning from Stripe onboarding)
+  useEffect(() => {
+    const handleVisibilityChange = async () => {
+      if (document.visibilityState === 'visible' && organization?.id) {
+        // Small delay to ensure Stripe has updated the database
+        setTimeout(async () => {
+          try {
+            const freshOrg = await getCurrentOrganization(supabase);
+            if (freshOrg) {
+              setOrganization(freshOrg);
+            }
+          } catch (error) {
+            console.error('Error refreshing organization on visibility change:', error);
+          }
+        }, 1000);
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [organization?.id, supabase]);
+
   // Handle openRequest query parameter to open request detail modal
   useEffect(() => {
     const { openRequest } = router.query;
@@ -398,12 +421,12 @@ export default function CrowdRequestsPage() {
       setEditedSongTitle('');
       setEditedSongArtist('');
     }
-  }, [showDetailModal, selectedRequest?.id]);
+  }, [showDetailModal, selectedRequest]);
 
   // Fetch available events for audio tracking
-  const fetchAvailableEvents = async () => {
+  const fetchAvailableEvents = useCallback(async () => {
     if (!organization?.id) return;
-    
+
     setLoadingEvents(true);
     try {
       const { data, error } = await supabase
@@ -412,9 +435,9 @@ export default function CrowdRequestsPage() {
         .eq('organization_id', organization.id)
         .order('event_date', { ascending: false })
         .limit(100); // Limit to most recent 100 events
-      
+
       if (error) throw error;
-      
+
       setAvailableEvents(data || []);
     } catch (error) {
       console.error('Error fetching events:', error);
@@ -426,14 +449,14 @@ export default function CrowdRequestsPage() {
     } finally {
       setLoadingEvents(false);
     }
-  };
+  }, [organization?.id, supabase, toast]);
 
   // Fetch events when modal opens
   useEffect(() => {
     if (showAudioTrackingModal && organization?.id) {
       fetchAvailableEvents();
     }
-  }, [showAudioTrackingModal, organization?.id]);
+  }, [showAudioTrackingModal, organization?.id, fetchAvailableEvents]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -1290,6 +1313,43 @@ export default function CrowdRequestsPage() {
         (req as any).admin_notes?.includes('DUMMY DATA')
       );
       setHasDummyData(dummyDataExists);
+      
+      // If no requests exist and no dummy data, create dummy data on first visit
+      if (deduplicatedRequests.length === 0 && !dummyDataExists && org.id) {
+        try {
+          // Check if we've already tried to create dummy data for this organization
+          const dummyDataKey = `dummy_data_created_${org.id}`;
+          const hasTriedBefore = localStorage.getItem(dummyDataKey);
+          
+          if (!hasTriedBefore) {
+            // Mark that we've tried to create dummy data
+            localStorage.setItem(dummyDataKey, 'true');
+            
+            // Create dummy data asynchronously (don't block the UI)
+            fetch('/api/admin/create-dummy-crowd-requests', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' }
+            })
+              .then(response => {
+                if (response.ok) {
+                  console.log('✅ Dummy data created successfully on first visit');
+                  // Refresh requests to show dummy data
+                  setTimeout(() => {
+                    fetchRequests();
+                  }, 1000);
+                } else {
+                  console.log('⚠️ Dummy data creation skipped or failed (non-critical)');
+                }
+              })
+              .catch(error => {
+                console.error('Error creating dummy data (non-critical):', error);
+              });
+          }
+        } catch (error) {
+          console.error('Error checking dummy data creation:', error);
+          // Non-critical - continue anyway
+        }
+      }
       
       // Fetch Stripe customer names for requests that need them
       // NOTE: New requests (after making name mandatory) will always have a name.
@@ -3998,10 +4058,47 @@ export default function CrowdRequestsPage() {
   const effectiveSecondaryColor2 = getEffectiveBrandColor('secondary2');
   const effectiveBrandColorHover = `${effectiveBrandColor}dd`;
 
+  // Detect if we're on TipJar domain
+  const isTipJarDomain = typeof window !== 'undefined' && (
+    window.location.hostname.includes('tipjar.live') || 
+    window.location.hostname.includes('tipjar.com')
+  );
+
   return (
-    <AdminLayout>
-      {/* Brand Color CSS Variables - Apply user's brand colors to admin UI */}
-      <style 
+    <>
+      <Head>
+        <title>{isTipJarDomain ? 'Requests | TipJar.Live' : 'Crowd Requests | Admin'}</title>
+        <meta name="description" content={isTipJarDomain ? 'Manage your song requests, tips, and shoutouts on TipJar' : 'Manage crowd requests and song requests'} />
+        <meta name="robots" content="noindex, nofollow" />
+        
+        {/* Open Graph / Facebook - Only for TipJar domain */}
+        {isTipJarDomain && (
+          <>
+            <meta property="og:type" content="website" />
+            <meta property="og:url" content={`https://tipjar.live/admin/crowd-requests`} />
+            <meta property="og:title" content="TipJar Requests - Manage Your Tips & Song Requests" />
+            <meta property="og:description" content="Manage your song requests, tips, and shoutouts in one place. View requests, track payments, and manage your DJ business." />
+            <meta property="og:image" content="https://tipjar.live/assets/tipjar-crowd-requests-og.png" />
+            <meta property="og:image:width" content="1200" />
+            <meta property="og:image:height" content="630" />
+            <meta property="og:image:alt" content="TipJar Requests - Manage Your Tips & Song Requests" />
+            <meta property="og:site_name" content="TipJar Live" />
+            <meta property="og:locale" content="en_US" />
+            
+            {/* Twitter Card */}
+            <meta name="twitter:card" content="summary_large_image" />
+            <meta name="twitter:url" content={`https://tipjar.live/admin/crowd-requests`} />
+            <meta name="twitter:title" content="TipJar Requests - Manage Your Tips & Song Requests" />
+            <meta name="twitter:description" content="Manage your song requests, tips, and shoutouts in one place." />
+            <meta name="twitter:image" content="https://tipjar.live/assets/tipjar-crowd-requests-og.png" />
+            <meta name="twitter:image:alt" content="TipJar Requests - Manage Your Tips & Song Requests" />
+            <meta name="twitter:site" content="@tipjarlive" />
+          </>
+        )}
+      </Head>
+      <AdminLayout>
+        {/* Brand Color CSS Variables - Apply user's brand colors to admin UI */}
+        <style 
         dangerouslySetInnerHTML={{ 
           __html: `
             :root {
@@ -4046,7 +4143,25 @@ export default function CrowdRequestsPage() {
         <StripeConnectRequirementBanner organization={organization} />
         
         {/* Stripe Connect Setup Component */}
-        <StripeConnectSetup />
+        <StripeConnectSetup 
+          onOrganizationUpdate={async () => {
+            // Refresh organization data when Stripe setup completes
+            try {
+              const freshOrg = await getCurrentOrganization(supabase);
+              if (freshOrg) {
+                setOrganization(freshOrg);
+                // Update header settings if needed
+                setHeaderSettings({
+                  artistName: freshOrg.requests_header_artist_name || '',
+                  location: freshOrg.requests_header_location || '',
+                  date: freshOrg.requests_header_date || ''
+                });
+              }
+            } catch (error) {
+              console.error('Error refreshing organization after Stripe setup:', error);
+            }
+          }}
+        />
         
         {/* Usage Limit Banner for Free Tier */}
         {subscriptionTier === 'starter' && subscriptionStatus && usageStats && (
@@ -8791,7 +8906,7 @@ export default function CrowdRequestsPage() {
                             </p>
                           )}
                           <p>
-                            Detected as: "{selectedRequest.matched_song_detection.song_title}" by {selectedRequest.matched_song_detection.song_artist}
+                            Detected as: &ldquo;{selectedRequest.matched_song_detection.song_title}&rdquo; by {selectedRequest.matched_song_detection.song_artist}
                           </p>
                         </div>
                       </div>
@@ -8919,7 +9034,7 @@ export default function CrowdRequestsPage() {
                           </>
                         ) : (
                           <div className="text-sm text-gray-600 dark:text-gray-400">
-                            <p>No YouTube link found. Use "Find Music Links" to locate the YouTube URL first.</p>
+                            <p>No YouTube link found. Use &ldquo;Find Music Links&rdquo; to locate the YouTube URL first.</p>
                           </div>
                         )}
                       </div>
@@ -8973,7 +9088,7 @@ export default function CrowdRequestsPage() {
                         )}
                         {(!selectedRequest.requester_name || selectedRequest.requester_name === 'Guest') && 
                          (selectedRequest.payment_method === 'venmo' || selectedRequest.payment_method === 'cashapp') && (
-                          <span className="text-xs text-yellow-600 dark:text-yellow-400 ml-2">(Legacy record - Click "Update Name" to add from payment)</span>
+                          <span className="text-xs text-yellow-600 dark:text-yellow-400 ml-2">(Legacy record - Click &ldquo;Update Name&rdquo; to add from payment)</span>
                         )}
                       </p>
                     </div>
@@ -10235,7 +10350,7 @@ export default function CrowdRequestsPage() {
                     <li>Place your phone near the speakers</li>
                     <li>The system will continuously listen and detect songs every 5 seconds</li>
                     <li>When a song is detected, it will automatically match to song requests if an event is selected</li>
-                    <li>Matching requests will be marked as "played" automatically</li>
+                    <li>Matching requests will be marked as &ldquo;played&rdquo; automatically</li>
                     <li>Detected songs are saved to the database for tracking</li>
                   </ul>
                 </div>
@@ -10272,8 +10387,8 @@ export default function CrowdRequestsPage() {
                 <p className="mb-2">These are payments in Stripe that either:</p>
                 <ul className="list-disc list-inside space-y-1 ml-2">
                   <li>Have no request_id in metadata</li>
-                  <li>The request_id doesn't exist in the database</li>
-                  <li>The payment isn't properly linked to the request</li>
+                  <li>The request_id doesn&rsquo;t exist in the database</li>
+                  <li>The payment isn&rsquo;t properly linked to the request</li>
                 </ul>
               </div>
 
@@ -10493,7 +10608,8 @@ export default function CrowdRequestsPage() {
           </div>
         </DialogContent>
       </Dialog>
-    </AdminLayout>
+      </AdminLayout>
+    </>
   );
 }
 

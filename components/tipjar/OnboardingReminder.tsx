@@ -29,6 +29,8 @@ export default function OnboardingReminder({ organization, onOrganizationUpdate 
 
   useEffect(() => {
     if (!organization) return;
+    
+    // Recalculate tasks when organization changes (e.g., after Stripe setup completes)
 
     const tasks: IncompleteTask[] = [];
 
@@ -44,7 +46,15 @@ export default function OnboardingReminder({ organization, onOrganizationUpdate 
     }
 
     // Critical Task 2: Payment Setup
-    if (!organization.stripe_connect_account_id || !organization.stripe_connect_charges_enabled) {
+    // Payment setup is only complete when BOTH charges_enabled AND payouts_enabled are true
+    // This matches the logic used by StripeConnectSetup component
+    const paymentSetupComplete = !!(
+      organization.stripe_connect_account_id &&
+      organization.stripe_connect_charges_enabled &&
+      organization.stripe_connect_payouts_enabled
+    );
+    
+    if (!paymentSetupComplete) {
       tasks.push({
         id: 'payment_setup',
         title: 'Set Up Payments',

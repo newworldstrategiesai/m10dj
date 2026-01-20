@@ -2374,9 +2374,27 @@ export function GeneralRequestsPage({
   const mainDomain = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.m10djcompany.com';
   const siteUrl = mainDomain;
   
+  // Determine default OG image based on domain
+  const getDefaultOGImage = () => {
+    if (isTipJarDomain) {
+      // Use TipJar public requests OG image for TipJar public request pages
+      // This is different from the general TipJar OG image to show it's a request page
+      return 'https://tipjar.live/assets/tipjar-public-requests-og.png';
+    } else if (typeof window !== 'undefined' && window.location.hostname.includes('djdash.net')) {
+      // Use DJ Dash OG image for DJ Dash pages
+      return 'https://djdash.net/assets/djdash-og-image.png';
+    }
+    // Default to M10 DJ Company cover photo
+    return `${siteUrl}${DEFAULT_COVER_PHOTO}`;
+  };
+  
   // Convert cover photo to absolute URL if it's relative
+  // For TipJar pages without custom cover photo, use TipJar OG image
   const getAbsoluteImageUrl = (imageUrl) => {
-    if (!imageUrl) return `${siteUrl}${DEFAULT_COVER_PHOTO}`;
+    if (!imageUrl) {
+      // No cover photo - use domain-appropriate default OG image
+      return getDefaultOGImage();
+    }
     if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
       return imageUrl;
     }
@@ -3280,6 +3298,7 @@ export function GeneralRequestsPage({
                 /* Override Header positioning on desktop for requests page */
                 @media (min-width: 768px) {
                   /* Position header inside iPhone frame - properly constrained and visible */
+                  /* Account for phone frame border (10px) + notch area (~50px) to prevent overflow */
                   .desktop-content-wrapper [data-requests-header-wrapper] {
                     position: absolute !important;
                     width: 100% !important;
@@ -3288,13 +3307,15 @@ export function GeneralRequestsPage({
                     right: 0 !important;
                     top: 0 !important;
                     z-index: 20 !important;
-                    overflow: visible !important;
+                    overflow: hidden !important; /* Prevent content from overflowing outside phone frame */
                     display: block !important;
                     visibility: visible !important;
                     opacity: 1 !important;
                     margin: 0 !important;
                     padding: 0 !important;
+                    padding-top: 3.5rem !important; /* Add top padding to account for phone frame border + notch (approx 50px + border) */
                     min-height: auto !important;
+                    max-height: 5rem !important; /* Constrain header wrapper height */
                   }
                   /* Override ALL header positioning - force it to be relative and visible */
                   .desktop-content-wrapper [data-requests-header-wrapper] header,
@@ -3311,7 +3332,7 @@ export function GeneralRequestsPage({
                     bottom: auto !important;
                     transform: none !important;
                     scale: 1 !important;
-                    padding: 0.75rem 1rem 0.5rem 1rem !important;
+                    padding: 0.25rem 1rem 0.25rem 1rem !important; /* Minimal padding to prevent overflow */
                     margin: 0 !important;
                     display: flex !important;
                     visibility: visible !important;
@@ -3320,6 +3341,9 @@ export function GeneralRequestsPage({
                     z-index: 20 !important;
                     height: auto !important;
                     min-height: auto !important;
+                    max-height: 4rem !important; /* Constrain header height to prevent overflow */
+                    overflow: hidden !important; /* Prevent content from overflowing */
+                    align-items: center !important; /* Center align content vertically */
                   }
                   /* Override the fixed positioning that Header component applies */
                   .desktop-content-wrapper header.fixed,
@@ -3346,6 +3370,14 @@ export function GeneralRequestsPage({
                     transform: none !important;
                     scale: 1 !important;
                     flex-shrink: 1 !important;
+                  }
+                  
+                  /* Ensure all header text and content is constrained within bounds */
+                  .desktop-content-wrapper [data-requests-header-wrapper] header *,
+                  .desktop-content-wrapper header * {
+                    max-height: 100% !important;
+                    overflow: hidden !important;
+                    text-overflow: ellipsis !important;
                   }
                   /* Constrain the logo container div */
                   .desktop-content-wrapper [data-requests-header-wrapper] header a > div,

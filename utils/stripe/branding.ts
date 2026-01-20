@@ -16,17 +16,17 @@ export interface PlatformBranding {
 }
 
 /**
- * Default branding configuration
- * Update these values to match your brand
+ * Default branding configuration (for new accounts)
+ * Defaults to TipJar branding for new users
  */
 export const defaultBranding: PlatformBranding = {
-  logo: '/logo-static.jpg', // Your logo URL
-  primaryColor: '#6366f1', // Purple (update to your brand color)
-  secondaryColor: '#ec4899', // Pink (update to your brand color)
+  logo: '/tipjar-logo.svg', // Default to TipJar logo for new accounts
+  primaryColor: '#8b5cf6', // Purple (TipJar brand)
+  secondaryColor: '#ec4899', // Pink (TipJar brand)
   backgroundColor: '#ffffff',
   textColor: '#1f2937',
   fontFamily: 'system-ui, sans-serif',
-  companyName: 'M10 DJ Company', // Update to your platform name
+  companyName: 'TipJar.Live', // Default to TipJar for new accounts
 };
 
 /**
@@ -35,7 +35,7 @@ export const defaultBranding: PlatformBranding = {
  */
 export const productBranding: Record<'tipjar' | 'djdash' | 'm10dj', PlatformBranding> = {
   tipjar: {
-    logo: 'https://tipjar.live/tipjar-logo.svg', // Use absolute URL for Stripe
+    logo: '/tipjar-logo.svg', // Local logo path for now - will be uploaded to Stripe when available
     primaryColor: '#8b5cf6', // Purple
     secondaryColor: '#ec4899', // Pink
     backgroundColor: '#ffffff',
@@ -44,7 +44,7 @@ export const productBranding: Record<'tipjar' | 'djdash' | 'm10dj', PlatformBran
     companyName: 'TipJar.Live',
   },
   djdash: {
-    logo: 'https://djdash.net/djdash-logo.svg', // Use absolute URL for Stripe
+    logo: '/djdash-logo.svg', // Local logo path for now - will be uploaded to Stripe when available
     primaryColor: '#3b82f6', // Blue
     secondaryColor: '#6366f1', // Indigo
     backgroundColor: '#ffffff',
@@ -75,10 +75,11 @@ export function getConnectAccountBranding(
   primaryColor?: string;
   secondaryColor?: string;
 } {
-  // Use product-specific branding if product context is provided
-  const baseBranding = productContext && productBranding[productContext]
-    ? productBranding[productContext]
-    : defaultBranding;
+  // Default to tipjar branding for new accounts if no product context
+  const effectiveProductContext = productContext || 'tipjar';
+
+  // Use product-specific branding
+  const baseBranding = productBranding[effectiveProductContext] || defaultBranding;
 
   const branding = { ...baseBranding, ...customBranding };
 
@@ -93,14 +94,18 @@ export function getConnectAccountBranding(
  * Get branding for Stripe Elements (payment forms)
  */
 export function getElementsBranding(
-  customBranding?: Partial<PlatformBranding>
+  customBranding?: Partial<PlatformBranding>,
+  productContext?: 'tipjar' | 'djdash' | 'm10dj' | null
 ): {
   primaryColor?: string;
   backgroundColor?: string;
   textColor?: string;
   fontFamily?: string;
 } {
-  const branding = { ...defaultBranding, ...customBranding };
+  // Default to tipjar branding for new accounts
+  const effectiveProductContext = productContext || 'tipjar';
+  const baseBranding = productBranding[effectiveProductContext] || defaultBranding;
+  const branding = { ...baseBranding, ...customBranding };
 
   return {
     primaryColor: branding.primaryColor,

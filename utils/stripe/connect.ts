@@ -75,12 +75,17 @@ export async function createConnectAccount(
     secondaryColor?: string;
   },
   baseUrl?: string, // Optional baseUrl parameter to override default
-  productContext?: 'tipjar' | 'djdash' | 'm10dj' | null // Product context to set created_via metadata
+  productContext?: 'tipjar' | 'djdash' | 'm10dj' | null, // Product context to set created_via metadata
+  businessProfileUrl?: string // Optional pre-constructed business profile URL
 ): Promise<Stripe.Account> {
-  // Build business profile URL
-  // Use provided baseUrl, or fall back to environment variable, or default to m10djcompany.com
-  const finalBaseUrl = baseUrl || process.env.NEXT_PUBLIC_SITE_URL || 'https://m10djcompany.com';
-  const businessProfileUrl = `${finalBaseUrl}/${organizationSlug}/requests`;
+  // Use provided business profile URL, or construct one from baseUrl and slug
+  const finalBusinessProfileUrl = businessProfileUrl || (
+    baseUrl && organizationSlug
+      ? `${baseUrl}/${organizationSlug}/requests`
+      : organizationSlug
+        ? `${process.env.NEXT_PUBLIC_SITE_URL || 'https://m10djcompany.com'}/${organizationSlug}/requests`
+        : undefined
+  );
 
   // Accounts v2 API structure
   // For TipJar accounts, use "TipJar.live" as the display name shown on checkout pages
@@ -121,7 +126,7 @@ export async function createConnectAccount(
       locales: ['en-US'],
     },
     business_profile: {
-      url: businessProfileUrl,
+      url: finalBusinessProfileUrl,
       name: businessDisplayName, // Set business profile name for v2 API (shown on checkout pages)
     },
     metadata: {
@@ -138,22 +143,23 @@ export async function createConnectAccount(
   };
 
   // Add branding if provided
-  if (branding && (branding.primaryColor || branding.secondaryColor || branding.logo)) {
+  // For Stripe Connect Express accounts, skip logo entirely as it requires file upload API
+  // Only use colors for Express accounts
+  if (branding && (branding.primaryColor || branding.secondaryColor)) {
     const brandingSettings: any = {};
-    
-    // Only include logo if it's an absolute URL (Stripe requirement)
-    if (branding.logo && (branding.logo.startsWith('http://') || branding.logo.startsWith('https://'))) {
-      brandingSettings.logo = branding.logo;
-    }
-    
+
+    // Skip logo entirely for Express accounts - it requires Stripe File Upload API
+    // Logo can only be set via platform account settings, not per connected account
+    console.log('Skipping logo for Stripe Connect Express account - logo must be set at platform level');
+
     if (branding.primaryColor) {
       brandingSettings.primary_color = branding.primaryColor;
     }
-    
+
     if (branding.secondaryColor) {
       brandingSettings.secondary_color = branding.secondaryColor;
     }
-    
+
     // Only add settings if we have at least one branding property
     if (Object.keys(brandingSettings).length > 0) {
       accountData.settings = {
@@ -207,7 +213,7 @@ export async function createConnectAccount(
         // Business profile for better onboarding
         // For TipJar accounts, use "TipJar.live" as the business name shown on checkout pages
         business_profile: {
-          url: businessProfileUrl,
+          url: finalBusinessProfileUrl,
           name: productContext === 'tipjar' ? 'TipJar.live' : organizationName,
         },
         // Settings for better UX
@@ -221,11 +227,13 @@ export async function createConnectAccount(
       };
 
       // Add branding if provided (merge with existing settings)
-      if (branding && (branding.primaryColor || branding.secondaryColor || branding.logo)) {
+      // For Stripe Connect Express accounts, skip logo entirely as it requires file upload API
+      if (branding && (branding.primaryColor || branding.secondaryColor)) {
         const brandingSettings: any = {};
-        if (branding.logo && (branding.logo.startsWith('http://') || branding.logo.startsWith('https://'))) {
-          brandingSettings.logo = branding.logo;
-        }
+
+        // Skip logo entirely for Express accounts - it requires Stripe File Upload API
+        console.log('Skipping logo for Stripe Connect Express account - logo must be set at platform level');
+
         if (branding.primaryColor) {
           brandingSettings.primary_color = branding.primaryColor;
         }

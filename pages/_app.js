@@ -137,6 +137,13 @@ export default function App({ Component, pageProps }) {
   const isPaymentPage = router.pathname.startsWith('/pay/');
   const isContractPage = router.pathname.startsWith('/sign-contract/');
   const isQuotePage = router.pathname.startsWith('/quote/');
+  
+  // Detect domain to set appropriate OG images and branding
+  const isTipJarDomain = typeof window !== 'undefined' && (
+    window.location.hostname.includes('tipjar.live') || 
+    window.location.hostname.includes('tipjar.com')
+  );
+  const isDJDashDomain = typeof window !== 'undefined' && window.location.hostname.includes('djdash.net');
 
   return (
     <ThemeProviderWrapper>
@@ -155,33 +162,58 @@ export default function App({ Component, pageProps }) {
         <meta name="msapplication-TileColor" content="#fcba00" />
         <meta name="msapplication-config" content="/browserconfig.xml" />
         
-        {/* Open Graph default image - Exclude for pages with custom OG images */}
+        {/* Open Graph default image - Domain-aware with custom OG images excluded */}
         {!isPaymentPage && !isContractPage && !isQuotePage && (
           <>
-            <meta property="og:image" content="https://m10djcompany.com/logo-static.jpg" />
-            <meta property="og:image:width" content="1200" />
-            <meta property="og:image:height" content="630" />
+            {isTipJarDomain ? (
+              <>
+                <meta property="og:image" content="https://tipjar.live/assets/tipjar-open-graph-new.png" />
+                <meta property="og:image:width" content="1200" />
+                <meta property="og:image:height" content="630" />
+                <meta property="og:image:alt" content="TipJar Live - DJ Tip Collection & Song Request App" />
+              </>
+            ) : isDJDashDomain ? (
+              <>
+                <meta property="og:image" content="https://djdash.net/assets/djdash-og-image.png" />
+                <meta property="og:image:width" content="1200" />
+                <meta property="og:image:height" content="630" />
+                <meta property="og:image:alt" content="DJ Dash - Lead Marketplace & DJ SaaS Platform" />
+              </>
+            ) : (
+              <>
+                <meta property="og:image" content="https://m10djcompany.com/logo-static.jpg" />
+                <meta property="og:image:width" content="1200" />
+                <meta property="og:image:height" content="630" />
+                <meta property="og:image:alt" content="M10 DJ Company - Professional Event Entertainment" />
+              </>
+            )}
           </>
         )}
-        <meta property="og:site_name" content="M10 DJ Company" />
+        <meta property="og:site_name" content={isTipJarDomain ? 'TipJar Live' : isDJDashDomain ? 'DJ Dash' : 'M10 DJ Company'} />
         
-        {/* Twitter Card default image - Exclude for pages with custom OG images */}
+        {/* Twitter Card default image - Domain-aware with custom OG images excluded */}
         {!isPaymentPage && !isContractPage && !isQuotePage && (
           <>
             <meta name="twitter:card" content="summary_large_image" />
-            <meta name="twitter:image" content="https://m10djcompany.com/logo-static.jpg" />
+            {isTipJarDomain ? (
+              <meta name="twitter:image" content="https://tipjar.live/assets/tipjar-open-graph-new.png" />
+            ) : isDJDashDomain ? (
+              <meta name="twitter:image" content="https://djdash.net/assets/djdash-og-image.png" />
+            ) : (
+              <meta name="twitter:image" content="https://m10djcompany.com/logo-static.jpg" />
+            )}
           </>
         )}
         {!isPaymentPage && !isContractPage && !isQuotePage && (
-          <meta name="twitter:site" content="@m10djcompany" />
+          <meta name="twitter:site" content={isTipJarDomain ? '@tipjarlive' : isDJDashDomain ? '@djdash' : '@m10djcompany'} />
         )}
         
         {/* Google Site Verification */}
         <meta name="google-site-verification" content="gvyoj4VOR-ZSnrkrcpUfKdX4Qh81QsZBuIviCWJDSAI" />
         
-        {/* Additional meta tags */}
-        <meta name="application-name" content="M10 DJ Company" />
-        <meta name="apple-mobile-web-app-title" content="M10 DJ Company" />
+        {/* Additional meta tags - Domain-aware */}
+        <meta name="application-name" content={isTipJarDomain ? 'TipJar Live' : isDJDashDomain ? 'DJ Dash' : 'M10 DJ Company'} />
+        <meta name="apple-mobile-web-app-title" content={isTipJarDomain ? 'TipJar Live' : isDJDashDomain ? 'DJ Dash' : 'M10 DJ Company'} />
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         

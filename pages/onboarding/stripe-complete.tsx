@@ -36,56 +36,84 @@ export default function StripeCompletePage() {
   async function checkAndRedirectDomain() {
     // Only redirect if we're in the browser (client-side)
     if (typeof window === 'undefined') return;
-    
+
     // If we're on m10djcompany.com, check if we should redirect
     if (!window.location.hostname.includes('m10djcompany.com')) {
+      console.log('✅ Already on correct domain:', window.location.hostname);
       return; // Already on correct domain
     }
-    
+
+    console.log('🔄 On m10djcompany.com, checking if redirect needed...');
+
     try {
       const { data: { user } } = await supabase.auth.getUser();
+      console.log('👤 User:', user?.email, 'Product context:', user?.user_metadata?.product_context);
+
       if (user) {
         const productContext = user.user_metadata?.product_context;
-        
+
         // If TipJar user is on m10djcompany.com, redirect to tipjar.live IMMEDIATELY
         if (productContext === 'tipjar') {
+          console.log('🔄 Redirecting TipJar user to tipjar.live...');
           const currentPath = window.location.pathname;
           const searchParams = window.location.search;
           window.location.replace(`https://tipjar.live${currentPath}${searchParams}`);
           return;
         }
-        
+
         // If DJ Dash user is on m10djcompany.com, redirect to djdash.net
         if (productContext === 'djdash') {
+          console.log('🔄 Redirecting DJ Dash user to djdash.net...');
           const currentPath = window.location.pathname;
           const searchParams = window.location.search;
           window.location.replace(`https://djdash.net${currentPath}${searchParams}`);
           return;
         }
       }
-      
+
       // Also check organization product_context as fallback (even if user metadata doesn't have it)
       try {
         const org = await getCurrentOrganization(supabase);
+        console.log('🏢 Organization:', org?.name, 'Product context:', org?.product_context);
+
         if (org?.product_context === 'tipjar') {
+          console.log('🔄 Redirecting based on organization context (TipJar)...');
           const currentPath = window.location.pathname;
           const searchParams = window.location.search;
           window.location.replace(`https://tipjar.live${currentPath}${searchParams}`);
           return;
         }
-        
+
         if (org?.product_context === 'djdash') {
+          console.log('🔄 Redirecting based on organization context (DJ Dash)...');
           const currentPath = window.location.pathname;
           const searchParams = window.location.search;
           window.location.replace(`https://djdash.net${currentPath}${searchParams}`);
           return;
         }
+
+        // Default: if no product context found, assume TipJar (safer default)
+        console.log('⚠️ No product context found, defaulting to TipJar redirect...');
+        const currentPath = window.location.pathname;
+        const searchParams = window.location.search;
+        window.location.replace(`https://tipjar.live${currentPath}${searchParams}`);
+        return;
       } catch (orgError) {
-        // If we can't get org, continue (might be a new user)
-        console.error('Error getting organization for domain redirect:', orgError);
+        console.error('Error checking organization for redirect:', orgError);
+        // Default to TipJar if we can't determine context
+        console.log('⚠️ Organization lookup failed, defaulting to TipJar redirect...');
+        const currentPath = window.location.pathname;
+        const searchParams = window.location.search;
+        window.location.replace(`https://tipjar.live${currentPath}${searchParams}`);
+        return;
       }
     } catch (error) {
-      console.error('Error checking domain redirect:', error);
+      console.error('Error in domain redirect check:', error);
+      // Default to TipJar if there's an error
+      console.log('⚠️ Error in redirect check, defaulting to TipJar...');
+      const currentPath = window.location.pathname;
+      const searchParams = window.location.search;
+      window.location.replace(`https://tipjar.live${currentPath}${searchParams}`);
     }
   }
 

@@ -437,7 +437,7 @@ export default function BusinessPage() {
             <div className="text-center mb-20">
               <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900 dark:text-white mb-4">
                 Everything You Need.<br />
-                <span className="bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">Nothing You Don't.</span>
+                <span className="bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">Nothing You Don&rsquo;t.</span>
               </h2>
               <p className="text-xl text-gray-600 dark:text-gray-400 max-w-3xl mx-auto">
                 The only DJ booking software and DJ CRM you need. From event planning to client management, contracts to invoicing—everything in one platform.
@@ -536,7 +536,7 @@ export default function BusinessPage() {
                       <Star key={i} className="w-5 h-5 text-yellow-400 fill-yellow-400" />
                     ))}
                   </div>
-                  <p className="text-lg text-white/90 mb-6 leading-relaxed">"{testimonial.quote}"</p>
+                  <p className="text-lg text-white/90 mb-6 leading-relaxed">&ldquo;{testimonial.quote}&rdquo;</p>
                   <div className="pt-4 border-t border-white/10">
                     <p className="font-semibold text-white">{testimonial.author}</p>
                     <p className="text-white/60 text-sm">{testimonial.company}</p>

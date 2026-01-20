@@ -244,7 +244,7 @@ export default function UseCasesPage() {
                       ))}
                     </div>
                     <p className="text-gray-700 dark:text-gray-300 mb-4 italic">
-                      "{useCase.testimonial.quote}"
+                      &ldquo;{useCase.testimonial.quote}&rdquo;
                     </p>
                     <p className="font-semibold text-gray-900 dark:text-white">
                       {useCase.testimonial.author}
@@ -337,7 +337,7 @@ export default function UseCasesPage() {
             Ready to Transform Your DJ Business?
           </h2>
           <p className="text-xl text-blue-100 mb-8">
-            Join thousands of DJs who've streamlined their business with DJ Dash.
+            Join thousands of DJs who&rsquo;ve streamlined their business with DJ Dash.
           </p>
           <Link
             href="/djdash/signup"
