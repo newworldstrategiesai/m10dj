@@ -81,14 +81,25 @@ export default function AdminSidebar({ onSignOut, isMobileOpen: externalIsMobile
   // Get the actual theme to display (resolve system theme)
   const displayTheme = mounted && theme !== 'system' ? theme : (mounted && systemTheme || 'dark');
 
-  const [productContext, setProductContext] = useState<string | null>(null);
+  // Initialize product context from domain immediately (before async data loads)
+  // This ensures correct branding shows immediately, not after data loads
+  const hostname = typeof window !== 'undefined' ? window.location.hostname.toLowerCase() : '';
+  const isTipJarDomain = hostname.includes('tipjar.live') || hostname.includes('tipjar.com');
+  const isDJDashDomain = hostname.includes('djdash.net') || hostname.includes('djdash.com');
+  
+  // Set initial product context from domain if available
+  const getInitialProductContext = () => {
+    if (isTipJarDomain) return 'tipjar';
+    if (isDJDashDomain) return 'djdash';
+    return null;
+  };
+  
+  const [productContext, setProductContext] = useState<string | null>(getInitialProductContext());
 
   // Determine logo based on theme and product context
   // TipJar users should not see M10 DJ Company logos
-  // Also check domain directly as fallback
-  const hostname = typeof window !== 'undefined' ? window.location.hostname.toLowerCase() : '';
-  const isTipJarDomain = hostname.includes('tipjar.live') || hostname.includes('tipjar.com');
-  const effectiveProductContext = productContext || (isTipJarDomain ? 'tipjar' : null);
+  // Domain-based detection always takes precedence
+  const effectiveProductContext = productContext || (isTipJarDomain ? 'tipjar' : (isDJDashDomain ? 'djdash' : null));
   
   const logoSrc = effectiveProductContext === 'tipjar'
     ? '/assets/TipJar-Logo-Icon.png'
@@ -121,10 +132,15 @@ export default function AdminSidebar({ onSignOut, isMobileOpen: externalIsMobile
         return;
       }
 
-      // Check product context - use domain detection first, then user metadata
+      // Check product context - DOMAIN DETECTION ALWAYS TAKES PRECEDENCE
+      // Only use user metadata if domain detection didn't find anything
+      // This ensures tipjar.live always shows TipJar branding
       const userProductContext = user.user_metadata?.product_context;
       const finalProductContext = detectedProductContext || userProductContext || null;
-      setProductContext(finalProductContext);
+      // Only update if we have a detected context from domain, or if we don't have domain detection but have user metadata
+      if (detectedProductContext || (!detectedProductContext && userProductContext)) {
+        setProductContext(finalProductContext);
+      }
 
       // Check if platform admin
       const adminEmails = [
@@ -150,8 +166,9 @@ export default function AdminSidebar({ onSignOut, isMobileOpen: externalIsMobile
       if (org) {
         setSubscriptionTier(org.subscription_tier);
         
-        // Update product context from organization if it's more accurate
-        if (org.product_context && org.product_context !== finalProductContext) {
+        // Only update product context from organization if domain detection didn't find anything
+        // Domain-based detection always takes precedence for multi-tenant routing
+        if (!detectedProductContext && org.product_context && org.product_context !== finalProductContext) {
           setProductContext(org.product_context);
         }
       }

@@ -30,7 +30,16 @@ export default function AdminLayout({ children, title, description, showPageTitl
   const { theme, systemTheme } = useTheme();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
-  const [productContext, setProductContext] = useState<string | null>(null);
+  // Initialize product context from domain immediately (before async data loads)
+  // This ensures correct branding shows immediately, not after data loads
+  const getInitialProductContext = () => {
+    if (typeof window === 'undefined') return null;
+    const hostname = window.location.hostname.toLowerCase();
+    if (hostname.includes('tipjar.live') || hostname.includes('tipjar.com')) return 'tipjar';
+    if (hostname.includes('djdash.net') || hostname.includes('djdash.com')) return 'djdash';
+    return null;
+  };
+  const [productContext, setProductContext] = useState<string | null>(getInitialProductContext());
   const [organization, setOrganization] = useState<any>(null);
   const [brandColors, setBrandColors] = useState({
     accent: '#000000',
@@ -81,12 +90,13 @@ export default function AdminLayout({ children, title, description, showPageTitl
         if (org) {
           setOrganization(org);
           
-          // Use organization product_context if available, otherwise use detected context
-          const orgProductContext = org.product_context || finalProductContext;
+          // Domain-based detection takes precedence - only use org product_context if domain detection was null
+          // This ensures tipjar.live always shows TipJar branding, even if org.product_context is null or wrong
+          const effectiveContextForBranding = detectedProductContext || org.product_context || finalProductContext;
           
           // Get effective brand colors with black fallback for TipJar
           // Type assertion needed because Organization interface doesn't include all DB fields
-          const isTipJar = orgProductContext === 'tipjar';
+          const isTipJar = effectiveContextForBranding === 'tipjar';
           const defaultAccent = isTipJar ? '#000000' : '#fcba00';
           const accent = org.requests_accent_color || defaultAccent;
           const secondary1 = org.requests_secondary_color_1 || accent || defaultAccent;
@@ -98,9 +108,10 @@ export default function AdminLayout({ children, title, description, showPageTitl
             secondary2
           });
           
-          // Update product context from organization if it's more accurate
-          if (orgProductContext && orgProductContext !== finalProductContext) {
-            setProductContext(orgProductContext);
+          // Only update product context if we didn't detect from domain AND org has a valid context
+          // This preserves domain-based detection which is more reliable for multi-tenant routing
+          if (!detectedProductContext && org.product_context && org.product_context !== finalProductContext) {
+            setProductContext(org.product_context);
           }
         }
       } catch (error: any) {

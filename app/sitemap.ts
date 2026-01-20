@@ -222,6 +222,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
  */
 function generateTipJarSitemap(baseUrl: string): MetadataRoute.Sitemap {
   const staticPages: MetadataRoute.Sitemap = [
+    // Support page - high priority for SEO
+    {
+      url: `${baseUrl}/tipjar/support`,
+      lastModified: new Date(),
+      changeFrequency: 'weekly',
+      priority: 0.9, // High priority - important support content
+    },
     {
       url: baseUrl,
       lastModified: new Date(),

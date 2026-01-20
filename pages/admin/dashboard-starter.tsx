@@ -82,7 +82,7 @@ export default function StarterDashboard() {
 
       // Load data for starter tier
       await Promise.all([
-        fetchRequestStats(org.id),
+        fetchRequestStats(org.id, org),
         fetchRecentRequests(org.id)
       ]);
     } catch (error) {
@@ -92,7 +92,7 @@ export default function StarterDashboard() {
     }
   };
 
-  const fetchRequestStats = async (orgId: string) => {
+  const fetchRequestStats = async (orgId: string, org: Organization | null) => {
     try {
       const now = new Date();
       const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -117,17 +117,36 @@ export default function StarterDashboard() {
         .eq('organization_id', orgId)
         .eq('payment_status', 'pending');
 
-      // Revenue calculations
+      // Get organization fee settings for net revenue calculation
+      const feePercentage = ((org?.platform_fee_percentage || 3.50) / 100); // Convert to decimal (3.5% -> 0.035)
+      const feeFixed = org?.platform_fee_fixed || 0.30;
+
+      // Revenue calculations - calculate NET revenue (after processing fees)
       const { data: paidRequests } = await supabase
         .from('crowd_requests')
         .select('amount_paid, created_at')
         .eq('organization_id', orgId)
         .eq('payment_status', 'paid');
 
-      const totalRevenue = (paidRequests || []).reduce((sum, r) => sum + (r.amount_paid || 0), 0);
+      // Calculate net revenue: amount_paid (in cents) - (amount_paid * feePercentage) - (feeFixed in cents)
+      // Note: amount_paid is stored in cents, feeFixed needs to be converted to cents too
+      const calculateNetRevenue = (amountInCents: number) => {
+        const feeAmountInCents = (amountInCents * feePercentage) + (feeFixed * 100); // Convert feeFixed to cents
+        const netAmountInCents = Math.max(0, amountInCents - feeAmountInCents);
+        return netAmountInCents / 100; // Convert back to dollars for display
+      };
+
+      const totalRevenue = (paidRequests || []).reduce((sum, r) => {
+        const netAmount = calculateNetRevenue(r.amount_paid || 0);
+        return sum + netAmount;
+      }, 0);
+      
       const thisMonthRevenue = (paidRequests || [])
         .filter(r => new Date(r.created_at) >= startOfMonth)
-        .reduce((sum, r) => sum + (r.amount_paid || 0), 0);
+        .reduce((sum, r) => {
+          const netAmount = calculateNetRevenue(r.amount_paid || 0);
+          return sum + netAmount;
+        }, 0);
 
       setStats({
         totalRequests: totalRequests || 0,
@@ -360,7 +379,16 @@ export default function StarterDashboard() {
                       </p>
                     </div>
                     <p className="text-lg font-semibold text-gray-900 dark:text-white">
-                      {formatCurrency(request.amount_paid || 0)}
+                      {formatCurrency(
+                        (() => {
+                          const amountInCents = request.amount_paid || 0;
+                          const feePercentage = (organization?.platform_fee_percentage || 3.50) / 100;
+                          const feeFixed = organization?.platform_fee_fixed || 0.30;
+                          const feeAmountInCents = (amountInCents * feePercentage) + (feeFixed * 100); // Convert feeFixed to cents
+                          const netAmountInCents = Math.max(0, amountInCents - feeAmountInCents);
+                          return netAmountInCents / 100; // Convert to dollars for display
+                        })()
+                      )}
                     </p>
                   </div>
                 </div>
