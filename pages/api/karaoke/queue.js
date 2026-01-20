@@ -17,6 +17,7 @@ export default async function handler(req, res) {
   }
 
   try {
+    console.log('Queue API called with:', req.query);
     const supabase = createClient();
     const { event_code, organization_id } = req.query;
 
@@ -27,6 +28,8 @@ export default async function handler(req, res) {
       });
     }
 
+    console.log('About to query karaoke_signups table');
+
     // Get all signups - either for specific event or all organization events
     let query = supabase
       .from('karaoke_signups')
@@ -35,40 +38,75 @@ export default async function handler(req, res) {
       .in('status', ['queued', 'next', 'singing', 'completed'])
       .order('created_at', { ascending: true });
 
+    console.log('Query built:', query);
+
     // If event_code is provided and not 'all', filter by event
     if (event_code && event_code !== 'all') {
       query = query.eq('event_qr_code', event_code);
+      console.log('Added event_code filter:', event_code);
     }
 
+    console.log('Executing query...');
     const { data: signups, error: signupsError } = await query;
+    console.log('Query executed, data length:', signups?.length, 'error:', signupsError);
 
+    // Handle case where table doesn't exist or other database issues
     if (signupsError) {
       console.error('Error fetching karaoke signups:', signupsError);
+      console.error('Query details:', { event_code, organization_id });
+      console.error('Full error:', JSON.stringify(signupsError, null, 2));
+
+      // If table doesn't exist, return empty queue
+      if (signupsError.code === 'PGRST116' || signupsError.message?.includes('karaoke_signups')) {
+        console.log('Karaoke signups table not found, returning empty queue');
+        return res.status(200).json({
+          current: null,
+          next: null,
+          queue: [],
+          total_in_queue: 0
+        });
+      }
+
       return res.status(500).json({
         error: 'Failed to fetch queue',
-        details: signupsError.message
+        details: signupsError.message,
+        code: signupsError.code
       });
     }
 
-    const current = getCurrentSinger(signups || []);
-    const next = getNextSinger(signups || []);
-    const queue = getQueue(signups || []);
+    // Ensure signups is an array
+    const safeSignups = Array.isArray(signups) ? signups : [];
+    console.log('Safe signups length:', safeSignups.length);
 
-    // Format queue with estimated wait times
-    const formattedQueue = queue.map((signup, index) => {
-      const estimatedWait = calculateEstimatedWait(signup, signups || []);
-      return {
-        id: signup.id,
-        group_size: signup.group_size,
-        singer_name: signup.singer_name,
-        group_members: signup.group_members,
-        song_title: signup.song_title,
-        song_artist: signup.song_artist,
-        queue_position: index + 1,
-        estimated_wait: formatEstimatedWait(estimatedWait),
-        is_priority: signup.is_priority
-      };
-    });
+    let current, next, queue, formattedQueue;
+
+    try {
+      current = getCurrentSinger(safeSignups);
+      next = getNextSinger(safeSignups);
+      queue = getQueue(safeSignups);
+
+      // Format queue with estimated wait times
+      formattedQueue = queue.map((signup, index) => {
+        const estimatedWait = calculateEstimatedWait(signup, safeSignups);
+        return {
+          id: signup.id,
+          group_size: signup.group_size,
+          singer_name: signup.singer_name,
+          group_members: signup.group_members,
+          song_title: signup.song_title,
+          song_artist: signup.song_artist,
+          queue_position: index + 1,
+          estimated_wait: formatEstimatedWait(estimatedWait),
+          is_priority: signup.is_priority
+        };
+      });
+    } catch (utilError) {
+      console.error('Error in queue utility functions:', utilError);
+      return res.status(500).json({
+        error: 'Failed to process queue data',
+        details: utilError.message
+      });
+    }
 
     return res.status(200).json({
       current: current ? {
