@@ -1,11 +1,15 @@
 'use client';
 
 import { useState } from 'react';
-import { Search, Mail, HelpCircle, CreditCard, User, Settings, Smartphone, DollarSign, FileText, Users, QrCode, Video, AlertCircle, CheckCircle } from 'lucide-react';
+import { Search, Mail, HelpCircle, CreditCard, User, Settings, Smartphone, DollarSign, FileText, Users, QrCode, Video, AlertCircle, CheckCircle, Rocket, BookOpen, Wrench, ArrowRight, Code, Music, Palette, BarChart3, Lightbulb } from 'lucide-react';
 import Link from 'next/link';
 import { FAQ } from '@/components/tipjar/FAQ';
 import TipJarHeader from '@/components/tipjar/Header';
 import TipJarFooter from '@/components/tipjar/Footer';
+import { StepByStepGuide } from '@/components/tipjar/support/StepByStepGuide';
+import { TroubleshootingCard } from '@/components/tipjar/support/TroubleshootingCard';
+import { QuickActionButton } from '@/components/tipjar/support/QuickActionButton';
+import { FeatureGuide } from '@/components/tipjar/support/FeatureGuide';
 
 export default function SupportPage() {
   const [searchQuery, setSearchQuery] = useState('');
@@ -20,6 +24,7 @@ export default function SupportPage() {
     { id: 'qr-codes', name: 'QR Codes', icon: QrCode, color: 'text-indigo-500' },
     { id: 'embed', name: 'Embed Widget', icon: Video, color: 'text-pink-500' },
     { id: 'venue', name: 'Venue & Performer Features', icon: Users, color: 'text-cyan-500' },
+    { id: 'stream-alerts', name: 'Stream Alerts', icon: Video, color: 'text-yellow-500' },
     { id: 'technical', name: 'Technical Issues', icon: AlertCircle, color: 'text-red-500' },
   ];
 
@@ -261,6 +266,214 @@ export default function SupportPage() {
       question: "Is my data secure?",
       answer: "Yes! TipJar uses bank-level encryption and security practices. All payments are processed securely through Stripe (PCI DSS Level 1 compliant). We never store full credit card numbers. Your personal information is encrypted and protected. We follow industry best practices for data security and privacy. Read our Privacy Policy for more details."
     },
+    {
+      category: 'technical',
+      question: "Why is my page loading slowly?",
+      answer: "Slow loading can be due to: 1) Poor internet connection, 2) Browser cache issues (try clearing cache), 3) Too many browser extensions, 4) Outdated browser. Try: refreshing the page, clearing browser cache, using a different browser, or checking your internet connection. If the issue persists, contact support."
+    },
+    {
+      category: 'technical',
+      question: "Can I use TipJar offline?",
+      answer: "No, TipJar requires an internet connection to function. You need internet to: receive tips, view your dashboard, generate QR codes, and process payments. Make sure you have a reliable internet connection at your events. Consider having a backup mobile hotspot."
+    },
+
+    // Additional Payment FAQs
+    {
+      category: 'payments',
+      question: "What payment methods do you accept?",
+      answer: "TipJar accepts all major credit cards (Visa, Mastercard, American Express, Discover) and Cash App Pay. All payments are processed securely through Stripe. Guests don't need to create accounts or download apps—they can pay directly through the secure payment form."
+    },
+    {
+      category: 'payments',
+      question: "How are platform fees calculated?",
+      answer: "TipJar charges a 3.5% + $0.30 platform fee on each tip. For example: $10 tip = $0.35 (3.5%) + $0.30 = $0.65 fee, you receive $9.35. This fee only applies when you actually receive a tip—no fees if you don't get any tips."
+    },
+    {
+      category: 'payments',
+      question: "Can I set custom tip amounts?",
+      answer: "Yes! You can set preset tip amounts (like $5, $10, $20, $50) or allow guests to enter custom amounts. Go to Dashboard → Settings → Payment Options to configure your tip amounts. The minimum tip amount is $1.00."
+    },
+    {
+      category: 'payments',
+      question: "What happens if a payment is disputed or charged back?",
+      answer: "If a customer disputes a payment, Stripe will notify you. You can provide evidence to support the transaction. If the dispute is resolved in your favor, you keep the payment. If not, the payment is reversed. Contact support if you need help with a dispute."
+    },
+    {
+      category: 'payments',
+      question: "Can I accept tips in multiple currencies?",
+      answer: "Currently, TipJar only supports USD (US Dollars). We're working on adding support for additional currencies in the future. Check our updates page for announcements."
+    },
+
+    // Additional Payout FAQs
+    {
+      category: 'payouts',
+      question: "What's the difference between standard and instant payouts?",
+      answer: "Standard payouts are free and arrive in 1-2 business days. Instant payouts cost 1.5% of the payout amount (minimum $0.50) and arrive in your bank account within minutes. You can request instant payouts from your Stripe dashboard."
+    },
+    {
+      category: 'payouts',
+      question: "Do I need to pay taxes on my tips?",
+      answer: "Yes, tips are considered income and are subject to taxes. Stripe will send you a 1099-K form if you receive more than $600 in payments in a calendar year. Consult with a tax professional for advice on reporting tip income."
+    },
+    {
+      category: 'payouts',
+      question: "Can I receive payouts to a debit card?",
+      answer: "Yes! Stripe supports payouts to debit cards. During Stripe Connect setup, you can choose to receive payouts to a bank account or debit card. Debit card payouts may have different processing times."
+    },
+    {
+      category: 'payouts',
+      question: "What if my bank account is closed or changed?",
+      answer: "Update your bank account information in your Stripe dashboard immediately. Go to Stripe → Settings → Payment details and update your account. The new account will need to be verified, which may take a few business days. Pending payouts may be delayed."
+    },
+
+    // Additional Subscription FAQs
+    {
+      category: 'subscription',
+      question: "What happens to my data if I cancel my subscription?",
+      answer: "Your data is preserved when you cancel. You'll continue to have access until the end of your billing period. After cancellation, your account reverts to the Free plan. You can export your data at any time from your dashboard."
+    },
+    {
+      category: 'subscription',
+      question: "Can I switch between monthly and annual billing?",
+      answer: "Yes! You can switch between monthly and annual billing at any time. Annual billing saves you 17% compared to monthly. Changes take effect at the start of your next billing cycle. Go to Dashboard → Settings → Subscription to change your billing cycle."
+    },
+    {
+      category: 'subscription',
+      question: "What features are included in the Free plan?",
+      answer: "The Free plan includes: basic tipping functionality, up to 10 requests per month, QR code generation, shareable links, basic analytics, and email support. You can upgrade anytime to unlock unlimited requests, custom branding, advanced analytics, and more."
+    },
+    {
+      category: 'subscription',
+      question: "Do you offer discounts for annual plans?",
+      answer: "Yes! Annual plans save you 17% compared to monthly billing. Pro annual: $99/year (vs $119.88/monthly), Embed Pro annual: $299/year (vs $359.88/monthly). You can switch to annual billing anytime from your subscription settings."
+    },
+
+    // Additional QR Code FAQs
+    {
+      category: 'qr-codes',
+      question: "Can I create multiple QR codes for different events?",
+      answer: "Yes! You can generate event-specific QR codes with unique event codes. This allows you to track tips and requests by event. Go to Dashboard → QR Codes → Create Event QR Code. Each event gets its own unique URL and QR code."
+    },
+    {
+      category: 'qr-codes',
+      question: "What's the best size to print my QR code?",
+      answer: "For best results, print QR codes at least 3\"x3\" (7.5cm x 7.5cm). Larger is better—4\"x4\" or 5\"x5\" works great for events. Ensure high resolution (300 DPI minimum) and high contrast (dark on light background) for easy scanning."
+    },
+    {
+      category: 'qr-codes',
+      question: "Can I add my logo to the center of my QR code?",
+      answer: "Yes! You can customize your QR code with a logo in the center. Go to Dashboard → Settings → QR Code → Customize. Upload your logo and adjust the size. Keep the logo small (about 30% of QR code size) to maintain scanability."
+    },
+    {
+      category: 'qr-codes',
+      question: "Do QR codes expire?",
+      answer: "No, QR codes don't expire. Once generated, your QR code will work indefinitely as long as your TipJar account is active. You can regenerate QR codes at any time if needed, but the old ones will continue to work."
+    },
+
+    // Additional Embed Widget FAQs
+    {
+      category: 'embed',
+      question: "How do I add the embed widget to OBS Studio?",
+      answer: "1) Get your embed URL from Dashboard → Settings → Embed Widget, 2) Open OBS Studio, 3) Add a Browser Source, 4) Paste your embed URL, 5) Set width to 1920 and height to 1080, 6) Enable 'Shutdown source when not visible' and 'Refresh browser when scene becomes active'. The widget will display your TipJar page in OBS."
+    },
+    {
+      category: 'embed',
+      question: "Can I customize the embed widget colors?",
+      answer: "Yes! You can customize the embed widget to match your brand. Go to Dashboard → Settings → Embed Widget → Customize. You can adjust colors, size, border radius, and more. Changes apply immediately to your embedded widget."
+    },
+    {
+      category: 'embed',
+      question: "Does the embed widget work on mobile websites?",
+      answer: "Yes! The embed widget is fully responsive and works on all devices including mobile phones and tablets. It automatically adapts to different screen sizes for the best user experience."
+    },
+    {
+      category: 'embed',
+      question: "Can I remove TipJar branding from the embed widget?",
+      answer: "Yes, Embed Pro subscribers can remove TipJar branding from embed widgets. Go to Dashboard → Settings → Embed Widget → White Label Options. This gives you a completely white-labeled experience."
+    },
+
+    // Additional Setup FAQs
+    {
+      category: 'setup',
+      question: "How long does it take to set up TipJar?",
+      answer: "You can set up TipJar in just 5 minutes! Sign up, complete your profile, generate your QR code, and you're ready to go. Setting up Stripe Connect for payouts takes an additional 5-10 minutes and can be done later."
+    },
+    {
+      category: 'setup',
+      question: "Do I need technical knowledge to use TipJar?",
+      answer: "No! TipJar is designed to be simple and user-friendly. No technical knowledge required. Just follow the setup guide, and you'll be collecting tips in minutes. If you need help, our support team is here to assist."
+    },
+    {
+      category: 'setup',
+      question: "Can I use TipJar for both live events and streaming?",
+      answer: "Absolutely! TipJar works great for both live events (weddings, parties, corporate events) and live streaming (Twitch, YouTube, TikTok). You can use the same TipJar page for both, or create separate pages for different purposes."
+    },
+    {
+      category: 'setup',
+      question: "What information do I need to get started?",
+      answer: "To get started, you only need: your email address, a business/stage name, and a password. That's it! You can add more details (profile picture, bio, etc.) later. To receive payouts, you'll need bank account information for Stripe Connect setup."
+    },
+
+    // Additional Account FAQs
+    {
+      category: 'account',
+      question: "Can I have multiple TipJar accounts?",
+      answer: "Yes, you can create multiple TipJar accounts using different email addresses. Each account gets its own unique TipJar page, QR code, and dashboard. This is useful if you want separate pages for different projects or brands."
+    },
+    {
+      category: 'account',
+      question: "How do I delete my TipJar account?",
+      answer: "To delete your account, contact support at support@tipjar.live with your account email. We'll process your deletion request within 48 hours. Note: Deleting your account is permanent and cannot be undone. Make sure to export any data you want to keep first."
+    },
+    {
+      category: 'account',
+      question: "Can I transfer my TipJar page to someone else?",
+      answer: "Currently, TipJar pages cannot be transferred between accounts. If you need to transfer ownership, contact support and we can help with the process. You may need to create a new account for the new owner."
+    },
+
+    // Additional Venue FAQs
+    {
+      category: 'venue',
+      question: "How much does a venue account cost?",
+      answer: "Venue accounts use the same pricing as individual accounts (Free, Pro, Embed Pro). The venue pays for the subscription, and all performers benefit from the features. Contact us for custom pricing for large venues with many performers."
+    },
+    {
+      category: 'venue',
+      question: "Can performers see each other's tips?",
+      answer: "No, performers can only see their own tips and statistics. Venues can see aggregated statistics across all performers (with permission), but individual tip details remain private to each performer."
+    },
+    {
+      category: 'venue',
+      question: "How do I remove a performer from my venue?",
+      answer: "Go to Dashboard → Venue → Manage Performers. Find the performer you want to remove and click 'Remove'. The performer will no longer be linked to your venue, but their TipJar page will continue to work independently."
+    },
+
+    // Stream Alerts FAQs
+    {
+      category: 'stream-alerts',
+      question: "How do I set up stream alerts for OBS?",
+      answer: "1) Go to Dashboard → Stream Alerts, 2) Configure your alert settings (theme, colors, sounds), 3) Copy your Alert URL, 4) In OBS, add a Browser Source, 5) Paste your Alert URL, 6) Set dimensions to 1920x1080, 7) Enable 'Refresh browser when scene becomes active'. Your alerts will now appear in OBS when you receive tips!"
+    },
+    {
+      category: 'stream-alerts',
+      question: "What streaming platforms support TipJar alerts?",
+      answer: "TipJar stream alerts work with OBS Studio, Streamlabs Desktop, XSplit, TikTok LIVE Studio, YouTube Live, and any streaming software that supports browser sources. Simply add your Alert URL as a browser source."
+    },
+    {
+      category: 'stream-alerts',
+      question: "Can I customize my stream alert appearance?",
+      answer: "Yes! You can customize everything: theme (5 built-in themes), colors, fonts, background images, sound effects, text-to-speech, animation style, and layout position. Go to Dashboard → Stream Alerts → Customize to access all options."
+    },
+    {
+      category: 'stream-alerts',
+      question: "Why aren't my stream alerts showing up?",
+      answer: "Check: 1) Browser source is active in your streaming software, 2) Alert URL is correct, 3) 'Refresh browser when scene becomes active' is enabled, 4) You've received a tip (test with the Test Alert button), 5) Browser source dimensions are correct (1920x1080 recommended). If still not working, check browser console for errors."
+    },
+    {
+      category: 'stream-alerts',
+      question: "Can I use stream alerts with multiple streaming platforms?",
+      answer: "Yes! Your Alert URL works with any streaming software that supports browser sources. You can use the same Alert URL in OBS, Streamlabs, TikTok LIVE, and YouTube Live simultaneously. The alerts will appear in whichever software is currently streaming."
+    },
   ];
 
   const filteredFAQs = allFAQs.filter(faq => {
@@ -292,7 +505,7 @@ export default function SupportPage() {
             </p>
 
             {/* Search Bar */}
-            <div className="relative max-w-2xl mx-auto">
+            <div className="relative max-w-2xl mx-auto mb-8">
               <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
               <input
                 type="text"
@@ -302,7 +515,146 @@ export default function SupportPage() {
                 className="w-full pl-12 pr-4 py-4 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
               />
             </div>
+
+            {/* Quick Action Buttons */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-4xl mx-auto mt-8">
+              <QuickActionButton
+                icon={Rocket}
+                title="Getting Started"
+                description="New to TipJar? Start here with our 5-minute setup guide"
+                href="#getting-started"
+                variant="primary"
+              />
+              <QuickActionButton
+                icon={DollarSign}
+                title="Payment Issues?"
+                description="Troubleshoot payment and payout problems"
+                href="#troubleshooting"
+                variant="secondary"
+              />
+              <QuickActionButton
+                icon={Mail}
+                title="Contact Support"
+                description="Can't find what you need? We're here to help"
+                href="#contact"
+                variant="outline"
+              />
+              <QuickActionButton
+                icon={BookOpen}
+                title="Feature Guides"
+                description="Detailed guides for all TipJar features"
+                href="#feature-guides"
+                variant="secondary"
+              />
+              <QuickActionButton
+                icon={Lightbulb}
+                title="Best Practices"
+                description="Tips to maximize your tips and success"
+                href="#best-practices"
+                variant="outline"
+              />
+            </div>
           </div>
+        </div>
+      </div>
+
+      {/* Getting Started Section */}
+      <div id="getting-started" className="container mx-auto px-4 py-12 scroll-mt-20">
+        <div className="max-w-4xl mx-auto mb-12">
+          <div className="text-center mb-8">
+            <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-emerald-100 dark:bg-emerald-900/30 mb-4">
+              <Rocket className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
+            </div>
+            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-3">
+              Getting Started with TipJar
+            </h2>
+            <p className="text-lg text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
+              Get up and running in 5 minutes. Follow these simple steps to start collecting tips.
+            </p>
+          </div>
+
+          <StepByStepGuide
+            title="5-Minute Quick Start Guide"
+            description="Get your TipJar page live and start accepting tips in just 5 minutes"
+            steps={[
+              {
+                number: 1,
+                title: "Sign Up for Free",
+                description: "Create your TipJar account with just your email and business name.",
+                details: [
+                  "Go to tipjar.live/signup",
+                  "Enter your email and business name",
+                  "Create a secure password",
+                  "Confirm your email address"
+                ],
+                tips: [
+                  "Use an email you check regularly",
+                  "Choose a memorable business name"
+                ]
+              },
+              {
+                number: 2,
+                title: "Complete Your Profile",
+                description: "Add your information to personalize your TipJar page.",
+                details: [
+                  "Add your name or stage name",
+                  "Upload a profile picture or logo",
+                  "Write a brief bio (optional)",
+                  "Set your page URL/slug"
+                ],
+                tips: [
+                  "A good profile picture increases trust",
+                  "Keep your bio short and authentic"
+                ]
+              },
+              {
+                number: 3,
+                title: "Get Your QR Code & Link",
+                description: "Generate your unique TipJar link and QR code to share with your audience.",
+                details: [
+                  "Go to Dashboard → QR Code",
+                  "Download your QR code (PNG or SVG)",
+                  "Copy your shareable link",
+                  "Test the link on your phone"
+                ],
+                tips: [
+                  "Print QR codes at least 3\"x3\" for easy scanning",
+                  "Test your QR code before the event"
+                ]
+              },
+              {
+                number: 4,
+                title: "Set Up Payments (Optional but Recommended)",
+                description: "Connect your Stripe account to receive payouts automatically.",
+                details: [
+                  "Go to Dashboard → Settings → Payments",
+                  "Click 'Set Up Payment Processing'",
+                  "Complete Stripe Connect onboarding",
+                  "Add your bank account details"
+                ],
+                tips: [
+                  "You can skip this step and set it up later",
+                  "First payout may take 2-7 business days"
+                ],
+                warning: "Without Stripe Connect, you won't receive automatic payouts"
+              },
+              {
+                number: 5,
+                title: "Share & Start Collecting Tips",
+                description: "Share your TipJar link and QR code with your audience.",
+                details: [
+                  "Display QR code at events or on stream",
+                  "Share link in social media bio",
+                  "Add to email signature",
+                  "Print on business cards or flyers"
+                ],
+                tips: [
+                  "Announce your TipJar during events",
+                  "Make it easy for guests to find"
+                ]
+              }
+            ]}
+          />
         </div>
       </div>
 
@@ -374,8 +726,1540 @@ export default function SupportPage() {
           )}
         </div>
 
+        {/* Feature Guides Section */}
+        <div id="feature-guides" className="max-w-4xl mx-auto mt-16 mb-16 scroll-mt-20">
+          <div className="text-center mb-12">
+            <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-purple-100 dark:bg-purple-900/30 mb-4">
+              <BookOpen className="w-6 h-6 text-purple-600 dark:text-purple-400" />
+            </div>
+            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-3">
+              Feature Guides
+            </h2>
+            <p className="text-lg text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
+              Detailed guides for all TipJar features. Click to expand and learn more.
+            </p>
+          </div>
+
+          <div className="space-y-4">
+            {/* Payment Processing Guide */}
+            <FeatureGuide
+              id="payment-guide"
+              icon={DollarSign}
+              title="Payment Processing & Stripe Connect Setup"
+              description="Complete guide to setting up payments and receiving payouts"
+              overview="Stripe Connect allows you to receive tips directly to your bank account. This guide walks you through the complete setup process, from creating your account to receiving your first payout."
+              steps={[
+                {
+                  number: 1,
+                  title: "Access Payment Setup",
+                  description: "Navigate to your dashboard and start the payment setup process.",
+                  details: [
+                    "Go to Dashboard → Settings → Payments",
+                    "Click 'Set Up Payment Processing' or 'Connect Stripe Account'",
+                    "You'll be redirected to Stripe's secure onboarding page"
+                  ],
+                  tips: [
+                    "Have your bank account information ready",
+                    "The process takes 5-10 minutes"
+                  ]
+                },
+                {
+                  number: 2,
+                  title: "Choose Business Type",
+                  description: "Select whether you're an individual or a business.",
+                  details: [
+                    "Individual: For solo DJs, performers, or freelancers",
+                    "Business: For companies, LLCs, or organizations",
+                    "This affects tax reporting (1099-K forms)"
+                  ],
+                  tips: [
+                    "Choose Individual if you're not sure",
+                    "You can update this later if needed"
+                  ]
+                },
+                {
+                  number: 3,
+                  title: "Enter Business Information",
+                  description: "Provide your business or personal details.",
+                  details: [
+                    "Business name (or your name for individuals)",
+                    "Business address",
+                    "Phone number",
+                    "Email address (usually pre-filled)"
+                  ],
+                  tips: [
+                    "Use the address where you receive mail",
+                    "This information is used for tax reporting"
+                  ]
+                },
+                {
+                  number: 4,
+                  title: "Add Bank Account",
+                  description: "Connect your bank account to receive payouts.",
+                  details: [
+                    "Enter your bank routing number",
+                    "Enter your account number",
+                    "Select account type (checking or savings)",
+                    "Verify account ownership"
+                  ],
+                  tips: [
+                    "You can find routing and account numbers on a check or bank statement",
+                    "Double-check numbers for accuracy"
+                  ],
+                  warning: "Incorrect account numbers will delay payouts"
+                },
+                {
+                  number: 5,
+                  title: "Complete Identity Verification",
+                  description: "Verify your identity for security and compliance.",
+                  details: [
+                    "Provide Social Security Number (last 4 digits for individuals)",
+                    "Upload government-issued ID (driver's license or passport)",
+                    "Take a selfie if requested (for additional verification)"
+                  ],
+                  tips: [
+                    "Have your ID ready before starting",
+                    "Ensure good lighting for selfie verification"
+                  ]
+                },
+                {
+                  number: 6,
+                  title: "Wait for Verification",
+                  description: "Stripe reviews your information (usually instant, up to 2 business days).",
+                  details: [
+                    "Most accounts are verified instantly",
+                    "First-time accounts may take 1-2 business days",
+                    "You'll receive email notifications about status"
+                  ],
+                  tips: [
+                    "Check your email for verification updates",
+                    "You can still use TipJar while verification is pending"
+                  ]
+                },
+                {
+                  number: 7,
+                  title: "Verify Account Status",
+                  description: "Confirm that charges and payouts are enabled.",
+                  details: [
+                    "Go to Dashboard → Settings → Payments",
+                    "Check that 'Charges Enabled' shows ✓",
+                    "Check that 'Payouts Enabled' shows ✓",
+                    "Your account is ready when both are enabled"
+                  ],
+                  tips: [
+                    "If not enabled, check for pending requirements in Stripe",
+                    "Contact support if verification is taking longer than expected"
+                  ]
+                },
+                {
+                  number: 8,
+                  title: "Receive Your First Payout",
+                  description: "Your first payout may take 2-7 business days due to bank verification.",
+                  details: [
+                    "After first payout, subsequent payouts arrive in 1-2 business days",
+                    "Payouts are automatic and happen daily",
+                    "You can request instant payouts for a 1.5% fee"
+                  ],
+                  tips: [
+                    "Plan ahead for your first payout",
+                    "Use instant payout if you need money immediately"
+                  ]
+                }
+              ]}
+              troubleshooting={[
+                {
+                  issue: "Account Not Verified",
+                  symptoms: [
+                    "Charges or payouts disabled",
+                    "Error: 'Account not ready'",
+                    "Pending requirements in Stripe"
+                  ],
+                  causes: [
+                    "Incomplete onboarding information",
+                    "Identity verification pending",
+                    "Bank account not verified",
+                    "Additional information requested"
+                  ],
+                  solutions: [
+                    {
+                      step: 1,
+                      action: "Complete all required information in Stripe",
+                      details: "Check Stripe dashboard for pending requirements"
+                    },
+                    {
+                      step: 2,
+                      action: "Verify bank account",
+                      details: "Complete bank account verification if pending"
+                    },
+                    {
+                      step: 3,
+                      action: "Wait for verification (1-2 business days)",
+                      details: "First-time verification may take time"
+                    },
+                    {
+                      step: 4,
+                      action: "Contact Stripe support if stuck",
+                      details: "They can help with verification issues"
+                    }
+                  ],
+                  severity: "high"
+                }
+              ]}
+              faqs={[
+                {
+                  question: "How long does Stripe Connect setup take?",
+                  answer: "The setup process takes 5-10 minutes. Verification is usually instant but may take 1-2 business days for first-time accounts."
+                },
+                {
+                  question: "Do I need a separate Stripe account?",
+                  answer: "No! TipJar handles the Stripe integration for you. You just need to complete the onboarding process to verify your identity and connect your bank account."
+                },
+                {
+                  question: "What information do I need for setup?",
+                  answer: "You'll need: your name/business name, address, phone number, bank account details (routing and account numbers), and a government-issued ID for verification."
+                },
+                {
+                  question: "Is my information secure?",
+                  answer: "Yes! All information is encrypted and processed securely through Stripe, which is PCI DSS Level 1 compliant. We never store your full bank account numbers or SSN."
+                }
+              ]}
+            />
+
+            {/* QR Codes Guide */}
+            <FeatureGuide
+              id="qr-codes-guide"
+              icon={QrCode}
+              title="QR Codes & Shareable Links"
+              description="Create, customize, and share QR codes for your events"
+              overview="QR codes make it easy for guests to access your TipJar page. Generate unique QR codes for each event, customize them to match your brand, and share them anywhere."
+              steps={[
+                {
+                  number: 1,
+                  title: "Generate Your QR Code",
+                  description: "Create your first QR code from your dashboard.",
+                  details: [
+                    "Go to Dashboard → QR Codes",
+                    "Click 'Generate QR Code'",
+                    "Choose between main QR code or event-specific QR code",
+                    "Download as PNG or SVG"
+                  ],
+                  tips: [
+                    "PNG is best for digital use",
+                    "SVG is best for printing (scalable)"
+                  ]
+                },
+                {
+                  number: 2,
+                  title: "Create Event-Specific QR Codes",
+                  description: "Generate unique QR codes for individual events to track performance.",
+                  details: [
+                    "Click 'Create Event QR Code'",
+                    "Enter event code (e.g., 'wedding-2025-01-15')",
+                    "Add event name and date (optional)",
+                    "Generate and download"
+                  ],
+                  tips: [
+                    "Use descriptive event codes",
+                    "Event codes help you track which events perform best"
+                  ]
+                },
+                {
+                  number: 3,
+                  title: "Customize Your QR Code",
+                  description: "Make your QR code match your brand.",
+                  details: [
+                    "Go to Dashboard → Settings → QR Code",
+                    "Choose colors (foreground and background)",
+                    "Add logo to center (optional)",
+                    "Adjust logo size (keep it small for scanability)"
+                  ],
+                  tips: [
+                    "Use high contrast colors (dark on light)",
+                    "Keep logo small (about 30% of QR code size)",
+                    "Test your customized QR code before printing"
+                  ],
+                  warning: "Too much customization can make QR codes harder to scan"
+                },
+                {
+                  number: 4,
+                  title: "Download & Print",
+                  description: "Get your QR code ready for use.",
+                  details: [
+                    "Download high-resolution version for printing",
+                    "Print at least 3\"x3\" (7.5cm x 7.5cm)",
+                    "Use 300 DPI minimum for best quality",
+                    "Test print before printing large quantities"
+                  ],
+                  tips: [
+                    "Larger is better - 4\"x4\" or 5\"x5\" works great",
+                    "Print on high-contrast backgrounds",
+                    "Have backup printed copies at events"
+                  ]
+                },
+                {
+                  number: 5,
+                  title: "Share Your Link",
+                  description: "Share your TipJar link in multiple ways.",
+                  details: [
+                    "Copy your shareable link from dashboard",
+                    "Share in social media bio",
+                    "Add to email signature",
+                    "Include in event descriptions",
+                    "Text or email to guests"
+                  ],
+                  tips: [
+                    "Make it easy to find",
+                    "Announce your TipJar during events",
+                    "Display QR code prominently"
+                  ]
+                }
+              ]}
+              troubleshooting={[
+                {
+                  issue: "QR Code Not Scanning",
+                  symptoms: [
+                    "Phone camera can't read QR code",
+                    "Works on some phones but not others",
+                    "QR code appears but doesn't work"
+                  ],
+                  causes: [
+                    "QR code too small",
+                    "Poor contrast",
+                    "Blurry or pixelated",
+                    "Insufficient lighting"
+                  ],
+                  solutions: [
+                    {
+                      step: 1,
+                      action: "Download larger size QR code",
+                      details: "Print at least 3\"x3\" for best results"
+                    },
+                    {
+                      step: 2,
+                      action: "Ensure high contrast",
+                      details: "Use dark QR code on light background"
+                    },
+                    {
+                      step: 3,
+                      action: "Print at higher resolution",
+                      details: "Use 300 DPI minimum"
+                    },
+                    {
+                      step: 4,
+                      action: "Test before using",
+                      details: "Scan with multiple devices"
+                    }
+                  ],
+                  severity: "medium"
+                }
+              ]}
+              faqs={[
+                {
+                  question: "Can I create multiple QR codes?",
+                  answer: "Yes! You can create unlimited QR codes. Create event-specific QR codes to track performance by event, or use your main QR code everywhere."
+                },
+                {
+                  question: "Do QR codes expire?",
+                  answer: "No, QR codes don't expire. Once generated, they work indefinitely as long as your TipJar account is active."
+                },
+                {
+                  question: "Can guests scan without the TipJar app?",
+                  answer: "Yes! Guests can scan with any smartphone camera or QR code reader app. No app download required."
+                }
+              ]}
+            />
+
+            {/* Stream Alerts Guide */}
+            <FeatureGuide
+              id="stream-alerts-guide"
+              icon={Video}
+              title="Stream Alerts Setup"
+              description="Set up beautiful alerts for OBS, Streamlabs, TikTok LIVE, and YouTube Live"
+              overview="Stream alerts display animated notifications when you receive tips, song requests, or other interactions. Works with all major streaming software that supports browser sources."
+              steps={[
+                {
+                  number: 1,
+                  title: "Configure Alert Settings",
+                  description: "Set up your alerts in the TipJar dashboard.",
+                  details: [
+                    "Go to Dashboard → Stream Alerts",
+                    "Choose a theme (Dark, Neon, Retro, Minimal, Pride)",
+                    "Set layout position (center, left, right, top, bottom)",
+                    "Customize colors and fonts",
+                    "Upload background image (optional)",
+                    "Configure sound effects",
+                    "Set up text-to-speech (optional)"
+                  ],
+                  tips: [
+                    "Test different themes to find your style",
+                    "Position alerts where they won't block important content"
+                  ]
+                },
+                {
+                  number: 2,
+                  title: "Copy Your Alert URL",
+                  description: "Get your unique alert URL for streaming software.",
+                  details: [
+                    "In Stream Alerts dashboard, find your Alert URL",
+                    "Format: https://tipjar.live/tipjar/alerts/@yourusername",
+                    "Click 'Copy URL' button",
+                    "Keep this URL handy for next steps"
+                  ],
+                  tips: [
+                    "Bookmark the alert settings page",
+                    "You can regenerate the URL anytime"
+                  ]
+                },
+                {
+                  number: 3,
+                  title: "Add to OBS Studio",
+                  description: "Set up alerts in OBS Studio.",
+                  details: [
+                    "Open OBS Studio",
+                    "Right-click in Sources → Add → Browser Source",
+                    "Name it 'TipJar Alerts'",
+                    "Paste your Alert URL",
+                    "Set Width: 1920, Height: 1080",
+                    "Enable 'Shutdown source when not visible'",
+                    "Enable 'Refresh browser when scene becomes active'",
+                    "Click OK"
+                  ],
+                  tips: [
+                    "Use 1920x1080 for best quality",
+                    "Position the source where you want alerts to appear"
+                  ]
+                },
+                {
+                  number: 4,
+                  title: "Add to Streamlabs",
+                  description: "Set up alerts in Streamlabs Desktop.",
+                  details: [
+                    "Open Streamlabs Desktop",
+                    "Go to Sources → Add Source → Browser Source",
+                    "Name it 'TipJar Alerts'",
+                    "Paste your Alert URL",
+                    "Set dimensions to 1920x1080",
+                    "Enable auto-refresh options",
+                    "Click Done"
+                  ],
+                  tips: [
+                    "Streamlabs setup is similar to OBS",
+                    "Test alerts before going live"
+                  ]
+                },
+                {
+                  number: 5,
+                  title: "Test Your Alerts",
+                  description: "Verify alerts are working correctly.",
+                  details: [
+                    "In TipJar dashboard, click 'Test Alert' button",
+                    "You should see a test alert in your streaming software",
+                    "Check that sound plays (if enabled)",
+                    "Verify alert position and appearance"
+                  ],
+                  tips: [
+                    "Test before every stream",
+                    "Adjust settings if alerts don't look right"
+                  ]
+                },
+                {
+                  number: 6,
+                  title: "Customize Alert Appearance",
+                  description: "Fine-tune your alerts to match your brand.",
+                  details: [
+                    "Adjust colors to match your stream theme",
+                    "Upload custom background image",
+                    "Configure animation style",
+                    "Set up donor ticker (optional)",
+                    "Configure goal progress bar (optional)"
+                  ],
+                  tips: [
+                    "Keep alerts visible but not distracting",
+                    "Use colors that contrast with your stream"
+                  ]
+                }
+              ]}
+              troubleshooting={[
+                {
+                  issue: "Alerts Not Showing",
+                  symptoms: [
+                    "No alerts appear when receiving tips",
+                    "Browser source shows blank screen",
+                    "Alerts work in dashboard but not in OBS"
+                  ],
+                  causes: [
+                    "Browser source not active",
+                    "Incorrect Alert URL",
+                    "Browser source not refreshing",
+                    "Network connectivity issues"
+                  ],
+                  solutions: [
+                    {
+                      step: 1,
+                      action: "Verify browser source is active",
+                      details: "Make sure the scene with browser source is active"
+                    },
+                    {
+                      step: 2,
+                      action: "Check Alert URL is correct",
+                      details: "Copy URL again from dashboard and verify"
+                    },
+                    {
+                      step: 3,
+                      action: "Enable 'Refresh browser when scene becomes active'",
+                      details: "This ensures alerts load when scene becomes active"
+                    },
+                    {
+                      step: 4,
+                      action: "Test alert from dashboard",
+                      details: "Use Test Alert button to verify alerts are working"
+                    },
+                    {
+                      step: 5,
+                      action: "Check browser console for errors",
+                      details: "Right-click browser source → Inspect → Check console"
+                    }
+                  ],
+                  severity: "high"
+                }
+              ]}
+              faqs={[
+                {
+                  question: "Which streaming platforms are supported?",
+                  answer: "TipJar alerts work with OBS Studio, Streamlabs Desktop, XSplit, TikTok LIVE Studio, YouTube Live, and any software that supports browser sources."
+                },
+                {
+                  question: "Can I customize alert sounds?",
+                  answer: "Yes! You can enable/disable sounds, adjust volume, and choose from different sound effects in your alert settings."
+                },
+                {
+                  question: "Do alerts work on mobile streams?",
+                  answer: "Alerts work with any streaming software that supports browser sources, including mobile streaming apps that support browser sources."
+                }
+              ]}
+            />
+
+            {/* Embed Widget Guide */}
+            <FeatureGuide
+              id="embed-widget-guide"
+              icon={Code}
+              title="Embed Widget Setup"
+              description="Add TipJar to your website or streaming software (Embed Pro only)"
+              overview="The embed widget lets you display your TipJar page directly on your website or in your streaming software. Perfect for seamless integration without redirecting guests to a separate page."
+              steps={[
+                {
+                  number: 1,
+                  title: "Verify Embed Pro Subscription",
+                  description: "The embed widget is only available on the Embed Pro plan.",
+                  details: [
+                    "Go to Dashboard → Settings → Subscription",
+                    "Verify you're on Embed Pro plan ($29.99/month)",
+                    "Upgrade if needed (upgrade link provided)"
+                  ],
+                  tips: [
+                    "Embed Pro includes many other features too",
+                    "You can upgrade anytime"
+                  ],
+                  warning: "Embed widget requires Embed Pro subscription"
+                },
+                {
+                  number: 2,
+                  title: "Generate Embed Code",
+                  description: "Get your embed code from the dashboard.",
+                  details: [
+                    "Go to Dashboard → Settings → Embed Widget",
+                    "Click 'Generate Embed Code'",
+                    "Copy the iframe code provided",
+                    "Customize options (theme, colors, size) if desired"
+                  ],
+                  tips: [
+                    "Test the embed code in a test page first",
+                    "Customize to match your website design"
+                  ]
+                },
+                {
+                  number: 3,
+                  title: "Add to WordPress",
+                  description: "Embed TipJar in your WordPress site.",
+                  details: [
+                    "Edit the page/post where you want the widget",
+                    "Add a 'Custom HTML' block",
+                    "Paste your embed code",
+                    "Publish the page"
+                  ],
+                  tips: [
+                    "Use a full-width block for best results",
+                    "Test on mobile devices"
+                  ]
+                },
+                {
+                  number: 4,
+                  title: "Add to Wix",
+                  description: "Embed TipJar in your Wix website.",
+                  details: [
+                    "Edit your Wix page",
+                    "Add an 'HTML iframe' element",
+                    "Paste your embed URL (not the full code)",
+                    "Adjust size and position",
+                    "Publish"
+                  ],
+                  tips: [
+                    "Wix may require the URL format instead of full code",
+                    "Adjust iframe dimensions in Wix settings"
+                  ]
+                },
+                {
+                  number: 5,
+                  title: "Add to Squarespace",
+                  description: "Embed TipJar in your Squarespace site.",
+                  details: [
+                    "Edit your page",
+                    "Add a 'Code' block",
+                    "Paste your embed code",
+                    "Save and publish"
+                  ],
+                  tips: [
+                    "Squarespace supports full HTML/iframe code",
+                    "Preview before publishing"
+                  ]
+                },
+                {
+                  number: 6,
+                  title: "Add to OBS/Streamlabs",
+                  description: "Display TipJar in your stream overlay.",
+                  details: [
+                    "Open OBS Studio or Streamlabs",
+                    "Add a Browser Source",
+                    "Paste your embed URL",
+                    "Set dimensions (recommended: 800x600 or full screen)",
+                    "Position where you want it visible"
+                  ],
+                  tips: [
+                    "Use browser source for live updates",
+                    "Position widget where it won't block important content"
+                  ]
+                }
+              ]}
+              troubleshooting={[
+                {
+                  issue: "Embed Widget Not Showing",
+                  symptoms: [
+                    "Blank space where widget should be",
+                    "Error message in iframe",
+                    "Widget loads but doesn't display correctly"
+                  ],
+                  causes: [
+                    "Not on Embed Pro plan",
+                    "Incorrect embed code",
+                    "Website blocking iframes",
+                    "CORS or security restrictions"
+                  ],
+                  solutions: [
+                    {
+                      step: 1,
+                      action: "Verify Embed Pro subscription",
+                      details: "Check Dashboard → Settings → Subscription"
+                    },
+                    {
+                      step: 2,
+                      action: "Regenerate embed code",
+                      details: "Get fresh code from dashboard"
+                    },
+                    {
+                      step: 3,
+                      action: "Check website iframe permissions",
+                      details: "Some sites restrict iframe embedding"
+                    },
+                    {
+                      step: 4,
+                      action: "Test in different browser",
+                      details: "Check for browser-specific issues"
+                    }
+                  ],
+                  severity: "medium"
+                }
+              ]}
+              faqs={[
+                {
+                  question: "Can I customize the embed widget appearance?",
+                  answer: "Yes! You can customize colors, size, border radius, and theme. Go to Dashboard → Settings → Embed Widget → Customize to access all options."
+                },
+                {
+                  question: "Does the embed widget work on mobile?",
+                  answer: "Yes! The embed widget is fully responsive and works on all devices including mobile phones and tablets."
+                },
+                {
+                  question: "Can I remove TipJar branding from the embed?",
+                  answer: "Yes, Embed Pro subscribers can remove branding for a completely white-labeled experience. Go to Embed Widget settings → White Label Options."
+                }
+              ]}
+            />
+
+            {/* Song Requests Guide */}
+            <FeatureGuide
+              id="song-requests-guide"
+              icon={Music}
+              title="Song Requests & Queue Management"
+              description="How song requests work and how to manage your request queue"
+              overview="Guests can request songs through your TipJar page. Learn how the request system works, how to prioritize requests, and how to manage your queue effectively."
+              steps={[
+                {
+                  number: 1,
+                  title: "Understanding Request Types",
+                  description: "TipJar supports multiple request types.",
+                  details: [
+                    "Song Requests: Guests request specific songs",
+                    "Shoutouts: Guests send personalized messages",
+                    "Tips: Direct tips without requests",
+                    "All can include payment amounts"
+                  ],
+                  tips: [
+                    "You can enable/disable request types in settings",
+                    "Set minimum amounts for each type"
+                  ]
+                },
+                {
+                  number: 2,
+                  title: "Fast-Track Option",
+                  description: "Guests can pay extra to prioritize their requests.",
+                  details: [
+                    "Fast-Track adds $10 to base payment",
+                    "Moves request to front of queue",
+                    "Song plays next after current song",
+                    "Available for song requests only"
+                  ],
+                  tips: [
+                    "Communicate Fast-Track clearly to guests",
+                    "Always honor Fast-Track requests promptly"
+                  ]
+                },
+                {
+                  number: 3,
+                  title: "Next Song Option",
+                  description: "Premium priority option for immediate play.",
+                  details: [
+                    "Higher fee than Fast-Track (configurable)",
+                    "Highest priority in queue",
+                    "Plays immediately after current song",
+                    "Great for special occasions"
+                  ],
+                  tips: [
+                    "Set appropriate pricing for Next Song",
+                    "Use sparingly to maintain value"
+                  ]
+                },
+                {
+                  number: 4,
+                  title: "Managing Your Queue",
+                  description: "View and manage requests in your dashboard.",
+                  details: [
+                    "Go to Dashboard → Requests",
+                    "View all requests sorted by priority",
+                    "Update request status (new → acknowledged → playing → played)",
+                    "Filter by status, type, or event",
+                    "Search for specific requests"
+                  ],
+                  tips: [
+                    "Update status as you play songs",
+                    "Use filters to find specific requests quickly"
+                  ]
+                },
+                {
+                  number: 5,
+                  title: "Request Status Workflow",
+                  description: "Recommended workflow for managing requests.",
+                  details: [
+                    "New: Request just submitted",
+                    "Acknowledged: You've seen it and will play it",
+                    "Playing: Currently playing the song",
+                    "Played: Song has been played",
+                    "Cancelled: Request cancelled (refund if paid)"
+                  ],
+                  tips: [
+                    "Keep status updated for accurate tracking",
+                    "Use 'Acknowledged' to let guests know you saw their request"
+                  ]
+                }
+              ]}
+              troubleshooting={[
+                {
+                  issue: "Requests Not Appearing in Dashboard",
+                  symptoms: [
+                    "Guest submitted request but it's not showing",
+                    "Payment went through but no request",
+                    "Request missing from queue"
+                  ],
+                  causes: [
+                    "Payment processing delay",
+                    "Webhook delay",
+                    "Account sync issue",
+                    "Filter hiding the request"
+                  ],
+                  solutions: [
+                    {
+                      step: 1,
+                      action: "Wait 1-2 minutes for processing",
+                      details: "Requests may take a moment to appear"
+                    },
+                    {
+                      step: 2,
+                      action: "Refresh dashboard",
+                      details: "Click refresh or reload page"
+                    },
+                    {
+                      step: 3,
+                      action: "Check filters",
+                      details: "Make sure no filters are hiding requests"
+                    },
+                    {
+                      step: 4,
+                      action: "Check payment status",
+                      details: "Verify payment was successful in Stripe"
+                    },
+                    {
+                      step: 5,
+                      action: "Contact support if still missing",
+                      details: "Provide request ID or payment ID"
+                    }
+                  ],
+                  severity: "high"
+                }
+              ]}
+              faqs={[
+                {
+                  question: "Can guests request songs without paying?",
+                  answer: "You can set minimum payment amounts for requests. Set it to $0 if you want to allow free requests, or require a minimum tip amount."
+                },
+                {
+                  question: "How do I prevent duplicate song requests?",
+                  answer: "TipJar has duplicate detection built-in. You can also set up your music library with boundaries to control which songs can be requested."
+                },
+                {
+                  question: "Can I blacklist certain songs?",
+                  answer: "Yes! Go to Dashboard → Music Library to add songs to your blacklist. Blacklisted songs will be immediately denied if requested."
+                }
+              ]}
+            />
+
+            {/* Custom Branding Guide */}
+            <FeatureGuide
+              id="custom-branding-guide"
+              icon={Palette}
+              title="Custom Branding & White-Label"
+              description="Customize your TipJar page to match your brand (Pro & Embed Pro)"
+              overview="Make your TipJar page uniquely yours with custom branding. Upload your logo, choose your colors, customize backgrounds, and create a professional appearance that matches your brand identity."
+              steps={[
+                {
+                  number: 1,
+                  title: "Access Branding Settings",
+                  description: "Navigate to your branding customization page.",
+                  details: [
+                    "Go to Dashboard → Settings → Branding",
+                    "Or go to Dashboard → Customization",
+                    "Verify you're on Pro or Embed Pro plan"
+                  ],
+                  tips: [
+                    "Free plan has limited customization",
+                    "Upgrade to Pro for full branding options"
+                  ],
+                  warning: "Full branding requires Pro or Embed Pro subscription"
+                },
+                {
+                  number: 2,
+                  title: "Upload Your Logo",
+                  description: "Add your logo to your TipJar page.",
+                  details: [
+                    "Click 'Upload Logo' button",
+                    "Select image file (PNG, JPG, or SVG recommended)",
+                    "Recommended size: 200x200px minimum",
+                    "Use transparent background for best results",
+                    "Preview your logo before saving"
+                  ],
+                  tips: [
+                    "Use high-resolution logo for crisp display",
+                    "SVG format is best for scalability",
+                    "Keep file size under 2MB for fast loading"
+                  ]
+                },
+                {
+                  number: 3,
+                  title: "Choose Your Colors",
+                  description: "Set your brand colors throughout your page.",
+                  details: [
+                    "Primary Color: Main brand color (buttons, links)",
+                    "Secondary Color: Accent color (highlights)",
+                    "Background Color: Page background",
+                    "Text Color: Main text color",
+                    "Use color picker or enter hex codes"
+                  ],
+                  tips: [
+                    "Choose colors with good contrast for readability",
+                    "Test colors in both light and dark modes",
+                    "Use your brand's official colors for consistency"
+                  ]
+                },
+                {
+                  number: 4,
+                  title: "Customize Background",
+                  description: "Set your page background (Pro+ only).",
+                  details: [
+                    "Choose background type: Solid, Gradient, Image, or Animated",
+                    "Solid: Single color background",
+                    "Gradient: Two-color gradient",
+                    "Image: Upload custom background image",
+                    "Animated: Choose from animated patterns (wavy, bubble, spiral)"
+                  ],
+                  tips: [
+                    "Keep backgrounds subtle so content is readable",
+                    "Test on mobile devices",
+                    "Animated backgrounds add visual interest"
+                  ]
+                },
+                {
+                  number: 5,
+                  title: "Customize Typography",
+                  description: "Set your font family (Embed Pro only).",
+                  details: [
+                    "Choose from available font families",
+                    "Or use custom CSS for complete control (Embed Pro)",
+                    "Preview changes in real-time",
+                    "Save your settings"
+                  ],
+                  tips: [
+                    "Use web-safe fonts for best compatibility",
+                    "Custom CSS gives you complete design freedom"
+                  ],
+                  warning: "Custom CSS requires Embed Pro subscription"
+                },
+                {
+                  number: 6,
+                  title: "White-Label Options (Embed Pro)",
+                  description: "Remove TipJar branding for complete white-label experience.",
+                  details: [
+                    "Enable white-label mode",
+                    "Remove 'Powered by TipJar' branding",
+                    "Upload custom favicon",
+                    "Use custom domain (if configured)"
+                  ],
+                  tips: [
+                    "White-label creates a completely branded experience",
+                    "Perfect for professional brands and agencies"
+                  ],
+                  warning: "White-label requires Embed Pro subscription"
+                },
+                {
+                  number: 7,
+                  title: "Preview & Save",
+                  description: "Preview your changes and save your branding.",
+                  details: [
+                    "Use preview mode to see changes in real-time",
+                    "Test on different devices",
+                    "Check light and dark mode appearance",
+                    "Save your branding settings",
+                    "Changes apply immediately to your TipJar page"
+                  ],
+                  tips: [
+                    "Always preview before saving",
+                    "Test on mobile devices for best results"
+                  ]
+                }
+              ]}
+              troubleshooting={[
+                {
+                  issue: "Branding Changes Not Appearing",
+                  symptoms: [
+                    "Changes saved but not visible on page",
+                    "Logo not showing",
+                    "Colors not updating"
+                  ],
+                  causes: [
+                    "Browser cache",
+                    "Changes not saved",
+                    "Wrong subscription tier",
+                    "CDN cache delay"
+                  ],
+                  solutions: [
+                    {
+                      step: 1,
+                      action: "Clear browser cache",
+                      details: "Hard refresh (Ctrl+Shift+R or Cmd+Shift+R)"
+                    },
+                    {
+                      step: 2,
+                      action: "Verify changes were saved",
+                      details: "Check dashboard to confirm settings are saved"
+                    },
+                    {
+                      step: 3,
+                      action: "Wait 1-2 minutes for CDN update",
+                      details: "Changes may take a moment to propagate"
+                    },
+                    {
+                      step: 4,
+                      action: "Check subscription tier",
+                      details: "Some features require Pro or Embed Pro"
+                    }
+                  ],
+                  severity: "low"
+                }
+              ]}
+              faqs={[
+                {
+                  question: "What file formats are supported for logos?",
+                  answer: "PNG, JPG, and SVG formats are supported. SVG is recommended for best quality and scalability."
+                },
+                {
+                  question: "Can I use custom CSS?",
+                  answer: "Yes! Embed Pro subscribers can use custom CSS for complete design control. Go to Branding → Custom CSS."
+                },
+                {
+                  question: "Do branding changes affect my QR code?",
+                  answer: "No, QR codes are separate. You can customize QR code colors separately in QR Code settings."
+                }
+              ]}
+            />
+
+            {/* Analytics Guide */}
+            <FeatureGuide
+              id="analytics-guide"
+              icon={BarChart3}
+              title="Analytics & Reports"
+              description="Understand your tips, requests, and audience insights (Pro & Embed Pro)"
+              overview="Analytics help you understand your performance, track revenue, and make data-driven decisions. View detailed reports on tips, requests, events, and more."
+              steps={[
+                {
+                  number: 1,
+                  title: "Access Analytics Dashboard",
+                  description: "Navigate to your analytics page.",
+                  details: [
+                    "Go to Dashboard → Analytics",
+                    "Or click 'Analytics' in the main dashboard",
+                    "Verify you're on Pro or Embed Pro plan"
+                  ],
+                  tips: [
+                    "Free plan has limited analytics",
+                    "Upgrade to Pro for full analytics access"
+                  ],
+                  warning: "Full analytics require Pro or Embed Pro subscription"
+                },
+                {
+                  number: 2,
+                  title: "View Revenue Analytics",
+                  description: "Track your earnings and revenue trends.",
+                  details: [
+                    "Total Revenue: All-time earnings",
+                    "This Month: Current month revenue",
+                    "Average Tip: Average tip amount",
+                    "Revenue Trends: Growth over time",
+                    "Filter by date range (7 days, 30 days, 90 days, all time)"
+                  ],
+                  tips: [
+                    "Use date filters to compare periods",
+                    "Track growth trends over time",
+                    "Identify peak earning periods"
+                  ]
+                },
+                {
+                  number: 3,
+                  title: "View Request Statistics",
+                  description: "Understand your request patterns.",
+                  details: [
+                    "Total Requests: All-time request count",
+                    "By Type: Song requests vs shoutouts vs tips",
+                    "This Month: Current month requests",
+                    "Request Trends: Request volume over time"
+                  ],
+                  tips: [
+                    "See which request types are most popular",
+                    "Track request volume trends",
+                    "Identify peak request times"
+                  ]
+                },
+                {
+                  number: 4,
+                  title: "Event-Specific Analytics",
+                  description: "Track performance by event (if using event codes).",
+                  details: [
+                    "Filter by event code",
+                    "See revenue per event",
+                    "Track request volume per event",
+                    "Compare event performance"
+                  ],
+                  tips: [
+                    "Use event codes to track individual events",
+                    "Compare which events perform best",
+                    "Use insights to improve future events"
+                  ]
+                },
+                {
+                  number: 5,
+                  title: "Export Data",
+                  description: "Export your analytics for external analysis.",
+                  details: [
+                    "Click 'Export' button in analytics dashboard",
+                    "Choose date range",
+                    "Select data format (CSV, Excel)",
+                    "Download your report"
+                  ],
+                  tips: [
+                    "Export regularly for record-keeping",
+                    "Use for tax preparation",
+                    "Share with accountants or bookkeepers"
+                  ]
+                },
+                {
+                  number: 6,
+                  title: "Understand Key Metrics",
+                  description: "Learn what each metric means.",
+                  details: [
+                    "Conversion Rate: % of visitors who tip",
+                    "Average Tip: Mean tip amount",
+                    "Peak Hours: Times with most activity",
+                    "Top Events: Highest-performing events"
+                  ],
+                  tips: [
+                    "Focus on metrics that matter to your goals",
+                    "Track trends, not just absolute numbers",
+                    "Use insights to optimize your strategy"
+                  ]
+                }
+              ]}
+              troubleshooting={[
+                {
+                  issue: "Analytics Not Loading",
+                  symptoms: [
+                    "Dashboard shows loading forever",
+                    "No data displayed",
+                    "Error messages"
+                  ],
+                  causes: [
+                    "Not on Pro/Embed Pro plan",
+                    "No data yet",
+                    "Network issues",
+                    "Browser issues"
+                  ],
+                  solutions: [
+                    {
+                      step: 1,
+                      action: "Verify subscription tier",
+                      details: "Analytics require Pro or Embed Pro"
+                    },
+                    {
+                      step: 2,
+                      action: "Check if you have any tips/requests",
+                      details: "Analytics need data to display"
+                    },
+                    {
+                      step: 3,
+                      action: "Refresh the page",
+                      details: "Try hard refresh (Ctrl+Shift+R)"
+                    },
+                    {
+                      step: 4,
+                      action: "Check internet connection",
+                      details: "Analytics require network access"
+                    }
+                  ],
+                  severity: "low"
+                }
+              ]}
+              faqs={[
+                {
+                  question: "How far back does analytics data go?",
+                  answer: "Analytics data goes back to when you created your account. You can filter by date range to view specific periods."
+                },
+                {
+                  question: "Can I export analytics data?",
+                  answer: "Yes! Pro and Embed Pro subscribers can export analytics data in CSV or Excel format for external analysis."
+                },
+                {
+                  question: "Do analytics include refunded tips?",
+                  answer: "Analytics show net revenue after refunds. Refunded tips are excluded from revenue calculations."
+                }
+              ]}
+            />
+          </div>
+        </div>
+
+        {/* Best Practices Section */}
+        <div id="best-practices" className="max-w-4xl mx-auto mt-16 mb-16 scroll-mt-20">
+          <div className="text-center mb-12">
+            <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-yellow-100 dark:bg-yellow-900/30 mb-4">
+              <Lightbulb className="w-6 h-6 text-yellow-600 dark:text-yellow-400" />
+            </div>
+            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-3">
+              Best Practices
+            </h2>
+            <p className="text-lg text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
+              Tips and strategies to maximize your tips and get the most out of TipJar
+            </p>
+          </div>
+
+          <div className="space-y-6">
+            {/* Maximizing Tips */}
+            <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-6 md:p-8">
+              <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+                <DollarSign className="w-5 h-5 text-emerald-500" />
+                Maximizing Tips
+              </h3>
+              <ul className="space-y-3">
+                <li className="flex items-start gap-3">
+                  <CheckCircle className="w-5 h-5 text-emerald-500 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <p className="font-semibold text-gray-900 dark:text-white">Set Appropriate Minimum Amounts</p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">Set minimum tip amounts that reflect the value of your service. Too low may devalue your work, too high may discourage tips.</p>
+                  </div>
+                </li>
+                <li className="flex items-start gap-3">
+                  <CheckCircle className="w-5 h-5 text-emerald-500 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <p className="font-semibold text-gray-900 dark:text-white">Announce Your TipJar</p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">Mention your TipJar during events or streams. Let people know it's available and how to access it.</p>
+                  </div>
+                </li>
+                <li className="flex items-start gap-3">
+                  <CheckCircle className="w-5 h-5 text-emerald-500 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <p className="font-semibold text-gray-900 dark:text-white">Make It Easy to Find</p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">Display QR codes prominently, share links in bios, and make access as frictionless as possible.</p>
+                  </div>
+                </li>
+                <li className="flex items-start gap-3">
+                  <CheckCircle className="w-5 h-5 text-emerald-500 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <p className="font-semibold text-gray-900 dark:text-white">Offer Fast-Track Options</p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">Fast-Track and Next Song options give guests a way to pay more for priority, increasing your average tip amount.</p>
+                  </div>
+                </li>
+                <li className="flex items-start gap-3">
+                  <CheckCircle className="w-5 h-5 text-emerald-500 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <p className="font-semibold text-gray-900 dark:text-white">Engage with Tippers</p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">Acknowledge tips publicly (if appropriate) and thank tippers. Engagement encourages more tips.</p>
+                  </div>
+                </li>
+              </ul>
+            </div>
+
+            {/* QR Code Best Practices */}
+            <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-6 md:p-8">
+              <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+                <QrCode className="w-5 h-5 text-indigo-500" />
+                QR Code Best Practices
+              </h3>
+              <ul className="space-y-3">
+                <li className="flex items-start gap-3">
+                  <CheckCircle className="w-5 h-5 text-emerald-500 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <p className="font-semibold text-gray-900 dark:text-white">Print Large Enough</p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">Print QR codes at least 3\"x3\" (7.5cm). Larger is better—4\"x4\" or 5\"x5\" works great for events.</p>
+                  </div>
+                </li>
+                <li className="flex items-start gap-3">
+                  <CheckCircle className="w-5 h-5 text-emerald-500 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <p className="font-semibold text-gray-900 dark:text-white">Use High Contrast</p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">Ensure dark QR codes on light backgrounds (or vice versa) for best scanability.</p>
+                  </div>
+                </li>
+                <li className="flex items-start gap-3">
+                  <CheckCircle className="w-5 h-5 text-emerald-500 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <p className="font-semibold text-gray-900 dark:text-white">Place Multiple QR Codes</p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">Place QR codes in multiple locations at events—tables, bar, entrance, DJ booth.</p>
+                  </div>
+                </li>
+                <li className="flex items-start gap-3">
+                  <CheckCircle className="w-5 h-5 text-emerald-500 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <p className="font-semibold text-gray-900 dark:text-white">Have Backup Copies</p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">Print multiple copies in case one gets damaged or lost during the event.</p>
+                  </div>
+                </li>
+                <li className="flex items-start gap-3">
+                  <CheckCircle className="w-5 h-5 text-emerald-500 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <p className="font-semibold text-gray-900 dark:text-white">Test Before Events</p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">Always test your QR code with multiple devices before printing large quantities or using at events.</p>
+                  </div>
+                </li>
+              </ul>
+            </div>
+
+            {/* Event Setup Tips */}
+            <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-6 md:p-8">
+              <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+                <Settings className="w-5 h-5 text-orange-500" />
+                Event Setup Tips
+              </h3>
+              <ul className="space-y-3">
+                <li className="flex items-start gap-3">
+                  <CheckCircle className="w-5 h-5 text-emerald-500 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <p className="font-semibold text-gray-900 dark:text-white">Create Event-Specific QR Codes</p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">Use event codes to track performance by event. This helps you understand which events generate the most tips.</p>
+                  </div>
+                </li>
+                <li className="flex items-start gap-3">
+                  <CheckCircle className="w-5 h-5 text-emerald-500 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <p className="font-semibold text-gray-900 dark:text-white">Set Up Before the Event</p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">Generate QR codes and test everything at least a day before the event to avoid last-minute issues.</p>
+                  </div>
+                </li>
+                <li className="flex items-start gap-3">
+                  <CheckCircle className="w-5 h-5 text-emerald-500 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <p className="font-semibold text-gray-900 dark:text-white">Have Internet Backup</p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">Ensure you have reliable internet at events. Consider a mobile hotspot as backup.</p>
+                  </div>
+                </li>
+                <li className="flex items-start gap-3">
+                  <CheckCircle className="w-5 h-5 text-emerald-500 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <p className="font-semibold text-gray-900 dark:text-white">Monitor Requests in Real-Time</p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">Keep your dashboard open on a tablet or phone to see requests as they come in during events.</p>
+                  </div>
+                </li>
+                <li className="flex items-start gap-3">
+                  <CheckCircle className="w-5 h-5 text-emerald-500 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <p className="font-semibold text-gray-900 dark:text-white">Update Request Status</p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">Mark requests as 'Playing' and 'Played' to keep your queue organized and show guests you're responsive.</p>
+                  </div>
+                </li>
+              </ul>
+            </div>
+
+            {/* Pricing Strategies */}
+            <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-6 md:p-8">
+              <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+                <DollarSign className="w-5 h-5 text-green-500" />
+                Pricing Strategies
+              </h3>
+              <ul className="space-y-3">
+                <li className="flex items-start gap-3">
+                  <CheckCircle className="w-5 h-5 text-emerald-500 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <p className="font-semibold text-gray-900 dark:text-white">Offer Multiple Price Points</p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">Provide preset amounts ($5, $10, $20, $50) plus custom amount option to accommodate different budgets.</p>
+                  </div>
+                </li>
+                <li className="flex items-start gap-3">
+                  <CheckCircle className="w-5 h-5 text-emerald-500 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <p className="font-semibold text-gray-900 dark:text-white">Set Minimums Appropriately</p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">Minimum $1 for basic tips, higher minimums ($5-$10) for song requests or shoutouts to reflect value.</p>
+                  </div>
+                </li>
+                <li className="flex items-start gap-3">
+                  <CheckCircle className="w-5 h-5 text-emerald-500 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <p className="font-semibold text-gray-900 dark:text-white">Price Fast-Track Strategically</p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">Fast-Track at $10 and Next Song at $20-25 provides good revenue boost while maintaining accessibility.</p>
+                  </div>
+                </li>
+                <li className="flex items-start gap-3">
+                  <CheckCircle className="w-5 h-5 text-emerald-500 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <p className="font-semibold text-gray-900 dark:text-white">Adjust for Event Type</p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">Higher-end events (weddings, corporate) can support higher minimums than casual events.</p>
+                  </div>
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        {/* Troubleshooting Section */}
+        <div id="troubleshooting" className="max-w-4xl mx-auto mt-16 mb-16 scroll-mt-20">
+          <div className="text-center mb-12">
+            <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-red-100 dark:bg-red-900/30 mb-4">
+              <Wrench className="w-6 h-6 text-red-600 dark:text-red-400" />
+            </div>
+            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-3">
+              Troubleshooting Common Issues
+            </h2>
+            <p className="text-lg text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
+              Quick solutions to the most common problems
+            </p>
+          </div>
+
+          <div className="space-y-6">
+            <TroubleshootingCard
+              issue="Payment Failed - Card Declined"
+              symptoms={[
+                "Error message: 'Your card was declined'",
+                "Payment doesn't go through",
+                "Guest sees payment failure"
+              ]}
+              causes={[
+                "Insufficient funds in account",
+                "Card expired or incorrect details",
+                "Bank security block on transaction",
+                "Card not activated for online payments"
+              ]}
+              solutions={[
+                {
+                  step: 1,
+                  action: "Check card balance and expiration date",
+                  details: "Verify the card has sufficient funds and hasn't expired"
+                },
+                {
+                  step: 2,
+                  action: "Contact bank to authorize transaction",
+                  details: "Some banks block online transactions by default"
+                },
+                {
+                  step: 3,
+                  action: "Try a different payment method",
+                  details: "Use a different card or Cash App Pay"
+                },
+                {
+                  step: 4,
+                  action: "Verify card details are entered correctly",
+                  details: "Double-check card number, CVV, and billing address"
+                }
+              ]}
+              severity="high"
+            />
+
+            <TroubleshootingCard
+              issue="QR Code Not Scanning"
+              symptoms={[
+                "Phone camera can't read QR code",
+                "QR code appears but doesn't work",
+                "Works on some phones but not others"
+              ]}
+              causes={[
+                "QR code too small or too far away",
+                "Poor contrast (light on light or dark on dark)",
+                "Blurry or pixelated QR code",
+                "Damaged or creased printed QR code",
+                "Insufficient lighting"
+              ]}
+              solutions={[
+                {
+                  step: 1,
+                  action: "Download larger size QR code",
+                  details: "Use at least 3\"x3\" when printing"
+                },
+                {
+                  step: 2,
+                  action: "Ensure high contrast",
+                  details: "Use dark QR code on light background or vice versa"
+                },
+                {
+                  step: 3,
+                  action: "Print at higher resolution",
+                  details: "Use PNG format and print at 300 DPI minimum"
+                },
+                {
+                  step: 4,
+                  action: "Test before using",
+                  details: "Scan with multiple devices before printing large quantities"
+                },
+                {
+                  step: 5,
+                  action: "Improve lighting and distance",
+                  details: "Ensure good lighting and get closer to QR code"
+                }
+              ]}
+              severity="medium"
+            />
+
+            <TroubleshootingCard
+              issue="Payout Not Received"
+              symptoms={[
+                "Tips received but no payout in bank account",
+                "Payout shows as processed but money not received",
+                "Longer than expected delay"
+              ]}
+              causes={[
+                "Bank account not verified in Stripe",
+                "Incorrect bank account details",
+                "Bank processing delays (weekends/holidays)",
+                "First payout still in verification period",
+                "Bank account on hold"
+              ]}
+              solutions={[
+                {
+                  step: 1,
+                  action: "Check Stripe dashboard for payout status",
+                  details: "Log in to Stripe to see if payout was processed"
+                },
+                {
+                  step: 2,
+                  action: "Verify bank account details are correct",
+                  details: "Check routing and account numbers in Stripe settings"
+                },
+                {
+                  step: 3,
+                  action: "Wait for bank processing time",
+                  details: "Standard payouts take 1-2 business days (weekends excluded)"
+                },
+                {
+                  step: 4,
+                  action: "Check with your bank",
+                  details: "Some banks hold transfers for security review"
+                },
+                {
+                  step: 5,
+                  action: "Contact support if still missing",
+                  details: "Provide payout ID from Stripe dashboard"
+                }
+              ]}
+              severity="high"
+            />
+
+            <TroubleshootingCard
+              issue="Stripe Connect Account Not Verified"
+              symptoms={[
+                "Can't receive payouts",
+                "Error: 'Account not ready'",
+                "Charges or payouts disabled"
+              ]}
+              causes={[
+                "Onboarding process incomplete",
+                "Missing required information",
+                "Identity verification pending",
+                "Bank account not verified",
+                "Additional information requested by Stripe"
+              ]}
+              solutions={[
+                {
+                  step: 1,
+                  action: "Complete Stripe onboarding",
+                  details: "Go to Dashboard → Settings → Payments and finish setup"
+                },
+                {
+                  step: 2,
+                  action: "Provide all required information",
+                  details: "Business details, identity verification, bank account"
+                },
+                {
+                  step: 3,
+                  action: "Check for pending requirements",
+                  details: "Stripe dashboard will show what's needed"
+                },
+                {
+                  step: 4,
+                  action: "Wait for verification (1-2 business days)",
+                  details: "First-time verification may take time"
+                },
+                {
+                  step: 5,
+                  action: "Contact Stripe support if stuck",
+                  details: "They can help with verification issues"
+                }
+              ]}
+              severity="high"
+            />
+          </div>
+        </div>
+
         {/* Contact Support */}
-        <div className="max-w-4xl mx-auto mt-16 mb-16">
+        <div id="contact" className="max-w-4xl mx-auto mt-16 mb-16 scroll-mt-20">
           <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-8 md:p-12">
             <div className="text-center">
               <Mail className="w-12 h-12 text-emerald-600 dark:text-emerald-400 mx-auto mb-4" />

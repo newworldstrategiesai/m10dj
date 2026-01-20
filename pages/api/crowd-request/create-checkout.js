@@ -410,10 +410,29 @@ export default async function handler(req, res) {
 
     // Determine base URL based on source_domain and organization product_context
     // This ensures TipJar requests redirect to tipjar.live, not m10djcompany.com
+    // Priority: 1. source_domain (most reliable for actual request origin), 2. organization product_context, 3. environment variables
     let baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3001';
     
-    // First check organization's product_context (most reliable)
-    if (organization?.product_context) {
+    // First priority: Check source_domain (where the request actually came from)
+    // This takes precedence because it reflects the actual domain the user is on
+    if (crowdRequest.source_domain) {
+      // If request came from tipjar.live, use tipjar.live for success page
+      if (crowdRequest.source_domain.includes('tipjar.live') || crowdRequest.source_domain.includes('tipjar.com')) {
+        baseUrl = process.env.NEXT_PUBLIC_TIPJAR_URL || 'https://www.tipjar.live';
+      } else if (crowdRequest.source_domain.includes('djdash.net') || crowdRequest.source_domain.includes('djdash.com')) {
+        baseUrl = process.env.NEXT_PUBLIC_DJDASH_URL || 'https://djdash.net';
+      } else if (crowdRequest.source_domain.includes('m10djcompany.com')) {
+        baseUrl = process.env.NEXT_PUBLIC_M10DJ_URL || 'https://www.m10djcompany.com';
+      }
+      // For other domains, use the source_domain to construct URL
+      // Note: This assumes the domain is valid and uses HTTPS
+      else if (!crowdRequest.source_domain.includes('localhost')) {
+        baseUrl = `https://${crowdRequest.source_domain.replace(/^www\./, '')}`;
+      }
+    }
+    // Second priority: Check organization's product_context
+    // Use this if source_domain is not available or doesn't match known domains
+    else if (organization?.product_context) {
       if (organization.product_context === 'tipjar') {
         // Use www.tipjar.live to match the actual domain (www redirects work, but be explicit)
         baseUrl = process.env.NEXT_PUBLIC_TIPJAR_URL || 'https://www.tipjar.live';
@@ -423,28 +442,12 @@ export default async function handler(req, res) {
         baseUrl = process.env.NEXT_PUBLIC_M10DJ_URL || 'https://www.m10djcompany.com';
       }
     }
-    // Fallback to source_domain if product_context not set
-    else if (crowdRequest.source_domain) {
-      // If request came from tipjar.live, use tipjar.live for success page
-      if (crowdRequest.source_domain.includes('tipjar.live')) {
-        baseUrl = 'https://tipjar.live';
-      } else if (crowdRequest.source_domain.includes('djdash.net') || crowdRequest.source_domain.includes('djdash.com')) {
-        baseUrl = 'https://djdash.net';
-      } else if (crowdRequest.source_domain.includes('m10djcompany.com')) {
-        baseUrl = 'https://www.m10djcompany.com';
-      }
-      // For other domains, use the source_domain to construct URL
-      // Note: This assumes the domain is valid and uses HTTPS
-      else if (!crowdRequest.source_domain.includes('localhost')) {
-        baseUrl = `https://${crowdRequest.source_domain.replace(/^www\./, '')}`;
-      }
-    }
     // Final fallback: check environment variables
     else {
       const envUrl = process.env.NEXT_PUBLIC_SITE_URL;
       if (envUrl) {
-        if (envUrl.includes('tipjar.live')) {
-          baseUrl = 'https://tipjar.live';
+        if (envUrl.includes('tipjar.live') || envUrl.includes('tipjar.com')) {
+          baseUrl = 'https://www.tipjar.live';
         } else if (envUrl.includes('djdash.net') || envUrl.includes('djdash.com')) {
           baseUrl = 'https://djdash.net';
         } else if (envUrl.includes('m10djcompany.com')) {
