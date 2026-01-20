@@ -81,9 +81,9 @@ async function handler(req, res) {
         error: result.error || 'Failed to update status',
         conflict: result.conflict || false
       });
-    };
+    }
 
-    const updatedSignup = result.signup!;
+    const updatedSignup = result.signup;
 
     // Update admin_notes separately if provided
     if (admin_notes !== undefined) {
