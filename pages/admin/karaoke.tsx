@@ -33,7 +33,8 @@ import {
   QrCode,
   Copy,
   Monitor,
-  Info
+  Info,
+  FileText
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -62,12 +63,34 @@ export default function KaraokeAdminPage() {
   const [selectedSignup, setSelectedSignup] = useState<KaraokeSignup | null>(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [settingsTab, setSettingsTab] = useState('general');
   const [showQRGenerator, setShowQRGenerator] = useState(false);
   const [organization, setOrganization] = useState<any>(null);
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [availableEvents, setAvailableEvents] = useState<string[]>([]);
   const [settings, setSettings] = useState<any>(null);
-  
+  const [savingSettings, setSavingSettings] = useState(false);
+
+  // Page customization settings
+  const [pageSettings, setPageSettings] = useState({
+    pageTitle: '',
+    pageDescription: '',
+    mainHeading: '',
+    welcomeMessage: '',
+    signupSuccessMessage: '',
+    queuePositionMessage: '',
+    estimatedWaitMessage: ''
+  });
+
+  // Display settings
+  const [displaySettings, setDisplaySettings] = useState({
+    showWelcomeMessage: true,
+    showCurrentSinger: true,
+    showQueuePreview: true,
+    showEstimatedWait: true,
+    theme: 'default'
+  });
+
   // QR Generator state (reused from crowd-requests)
   const [qrEventCode, setQrEventCode] = useState('');
   const [qrEventName, setQrEventName] = useState('');
@@ -116,6 +139,27 @@ export default function KaraokeAdminPage() {
 
       if (data) {
         setSettings(data);
+
+        // Load page customization from organization
+        if (organization) {
+          setPageSettings({
+            pageTitle: organization.karaoke_page_title || '',
+            pageDescription: organization.karaoke_page_description || '',
+            mainHeading: organization.karaoke_main_heading || '',
+            welcomeMessage: organization.karaoke_welcome_message || '',
+            signupSuccessMessage: organization.karaoke_signup_success_message || '',
+            queuePositionMessage: organization.karaoke_queue_position_message || '',
+            estimatedWaitMessage: organization.karaoke_estimated_wait_message || ''
+          });
+
+          setDisplaySettings({
+            showWelcomeMessage: organization.karaoke_show_welcome_message !== false,
+            showCurrentSinger: organization.karaoke_show_current_singer !== false,
+            showQueuePreview: organization.karaoke_show_queue_preview !== false,
+            showEstimatedWait: organization.karaoke_show_estimated_wait !== false,
+            theme: organization.karaoke_theme || 'default'
+          });
+        }
       } else {
         const { data: newSettings } = await (supabase
           .from('karaoke_settings') as any)
@@ -142,6 +186,56 @@ export default function KaraokeAdminPage() {
       }
     } catch (error) {
       console.error('Error loading settings:', error);
+    }
+  };
+
+  const saveSettings = async () => {
+    if (!organization?.id) return;
+
+    setSavingSettings(true);
+    try {
+      // Update organization with page customization settings
+      const orgUpdateData: any = {
+        karaoke_page_title: pageSettings.pageTitle || null,
+        karaoke_page_description: pageSettings.pageDescription || null,
+        karaoke_main_heading: pageSettings.mainHeading || null,
+        karaoke_welcome_message: pageSettings.welcomeMessage || null,
+        karaoke_signup_success_message: pageSettings.signupSuccessMessage || null,
+        karaoke_queue_position_message: pageSettings.queuePositionMessage || null,
+        karaoke_estimated_wait_message: pageSettings.estimatedWaitMessage || null,
+        karaoke_show_welcome_message: displaySettings.showWelcomeMessage,
+        karaoke_show_current_singer: displaySettings.showCurrentSinger,
+        karaoke_show_queue_preview: displaySettings.showQueuePreview,
+        karaoke_show_estimated_wait: displaySettings.showEstimatedWait,
+        karaoke_theme: displaySettings.theme
+      };
+
+      const { error: orgError } = await (supabase
+        .from('organizations') as any)
+        .update(orgUpdateData)
+        .eq('id', organization.id);
+
+      if (orgError) {
+        console.error('Error updating organization:', orgError);
+        throw orgError;
+      }
+
+      // Update organization state
+      setOrganization({ ...organization, ...orgUpdateData });
+
+      toast({
+        title: "Settings saved",
+        description: "Your karaoke settings have been updated successfully.",
+      });
+    } catch (error) {
+      console.error('Error saving settings:', error);
+      toast({
+        title: "Error saving settings",
+        description: "There was an error saving your settings. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setSavingSettings(false);
     }
   };
 
@@ -1399,56 +1493,119 @@ export default function KaraokeAdminPage() {
             </DialogContent>
           </Dialog>
 
-          {/* Settings Modal - Reused pattern from crowd-requests */}
+          {/* Settings Modal - Comprehensive karaoke settings */}
           <Dialog open={showSettings} onOpenChange={setShowSettings}>
-            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-              <DialogHeader>
-                <DialogTitle>Karaoke Settings</DialogTitle>
-                <DialogDescription>
-                  Configure karaoke mode settings for your organization
-                </DialogDescription>
-              </DialogHeader>
-              {settings && (
-                <Tabs defaultValue="general" className="w-full">
-                  <TabsList className="grid w-full grid-cols-3">
-                    <TabsTrigger value="general">General</TabsTrigger>
-                    <TabsTrigger value="pricing">Pricing</TabsTrigger>
-                    <TabsTrigger value="rotation">Rotation</TabsTrigger>
-                  </TabsList>
-                  
-                  <TabsContent value="general" className="space-y-4 mt-4">
-                    <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                      <div>
-                        <label className="text-sm font-medium text-gray-900 dark:text-white">
-                          Enable Karaoke Mode
-                        </label>
-                        <p className="text-xs text-gray-500 dark:text-gray-400">
-                          Enable karaoke signups for your organization
-                        </p>
-                      </div>
-                      <Switch
-                        checked={settings.karaoke_enabled}
-                        onCheckedChange={async (checked) => {
-                          const { error } = await (supabase
-                            .from('karaoke_settings') as any)
-                            .update({ karaoke_enabled: checked })
-                            .eq('organization_id', organization.id);
-                          if (!error) {
-                            setSettings({ ...settings, karaoke_enabled: checked });
-                          }
-                        }}
-                      />
+            <DialogContent className="max-w-[95vw] max-h-[95vh] w-full h-full p-0 gap-0 overflow-hidden flex flex-col bg-gradient-to-br from-white to-cyan-50 dark:from-gray-900 dark:to-cyan-950">
+              {/* Premium Header */}
+              <DialogHeader className="bg-gradient-to-r from-cyan-500 to-blue-600 dark:from-cyan-600 dark:to-blue-700 px-8 py-6 border-b border-cyan-400/20 flex-shrink-0">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center">
+                      <Settings className="w-6 h-6 text-white" />
                     </div>
-                    <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                      <div>
-                        <label className="text-sm font-medium text-gray-900 dark:text-white">
-                          Auto-Advance
-                        </label>
-                        <p className="text-xs text-gray-500 dark:text-gray-400">
-                          Automatically move to next singer when current completes
-                        </p>
-                      </div>
-                      <Switch
+                    <div>
+                      <DialogTitle className="text-2xl font-bold text-white mb-1">
+                        Karaoke Settings
+                      </DialogTitle>
+                      <p className="text-cyan-100 text-sm">
+                        Customize your karaoke experience
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <Button
+                      onClick={saveSettings}
+                      disabled={savingSettings}
+                      className="bg-white/10 hover:bg-white/20 border-white/20 text-white backdrop-blur-sm"
+                    >
+                      {savingSettings ? (
+                        <>
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          Saving...
+                        </>
+                      ) : (
+                        <>
+                          <CheckCircle2 className="w-4 h-4 mr-2" />
+                          Save Changes
+                        </>
+                      )}
+                    </Button>
+                    <Button
+                      onClick={() => setShowSettings(false)}
+                      variant="outline"
+                      className="bg-white/10 hover:bg-white/20 border-white/20 text-white backdrop-blur-sm"
+                    >
+                      <X className="w-4 h-4 mr-2" />
+                      Close
+                    </Button>
+                  </div>
+                </div>
+              </DialogHeader>
+
+              {/* Tabbed Content - Scrollable */}
+              <div className="flex-1 overflow-y-auto p-8">
+                {settings && (
+                  <Tabs value={settingsTab} onValueChange={(v) => setSettingsTab(v)} className="w-full">
+                    <TabsList className="grid w-full grid-cols-5 mb-8 bg-gray-100 dark:bg-gray-800 p-1 rounded-xl">
+                      <TabsTrigger value="general" className="flex items-center gap-2 data-[state=active]:bg-white data-[state=active]:shadow-md">
+                        <Settings className="w-4 h-4" />
+                        <span className="hidden sm:inline">General</span>
+                      </TabsTrigger>
+                      <TabsTrigger value="pricing" className="flex items-center gap-2 data-[state=active]:bg-white data-[state=active]:shadow-md">
+                        <Zap className="w-4 h-4" />
+                        <span className="hidden sm:inline">Pricing</span>
+                      </TabsTrigger>
+                      <TabsTrigger value="rotation" className="flex items-center gap-2 data-[state=active]:bg-white data-[state=active]:shadow-md">
+                        <RefreshCw className="w-4 h-4" />
+                        <span className="hidden sm:inline">Rotation</span>
+                      </TabsTrigger>
+                      <TabsTrigger value="appearance" className="flex items-center gap-2 data-[state=active]:bg-white data-[state=active]:shadow-md">
+                        <Eye className="w-4 h-4" />
+                        <span className="hidden sm:inline">Appearance</span>
+                      </TabsTrigger>
+                      <TabsTrigger value="content" className="flex items-center gap-2 data-[state=active]:bg-white data-[state=active]:shadow-md">
+                        <FileText className="w-4 h-4" />
+                        <span className="hidden sm:inline">Content</span>
+                      </TabsTrigger>
+                    </TabsList>
+
+                    <TabsContent value="general" className="space-y-6 mt-6">
+                      <div className="space-y-4">
+                        <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Basic Settings</h3>
+                        <div className="grid gap-4">
+                          <div className="flex items-center justify-between p-4 bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm border border-gray-200/50 dark:border-gray-700/50 rounded-xl">
+                            <div>
+                              <label className="text-sm font-medium text-gray-900 dark:text-white">
+                                Enable Karaoke Mode
+                              </label>
+                              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                Allow customers to sign up for karaoke sessions
+                              </p>
+                            </div>
+                            <Switch
+                              checked={settings.karaoke_enabled}
+                              onCheckedChange={async (checked) => {
+                                const { error } = await (supabase
+                                  .from('karaoke_settings') as any)
+                                  .update({ karaoke_enabled: checked })
+                                  .eq('organization_id', organization.id);
+                                if (!error) {
+                                  setSettings({ ...settings, karaoke_enabled: checked });
+                                }
+                              }}
+                            />
+                          </div>
+
+                          <div className="flex items-center justify-between p-4 bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm border border-gray-200/50 dark:border-gray-700/50 rounded-xl">
+                            <div>
+                              <label className="text-sm font-medium text-gray-900 dark:text-white">
+                                Auto-Advance Queue
+                              </label>
+                              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                Automatically move to next singer when current finishes
+                              </p>
+                            </div>
+                            <Switch
                         checked={settings.auto_advance}
                         onCheckedChange={async (checked) => {
                           const { error } = await (supabase
@@ -1460,6 +1617,8 @@ export default function KaraokeAdminPage() {
                           }
                         }}
                       />
+                        </div>
+                      </div>
                     </div>
                   </TabsContent>
 
@@ -1555,8 +1714,190 @@ export default function KaraokeAdminPage() {
                       />
                     </div>
                   </TabsContent>
+
+                  <TabsContent value="appearance" className="space-y-6 mt-6">
+                    <div className="space-y-4">
+                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Display Options</h3>
+                      <div className="grid gap-4">
+                        <div className="flex items-center justify-between p-4 bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm border border-gray-200/50 dark:border-gray-700/50 rounded-xl">
+                          <div>
+                            <label className="text-sm font-medium text-gray-900 dark:text-white">
+                              Show Welcome Message
+                            </label>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                              Display welcome text on the karaoke page
+                            </p>
+                          </div>
+                          <Switch
+                            checked={displaySettings.showWelcomeMessage}
+                            onCheckedChange={(checked) => setDisplaySettings(prev => ({ ...prev, showWelcomeMessage: checked }))}
+                          />
+                        </div>
+
+                        <div className="flex items-center justify-between p-4 bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm border border-gray-200/50 dark:border-gray-700/50 rounded-xl">
+                          <div>
+                            <label className="text-sm font-medium text-gray-900 dark:text-white">
+                              Show Current Singer
+                            </label>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                              Display who's currently singing
+                            </p>
+                          </div>
+                          <Switch
+                            checked={displaySettings.showCurrentSinger}
+                            onCheckedChange={(checked) => setDisplaySettings(prev => ({ ...prev, showCurrentSinger: checked }))}
+                          />
+                        </div>
+
+                        <div className="flex items-center justify-between p-4 bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm border border-gray-200/50 dark:border-gray-700/50 rounded-xl">
+                          <div>
+                            <label className="text-sm font-medium text-gray-900 dark:text-white">
+                              Show Queue Preview
+                            </label>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                              Show upcoming singers in queue
+                            </p>
+                          </div>
+                          <Switch
+                            checked={displaySettings.showQueuePreview}
+                            onCheckedChange={(checked) => setDisplaySettings(prev => ({ ...prev, showQueuePreview: checked }))}
+                          />
+                        </div>
+
+                        <div className="flex items-center justify-between p-4 bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm border border-gray-200/50 dark:border-gray-700/50 rounded-xl">
+                          <div>
+                            <label className="text-sm font-medium text-gray-900 dark:text-white">
+                              Show Estimated Wait
+                            </label>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                              Display estimated wait times
+                            </p>
+                          </div>
+                          <Switch
+                            checked={displaySettings.showEstimatedWait}
+                            onCheckedChange={(checked) => setDisplaySettings(prev => ({ ...prev, showEstimatedWait: checked }))}
+                          />
+                        </div>
+
+                        <div className="p-4 bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm border border-gray-200/50 dark:border-gray-700/50 rounded-xl">
+                          <label className="block text-sm font-medium text-gray-900 dark:text-white mb-3">
+                            Theme
+                          </label>
+                          <select
+                            value={displaySettings.theme}
+                            onChange={(e) => setDisplaySettings(prev => ({ ...prev, theme: e.target.value }))}
+                            className="w-full p-2 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg"
+                          >
+                            <option value="default">Default</option>
+                            <option value="dark">Dark</option>
+                            <option value="colorful">Colorful</option>
+                            <option value="minimal">Minimal</option>
+                          </select>
+                        </div>
+                      </div>
+                    </div>
+                  </TabsContent>
+
+                  <TabsContent value="content" className="space-y-6 mt-6">
+                    <div className="space-y-6">
+                      <div>
+                        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Page Content</h3>
+                        <div className="grid gap-4">
+                          <div>
+                            <label className="block text-sm font-medium text-gray-900 dark:text-white mb-2">
+                              Page Title
+                            </label>
+                            <Input
+                              value={pageSettings.pageTitle}
+                              onChange={(e) => setPageSettings(prev => ({ ...prev, pageTitle: e.target.value }))}
+                              placeholder="Karaoke Sign-Up"
+                              className="w-full"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-sm font-medium text-gray-900 dark:text-white mb-2">
+                              Page Description
+                            </label>
+                            <Input
+                              value={pageSettings.pageDescription}
+                              onChange={(e) => setPageSettings(prev => ({ ...prev, pageDescription: e.target.value }))}
+                              placeholder="Sign up for karaoke and join the fun!"
+                              className="w-full"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-sm font-medium text-gray-900 dark:text-white mb-2">
+                              Main Heading
+                            </label>
+                            <Input
+                              value={pageSettings.mainHeading}
+                              onChange={(e) => setPageSettings(prev => ({ ...prev, mainHeading: e.target.value }))}
+                              placeholder="Karaoke Time!"
+                              className="w-full"
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      <div>
+                        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Messages</h3>
+                        <div className="grid gap-4">
+                          <div>
+                            <label className="block text-sm font-medium text-gray-900 dark:text-white mb-2">
+                              Welcome Message
+                            </label>
+                            <Input
+                              value={pageSettings.welcomeMessage}
+                              onChange={(e) => setPageSettings(prev => ({ ...prev, welcomeMessage: e.target.value }))}
+                              placeholder="Welcome to karaoke night!"
+                              className="w-full"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-sm font-medium text-gray-900 dark:text-white mb-2">
+                              Signup Success Message
+                            </label>
+                            <Input
+                              value={pageSettings.signupSuccessMessage}
+                              onChange={(e) => setPageSettings(prev => ({ ...prev, signupSuccessMessage: e.target.value }))}
+                              placeholder="You're all signed up!"
+                              className="w-full"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-sm font-medium text-gray-900 dark:text-white mb-2">
+                              Queue Position Message
+                            </label>
+                            <Input
+                              value={pageSettings.queuePositionMessage}
+                              onChange={(e) => setPageSettings(prev => ({ ...prev, queuePositionMessage: e.target.value }))}
+                              placeholder="You're #{position} in line"
+                              className="w-full"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-sm font-medium text-gray-900 dark:text-white mb-2">
+                              Estimated Wait Message
+                            </label>
+                            <Input
+                              value={pageSettings.estimatedWaitMessage}
+                              onChange={(e) => setPageSettings(prev => ({ ...prev, estimatedWaitMessage: e.target.value }))}
+                              placeholder="About {time} wait time"
+                              className="w-full"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </TabsContent>
                 </Tabs>
               )}
+              </div>
             </DialogContent>
           </Dialog>
         </div>
