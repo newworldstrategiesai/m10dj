@@ -297,9 +297,21 @@ export default function OrganizationKaraokePage() {
       <>
         <Head>
           <title>Karaoke Sign-Up | Loading...</title>
+          <style>{`
+            html, body, #__next {
+              margin: 0;
+              padding: 0;
+            }
+          `}</style>
         </Head>
-        <div className="min-h-screen bg-gradient-to-br from-purple-50 to-blue-50 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center p-4">
-          <Loader2 className="w-8 h-8 animate-spin text-purple-600 dark:text-purple-400" />
+        <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 dark:from-slate-950 dark:via-blue-950 dark:to-indigo-950 pt-8 pb-8 px-4 relative overflow-hidden flex items-center justify-center">
+          <div className="absolute inset-0 opacity-30">
+            <div className="absolute top-20 left-10 w-32 h-32 bg-gradient-to-r from-cyan-400 to-blue-500 rounded-full blur-3xl animate-pulse"></div>
+            <div className="absolute bottom-20 right-10 w-40 h-40 bg-gradient-to-r from-purple-400 to-pink-500 rounded-full blur-3xl animate-pulse delay-1000"></div>
+          </div>
+          <div className="relative z-10">
+            <Loader2 className="w-12 h-12 animate-spin text-cyan-600 dark:text-cyan-400" />
+          </div>
         </div>
       </>
     );
@@ -310,14 +322,29 @@ export default function OrganizationKaraokePage() {
       <>
         <Head>
           <title>Organization Not Found</title>
+          <style>{`
+            html, body, #__next {
+              margin: 0;
+              padding: 0;
+            }
+          `}</style>
         </Head>
-        <div className="min-h-screen bg-gradient-to-br from-purple-50 to-blue-50 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center p-4">
-          <div className="max-w-md w-full bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8 text-center">
-            <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-              Organization Not Found
-            </h1>
-            <p className="text-gray-600 dark:text-gray-300">{error}</p>
+        <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 dark:from-slate-950 dark:via-blue-950 dark:to-indigo-950 pt-8 pb-8 px-4 relative overflow-hidden flex items-center justify-center">
+          <div className="absolute inset-0 opacity-30">
+            <div className="absolute top-20 left-10 w-32 h-32 bg-gradient-to-r from-cyan-400 to-blue-500 rounded-full blur-3xl animate-pulse"></div>
+            <div className="absolute bottom-20 right-10 w-40 h-40 bg-gradient-to-r from-purple-400 to-pink-500 rounded-full blur-3xl animate-pulse delay-1000"></div>
+          </div>
+          <div className="relative z-10 max-w-md w-full">
+            <div className="backdrop-blur-xl bg-white/80 dark:bg-gray-900/80 rounded-3xl shadow-2xl border border-white/20 dark:border-gray-700/50 p-8 text-center">
+              <div className="relative inline-flex items-center justify-center w-16 h-16 bg-red-100 dark:bg-red-900 rounded-2xl mb-6">
+                <AlertCircle className="w-8 h-8 text-red-600 dark:text-red-400" />
+                <div className="absolute inset-0 bg-red-400 rounded-2xl blur-md opacity-30"></div>
+              </div>
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
+                Organization Not Found
+              </h1>
+              <p className="text-gray-600 dark:text-gray-300">{error}</p>
+            </div>
           </div>
         </div>
       </>
@@ -329,52 +356,66 @@ export default function OrganizationKaraokePage() {
       <>
         <Head>
           <title>Signed Up! | {organization?.name || 'Karaoke'}</title>
+          <style>{`
+            html, body, #__next {
+              margin: 0;
+              padding: 0;
+            }
+          `}</style>
         </Head>
-        <div className="min-h-screen bg-gradient-to-br from-purple-50 to-blue-50 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center p-4">
-          <div className="max-w-md w-full bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8 text-center">
-            <CheckCircle2 className="w-16 h-16 text-green-500 mx-auto mb-4" />
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-              You're Signed Up!
-            </h1>
-            <p className="text-gray-600 dark:text-gray-300 mb-6">
-              {formatGroupDisplayName(singerName, groupSize > 1 ? groupMembers : null, groupSize)}
-            </p>
-            <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 mb-6">
-              <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Song</p>
-              <p className="text-lg font-semibold text-gray-900 dark:text-white">
-                "{songTitle}"
+        <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 dark:from-slate-950 dark:via-blue-950 dark:to-indigo-950 pt-8 pb-8 px-4 relative overflow-hidden flex items-center justify-center">
+          <div className="absolute inset-0 opacity-30">
+            <div className="absolute top-20 left-10 w-32 h-32 bg-gradient-to-r from-cyan-400 to-blue-500 rounded-full blur-3xl animate-pulse"></div>
+            <div className="absolute bottom-20 right-10 w-40 h-40 bg-gradient-to-r from-purple-400 to-pink-500 rounded-full blur-3xl animate-pulse delay-1000"></div>
+          </div>
+          <div className="relative z-10 max-w-md w-full">
+            <div className="backdrop-blur-xl bg-white/80 dark:bg-gray-900/80 rounded-3xl shadow-2xl border border-white/20 dark:border-gray-700/50 p-8 text-center">
+              <div className="relative inline-flex items-center justify-center w-20 h-20 bg-gradient-to-r from-green-500 to-emerald-600 rounded-2xl mb-6 shadow-lg">
+                <CheckCircle2 className="w-10 h-10 text-white" />
+                <div className="absolute inset-0 bg-gradient-to-r from-green-500 to-emerald-600 rounded-2xl blur-md opacity-50"></div>
+              </div>
+              <h1 className="text-3xl font-bold bg-gradient-to-r from-gray-900 to-gray-600 dark:from-white dark:to-gray-300 bg-clip-text text-transparent mb-4">
+                You're On Stage!
+              </h1>
+              <p className="text-lg text-gray-600 dark:text-gray-300 mb-8 font-medium">
+                {formatGroupDisplayName(singerName, groupSize > 1 ? groupMembers : null, groupSize)}
               </p>
-              {songArtist && (
-                <p className="text-sm text-gray-500 dark:text-gray-400">by {songArtist}</p>
-              )}
-            </div>
+              <div className="backdrop-blur-sm bg-gradient-to-r from-slate-100/80 to-gray-100/80 dark:from-slate-800/80 dark:to-gray-800/80 rounded-2xl p-6 mb-6 border border-slate-200/50 dark:border-slate-700/50">
+                <p className="text-sm font-semibold text-gray-600 dark:text-gray-400 mb-2 uppercase tracking-wider">Your Song</p>
+                <p className="text-xl font-bold text-gray-900 dark:text-white mb-1">
+                  🎵 "{songTitle}"
+                </p>
+                {songArtist && (
+                  <p className="text-base text-gray-600 dark:text-gray-400 font-medium">by {songArtist}</p>
+                )}
+              </div>
             {queuePosition && (
-              <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4 mb-6">
-                <p className="text-sm text-blue-600 dark:text-blue-400 mb-1">Your Position</p>
-                <p className="text-3xl font-bold text-blue-700 dark:text-blue-300">
+              <div className="backdrop-blur-sm bg-gradient-to-r from-blue-50/80 to-cyan-50/80 dark:from-blue-900/10 dark:to-cyan-900/10 rounded-2xl p-6 mb-6 border border-blue-200/50 dark:border-blue-800/50">
+                <p className="text-sm font-semibold text-blue-700 dark:text-blue-300 mb-2 uppercase tracking-wider">Queue Position</p>
+                <p className="text-4xl font-bold text-blue-800 dark:text-blue-200 mb-1">
                   #{queuePosition}
                 </p>
-                <p className="text-xs text-blue-500 dark:text-blue-400 mt-1">
-                  {queuePosition === 1 ? "You're next!" : `${queuePosition - 1} ahead of you`}
+                <p className="text-sm text-blue-600 dark:text-blue-400">
+                  {queuePosition === 1 ? "🎤 You're next!" : `${queuePosition - 1} ${queuePosition - 1 === 1 ? 'person' : 'people'} ahead of you`}
                 </p>
               </div>
             )}
 
             {/* Status Check Link */}
             {signupId && (
-              <div className="bg-purple-50 dark:bg-purple-900/20 rounded-lg p-4 mb-6 border border-purple-200 dark:border-purple-800">
-                <p className="text-sm font-semibold text-purple-900 dark:text-purple-100 mb-2">
-                  Check Your Status Anytime
+              <div className="backdrop-blur-sm bg-gradient-to-r from-slate-100/80 to-gray-100/80 dark:from-slate-800/80 dark:to-gray-800/80 rounded-2xl p-6 mb-6 border border-slate-200/50 dark:border-slate-700/50">
+                <p className="text-base font-bold text-gray-900 dark:text-white mb-3 uppercase tracking-wider">
+                  Track Your Status
                 </p>
-                <p className="text-xs text-purple-700 dark:text-purple-300 mb-3">
-                  Bookmark this page to check your queue position:
+                <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                  Bookmark this link to check your queue position anytime:
                 </p>
-                <div className="flex items-center gap-2">
+                <div className="flex gap-3 mb-4">
                   <input
                     type="text"
                     readOnly
                     value={`${typeof window !== 'undefined' ? window.location.origin : ''}/karaoke/status/${signupId}`}
-                    className="flex-1 px-3 py-2 text-xs bg-white dark:bg-gray-700 border border-purple-200 dark:border-purple-700 rounded text-gray-900 dark:text-white"
+                    className="flex-1 h-10 px-3 bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm border border-gray-200 dark:border-gray-700 rounded-xl text-sm text-gray-900 dark:text-white"
                     onClick={(e) => (e.target as HTMLInputElement).select()}
                   />
                   <Button
@@ -382,10 +423,9 @@ export default function OrganizationKaraokePage() {
                     onClick={() => {
                       if (typeof window !== 'undefined') {
                         navigator.clipboard.writeText(`${window.location.origin}/karaoke/status/${signupId}`);
-                        // You could add a toast notification here
                       }
                     }}
-                    className="bg-purple-600 hover:bg-purple-700"
+                    className="h-10 px-4 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 text-white font-medium rounded-xl"
                   >
                     Copy
                   </Button>
@@ -397,45 +437,46 @@ export default function OrganizationKaraokePage() {
                     }
                   }}
                   variant="outline"
-                  className="w-full mt-3 border-purple-300 dark:border-purple-700 text-purple-700 dark:text-purple-300"
+                  className="w-full h-10 bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm border-2 border-gray-200 dark:border-gray-700 rounded-xl hover:bg-white/70 dark:hover:bg-gray-800/70 transition-all duration-300"
                 >
                   Open Status Page
                 </Button>
               </div>
             )}
 
-            <div className="flex gap-3">
-              <Button
-                onClick={() => {
-                  setSuccess(false);
-                  setSingerName('');
-                  setGroupMembers(['']);
-                  setSongTitle('');
-                  setSongArtist('');
-                  setSingerEmail('');
-                  setSingerPhone('');
-                  setGroupSize(1);
-                  setIsPriority(false);
-                  setSignupId(null);
-                  setQueuePosition(null);
-                }}
-                variant="outline"
-                className="flex-1"
-              >
-                Sign Up Another
-              </Button>
-              {signupId && (
+              <div className="flex gap-4 mt-8">
                 <Button
                   onClick={() => {
-                    if (typeof window !== 'undefined') {
-                      window.location.href = `/karaoke/status/${signupId}`;
-                    }
+                    setSuccess(false);
+                    setSingerName('');
+                    setGroupMembers(['']);
+                    setSongTitle('');
+                    setSongArtist('');
+                    setSingerEmail('');
+                    setSingerPhone('');
+                    setGroupSize(1);
+                    setIsPriority(false);
+                    setSignupId(null);
+                    setQueuePosition(null);
                   }}
-                  className="flex-1 bg-purple-600 hover:bg-purple-700"
+                  variant="outline"
+                  className="flex-1 h-12 bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm border-2 border-gray-200 dark:border-gray-700 rounded-xl hover:bg-white/70 dark:hover:bg-gray-800/70 transition-all duration-300"
                 >
-                  View Status
+                  Sign Up Another
                 </Button>
-              )}
+                {signupId && (
+                  <Button
+                    onClick={() => {
+                      if (typeof window !== 'undefined') {
+                        window.location.href = `/karaoke/status/${signupId}`;
+                      }
+                    }}
+                    className="flex-1 h-12 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300"
+                  >
+                    View Status
+                  </Button>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -448,23 +489,31 @@ export default function OrganizationKaraokePage() {
       <Head>
         <title>Karaoke Sign-Up | {organization?.name || slug}</title>
       </Head>
-      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-blue-50 dark:from-gray-900 dark:to-gray-800 pt-8 pb-8 px-4">
-        <div className="max-w-2xl mx-auto">
-          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6 md:p-8">
-            <div className="text-center mb-8">
-              <div className="inline-flex items-center justify-center w-16 h-16 bg-purple-100 dark:bg-purple-900 rounded-full mb-4">
-                <Mic className="w-8 h-8 text-purple-600 dark:text-purple-400" />
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 dark:from-slate-950 dark:via-blue-950 dark:to-indigo-950 pt-8 pb-8 px-4 relative overflow-hidden">
+        {/* Futuristic background elements */}
+        <div className="absolute inset-0 opacity-30">
+          <div className="absolute top-20 left-10 w-32 h-32 bg-gradient-to-r from-cyan-400 to-blue-500 rounded-full blur-3xl animate-pulse"></div>
+          <div className="absolute bottom-20 right-10 w-40 h-40 bg-gradient-to-r from-purple-400 to-pink-500 rounded-full blur-3xl animate-pulse delay-1000"></div>
+          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-gradient-to-r from-indigo-400 to-cyan-500 rounded-full blur-3xl opacity-20"></div>
+        </div>
+
+        <div className="max-w-2xl mx-auto relative z-10">
+          <div className="backdrop-blur-xl bg-white/80 dark:bg-gray-900/80 rounded-3xl shadow-2xl border border-white/20 dark:border-gray-700/50 p-8 md:p-10">
+            <div className="text-center mb-12">
+              <div className="relative inline-flex items-center justify-center w-20 h-20 bg-gradient-to-r from-cyan-500 to-blue-600 rounded-2xl mb-6 shadow-lg">
+                <Mic className="w-10 h-10 text-white" />
+                <div className="absolute inset-0 bg-gradient-to-r from-cyan-500 to-blue-600 rounded-2xl blur-md opacity-50"></div>
               </div>
-              <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
+              <h1 className="text-4xl font-bold bg-gradient-to-r from-gray-900 to-gray-600 dark:from-white dark:to-gray-300 bg-clip-text text-transparent mb-3">
                 Karaoke Sign-Up
               </h1>
               {organization && (
-                <p className="text-gray-600 dark:text-gray-400">
+                <p className="text-lg text-gray-600 dark:text-gray-400 font-medium">
                   {organization.name}
                 </p>
               )}
               {eventQrCode && eventQrCode !== organization?.slug && (
-                <p className="text-sm text-gray-500 dark:text-gray-500 mt-1">
+                <p className="text-sm text-cyan-600 dark:text-cyan-400 mt-2 font-medium">
                   Event: {eventQrCode}
                 </p>
               )}
@@ -472,17 +521,20 @@ export default function OrganizationKaraokePage() {
 
             {/* Current Singer Info */}
             {currentSinger && (
-              <div className="bg-purple-50 dark:bg-purple-900/20 rounded-lg p-4 mb-6 border border-purple-200 dark:border-purple-800">
-                <p className="text-sm text-purple-600 dark:text-purple-400 mb-1">Now Singing</p>
-                <p className="text-lg font-semibold text-purple-900 dark:text-purple-100">
+              <div className="backdrop-blur-sm bg-gradient-to-r from-cyan-500/10 to-blue-500/10 dark:from-cyan-500/5 dark:to-blue-500/5 rounded-2xl p-6 mb-8 border border-cyan-200/50 dark:border-cyan-800/50 shadow-lg">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
+                  <p className="text-sm font-semibold text-cyan-700 dark:text-cyan-300 uppercase tracking-wider">Now Performing</p>
+                </div>
+                <p className="text-xl font-bold text-gray-900 dark:text-white mb-2">
                   {formatGroupDisplayName(
                     currentSinger.singer_name,
                     currentSinger.group_members,
                     currentSinger.group_size
                   )}
                 </p>
-                <p className="text-sm text-purple-700 dark:text-purple-300">
-                  "{currentSinger.song_title}"
+                <p className="text-base text-gray-700 dark:text-gray-300 font-medium">
+                  🎵 "{currentSinger.song_title}"
                   {currentSinger.song_artist && ` by ${currentSinger.song_artist}`}
                 </p>
               </div>
@@ -490,40 +542,48 @@ export default function OrganizationKaraokePage() {
 
             {/* Queue Length */}
             {queueLength > 0 && (
-              <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-3 mb-6 text-center">
-                <p className="text-sm text-gray-600 dark:text-gray-400">
-                  {queueLength} {queueLength === 1 ? 'person' : 'people'} in queue
+              <div className="backdrop-blur-sm bg-gradient-to-r from-slate-100/80 to-gray-100/80 dark:from-slate-800/80 dark:to-gray-800/80 rounded-xl p-4 mb-8 border border-slate-200/50 dark:border-slate-700/50 text-center">
+                <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  <span className="inline-flex items-center gap-2">
+                    <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+                    {queueLength} {queueLength === 1 ? 'person' : 'people'} ahead of you
+                  </span>
                 </p>
               </div>
             )}
 
-            <form onSubmit={handleSubmit} className="space-y-6">
+            <form onSubmit={handleSubmit} className="space-y-8">
               {/* Group Size Selection */}
               <div>
-                <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-3">
+                <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-4 uppercase tracking-wider">
                   Group Size
                 </label>
-                <div className="grid grid-cols-4 gap-3">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   {[1, 2, 3, 4].map((size) => (
                     <button
                       key={size}
                       type="button"
                       onClick={() => handleGroupSizeChange(size)}
-                      className={`p-4 rounded-lg border-2 transition-all ${
+                      className={`group relative p-6 rounded-2xl border-2 transition-all duration-300 hover:scale-105 ${
                         groupSize === size
-                          ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/20 dark:border-purple-400'
-                          : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
+                          ? 'border-cyan-500 bg-gradient-to-br from-cyan-50 to-blue-50 dark:from-cyan-900/20 dark:to-blue-900/20 shadow-lg shadow-cyan-500/25'
+                          : 'border-gray-200 dark:border-gray-700 hover:border-cyan-400 hover:bg-gradient-to-br hover:from-gray-50 hover:to-cyan-50 dark:hover:from-gray-800 dark:hover:to-cyan-900/10'
                       }`}
                     >
-                      <Users className={`w-6 h-6 mx-auto mb-2 ${
+                      <div className={`absolute inset-0 rounded-2xl transition-opacity duration-300 ${
+                        groupSize === size ? 'opacity-100' : 'opacity-0 group-hover:opacity-50'
+                      }`}>
+                        <div className="absolute inset-0 bg-gradient-to-r from-cyan-400 to-blue-500 rounded-2xl blur-md opacity-20"></div>
+                      </div>
+                      <Users className={`w-8 h-8 mx-auto mb-3 transition-colors duration-300 ${
                         groupSize === size
-                          ? 'text-purple-600 dark:text-purple-400'
-                          : 'text-gray-400 dark:text-gray-500'
+                          ? 'text-cyan-600 dark:text-cyan-400'
+                          : 'text-gray-400 dark:text-gray-500 group-hover:text-cyan-500'
                       }`} />
-                      <p className={`text-sm font-medium ${
+                      <p className={`text-sm font-semibold transition-colors duration-300 ${
                         groupSize === size
-                          ? 'text-purple-700 dark:text-purple-300'
-                          : 'text-gray-600 dark:text-gray-400'
+                          ? 'text-cyan-700 dark:text-cyan-300'
+                          : 'text-gray-600 dark:text-gray-400 group-hover:text-cyan-400'
                       }`}>
                         {getGroupLabel(size)}
                       </p>
@@ -550,32 +610,35 @@ export default function OrganizationKaraokePage() {
 
               {/* Group Member Names */}
               <div>
-                <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-2">
-                  {groupSize === 1 ? 'Your Name' : 'Group Member Names'}
+                <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-4 uppercase tracking-wider">
+                  {groupSize === 1 ? 'Your Name' : 'Group Members'}
                 </label>
-                <div className="space-y-3">
+                <div className="space-y-4">
                   {groupMembers.map((member, index) => (
-                    <Input
-                      key={index}
-                      type="text"
-                      value={member}
-                      onChange={(e) => handleMemberChange(index, e.target.value)}
-                      placeholder={groupSize === 1 ? 'Enter your name' : `Member ${index + 1} name`}
-                      required
-                      className="w-full"
-                    />
+                    <div key={index} className="relative">
+                      <Input
+                        type="text"
+                        value={member}
+                        onChange={(e) => handleMemberChange(index, e.target.value)}
+                        placeholder={groupSize === 1 ? 'Enter your name' : `Member ${index + 1} name`}
+                        required
+                        className="w-full h-12 pl-4 pr-4 bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm border-2 border-gray-200 dark:border-gray-700 rounded-xl focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 transition-all duration-300 placeholder:text-gray-400 dark:placeholder:text-gray-500"
+                      />
+                      <div className="absolute right-3 top-1/2 transform -translate-y-1/2 w-2 h-2 bg-cyan-500 rounded-full opacity-0 transition-opacity duration-300 peer-focus:opacity-100"></div>
+                    </div>
                   ))}
                 </div>
               </div>
 
               {/* Song Selection */}
               <div>
-                <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-2">
-                  Song Title <span className="text-red-500">*</span>
+                <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-4 uppercase tracking-wider">
+                  Song Selection <span className="text-red-500">*</span>
                 </label>
-                <SongAutocomplete
-                  value={songTitle}
-                  onChange={(value) => setSongTitle(value)}
+                <div className="space-y-4">
+                  <SongAutocomplete
+                    value={songTitle}
+                    onChange={(value) => setSongTitle(value)}
                   onSelect={(song) => {
                     setSongTitle(song.title);
                     if (song.artist) {
@@ -586,79 +649,81 @@ export default function OrganizationKaraokePage() {
                   organizationId={organization?.id}
                   className="w-full"
                 />
-              </div>
 
-              <div>
-                <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-2">
-                  Artist (Optional)
-                </label>
-                <Input
-                  type="text"
-                  value={songArtist}
-                  onChange={(e) => setSongArtist(e.target.value)}
-                  placeholder="Enter artist name"
-                  className="w-full"
-                />
+                  <Input
+                    type="text"
+                    value={songArtist}
+                    onChange={(e) => setSongArtist(e.target.value)}
+                    placeholder="Artist name (optional)"
+                    className="w-full h-12 pl-4 pr-4 bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm border-2 border-gray-200 dark:border-gray-700 rounded-xl focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 transition-all duration-300 placeholder:text-gray-400 dark:placeholder:text-gray-500"
+                  />
+                </div>
               </div>
 
               {/* Contact Info */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-2">
-                    Email (Optional)
-                  </label>
-                  <Input
-                    type="email"
-                    value={singerEmail}
-                    onChange={(e) => setSingerEmail(e.target.value)}
-                    placeholder="your@email.com"
-                    className="w-full"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-2">
-                    Phone Number <span className="text-red-500">*</span>
-                  </label>
-                  <Input
-                    type="tel"
-                    value={singerPhone}
-                    onChange={(e) => setSingerPhone(e.target.value)}
-                    placeholder="(555) 123-4567"
-                    required
-                    className="w-full"
-                  />
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                    We'll text you when you're next up! 📱
-                  </p>
+              <div>
+                <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-4 uppercase tracking-wider">
+                  Contact Information
+                </label>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Input
+                      type="email"
+                      value={singerEmail}
+                      onChange={(e) => setSingerEmail(e.target.value)}
+                      placeholder="your@email.com (optional)"
+                      className="w-full h-12 pl-4 pr-4 bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm border-2 border-gray-200 dark:border-gray-700 rounded-xl focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 transition-all duration-300 placeholder:text-gray-400 dark:placeholder:text-gray-500"
+                    />
+                  </div>
+                  <div>
+                    <Input
+                      type="tel"
+                      value={singerPhone}
+                      onChange={(e) => setSingerPhone(e.target.value)}
+                      placeholder="(555) 123-4567"
+                      required
+                      className="w-full h-12 pl-4 pr-4 bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm border-2 border-gray-200 dark:border-gray-700 rounded-xl focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 transition-all duration-300 placeholder:text-gray-400 dark:placeholder:text-gray-500"
+                    />
+                    <p className="text-xs text-cyan-600 dark:text-cyan-400 mt-2 font-medium">
+                      📱 We'll text you when you're next up!
+                    </p>
+                  </div>
                 </div>
               </div>
 
               {/* Priority Option */}
-              <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4">
+              <div className="backdrop-blur-sm bg-gradient-to-r from-yellow-50/80 to-amber-50/80 dark:from-yellow-900/10 dark:to-amber-900/10 border border-yellow-200/50 dark:border-yellow-800/50 rounded-2xl p-6 shadow-lg">
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <Zap className="w-5 h-5 text-yellow-600 dark:text-yellow-400" />
+                  <div className="flex items-center gap-4">
+                    <div className="relative">
+                      <Zap className="w-6 h-6 text-yellow-600 dark:text-yellow-400" />
+                      <div className="absolute inset-0 bg-yellow-400 rounded-full blur-sm opacity-30"></div>
+                    </div>
                     <div>
-                      <p className="text-sm font-semibold text-gray-900 dark:text-white">
-                        Skip the Line
+                      <p className="text-base font-bold text-gray-900 dark:text-white">
+                        Priority Access
                       </p>
-                      <p className="text-xs text-gray-600 dark:text-gray-400">
-                        Pay $10 to move to the front of the queue
+                      <p className="text-sm text-gray-600 dark:text-gray-400">
+                        Skip the queue for $10 • Instant performance
                       </p>
                     </div>
                   </div>
                   <Switch
                     checked={isPriority}
                     onCheckedChange={setIsPriority}
+                    className="data-[state=checked]:bg-yellow-500"
                   />
                 </div>
               </div>
 
               {/* Error Message */}
               {error && (
-                <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 flex items-center gap-2">
-                  <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0" />
-                  <p className="text-sm text-red-700 dark:text-red-300">{error}</p>
+                <div className="backdrop-blur-sm bg-red-50/80 dark:bg-red-900/10 border border-red-200/50 dark:border-red-800/50 rounded-xl p-4 flex items-center gap-3 shadow-lg">
+                  <div className="relative">
+                    <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0" />
+                    <div className="absolute inset-0 bg-red-400 rounded-full blur-sm opacity-30"></div>
+                  </div>
+                  <p className="text-sm font-medium text-red-700 dark:text-red-300">{error}</p>
                 </div>
               )}
 
@@ -666,17 +731,22 @@ export default function OrganizationKaraokePage() {
               <Button
                 type="submit"
                 disabled={submitting}
-                className="w-full bg-purple-600 hover:bg-purple-700 text-white"
-                size="lg"
+                className="group relative w-full h-14 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 text-white font-bold text-lg rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-[1.02] disabled:hover:scale-100 overflow-hidden"
               >
-                {submitting ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Signing Up...
-                  </>
-                ) : (
-                  'Join Queue'
-                )}
+                <div className="absolute inset-0 bg-gradient-to-r from-cyan-400 to-blue-500 rounded-2xl blur-md opacity-0 group-hover:opacity-50 transition-opacity duration-300"></div>
+                <div className="relative flex items-center justify-center gap-3">
+                  {submitting ? (
+                    <>
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                      <span>Signing Up...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Mic className="w-5 h-5" />
+                      <span>Join the Stage</span>
+                    </>
+                  )}
+                </div>
               </Button>
             </form>
           </div>
