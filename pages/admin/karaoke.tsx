@@ -1309,14 +1309,14 @@ export default function KaraokeAdminPage() {
 
           {/* QR Generator Modal - Reused from crowd-requests */}
           <Dialog open={showQRGenerator} onOpenChange={setShowQRGenerator}>
-            <DialogContent className="max-w-md">
+            <DialogContent className="max-w-lg w-full mx-2 sm:mx-4 max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>Generate Karaoke QR Code</DialogTitle>
                 <DialogDescription>
                   Create a QR code for karaoke signups - works for all events or specific events
                 </DialogDescription>
               </DialogHeader>
-              <div className="space-y-4">
+              <div className="space-y-4 sm:space-y-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Signup Type
@@ -1324,7 +1324,7 @@ export default function KaraokeAdminPage() {
                   <select
                     value={qrEventCode || 'general'}
                     onChange={(e) => setQrEventCode(e.target.value === 'general' ? '' : e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                    className="w-full px-3 py-2 text-base border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20"
                   >
                     <option value="general">General Karaoke (All Events)</option>
                     <option value="">Specific Event (enter code below)</option>
@@ -1342,6 +1342,7 @@ export default function KaraokeAdminPage() {
                       value={qrEventCode}
                       onChange={(e) => setQrEventCode(e.target.value)}
                       placeholder="wedding-2025-01-15"
+                      className="text-base"
                     />
                   </div>
                 )}
@@ -1353,6 +1354,7 @@ export default function KaraokeAdminPage() {
                     value={qrEventName}
                     onChange={(e) => setQrEventName(e.target.value)}
                     placeholder="Sarah & Michael's Wedding"
+                    className="text-base"
                   />
                 </div>
                 <div>
@@ -1363,24 +1365,34 @@ export default function KaraokeAdminPage() {
                     type="date"
                     value={qrEventDate}
                     onChange={(e) => setQrEventDate(e.target.value)}
+                    className="text-base"
                   />
                 </div>
-                <Button onClick={generateQRCode} className="w-full">
+                <Button onClick={generateQRCode} className="w-full min-h-[48px] text-base font-semibold">
                   Generate QR Code
                 </Button>
                 {generatedQR && (
                   <div className="space-y-4 pt-4 border-t">
-                    <div className="flex justify-center">
-                      <DecoratedQRCode
-                        qrCodeUrl={generatedQR}
-                        size={200}
-                      />
+                    <div className="flex justify-center px-2 sm:px-4">
+                      <div className="hidden sm:block">
+                        <DecoratedQRCode
+                          qrCodeUrl={generatedQR}
+                          size={180}
+                        />
+                      </div>
+                      <div className="block sm:hidden">
+                        <DecoratedQRCode
+                          qrCodeUrl={generatedQR}
+                          size={140}
+                        />
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="space-y-2">
                       <Input
                         readOnly
                         value={generatedSignupUrl || ''}
-                        className="flex-1"
+                        className="w-full text-sm sm:text-base px-3 py-2 min-h-[44px]"
+                        onClick={(e) => (e.target as HTMLInputElement).select()}
                       />
                       <Button
                         variant="outline"
@@ -1389,8 +1401,19 @@ export default function KaraokeAdminPage() {
                           setCopied(true);
                           setTimeout(() => setCopied(false), 2000);
                         }}
+                        className="w-full min-h-[44px] text-base"
                       >
-                        {copied ? <CheckCircle2 className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                        {copied ? (
+                          <>
+                            <CheckCircle2 className="w-4 h-4 mr-2" />
+                            Copied!
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="w-4 h-4 mr-2" />
+                            Copy Link
+                          </>
+                        )}
                       </Button>
                     </div>
                   </div>
