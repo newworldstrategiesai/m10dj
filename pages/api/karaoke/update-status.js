@@ -81,7 +81,7 @@ async function handler(req, res) {
         error: result.error || 'Failed to update status',
         conflict: result.conflict || false
       });
-    }
+    };
 
     const updatedSignup = result.signup!;
 
