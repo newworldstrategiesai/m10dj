@@ -1,4 +1,4 @@
-import { createClient } from '@/utils/supabase/server';
+import { createClient } from '@supabase/supabase-js';
 import { calculateQueuePosition } from '@/utils/karaoke-queue';
 
 /**
@@ -11,7 +11,10 @@ export default async function handler(req, res) {
   }
 
   try {
-    const supabase = createClient();
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+    );
     const { signup_id, event_code, organization_id, singer_name, singer_phone } = req.query;
 
     // Method 1: Lookup by signup ID (most reliable)

@@ -1,4 +1,4 @@
-import { createClient } from '@/utils/supabase/server';
+import { createClient } from '@supabase/supabase-js';
 import { sendNextUpNotification, sendCurrentlySingingNotification } from '@/utils/karaoke-notifications';
 
 /**
@@ -11,7 +11,10 @@ export default async function handler(req, res) {
   }
 
   try {
-    const supabase = createClient();
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+    );
     
     // Check authentication
     const { data: { user }, error: authError } = await supabase.auth.getUser();
