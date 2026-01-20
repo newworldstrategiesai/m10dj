@@ -197,6 +197,11 @@ export default function OrganizationKaraokePage() {
       return false;
     }
 
+    if (!songArtist.trim()) {
+      setError('Please enter the artist name');
+      return false;
+    }
+
     if (karaokeSettings?.sms_notifications_enabled !== false) {
       if (!singerPhone.trim()) {
         setError('Phone number is required. We need it to notify you when you\'re next up!');
@@ -598,22 +603,6 @@ export default function OrganizationKaraokePage() {
                 </div>
               </div>
 
-              {/* Singer Names */}
-              <div>
-                <div className="space-y-2">
-                  {groupMembers.map((member, index) => (
-                    <Input
-                      key={index}
-                      type="text"
-                      value={member}
-                      onChange={(e) => handleMemberChange(index, e.target.value)}
-                      placeholder={index === 0 ? 'Your name' : `Singer ${index + 1} name`}
-                      required
-                      className="w-full h-10 text-sm bg-white/70 dark:bg-gray-800/70 border-2 border-gray-200 dark:border-gray-700 rounded-lg focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500/20 transition-all duration-200"
-                    />
-                  ))}
-                </div>
-              </div>
 
               {/* Song Selection - Compact */}
               <div>
@@ -638,7 +627,8 @@ export default function OrganizationKaraokePage() {
                     type="text"
                     value={songArtist}
                     onChange={(e) => setSongArtist(e.target.value)}
-                    placeholder="Artist (optional)"
+                    placeholder="Artist name"
+                    required
                     className="w-full h-10 text-sm bg-white/70 dark:bg-gray-800/70 border-2 border-gray-200 dark:border-gray-700 rounded-lg focus:border-cyan-500"
                   />
                 </div>
