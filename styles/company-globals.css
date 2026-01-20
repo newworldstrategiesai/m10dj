@@ -71,6 +71,15 @@ html[data-karaoke-page="true"] body {
   padding-top: 0 !important;
 }
 
+/* Karaoke page scrollbar colors */
+html[data-karaoke-page="true"] ::-webkit-scrollbar-thumb {
+  background: #06b6d4; /* cyan-500 */
+}
+
+html[data-karaoke-page="true"] ::-webkit-scrollbar-thumb:hover {
+  background: #0891b2; /* cyan-600 */
+}
+
 /* Requests page GPU artifact / blur fix (scoped) */
 html[data-requests-page="true"] [class*="backdrop-blur"],
 html[data-requests-page="true"] .backdrop-blur,

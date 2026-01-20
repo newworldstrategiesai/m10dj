@@ -36,6 +36,25 @@ export default function ContactFormChat({ formData, submissionId, onClose, isMin
         let greetingMessage;
         const isPaymentPage = paymentContext?.pageType === 'payment' && paymentContext?.invoice;
         const isKaraokePage = router.pathname?.includes('/organizations/') && router.pathname?.includes('/sing');
+
+        // Theme colors based on page type
+        const themeClasses = isKaraokePage
+          ? {
+              button: 'bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700',
+              header: 'bg-gradient-to-r from-cyan-500 to-blue-600',
+              messageBg: 'bg-cyan-500',
+              messageHover: 'hover:bg-cyan-600',
+              focusRing: 'focus:ring-cyan-500 focus:border-cyan-500',
+              badge: 'text-cyan-600'
+            }
+          : {
+              button: 'bg-gradient-to-r from-brand to-brand-600 hover:from-brand-600 hover:to-brand-700',
+              header: 'bg-gradient-to-r from-brand to-brand-600',
+              messageBg: 'bg-brand',
+              messageHover: 'hover:bg-brand-600',
+              focusRing: 'focus:ring-brand focus:border-brand',
+              badge: 'text-brand'
+            };
         
         if (isPaymentPage) {
           const invoice = paymentContext.invoice;
@@ -299,12 +318,12 @@ export default function ContactFormChat({ formData, submissionId, onClose, isMin
       <div className="fixed bottom-4 right-4 z-[9999] animate-fadeIn">
         <button
           onClick={() => onMinimize && onMinimize()}
-          className="flex items-center gap-2 bg-gradient-to-r from-brand to-brand-600 text-white px-3 py-2 rounded-full shadow-lg hover:shadow-xl transition-all hover:scale-105 text-sm"
+          className={`flex items-center gap-2 text-white px-3 py-2 rounded-full shadow-lg hover:shadow-xl transition-all hover:scale-105 text-sm ${themeClasses.button}`}
         >
           <MessageCircle className="w-4 h-4" />
           <span className="font-medium hidden sm:inline">Chat</span>
           {messages.length > 1 && (
-            <span className="bg-white text-brand rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold">
+            <span className={`bg-white rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold ${themeClasses.badge}`}>
               {messages.length - 1}
             </span>
           )}
@@ -316,9 +335,9 @@ export default function ContactFormChat({ formData, submissionId, onClose, isMin
   // Micro view - compact chat window (for service selection page)
   if (isMicro) {
     return (
-      <div className="fixed bottom-4 right-4 z-[9999] w-80 h-96 bg-white dark:bg-gray-900 rounded-lg shadow-2xl border-2 border-brand/20 flex flex-col overflow-hidden animate-fadeIn">
+      <div className="fixed bottom-4 right-4 z-[9999] w-80 h-96 bg-white dark:bg-gray-900 rounded-lg shadow-2xl border-2 flex flex-col overflow-hidden animate-fadeIn" style={{borderColor: isKaraokePage ? 'rgb(6 182 212 / 0.2)' : 'var(--brand-gold / 0.2)'}}>
         {/* Micro Header */}
-        <div className="bg-gradient-to-r from-brand to-brand-600 text-white p-3 flex items-center justify-between">
+        <div className={`${themeClasses.header} text-white p-3 flex items-center justify-between`}>
           <div className="flex items-center gap-2">
             <MessageCircle className="w-5 h-5" />
             <span className="font-semibold text-sm">M10 DJ Assistant</span>
@@ -382,7 +401,7 @@ export default function ContactFormChat({ formData, submissionId, onClose, isMin
                 <div
                   className={`max-w-[85%] rounded-lg px-3 py-2 text-sm ${
                     message.type === 'user'
-                      ? 'bg-brand text-white rounded-br-none'
+                      ? `${themeClasses.messageBg} text-white rounded-br-none`
                       : 'bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-bl-none border border-gray-200 dark:border-gray-600'
                   }`}
                 >
@@ -420,7 +439,7 @@ export default function ContactFormChat({ formData, submissionId, onClose, isMin
                         if (onMinimize) onMinimize();
                         window.location.href = message.link;
                       }}
-                      className="inline-block mt-2 px-3 py-1.5 bg-brand hover:bg-brand-600 text-white rounded text-xs font-semibold transition-colors shadow-sm"
+                      className={`inline-block mt-2 px-3 py-1.5 text-white rounded text-xs font-semibold transition-colors shadow-sm ${themeClasses.button.replace('bg-gradient-to-r', 'bg-').replace('hover:from-', 'hover:bg-').replace('hover:to-', '')}`}
                     >
                       {message.linkText || 'View Services →'}
                     </a>
@@ -449,12 +468,16 @@ export default function ContactFormChat({ formData, submissionId, onClose, isMin
               onChange={(e) => setInputValue(e.target.value)}
               disabled={isLoading}
               placeholder="Ask a question..."
-              className="flex-1 px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand focus:border-brand"
+              className={`flex-1 px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 ${
+                isKaraokePage ? 'focus:ring-cyan-500 focus:border-cyan-500' : 'focus:ring-brand focus:border-brand'
+              }`}
             />
             <button
               type="submit"
               disabled={!inputValue.trim() || isLoading}
-              className="flex-shrink-0 w-9 h-9 bg-brand text-white rounded-lg flex items-center justify-center hover:bg-brand-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+              className={`flex-shrink-0 w-9 h-9 text-white rounded-lg flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed transition-all ${
+                isKaraokePage ? 'bg-cyan-500 hover:bg-cyan-600' : 'bg-brand hover:bg-brand-600'
+              }`}
             >
               {isLoading ? (
                 <Loader className="w-4 h-4 animate-spin" />
@@ -472,7 +495,7 @@ export default function ContactFormChat({ formData, submissionId, onClose, isMin
   return (
     <div className="h-full w-full flex flex-col bg-white dark:bg-gray-900 overflow-hidden">
       {/* Chat Header */}
-      <div className="bg-gradient-to-r from-brand to-brand-600 text-white p-4 sm:p-6 flex items-center justify-between shadow-lg">
+      <div className={`${themeClasses.header} text-white p-4 sm:p-6 flex items-center justify-between shadow-lg`}>
         <div className="flex items-center space-x-3">
           <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
             <MessageCircle className="w-6 h-6" />
@@ -550,8 +573,8 @@ export default function ContactFormChat({ formData, submissionId, onClose, isMin
               <div
                 className={`max-w-[85%] sm:max-w-xl px-4 py-3 rounded-2xl ${
                   message.type === 'user'
-                    ? 'bg-brand text-white rounded-br-none shadow-md'
-                    : 'bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-bl-none border border-gray-200 dark:border-gray-700 shadow-sm'
+                    ? `${themeClasses.messageBg} text-white rounded-br-none shadow-md`
+                      : 'bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-bl-none border border-gray-200 dark:border-gray-700 shadow-sm'
                 }`}
               >
                 <div className="text-sm whitespace-pre-wrap leading-relaxed">
@@ -584,7 +607,9 @@ export default function ContactFormChat({ formData, submissionId, onClose, isMin
                               window.open(part.normalizedUrl, '_blank', 'noopener,noreferrer');
                             }
                           }}
-                          className="inline-block mt-2 px-4 py-2 bg-brand hover:bg-brand-600 text-white rounded-lg font-semibold text-sm transition-colors shadow-md hover:shadow-lg"
+                          className={`inline-block mt-2 px-4 py-2 text-white rounded-lg font-semibold text-sm transition-colors shadow-md hover:shadow-lg ${
+                            isKaraokePage ? 'bg-cyan-500 hover:bg-cyan-600' : 'bg-brand hover:bg-brand-600'
+                          }`}
                         >
                           {part.content} →
                         </a>
@@ -619,7 +644,9 @@ export default function ContactFormChat({ formData, submissionId, onClose, isMin
                       // Navigate in the same tab (not new tab) so chat can persist
                       window.location.href = message.link;
                     }}
-                    className="inline-block mt-3 px-4 py-2 bg-brand hover:bg-brand-600 text-white rounded-lg font-semibold text-sm transition-colors shadow-md hover:shadow-lg"
+                    className={`inline-block mt-3 px-4 py-2 text-white rounded-lg font-semibold text-sm transition-colors shadow-md hover:shadow-lg ${
+                      isKaraokePage ? 'bg-cyan-500 hover:bg-cyan-600' : 'bg-brand hover:bg-brand-600'
+                    }`}
                   >
                     {message.linkText || 'View Services →'}
                   </a>
@@ -667,12 +694,16 @@ export default function ContactFormChat({ formData, submissionId, onClose, isMin
             onChange={(e) => setInputValue(e.target.value)}
             disabled={isLoading}
             placeholder="Ask a question or share details..."
-            className="flex-1 px-5 py-3 text-base rounded-full border-2 border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand focus:border-brand disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+            className={`flex-1 px-5 py-3 text-base rounded-full border-2 border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all ${
+              isKaraokePage ? 'focus:ring-cyan-500 focus:border-cyan-500' : 'focus:ring-brand focus:border-brand'
+            }`}
           />
           <button
             type="submit"
             disabled={!inputValue.trim() || isLoading}
-            className="flex-shrink-0 w-12 h-12 bg-brand text-white rounded-full flex items-center justify-center hover:bg-brand-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 transform hover:scale-105 shadow-lg"
+            className={`flex-shrink-0 w-12 h-12 text-white rounded-full flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 transform hover:scale-105 shadow-lg ${
+              isKaraokePage ? 'bg-cyan-500 hover:bg-cyan-600' : 'bg-brand hover:bg-brand-600'
+            }`}
           >
             {isLoading ? (
               <Loader className="w-5 h-5 animate-spin" />

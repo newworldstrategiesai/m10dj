@@ -27,6 +27,9 @@ export default function GlobalChatWidget() {
   
   // Don't show chat widget on DJ Dash pages (djdash.net)
   const isDJDashPage = router.pathname?.startsWith('/djdash') || router.pathname?.startsWith('/dj/');
+
+  // Check if we're on a karaoke page
+  const isKaraokePage = router.pathname?.includes('/organizations/') && router.pathname?.includes('/sing');
   
   // Only render on client to avoid hydration mismatch
   useEffect(() => {
@@ -195,12 +198,18 @@ export default function GlobalChatWidget() {
         <div className="fixed bottom-4 right-4 z-[9999]">
           <button
             onClick={handleOpenChat}
-            className="flex items-center gap-2 bg-gradient-to-r from-brand to-brand-600 text-white px-4 py-3 rounded-full shadow-lg hover:shadow-xl transition-all hover:scale-105 text-sm font-medium"
+            className={`flex items-center gap-2 text-white px-4 py-3 rounded-full shadow-lg hover:shadow-xl transition-all hover:scale-105 text-sm font-medium ${
+              isKaraokePage
+                ? 'bg-gradient-to-r from-cyan-500 to-blue-600'
+                : 'bg-gradient-to-r from-brand to-brand-600'
+            }`}
           >
             <MessageCircle className="w-5 h-5" />
             <span className="hidden sm:inline">Chat</span>
             {chatData && chatData.formData && chatData.formData.name !== 'Guest' && (
-              <span className="bg-white text-brand rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold">
+              <span className={`bg-white rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold ${
+                isKaraokePage ? 'text-cyan-600' : 'text-brand'
+              }`}>
                 !
               </span>
             )}
