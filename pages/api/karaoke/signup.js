@@ -3,6 +3,7 @@ import { generateRotationIdsForSignup } from '@/utils/karaoke-rotation';
 import { canSignupProceed } from '@/utils/karaoke-rotation';
 import { calculateQueuePosition } from '@/utils/karaoke-queue';
 import { withSecurity } from '@/utils/rate-limiting';
+import { logSignupChange, getClientInfo } from '@/utils/karaoke-audit';
 
 /**
  * Comprehensive duplicate signup detection
@@ -492,6 +493,24 @@ async function handler(req, res) {
       .in('status', ['queued', 'next', 'singing']);
 
     const queuePosition = calculateQueuePosition(signup, allSignups || []);
+
+    // Log successful signup
+    await logSignupChange(
+      organization_id,
+      signup.id,
+      'signup_created',
+      'public_user', // No authenticated user for public signups
+      null,
+      {
+        singer_name: signup.singer_name,
+        song_title: signup.song_title,
+        group_size: signup.group_size,
+        is_priority: signup.is_priority,
+        queue_position: queuePosition
+      },
+      req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.connection?.remoteAddress,
+      req.headers['user-agent']
+    );
 
     // Return response
     return res.status(201).json({

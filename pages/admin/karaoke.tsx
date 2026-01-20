@@ -49,6 +49,7 @@ import { getGroupLabel, formatGroupDisplayName, KaraokeSignup } from '@/types/ka
 import { getSortedQueue, getCurrentSinger, getNextSinger, getQueue, calculateQueuePosition, calculateEstimatedWait, formatEstimatedWait, getQueueHealth } from '@/utils/karaoke-queue';
 import { getCurrentOrganization } from '@/utils/organization-context';
 import { DecoratedQRCode } from '@/components/ui/DecoratedQRCode';
+import { logSettingsChange, getClientInfo } from '@/utils/karaoke-audit';
 
 export default function KaraokeAdminPage() {
   const router = useRouter();
@@ -208,6 +209,27 @@ export default function KaraokeAdminPage() {
 
     setSavingSettings(true);
     try {
+      // Capture old settings for audit logging
+      const oldSettings = {
+        karaoke: { ...settings },
+        page: {
+          pageTitle: organization.karaoke_page_title,
+          pageDescription: organization.karaoke_page_description,
+          mainHeading: organization.karaoke_main_heading,
+          welcomeMessage: organization.karaoke_welcome_message,
+          signupSuccessMessage: organization.karaoke_signup_success_message,
+          queuePositionMessage: organization.karaoke_queue_position_message,
+          estimatedWaitMessage: organization.karaoke_estimated_wait_message,
+          showWelcomeMessage: organization.karaoke_show_welcome_message,
+          showCurrentSinger: organization.karaoke_show_current_singer,
+          showQueuePreview: organization.karaoke_show_queue_preview,
+          showEstimatedWait: organization.karaoke_show_estimated_wait,
+          theme: organization.karaoke_theme
+        },
+        operational: { ...operationalSettings },
+        display: { ...displaySettings }
+      };
+
       // Update karaoke_settings with operational settings
       const karaokeSettingsUpdate: any = {
         max_concurrent_singers: operationalSettings.maxConcurrentSingers,
@@ -256,6 +278,24 @@ export default function KaraokeAdminPage() {
 
       // Update organization state
       setOrganization({ ...organization, ...orgUpdateData });
+
+      // Log settings change for audit
+      const newSettings = {
+        karaoke: { ...settings, ...karaokeSettingsUpdate },
+        page: { ...pageSettings },
+        operational: { ...operationalSettings },
+        display: { ...displaySettings }
+      };
+
+      await logSettingsChange(
+        organization.id,
+        'settings_updated',
+        'admin_user', // TODO: Get actual user email
+        oldSettings,
+        newSettings,
+        undefined, // ip_address - would need to be passed from API
+        navigator?.userAgent
+      );
 
       toast({
         title: "Settings saved",
