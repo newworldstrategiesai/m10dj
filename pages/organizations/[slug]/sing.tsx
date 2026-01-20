@@ -107,7 +107,7 @@ export default function OrganizationKaraokePage() {
         if (!eventCodeToUse) {
           // Try to get most recent event for this organization
           const { data: recentEvent } = await supabase
-            .from('contacts')
+            .from('crowd_requests')
             .select('event_qr_code')
             .eq('organization_id', org.id)
             .not('event_qr_code', 'is', null)
