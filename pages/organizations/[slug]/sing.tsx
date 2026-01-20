@@ -202,13 +202,20 @@ export default function OrganizationKaraokePage() {
       return false;
     }
 
-    if (karaokeSettings?.sms_notifications_enabled !== false) {
+    if (karaokeSettings?.phone_field_mode === 'required') {
       if (!singerPhone.trim()) {
         setError('Phone number is required. We need it to notify you when you\'re next up!');
         return false;
       }
 
       // Validate phone number format (at least 10 digits)
+      const phoneDigits = singerPhone.replace(/\D/g, '');
+      if (phoneDigits.length < 10) {
+        setError('Please enter a valid phone number (at least 10 digits)');
+        return false;
+      }
+    } else if (karaokeSettings?.phone_field_mode === 'optional' && singerPhone.trim()) {
+      // If optional and provided, validate format
       const phoneDigits = singerPhone.replace(/\D/g, '');
       if (phoneDigits.length < 10) {
         setError('Please enter a valid phone number (at least 10 digits)');
@@ -640,19 +647,19 @@ export default function OrganizationKaraokePage() {
                   Contact Info
                 </label>
                 <div className="space-y-2">
-                  {karaokeSettings?.sms_notifications_enabled !== false && (
+                  {karaokeSettings?.phone_field_mode !== 'hidden' && (
                     <>
-                      <Input
-                        type="tel"
-                        value={singerPhone}
-                        onChange={(e) => setSingerPhone(e.target.value)}
-                        placeholder="Phone number (required)"
-                        required
-                        className="w-full h-10 text-sm bg-white/70 dark:bg-gray-800/70 border-2 border-gray-200 dark:border-gray-700 rounded-lg focus:border-cyan-500"
-                      />
-                      <p className="text-xs text-cyan-600 dark:text-cyan-400">
-                        📱 We'll text you when you're next up!
-                      </p>
+                  <Input
+                    type="tel"
+                    value={singerPhone}
+                    onChange={(e) => setSingerPhone(e.target.value)}
+                    placeholder={`Phone number${karaokeSettings?.phone_field_mode === 'required' ? ' (required)' : ' (optional)'}`}
+                    required={karaokeSettings?.phone_field_mode === 'required'}
+                    className="w-full h-10 text-sm bg-white/70 dark:bg-gray-800/70 border-2 border-gray-200 dark:border-gray-700 rounded-lg focus:border-cyan-500"
+                  />
+                  <p className="text-xs text-cyan-600 dark:text-cyan-400">
+                    📱 {karaokeSettings?.phone_field_mode === 'required' ? "We'll text you when you're next up!" : "We'll text you updates if you provide your number"}
+                  </p>
                     </>
                   )}
                   <Input

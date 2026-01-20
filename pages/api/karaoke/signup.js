@@ -60,8 +60,8 @@ export default async function handler(req, res) {
       }
     }
 
-    // Check if SMS notifications are enabled
-    if (karaokeSettings?.sms_notifications_enabled !== false) {
+    // Check phone field requirements based on admin setting
+    if (karaokeSettings?.phone_field_mode === 'required') {
       if (!singer_phone || !singer_phone.trim()) {
         return res.status(400).json({
           error: 'Phone number is required',
@@ -70,6 +70,15 @@ export default async function handler(req, res) {
       }
 
       // Validate phone number format (at least 10 digits)
+      const phoneDigits = singer_phone.replace(/\D/g, '');
+      if (phoneDigits.length < 10) {
+        return res.status(400).json({
+          error: 'Invalid phone number',
+          message: 'Please enter a valid phone number (at least 10 digits)'
+        });
+      }
+    } else if (karaokeSettings?.phone_field_mode === 'optional' && singer_phone && singer_phone.trim()) {
+      // If optional and provided, validate format
       const phoneDigits = singer_phone.replace(/\D/g, '');
       if (phoneDigits.length < 10) {
         return res.status(400).json({

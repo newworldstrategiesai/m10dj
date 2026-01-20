@@ -94,7 +94,8 @@ export default function KaraokeAdminPage() {
   // Operational settings
   const [operationalSettings, setOperationalSettings] = useState({
     maxConcurrentSingers: 10,
-    smsNotificationsEnabled: true
+    smsNotificationsEnabled: true,
+    phoneFieldMode: 'required' as 'required' | 'optional' | 'hidden'
   });
 
   // QR Generator state (reused from crowd-requests)
@@ -149,7 +150,8 @@ export default function KaraokeAdminPage() {
         // Load operational settings from karaoke_settings
         setOperationalSettings({
           maxConcurrentSingers: (data as any).max_concurrent_singers || 10,
-          smsNotificationsEnabled: (data as any).sms_notifications_enabled !== false
+          smsNotificationsEnabled: (data as any).sms_notifications_enabled !== false,
+          phoneFieldMode: (data as any).phone_field_mode || 'required'
         });
 
         // Load page customization from organization
@@ -209,7 +211,8 @@ export default function KaraokeAdminPage() {
       // Update karaoke_settings with operational settings
       const karaokeSettingsUpdate: any = {
         max_concurrent_singers: operationalSettings.maxConcurrentSingers,
-        sms_notifications_enabled: operationalSettings.smsNotificationsEnabled
+        sms_notifications_enabled: operationalSettings.smsNotificationsEnabled,
+        phone_field_mode: operationalSettings.phoneFieldMode
       };
 
       const { error: karaokeError } = await (supabase
@@ -1698,6 +1701,44 @@ export default function KaraokeAdminPage() {
                               smsNotificationsEnabled: checked
                             }))}
                           />
+                        </div>
+
+                        <div className="p-4 bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm border border-gray-200/50 dark:border-gray-700/50 rounded-xl">
+                          <label className="block text-sm font-medium text-gray-900 dark:text-white mb-3">
+                            Phone Number Field
+                          </label>
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
+                            Control how the phone number field appears to customers
+                          </p>
+                          <div className="space-y-2">
+                            {[
+                              { value: 'required', label: 'Required', desc: 'Must provide phone number to sign up' },
+                              { value: 'optional', label: 'Optional', desc: 'Can sign up with or without phone' },
+                              { value: 'hidden', label: 'Hidden', desc: 'Phone field not shown at all' }
+                            ].map((option) => (
+                              <label key={option.value} className="flex items-center space-x-3 cursor-pointer">
+                                <input
+                                  type="radio"
+                                  name="phoneFieldMode"
+                                  value={option.value}
+                                  checked={operationalSettings.phoneFieldMode === option.value}
+                                  onChange={(e) => setOperationalSettings(prev => ({
+                                    ...prev,
+                                    phoneFieldMode: e.target.value as 'required' | 'optional' | 'hidden'
+                                  }))}
+                                  className="w-4 h-4 text-cyan-600 bg-gray-100 border-gray-300 focus:ring-cyan-500 dark:focus:ring-cyan-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+                                />
+                                <div>
+                                  <div className="text-sm font-medium text-gray-900 dark:text-white">
+                                    {option.label}
+                                  </div>
+                                  <div className="text-xs text-gray-500 dark:text-gray-400">
+                                    {option.desc}
+                                  </div>
+                                </div>
+                              </label>
+                            ))}
+                          </div>
                         </div>
                       </div>
                     </div>

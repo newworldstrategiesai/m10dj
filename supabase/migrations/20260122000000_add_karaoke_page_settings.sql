@@ -16,4 +16,5 @@ ADD COLUMN IF NOT EXISTS karaoke_theme TEXT DEFAULT 'default' CHECK (karaoke_the
 -- Add karaoke operational settings to karaoke_settings table
 ALTER TABLE karaoke_settings
 ADD COLUMN IF NOT EXISTS max_concurrent_singers INTEGER DEFAULT 10,
-ADD COLUMN IF NOT EXISTS sms_notifications_enabled BOOLEAN DEFAULT TRUE;
+ADD COLUMN IF NOT EXISTS sms_notifications_enabled BOOLEAN DEFAULT TRUE,
+ADD COLUMN IF NOT EXISTS phone_field_mode TEXT DEFAULT 'required' CHECK (phone_field_mode IN ('required', 'optional', 'hidden'));
