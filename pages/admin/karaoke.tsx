@@ -1,0 +1,1526 @@
+'use client';
+
+import { useState, useEffect, useCallback } from 'react';
+import { useRouter } from 'next/router';
+import Head from 'next/head';
+import { createClient } from '@/utils/supabase/client';
+import {
+  Mic,
+  Users,
+  Music,
+  Loader2,
+  Search,
+  Filter,
+  ArrowUp,
+  ArrowDown,
+  CheckCircle2,
+  Clock,
+  Play,
+  SkipForward,
+  X,
+  Settings,
+  RefreshCw,
+  Eye,
+  Trash2,
+  Edit3,
+  Zap,
+  Calendar,
+  User,
+  Phone,
+  Mail,
+  ExternalLink,
+  MoreVertical,
+  QrCode,
+  Copy,
+  Monitor,
+  Info
+} from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import { Switch } from '@/components/ui/switch';
+import { useToast } from '@/components/ui/Toasts/use-toast';
+import AdminLayout from '@/components/layouts/AdminLayout';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
+import { getGroupLabel, formatGroupDisplayName, KaraokeSignup } from '@/types/karaoke';
+import { getSortedQueue, getCurrentSinger, getNextSinger, getQueue, calculateQueuePosition, calculateEstimatedWait, formatEstimatedWait, getQueueHealth } from '@/utils/karaoke-queue';
+import { getCurrentOrganization } from '@/utils/organization-context';
+import { DecoratedQRCode } from '@/components/ui/DecoratedQRCode';
+
+export default function KaraokeAdminPage() {
+  const router = useRouter();
+  const supabase = createClient();
+  const { toast } = useToast();
+
+  const [signups, setSignups] = useState<KaraokeSignup[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState<string>('active');
+  const [eventCodeFilter, setEventCodeFilter] = useState<string>('');
+  const [selectedSignup, setSelectedSignup] = useState<KaraokeSignup | null>(null);
+  const [showDetailModal, setShowDetailModal] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+  const [showQRGenerator, setShowQRGenerator] = useState(false);
+  const [organization, setOrganization] = useState<any>(null);
+  const [autoRefresh, setAutoRefresh] = useState(true);
+  const [availableEvents, setAvailableEvents] = useState<string[]>([]);
+  const [settings, setSettings] = useState<any>(null);
+  
+  // QR Generator state (reused from crowd-requests)
+  const [qrEventCode, setQrEventCode] = useState('');
+  const [qrEventName, setQrEventName] = useState('');
+  const [qrEventDate, setQrEventDate] = useState('');
+  const [generatedQR, setGeneratedQR] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+  const [showDisplaySetup, setShowDisplaySetup] = useState(false);
+  const [displayUrl, setDisplayUrl] = useState<string | null>(null);
+  const [displayQR, setDisplayQR] = useState<string | null>(null);
+  const [displayCopied, setDisplayCopied] = useState(false);
+
+  // Load organization
+  useEffect(() => {
+    async function loadOrganization() {
+      const org = await getCurrentOrganization();
+      setOrganization(org);
+      if (org) {
+        loadSettings(org.id);
+        loadSignups(org.id);
+      }
+    }
+    loadOrganization();
+  }, []);
+
+  // Auto-refresh
+  useEffect(() => {
+    if (!autoRefresh || !organization) return;
+
+    const interval = setInterval(() => {
+      if (organization) {
+        loadSignups(organization.id);
+      }
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, [autoRefresh, organization]);
+
+  const loadSettings = async (orgId: string) => {
+    try {
+      const { data } = await supabase
+        .from('karaoke_settings')
+        .select('*')
+        .eq('organization_id', orgId)
+        .single();
+
+      if (data) {
+        setSettings(data);
+      } else {
+        const { data: newSettings } = await supabase
+          .from('karaoke_settings')
+          .insert({
+            organization_id: orgId,
+            karaoke_enabled: true,
+            priority_pricing_enabled: true,
+            rotation_enabled: true,
+            priority_fee_cents: 1000,
+            free_signups_allowed: true,
+            max_singers_before_repeat: 3,
+            rotation_fairness_mode: 'strict',
+            display_show_queue_count: 5,
+            display_theme: 'default',
+            auto_advance: false,
+            allow_skips: true
+          })
+          .select()
+          .single();
+
+        if (newSettings) {
+          setSettings(newSettings);
+        }
+      }
+    } catch (error) {
+      console.error('Error loading settings:', error);
+    }
+  };
+
+  const loadSignups = async (orgId: string) => {
+    try {
+      setLoading(true);
+      let query = supabase
+        .from('karaoke_signups')
+        .select('*')
+        .eq('organization_id', orgId)
+        .order('created_at', { ascending: false });
+
+      if (eventCodeFilter) {
+        query = query.eq('event_qr_code', eventCodeFilter);
+      }
+
+      const { data, error } = await query;
+
+      if (error) throw error;
+
+      setSignups(data || []);
+
+      const eventCodes = [...new Set((data || []).map(s => s.event_qr_code).filter(Boolean))];
+      setAvailableEvents(eventCodes as string[]);
+    } catch (error: any) {
+      console.error('Error loading signups:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to load karaoke signups',
+        variant: 'destructive'
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const updateStatus = async (signupId: string, newStatus: KaraokeSignup['status'], adminNotes?: string) => {
+    // Find the signup to store original state for rollback
+    const originalSignup = signups.find(s => s.id === signupId);
+    if (!originalSignup) return;
+
+    // Optimistic update - update UI immediately
+    setSignups(prev => prev.map(s => 
+      s.id === signupId ? { ...s, status: newStatus } : s
+    ));
+
+    try {
+      const response = await fetch('/api/karaoke/update-status', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          signup_id: signupId,
+          status: newStatus,
+          admin_notes: adminNotes
+        }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Failed to update status');
+      }
+
+      toast({
+        title: 'Success',
+        description: `Status updated to ${newStatus}`,
+      });
+
+      // Refresh to get latest data (including timestamps, notifications, etc.)
+      if (organization) {
+        loadSignups(organization.id);
+      }
+    } catch (error: any) {
+      console.error('Error updating status:', error);
+      
+      // Revert optimistic update on error
+      setSignups(prev => prev.map(s => 
+        s.id === signupId ? originalSignup : s
+      ));
+      
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to update status',
+        variant: 'destructive'
+      });
+    }
+  };
+
+  const reorderQueue = async (signupId: string, newPriorityOrder: number) => {
+    try {
+      const { error } = await supabase
+        .from('karaoke_signups')
+        .update({ priority_order: newPriorityOrder })
+        .eq('id', signupId);
+
+      if (error) throw error;
+
+      toast({
+        title: 'Success',
+        description: 'Queue order updated',
+      });
+
+      if (organization) {
+        loadSignups(organization.id);
+      }
+    } catch (error: any) {
+      console.error('Error reordering queue:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to update queue order',
+        variant: 'destructive'
+      });
+    }
+  };
+
+  const deleteSignup = async (signupId: string) => {
+    if (!confirm('Are you sure you want to delete this signup?')) {
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('karaoke_signups')
+        .delete()
+        .eq('id', signupId);
+
+      if (error) throw error;
+
+      toast({
+        title: 'Success',
+        description: 'Signup deleted',
+      });
+
+      if (organization) {
+        loadSignups(organization.id);
+      }
+    } catch (error: any) {
+      console.error('Error deleting signup:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to delete signup',
+        variant: 'destructive'
+      });
+    }
+  };
+
+  // Generate QR Code (reused pattern from crowd-requests)
+  const generateQRCode = async () => {
+    if (!qrEventCode.trim()) {
+      toast({
+        title: 'Error',
+        description: 'Please enter an event code',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    try {
+      const qrUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/organizations/${organization?.slug}/sing${qrEventCode ? `?eventCode=${qrEventCode}` : ''}`;
+      setGeneratedQR(qrUrl);
+      toast({
+        title: 'Success',
+        description: 'QR code generated',
+      });
+    } catch (error: any) {
+      console.error('Error generating QR:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to generate QR code',
+        variant: 'destructive'
+      });
+    }
+  };
+
+  // Generate Display URL and QR
+  const generateDisplayURL = (eventCode: string) => {
+    if (!eventCode || !organization) return;
+
+    const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
+    const url = `${baseUrl}/karaoke/display/${eventCode}${organization.id ? `?org_id=${organization.id}` : ''}`;
+    setDisplayUrl(url);
+    
+    // Generate QR code for display URL
+    const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(url)}`;
+    setDisplayQR(qrCodeUrl);
+  };
+
+  // Auto-generate display URL when modal opens with event code selected
+  useEffect(() => {
+    if (showDisplaySetup && eventCodeFilter && organization) {
+      generateDisplayURL(eventCodeFilter);
+    }
+  }, [showDisplaySetup, eventCodeFilter, organization]);
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyPress = (e: KeyboardEvent) => {
+      // Don't trigger if typing in input, textarea, or if a modal is open
+      if (
+        e.target instanceof HTMLInputElement || 
+        e.target instanceof HTMLTextAreaElement ||
+        showDetailModal ||
+        showSettings ||
+        showQRGenerator ||
+        showDisplaySetup
+      ) {
+        return;
+      }
+
+      // Space = Advance queue (complete current, start next)
+      if (e.key === ' ' && !e.ctrlKey && !e.metaKey && !e.shiftKey) {
+        e.preventDefault();
+        if (currentSinger) {
+          updateStatus(currentSinger.id, 'completed');
+          // Auto-advance to next after a short delay
+          setTimeout(() => {
+            if (nextSinger) {
+              updateStatus(nextSinger.id, 'singing');
+            }
+          }, 300);
+        }
+      }
+
+      // N = Mark next singer as current
+      if ((e.key === 'n' || e.key === 'N') && !e.ctrlKey && !e.metaKey && nextSinger) {
+        e.preventDefault();
+        updateStatus(nextSinger.id, 'singing');
+      }
+
+      // C = Complete current singer
+      if ((e.key === 'c' || e.key === 'C') && !e.ctrlKey && !e.metaKey && currentSinger) {
+        e.preventDefault();
+        updateStatus(currentSinger.id, 'completed');
+      }
+
+      // Delete = Skip current (with confirmation)
+      if (e.key === 'Delete' && currentSinger && !e.ctrlKey && !e.metaKey) {
+        e.preventDefault();
+        if (confirm('Skip current singer?')) {
+          updateStatus(currentSinger.id, 'skipped');
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyPress);
+    return () => window.removeEventListener('keydown', handleKeyPress);
+  }, [currentSinger, nextSinger, updateStatus, showDetailModal, showSettings, showQRGenerator, showDisplaySetup]);
+
+  // Filter signups (reused pattern from crowd-requests)
+  const filteredSignups = signups.filter(signup => {
+    if (statusFilter === 'active') {
+      if (!['queued', 'next', 'singing'].includes(signup.status)) return false;
+    } else if (statusFilter === 'completed') {
+      if (signup.status !== 'completed') return false;
+    }
+
+    if (searchTerm) {
+      const search = searchTerm.toLowerCase();
+      const matchesName = signup.singer_name?.toLowerCase().includes(search);
+      const matchesSong = signup.song_title?.toLowerCase().includes(search);
+      const matchesArtist = signup.song_artist?.toLowerCase().includes(search);
+      const matchesPhone = signup.singer_phone?.includes(search);
+      const matchesEmail = signup.singer_email?.toLowerCase().includes(search);
+      
+      if (!matchesName && !matchesSong && !matchesArtist && !matchesPhone && !matchesEmail) {
+        return false;
+      }
+    }
+
+    return true;
+  });
+
+  const currentSinger = getCurrentSinger(filteredSignups);
+  const nextSinger = getNextSinger(filteredSignups);
+  const queue = getQueue(filteredSignups);
+
+  // Status badge component (reused from crowd-requests pattern)
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'singing':
+        return <Badge className="bg-green-600 text-white flex items-center gap-1 px-2 py-0.5 text-xs font-semibold">
+          <CheckCircle2 className="w-3 h-3" />
+          Currently Singing
+        </Badge>;
+      case 'next':
+        return <Badge className="bg-yellow-500 text-white flex items-center gap-1 px-2 py-0.5 text-xs font-semibold">
+          <ArrowUp className="w-3 h-3" />
+          Next Up
+        </Badge>;
+      case 'queued':
+        return <Badge className="bg-blue-500 text-white flex items-center gap-1 px-2 py-0.5 text-xs font-semibold">
+          <Clock className="w-3 h-3" />
+          In Queue
+        </Badge>;
+      case 'completed':
+        return <Badge className="bg-gray-500 text-white flex items-center gap-1 px-2 py-0.5 text-xs font-semibold">
+          <CheckCircle2 className="w-3 h-3" />
+          Completed
+        </Badge>;
+      case 'skipped':
+        return <Badge className="bg-orange-500 text-white flex items-center gap-1 px-2 py-0.5 text-xs font-semibold">
+          <SkipForward className="w-3 h-3" />
+          Skipped
+        </Badge>;
+      case 'cancelled':
+        return <Badge className="bg-red-500 text-white flex items-center gap-1 px-2 py-0.5 text-xs font-semibold">
+          <X className="w-3 h-3" />
+          Cancelled
+        </Badge>;
+      default:
+        return <Badge>{status}</Badge>;
+    }
+  };
+
+  return (
+    <>
+      <Head>
+        <title>Karaoke Queue | Admin</title>
+      </Head>
+      <AdminLayout title="Karaoke Queue" description="Manage your karaoke signups and queue">
+        <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-6 pb-2 sm:pb-4 lg:pb-8">
+          {/* Header - Reused pattern from crowd-requests */}
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4 sm:mb-6">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                <Mic className="w-6 h-6" />
+                Karaoke Queue
+              </h1>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                Manage karaoke signups and queue order
+              </p>
+            </div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => organization && loadSignups(organization.id)}
+                disabled={loading}
+              >
+                <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+                Refresh
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowQRGenerator(true)}
+              >
+                <QrCode className="w-4 h-4 mr-2" />
+                Signup QR
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowDisplaySetup(true)}
+              >
+                <Eye className="w-4 h-4 mr-2" />
+                TV Display
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowSettings(true)}
+              >
+                <Settings className="w-4 h-4 mr-2" />
+                Settings
+              </Button>
+            </div>
+          </div>
+
+          {/* Queue Summary Header */}
+          {queue.length > 0 || currentSinger ? (
+            <div className="bg-gradient-to-r from-purple-600 to-purple-700 rounded-lg p-4 sm:p-6 mb-4 sm:mb-6 text-white shadow-lg">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div>
+                  <h2 className="text-xl sm:text-2xl font-bold mb-1">Queue Summary</h2>
+                  <p className="text-purple-100 text-sm sm:text-base">
+                    {queue.length} in queue • {currentSinger ? '1 singing' : 'No one singing'} • 
+                    {queue.length > 0 && ` ~${Math.ceil(queue.length * 3.5)} min total wait`}
+                  </p>
+                </div>
+                <div className="flex items-center gap-4">
+                  <div className="text-right">
+                    <p className="text-xs text-purple-100">Total Signups</p>
+                    <p className="text-2xl sm:text-3xl font-bold">{signups.length}</p>
+                  </div>
+                  {queue.length > 0 && (
+                    <div className="text-right">
+                      <p className="text-xs text-purple-100">Queue Health</p>
+                      <Badge className={`${
+                        getQueueHealth(queue.length).color === 'green' ? 'bg-green-500' :
+                        getQueueHealth(queue.length).color === 'yellow' ? 'bg-yellow-500' :
+                        'bg-red-500'
+                      } text-white font-semibold`}>
+                        {getQueueHealth(queue.length).label}
+                      </Badge>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          ) : null}
+
+          {/* Stats Cards - Reused pattern from crowd-requests */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 mb-4 sm:mb-6">
+            <div className="bg-white dark:bg-gray-800 rounded-lg p-3 sm:p-4 border border-gray-200 dark:border-gray-700">
+              <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Total Signups</p>
+              <p className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">{signups.length}</p>
+            </div>
+            <div className="bg-white dark:bg-gray-800 rounded-lg p-3 sm:p-4 border border-gray-200 dark:border-gray-700">
+              <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">In Queue</p>
+              <p className="text-xl sm:text-2xl font-bold text-blue-600 dark:text-blue-400">{queue.length}</p>
+            </div>
+            <div className="bg-white dark:bg-gray-800 rounded-lg p-3 sm:p-4 border border-gray-200 dark:border-gray-700">
+              <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Currently Singing</p>
+              <p className="text-xl sm:text-2xl font-bold text-green-600 dark:text-green-400">{currentSinger ? 1 : 0}</p>
+            </div>
+            <div className="bg-white dark:bg-gray-800 rounded-lg p-3 sm:p-4 border border-gray-200 dark:border-gray-700">
+              <p className="text-xs sm:text-sm text-gray-400">Completed</p>
+              <p className="text-xl sm:text-2xl font-bold text-gray-600 dark:text-gray-400">
+                {signups.filter(s => s.status === 'completed').length}
+              </p>
+            </div>
+          </div>
+
+          {/* Keyboard Shortcuts Hint */}
+          <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3 mb-4 sm:mb-6">
+            <div className="flex items-center gap-2 text-sm text-blue-800 dark:text-blue-200">
+              <Info className="w-4 h-4" />
+              <span className="font-semibold">Keyboard Shortcuts:</span>
+              <kbd className="px-2 py-1 bg-white dark:bg-gray-800 rounded border border-blue-300 dark:border-blue-700 text-xs font-mono">Space</kbd>
+              <span>Advance</span>
+              <kbd className="px-2 py-1 bg-white dark:bg-gray-800 rounded border border-blue-300 dark:border-blue-700 text-xs font-mono">N</kbd>
+              <span>Next</span>
+              <kbd className="px-2 py-1 bg-white dark:bg-gray-800 rounded border border-blue-300 dark:border-blue-700 text-xs font-mono">C</kbd>
+              <span>Complete</span>
+            </div>
+          </div>
+
+          {/* Event Selector - Prominent */}
+          {availableEvents.length > 0 && (
+            <div className="bg-blue-50 dark:bg-blue-900/20 border-2 border-blue-500 rounded-lg p-4 mb-4 sm:mb-6">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                <div className="flex-1">
+                  <label className="block text-sm font-semibold text-blue-900 dark:text-blue-100 mb-2">
+                    Current Event
+                  </label>
+                  <select
+                    value={eventCodeFilter || ''}
+                    onChange={(e) => {
+                      setEventCodeFilter(e.target.value);
+                      if (e.target.value && organization) {
+                        loadSignups(organization.id);
+                      }
+                    }}
+                    className="w-full sm:w-auto min-w-[200px] px-4 py-2 border-2 border-blue-500 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white font-semibold"
+                  >
+                    <option value="">All Events</option>
+                    {availableEvents.map(code => (
+                      <option key={code} value={code}>{code}</option>
+                    ))}
+                  </select>
+                </div>
+                {eventCodeFilter && (
+                  <Button
+                    variant="outline"
+                    onClick={() => setShowDisplaySetup(true)}
+                    className="border-blue-500 text-blue-700 dark:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/30"
+                  >
+                    <Monitor className="w-4 h-4 mr-2" />
+                    TV Display
+                  </Button>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Quick Filter Chips */}
+          <div className="flex flex-wrap gap-2 mb-4 sm:mb-6">
+            <Button
+              variant={statusFilter === 'active' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setStatusFilter('active')}
+            >
+              Active
+            </Button>
+            <Button
+              variant={statusFilter === 'all' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setStatusFilter('all')}
+            >
+              All
+            </Button>
+            <Button
+              variant={statusFilter === 'completed' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setStatusFilter('completed')}
+            >
+              Completed
+            </Button>
+            {eventCodeFilter && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setEventCodeFilter('');
+                  if (organization) {
+                    loadSignups(organization.id);
+                  }
+                }}
+                className="text-red-600 dark:text-red-400 border-red-300 dark:border-red-700"
+              >
+                <X className="w-3 h-3 mr-1" />
+                Clear Event
+              </Button>
+            )}
+          </div>
+
+          {/* Filters - Reused pattern from crowd-requests */}
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-4 mb-4 sm:mb-6 border border-gray-200 dark:border-gray-700">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Search
+                </label>
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <Input
+                    type="text"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    placeholder="Search by name, song, phone..."
+                    className="pl-10"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Status
+                </label>
+                <select
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                >
+                  <option value="active">Active (Queue + Next + Singing)</option>
+                  <option value="all">All</option>
+                  <option value="completed">Completed</option>
+                  <option value="queued">Queued Only</option>
+                  <option value="next">Next Up</option>
+                  <option value="singing">Currently Singing</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Event Code
+                </label>
+                <select
+                  value={eventCodeFilter}
+                  onChange={(e) => setEventCodeFilter(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                >
+                  <option value="">All Events</option>
+                  {availableEvents.map(code => (
+                    <option key={code} value={code}>{code}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            <div className="mt-4 flex items-center gap-2">
+              <Switch
+                checked={autoRefresh}
+                onCheckedChange={setAutoRefresh}
+              />
+              <label className="text-sm text-gray-700 dark:text-gray-300">
+                Auto-refresh every 5 seconds
+              </label>
+            </div>
+          </div>
+
+          {/* Current Singer - Enhanced with better visual hierarchy */}
+          {currentSinger && (
+            <div className="bg-gradient-to-r from-green-600 to-green-700 rounded-xl p-6 sm:p-8 mb-4 sm:mb-6 shadow-lg border-4 border-green-400">
+              <div className="flex flex-col sm:flex-row items-start justify-between gap-4">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center flex-shrink-0">
+                      <Play className="w-6 h-6 text-white" />
+                    </div>
+                    <div>
+                      <h3 className="text-2xl sm:text-3xl font-bold text-white">NOW SINGING</h3>
+                      {currentSinger.started_at && (
+                        <p className="text-green-100 text-sm sm:text-base">
+                          Started {Math.floor((Date.now() - new Date(currentSinger.started_at).getTime()) / 60000)} min ago
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                  <p className="text-2xl sm:text-3xl font-black text-white mb-2 leading-tight">
+                    {formatGroupDisplayName(
+                      currentSinger.singer_name,
+                      currentSinger.group_members,
+                      currentSinger.group_size
+                    )}
+                  </p>
+                  {currentSinger.group_size > 1 && (
+                    <p className="text-lg text-green-100 mb-3 font-semibold">
+                      {getGroupLabel(currentSinger.group_size)}
+                    </p>
+                  )}
+                  <p className="text-xl sm:text-2xl text-green-100 mb-1">
+                    <Music className="w-5 h-5 inline mr-2" />
+                    "{currentSinger.song_title}"
+                    {currentSinger.song_artist && ` by ${currentSinger.song_artist}`}
+                  </p>
+                </div>
+                <div className="flex flex-col gap-2 flex-shrink-0 w-full sm:w-auto">
+                  <Button
+                    size="lg"
+                    onClick={() => updateStatus(currentSinger.id, 'completed')}
+                    className="bg-white text-green-700 hover:bg-green-50 font-bold px-6 w-full sm:w-auto"
+                  >
+                    <CheckCircle2 className="w-5 h-5 mr-2" />
+                    Complete
+                  </Button>
+                  <Button
+                    size="lg"
+                    variant="outline"
+                    onClick={() => updateStatus(currentSinger.id, 'skipped')}
+                    className="border-white text-white hover:bg-white/10 w-full sm:w-auto"
+                  >
+                    <SkipForward className="w-5 h-5 mr-2" />
+                    Skip
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Next Up - Enhanced */}
+          {nextSinger && (
+            <div className="bg-gradient-to-r from-yellow-500 to-yellow-600 rounded-xl p-5 sm:p-6 mb-4 sm:mb-6 shadow-lg border-4 border-yellow-300">
+              <div className="flex flex-col sm:flex-row items-start justify-between gap-4">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-3 mb-2">
+                    <ArrowUp className="w-8 h-8 flex-shrink-0 text-white" />
+                    <h3 className="text-xl sm:text-2xl font-bold text-white">NEXT UP</h3>
+                  </div>
+                  <p className="text-xl sm:text-2xl font-black text-white mb-2 leading-tight">
+                    {formatGroupDisplayName(
+                      nextSinger.singer_name,
+                      nextSinger.group_members,
+                      nextSinger.group_size
+                    )}
+                  </p>
+                  {nextSinger.group_size > 1 && (
+                    <p className="text-base text-yellow-100 mb-2 font-semibold">
+                      {getGroupLabel(nextSinger.group_size)}
+                    </p>
+                  )}
+                  <p className="text-lg sm:text-xl text-yellow-100">
+                    <Music className="w-5 h-5 inline mr-2" />
+                    "{nextSinger.song_title}"
+                    {nextSinger.song_artist && ` by ${nextSinger.song_artist}`}
+                  </p>
+                </div>
+                <Button
+                  size="lg"
+                  onClick={() => updateStatus(nextSinger.id, 'singing')}
+                  className="bg-white text-yellow-700 hover:bg-yellow-50 font-bold px-6 flex-shrink-0 w-full sm:w-auto"
+                >
+                  <Play className="w-5 h-5 mr-2" />
+                  Start Now
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* Queue List - Reused card pattern from crowd-requests */}
+          <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+            <div className="p-4 border-b border-gray-200 dark:border-gray-700">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+                Queue ({queue.length})
+              </h2>
+            </div>
+            {loading ? (
+              <div className="p-8 text-center">
+                <Loader2 className="w-8 h-8 animate-spin text-gray-400 mx-auto" />
+              </div>
+            ) : queue.length === 0 ? (
+              <div className="p-12 text-center bg-gray-50 dark:bg-gray-800 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600">
+                <Mic className="w-16 h-16 mx-auto mb-4 text-gray-400" />
+                <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+                  No one in queue
+                </h3>
+                <p className="text-gray-600 dark:text-gray-400 mb-6">
+                  Generate a QR code to start receiving karaoke signups
+                </p>
+                <div className="flex gap-3 justify-center flex-wrap">
+                  <Button onClick={() => setShowQRGenerator(true)}>
+                    <QrCode className="w-4 h-4 mr-2" />
+                    Generate Signup QR Code
+                  </Button>
+                  <Button variant="outline" onClick={() => setShowDisplaySetup(true)}>
+                    <Monitor className="w-4 h-4 mr-2" />
+                    Set Up TV Display
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="divide-y divide-gray-200 dark:divide-gray-700">
+                {queue.map((signup) => {
+                  const queuePosition = calculateQueuePosition(signup, filteredSignups);
+                  const estimatedWait = calculateEstimatedWait(signup, filteredSignups);
+                  return (
+                    <div
+                      key={signup.id}
+                      className="group p-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
+                    >
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex items-start gap-3 flex-1 min-w-0">
+                          <Mic className={`w-6 h-6 flex-shrink-0 ${signup.is_priority ? 'text-orange-500' : 'text-purple-500'}`} />
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1 flex-wrap">
+                              <span className="text-2xl font-bold text-gray-400 dark:text-gray-500">
+                                #{queuePosition}
+                              </span>
+                              {getStatusBadge(signup.status)}
+                              {signup.is_priority && (
+                                <Badge className="bg-orange-500 text-white flex items-center gap-1 px-2 py-0.5 text-xs font-semibold">
+                                  <Zap className="w-3 h-3" />
+                                  Priority
+                                </Badge>
+                              )}
+                              {signup.group_size > 1 && (
+                                <Badge variant="outline" className="flex items-center gap-1 px-2 py-0.5 text-xs">
+                                  <Users className="w-3 h-3" />
+                                  {getGroupLabel(signup.group_size)}
+                                </Badge>
+                              )}
+                              {estimatedWait > 0 && (
+                                <Badge variant="outline" className="text-xs">
+                                  <Clock className="w-3 h-3 mr-1" />
+                                  {formatEstimatedWait(estimatedWait)}
+                                </Badge>
+                              )}
+                            </div>
+                            <p className="font-bold text-gray-900 dark:text-white text-base mb-1">
+                              {formatGroupDisplayName(
+                                signup.singer_name,
+                                signup.group_members,
+                                signup.group_size
+                              )}
+                            </p>
+                            <p className="text-gray-700 dark:text-gray-300 mb-1">
+                              <Music className="w-4 h-4 inline mr-1" />
+                              "{signup.song_title}"
+                              {signup.song_artist && ` by ${signup.song_artist}`}
+                            </p>
+                            <div className="flex items-center gap-4 text-sm text-gray-500 dark:text-gray-400 mt-2 flex-wrap">
+                              {signup.singer_phone && (
+                                <span className="flex items-center gap-1">
+                                  <Phone className="w-3 h-3" />
+                                  {signup.singer_phone}
+                                </span>
+                              )}
+                              {signup.singer_email && (
+                                <span className="flex items-center gap-1">
+                                  <Mail className="w-3 h-3" />
+                                  {signup.singer_email}
+                                </span>
+                              )}
+                              <span className="flex items-center gap-1">
+                                <Calendar className="w-3 h-3" />
+                                {new Date(signup.created_at).toLocaleString()}
+                              </span>
+                            </div>
+                            {signup.next_up_notification_sent && (
+                              <p className="text-xs text-green-600 dark:text-green-400 mt-1 flex items-center gap-1">
+                                <CheckCircle2 className="w-3 h-3" />
+                                SMS notification sent
+                              </p>
+                            )}
+                            {signup.sms_notification_error && (
+                              <p className="text-xs text-red-600 dark:text-red-400 mt-1 flex items-center gap-1">
+                                <X className="w-3 h-3" />
+                                SMS failed: {signup.sms_notification_error}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                          {/* Quick Action Buttons - Visible on hover */}
+                          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            {signup.status === 'queued' && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => updateStatus(signup.id, 'next')}
+                                className="h-8 px-2"
+                                title="Mark as Next"
+                              >
+                                <ArrowUp className="w-3 h-3" />
+                              </Button>
+                            )}
+                            {signup.status === 'next' && (
+                              <Button
+                                size="sm"
+                                onClick={() => updateStatus(signup.id, 'singing')}
+                                className="h-8 px-2 bg-yellow-600 hover:bg-yellow-700"
+                                title="Start Now"
+                              >
+                                <Play className="w-3 h-3" />
+                              </Button>
+                            )}
+                            {signup.status === 'singing' && (
+                              <Button
+                                size="sm"
+                                onClick={() => updateStatus(signup.id, 'completed')}
+                                className="h-8 px-2 bg-green-600 hover:bg-green-700"
+                                title="Mark Complete"
+                              >
+                                <CheckCircle2 className="w-3 h-3" />
+                              </Button>
+                            )}
+                          </div>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="outline" size="sm">
+                                <MoreVertical className="w-4 h-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => updateStatus(signup.id, 'next')}>
+                                <ArrowUp className="w-4 h-4 mr-2" />
+                                Mark as Next
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => updateStatus(signup.id, 'singing')}>
+                                <Play className="w-4 h-4 mr-2" />
+                                Start Now
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => reorderQueue(signup.id, signup.priority_order - 100)}>
+                                <ArrowUp className="w-4 h-4 mr-2" />
+                                Move Up
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => reorderQueue(signup.id, signup.priority_order + 100)}>
+                                <ArrowDown className="w-4 h-4 mr-2" />
+                                Move Down
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem onClick={() => {
+                                setSelectedSignup(signup);
+                                setShowDetailModal(true);
+                              }}>
+                                <Eye className="w-4 h-4 mr-2" />
+                                View Details
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem onClick={() => updateStatus(signup.id, 'skipped')}>
+                                <SkipForward className="w-4 h-4 mr-2" />
+                                Skip
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => deleteSignup(signup.id)}
+                                className="text-red-600 dark:text-red-400"
+                              >
+                                <Trash2 className="w-4 h-4 mr-2" />
+                                Delete
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Detail Modal - Reused pattern from crowd-requests */}
+          <Dialog open={showDetailModal} onOpenChange={setShowDetailModal}>
+            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>Signup Details</DialogTitle>
+              </DialogHeader>
+              {selectedSignup && (
+                <div className="space-y-4">
+                  <div>
+                    <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Singer/Group</label>
+                    <p className="text-lg font-semibold text-gray-900 dark:text-white">
+                      {formatGroupDisplayName(
+                        selectedSignup.singer_name,
+                        selectedSignup.group_members,
+                        selectedSignup.group_size
+                      )}
+                    </p>
+                    {selectedSignup.group_size > 1 && selectedSignup.group_members && (
+                      <div className="mt-2">
+                        <p className="text-sm text-gray-600 dark:text-gray-400">Group Members:</p>
+                        <ul className="list-disc list-inside text-sm text-gray-700 dark:text-gray-300">
+                          {selectedSignup.group_members.map((member, i) => (
+                            <li key={i}>{member}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Song</label>
+                    <p className="text-lg font-semibold text-gray-900 dark:text-white">
+                      "{selectedSignup.song_title}"
+                    </p>
+                    {selectedSignup.song_artist && (
+                      <p className="text-gray-700 dark:text-gray-300">by {selectedSignup.song_artist}</p>
+                    )}
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Status</label>
+                      <div className="mt-1">{getStatusBadge(selectedSignup.status)}</div>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Queue Position</label>
+                      <p className="text-lg font-semibold text-gray-900 dark:text-white">
+                        #{calculateQueuePosition(selectedSignup, filteredSignups)}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Phone</label>
+                      <p className="text-gray-900 dark:text-white">{selectedSignup.singer_phone || 'N/A'}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Email</label>
+                      <p className="text-gray-900 dark:text-white">{selectedSignup.singer_email || 'N/A'}</p>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Event Code</label>
+                    <p className="text-gray-900 dark:text-white">{selectedSignup.event_qr_code || 'N/A'}</p>
+                  </div>
+                  {selectedSignup.admin_notes && (
+                    <div>
+                      <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Admin Notes</label>
+                      <p className="text-gray-900 dark:text-white">{selectedSignup.admin_notes}</p>
+                    </div>
+                  )}
+                  <div className="flex gap-2 pt-4">
+                    <Button
+                      onClick={() => {
+                        if (selectedSignup.status === 'queued') {
+                          updateStatus(selectedSignup.id, 'next');
+                        } else if (selectedSignup.status === 'next') {
+                          updateStatus(selectedSignup.id, 'singing');
+                        } else if (selectedSignup.status === 'singing') {
+                          updateStatus(selectedSignup.id, 'completed');
+                        }
+                        setShowDetailModal(false);
+                      }}
+                    >
+                      {selectedSignup.status === 'queued' && 'Mark as Next'}
+                      {selectedSignup.status === 'next' && 'Start Now'}
+                      {selectedSignup.status === 'singing' && 'Mark Complete'}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => setShowDetailModal(false)}
+                    >
+                      Close
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </DialogContent>
+          </Dialog>
+
+          {/* QR Generator Modal - Reused from crowd-requests */}
+          <Dialog open={showQRGenerator} onOpenChange={setShowQRGenerator}>
+            <DialogContent className="max-w-md">
+              <DialogHeader>
+                <DialogTitle>Generate Karaoke QR Code</DialogTitle>
+                <DialogDescription>
+                  Create a QR code for karaoke signups
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Event Code
+                  </label>
+                  <Input
+                    value={qrEventCode}
+                    onChange={(e) => setQrEventCode(e.target.value)}
+                    placeholder="wedding-2025-01-15"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Event Name (Optional)
+                  </label>
+                  <Input
+                    value={qrEventName}
+                    onChange={(e) => setQrEventName(e.target.value)}
+                    placeholder="Sarah & Michael's Wedding"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Event Date (Optional)
+                  </label>
+                  <Input
+                    type="date"
+                    value={qrEventDate}
+                    onChange={(e) => setQrEventDate(e.target.value)}
+                  />
+                </div>
+                <Button onClick={generateQRCode} className="w-full">
+                  Generate QR Code
+                </Button>
+                {generatedQR && (
+                  <div className="space-y-4 pt-4 border-t">
+                    <div className="flex justify-center">
+                      <DecoratedQRCode
+                        url={generatedQR}
+                        size={200}
+                      />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        readOnly
+                        value={generatedQR}
+                        className="flex-1"
+                      />
+                      <Button
+                        variant="outline"
+                        onClick={() => {
+                          navigator.clipboard.writeText(generatedQR);
+                          setCopied(true);
+                          setTimeout(() => setCopied(false), 2000);
+                        }}
+                      >
+                        {copied ? <CheckCircle2 className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </DialogContent>
+          </Dialog>
+
+          {/* TV Display Setup Modal */}
+          <Dialog open={showDisplaySetup} onOpenChange={setShowDisplaySetup}>
+            <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  <Monitor className="w-5 h-5" />
+                  TV Display Setup
+                </DialogTitle>
+                <DialogDescription>
+                  Generate and share the public display screen for your karaoke queue
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-6">
+                {/* Event Code Selection */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Select Event Code
+                  </label>
+                  <select
+                    value={eventCodeFilter || ''}
+                    onChange={(e) => {
+                      setEventCodeFilter(e.target.value);
+                      if (e.target.value) {
+                        generateDisplayURL(e.target.value);
+                      }
+                    }}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  >
+                    <option value="">Select an event...</option>
+                    {availableEvents.map(code => (
+                      <option key={code} value={code}>{code}</option>
+                    ))}
+                  </select>
+                  {availableEvents.length === 0 && (
+                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
+                      No events found. Create a karaoke signup first to generate a display URL.
+                    </p>
+                  )}
+                </div>
+
+                {/* Display URL */}
+                {displayUrl && (
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Display URL
+                      </label>
+                      <div className="flex items-center gap-2">
+                        <Input
+                          readOnly
+                          value={displayUrl}
+                          className="flex-1 font-mono text-sm"
+                        />
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            navigator.clipboard.writeText(displayUrl);
+                            setDisplayCopied(true);
+                            setTimeout(() => setDisplayCopied(false), 2000);
+                            toast({
+                              title: 'Copied!',
+                              description: 'Display URL copied to clipboard',
+                            });
+                          }}
+                        >
+                          {displayCopied ? <CheckCircle2 className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => window.open(displayUrl, '_blank')}
+                        >
+                          <ExternalLink className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </div>
+
+                    {/* QR Code */}
+                    {displayQR && (
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                          QR Code (Scan to open on TV)
+                        </label>
+                        <div className="flex flex-col items-center gap-4 p-6 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                          <img
+                            src={displayQR}
+                            alt="Display QR Code"
+                            className="w-64 h-64 border-4 border-white dark:border-gray-700 rounded-lg shadow-lg"
+                          />
+                          <p className="text-sm text-gray-600 dark:text-gray-400 text-center">
+                            Scan this QR code with a TV or tablet to open the display screen
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Setup Instructions */}
+                    <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+                      <div className="flex items-start gap-3">
+                        <Info className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
+                        <div className="flex-1">
+                          <h4 className="font-semibold text-blue-900 dark:text-blue-100 mb-2">
+                            How to Set Up on a TV
+                          </h4>
+                          <ol className="list-decimal list-inside space-y-2 text-sm text-blue-800 dark:text-blue-200">
+                            <li>
+                              <strong>Option 1 - Smart TV Browser:</strong> Open the browser on your smart TV, scan the QR code or enter the URL manually
+                            </li>
+                            <li>
+                              <strong>Option 2 - Streaming Device:</strong> Use a Chromecast, Apple TV, or Fire TV Stick. Open the URL in a browser app and cast to the TV
+                            </li>
+                            <li>
+                              <strong>Option 3 - Tablet/Phone:</strong> Open the URL on a tablet or phone, then use screen mirroring to display on TV
+                            </li>
+                            <li>
+                              <strong>Option 4 - Laptop/Computer:</strong> Connect a laptop to the TV via HDMI and open the URL in fullscreen mode (F11)
+                            </li>
+                            <li>
+                              <strong>Pro Tip:</strong> Set the browser to fullscreen mode and disable sleep/auto-lock. The page auto-refreshes every 3 seconds.
+                            </li>
+                          </ol>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Quick Actions */}
+                    <div className="flex gap-2">
+                      <Button
+                        onClick={() => {
+                          window.open(displayUrl, '_blank');
+                        }}
+                        className="flex-1"
+                      >
+                        <Eye className="w-4 h-4 mr-2" />
+                        Preview Display
+                      </Button>
+                      <Button
+                        variant="outline"
+                        onClick={() => {
+                          navigator.clipboard.writeText(displayUrl);
+                          setDisplayCopied(true);
+                          setTimeout(() => setDisplayCopied(false), 2000);
+                          toast({
+                            title: 'Copied!',
+                            description: 'Display URL copied to clipboard',
+                          });
+                        }}
+                      >
+                        <Copy className="w-4 h-4 mr-2" />
+                        Copy URL
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                {!displayUrl && eventCodeFilter && (
+                  <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+                    <Monitor className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                    <p>Select an event code above to generate the display URL</p>
+                  </div>
+                )}
+              </div>
+            </DialogContent>
+          </Dialog>
+
+          {/* Settings Modal - Reused pattern from crowd-requests */}
+          <Dialog open={showSettings} onOpenChange={setShowSettings}>
+            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>Karaoke Settings</DialogTitle>
+                <DialogDescription>
+                  Configure karaoke mode settings for your organization
+                </DialogDescription>
+              </DialogHeader>
+              {settings && (
+                <Tabs defaultValue="general" className="w-full">
+                  <TabsList className="grid w-full grid-cols-3">
+                    <TabsTrigger value="general">General</TabsTrigger>
+                    <TabsTrigger value="pricing">Pricing</TabsTrigger>
+                    <TabsTrigger value="rotation">Rotation</TabsTrigger>
+                  </TabsList>
+                  
+                  <TabsContent value="general" className="space-y-4 mt-4">
+                    <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                      <div>
+                        <label className="text-sm font-medium text-gray-900 dark:text-white">
+                          Enable Karaoke Mode
+                        </label>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">
+                          Enable karaoke signups for your organization
+                        </p>
+                      </div>
+                      <Switch
+                        checked={settings.karaoke_enabled}
+                        onCheckedChange={async (checked) => {
+                          const { error } = await supabase
+                            .from('karaoke_settings')
+                            .update({ karaoke_enabled: checked })
+                            .eq('organization_id', organization.id);
+                          if (!error) {
+                            setSettings({ ...settings, karaoke_enabled: checked });
+                          }
+                        }}
+                      />
+                    </div>
+                    <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                      <div>
+                        <label className="text-sm font-medium text-gray-900 dark:text-white">
+                          Auto-Advance
+                        </label>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">
+                          Automatically move to next singer when current completes
+                        </p>
+                      </div>
+                      <Switch
+                        checked={settings.auto_advance}
+                        onCheckedChange={async (checked) => {
+                          const { error } = await supabase
+                            .from('karaoke_settings')
+                            .update({ auto_advance: checked })
+                            .eq('organization_id', organization.id);
+                          if (!error) {
+                            setSettings({ ...settings, auto_advance: checked });
+                          }
+                        }}
+                      />
+                    </div>
+                  </TabsContent>
+
+                  <TabsContent value="pricing" className="space-y-4 mt-4">
+                    <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                      <div>
+                        <label className="text-sm font-medium text-gray-900 dark:text-white">
+                          Priority Pricing
+                        </label>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">
+                          Allow singers to pay to skip the queue
+                        </p>
+                      </div>
+                      <Switch
+                        checked={settings.priority_pricing_enabled}
+                        onCheckedChange={async (checked) => {
+                          const { error } = await supabase
+                            .from('karaoke_settings')
+                            .update({ priority_pricing_enabled: checked })
+                            .eq('organization_id', organization.id);
+                          if (!error) {
+                            setSettings({ ...settings, priority_pricing_enabled: checked });
+                          }
+                        }}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-900 dark:text-white mb-2">
+                        Priority Fee
+                      </label>
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          value={(settings.priority_fee_cents / 100).toFixed(2)}
+                          onChange={async (e) => {
+                            const dollars = parseFloat(e.target.value) || 0;
+                            const { error } = await supabase
+                              .from('karaoke_settings')
+                              .update({ priority_fee_cents: Math.round(dollars * 100) })
+                              .eq('organization_id', organization.id);
+                            if (!error) {
+                              setSettings({ ...settings, priority_fee_cents: Math.round(dollars * 100) });
+                            }
+                          }}
+                          className="pl-8"
+                        />
+                      </div>
+                    </div>
+                  </TabsContent>
+
+                  <TabsContent value="rotation" className="space-y-4 mt-4">
+                    <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                      <div>
+                        <label className="text-sm font-medium text-gray-900 dark:text-white">
+                          Rotation System
+                        </label>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">
+                          Prevent same singer from going twice in a row
+                        </p>
+                      </div>
+                      <Switch
+                        checked={settings.rotation_enabled}
+                        onCheckedChange={async (checked) => {
+                          const { error } = await supabase
+                            .from('karaoke_settings')
+                            .update({ rotation_enabled: checked })
+                            .eq('organization_id', organization.id);
+                          if (!error) {
+                            setSettings({ ...settings, rotation_enabled: checked });
+                          }
+                        }}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-900 dark:text-white mb-2">
+                        Max Singers Before Repeat
+                      </label>
+                      <Input
+                        type="number"
+                        value={settings.max_singers_before_repeat}
+                        onChange={async (e) => {
+                          const value = parseInt(e.target.value) || 3;
+                          const { error } = await supabase
+                            .from('karaoke_settings')
+                            .update({ max_singers_before_repeat: value })
+                            .eq('organization_id', organization.id);
+                          if (!error) {
+                            setSettings({ ...settings, max_singers_before_repeat: value });
+                          }
+                        }}
+                      />
+                    </div>
+                  </TabsContent>
+                </Tabs>
+              )}
+            </DialogContent>
+          </Dialog>
+        </div>
+      </AdminLayout>
+    </>
+  );
+}

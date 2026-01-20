@@ -224,6 +224,9 @@ export async function middleware(request: NextRequest) {
               } else if (rest[0] === 'requests') {
                 // Performer requests page: /[venue-slug]/[performer-slug]/requests
                 rewritePath = `/organizations/${performerOrg.slug}/requests`;
+              } else if (rest[0] === 'sing') {
+                // Performer karaoke page: /[venue-slug]/[performer-slug]/sing
+                rewritePath = `/organizations/${performerOrg.slug}/sing`;
               } else {
                 // Other performer pages
                 rewritePath = `/tipjar/${venueSlug}/${performerSlug}/${rest.join('/')}`;
@@ -297,6 +300,9 @@ export async function middleware(request: NextRequest) {
         // Handle /[slug]/requests -> route to organization requests page
         if (subPath === 'requests') {
           rewritePath = `/organizations/${slug}/requests`;
+        } else if (subPath === 'sing') {
+          // Handle /[slug]/sing -> route to karaoke signup page
+          rewritePath = `/organizations/${slug}/sing`;
         } else {
           // Route to artist page (e.g., /m10djcompany -> /tipjar/m10djcompany)
           rewritePath = `/tipjar/${slug}`;

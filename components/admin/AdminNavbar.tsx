@@ -31,7 +31,8 @@ import {
   Building,
   Palette,
   BookOpen,
-  Sparkles
+  Sparkles,
+  Mic
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
