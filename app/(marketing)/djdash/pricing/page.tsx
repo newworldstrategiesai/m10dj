@@ -20,7 +20,7 @@ export const metadata: Metadata = {
     siteName: 'DJ Dash',
     images: [
       {
-        url: '/assets/DJ-Dash-Logo-Black-1.PNG',
+        url: '/assets/djdash-og-image.png',
         width: 1200,
         height: 630,
         alt: 'DJ Dash Pricing',
@@ -31,7 +31,7 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: 'DJ Dash Pricing - DJ Booking Software Plans',
     description: 'Transparent pricing for DJ invoicing software. All plans include automated invoicing, contract management, and CRM features.',
-    images: ['/assets/DJ-Dash-Logo-Black-1.PNG'],
+    images: ['/assets/djdash-og-image.png'],
   },
 };
 
