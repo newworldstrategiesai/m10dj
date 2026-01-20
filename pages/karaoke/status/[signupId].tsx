@@ -7,6 +7,7 @@ import { Mic, Users, Loader2, AlertCircle, CheckCircle2, Clock, ArrowUp } from '
 import { Button } from '@/components/ui/button';
 import { formatGroupDisplayName, getGroupLabel } from '@/types/karaoke';
 import { formatEstimatedWait } from '@/utils/karaoke-queue';
+import GlobalChatWidget from '@/components/company/GlobalChatWidget';
 
 export default function KaraokeStatusPage() {
   const router = useRouter();
@@ -18,6 +19,44 @@ export default function KaraokeStatusPage() {
   const [error, setError] = useState<string | null>(null);
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+
+  // Karaoke theming detection
+  const isKaraokePage = true; // This is always a karaoke page
+  const themeClasses = isKaraokePage ? {
+    bgGradient: 'bg-gradient-to-br from-cyan-50 to-blue-50 dark:from-gray-900 dark:to-gray-800',
+    iconBg: 'bg-cyan-100 dark:bg-cyan-900',
+    iconColor: 'text-cyan-600 dark:text-cyan-400',
+    loaderColor: 'text-cyan-600 dark:text-cyan-400',
+    buttonBg: 'bg-cyan-600',
+    buttonHover: 'hover:bg-cyan-700',
+    statusBg: {
+      singing: 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400',
+      next: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400',
+      queued: 'bg-cyan-100 text-cyan-800 dark:bg-cyan-900/20 dark:text-cyan-400',
+      completed: 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
+    },
+    cardBg: 'bg-cyan-50 dark:bg-cyan-900/20',
+    cardBorder: 'border-cyan-200 dark:border-cyan-800',
+    textPrimary: 'text-cyan-700 dark:text-cyan-300',
+    textSecondary: 'text-cyan-600 dark:text-cyan-400'
+  } : {
+    bgGradient: 'bg-gradient-to-br from-purple-50 to-blue-50 dark:from-gray-900 dark:to-gray-800',
+    iconBg: 'bg-purple-100 dark:bg-purple-900',
+    iconColor: 'text-purple-600 dark:text-purple-400',
+    loaderColor: 'text-purple-600 dark:text-purple-400',
+    buttonBg: 'bg-purple-600',
+    buttonHover: 'hover:bg-purple-700',
+    statusBg: {
+      singing: 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400',
+      next: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400',
+      queued: 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400',
+      completed: 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
+    },
+    cardBg: 'bg-blue-50 dark:bg-blue-900/20',
+    cardBorder: 'border-blue-200 dark:border-blue-800',
+    textPrimary: 'text-blue-700 dark:text-blue-300',
+    textSecondary: 'text-blue-600 dark:text-blue-400'
+  };
 
   useEffect(() => {
     if (signupId) {
@@ -66,28 +105,28 @@ export default function KaraokeStatusPage() {
     switch (status) {
       case 'singing':
         return (
-          <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-semibold bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400">
+          <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-semibold ${themeClasses.statusBg.singing}`}>
             <Mic className="w-4 h-4" />
             Currently Singing
           </span>
         );
       case 'next':
         return (
-          <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-semibold bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400">
+          <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-semibold ${themeClasses.statusBg.next}`}>
             <ArrowUp className="w-4 h-4" />
             Next Up!
           </span>
         );
       case 'queued':
         return (
-          <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-semibold bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400">
+          <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-semibold ${themeClasses.statusBg.queued}`}>
             <Clock className="w-4 h-4" />
             In Queue
           </span>
         );
       case 'completed':
         return (
-          <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-semibold bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300">
+          <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-semibold ${themeClasses.statusBg.completed}`}>
             <CheckCircle2 className="w-4 h-4" />
             Completed
           </span>
@@ -103,9 +142,9 @@ export default function KaraokeStatusPage() {
         <Head>
           <title>Checking Status... | Karaoke Queue</title>
         </Head>
-        <div className="min-h-screen bg-gradient-to-br from-purple-50 to-blue-50 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center">
+        <div className={`min-h-screen ${themeClasses.bgGradient} flex items-center justify-center`}>
           <div className="text-center">
-            <Loader2 className="w-8 h-8 animate-spin text-purple-600 dark:text-purple-400 mx-auto mb-4" />
+            <Loader2 className={`w-8 h-8 animate-spin ${themeClasses.loaderColor} mx-auto mb-4`} />
             <p className="text-gray-600 dark:text-gray-400">Loading your queue status...</p>
           </div>
         </div>
@@ -119,7 +158,7 @@ export default function KaraokeStatusPage() {
         <Head>
           <title>Status Not Found | Karaoke Queue</title>
         </Head>
-        <div className="min-h-screen bg-gradient-to-br from-purple-50 to-blue-50 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center p-4">
+        <div className={`min-h-screen ${themeClasses.bgGradient} flex items-center justify-center p-4`}>
           <div className="max-w-md w-full bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8 text-center">
             <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
             <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
@@ -138,13 +177,13 @@ export default function KaraokeStatusPage() {
       <Head>
         <title>Your Queue Status | Karaoke</title>
       </Head>
-      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-blue-50 dark:from-gray-900 dark:to-gray-800 py-8 px-4">
+      <div className={`min-h-screen ${themeClasses.bgGradient} py-8 px-4`}>
         <div className="max-w-2xl mx-auto">
           <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6 md:p-8">
             {/* Header */}
             <div className="text-center mb-8">
-              <div className="inline-flex items-center justify-center w-16 h-16 bg-purple-100 dark:bg-purple-900 rounded-full mb-4">
-                <Mic className="w-8 h-8 text-purple-600 dark:text-purple-400" />
+              <div className={`inline-flex items-center justify-center w-16 h-16 ${themeClasses.iconBg} rounded-full mb-4`}>
+                <Mic className={`w-8 h-8 ${themeClasses.iconColor}`} />
               </div>
               <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
                 Your Queue Status
@@ -198,23 +237,23 @@ export default function KaraokeStatusPage() {
 
                 {/* Queue Position */}
                 {signup.status !== 'completed' && signup.queue_position && (
-                  <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-6 text-center border-2 border-blue-200 dark:border-blue-800">
-                    <p className="text-sm text-blue-600 dark:text-blue-400 mb-2">Your Position</p>
-                    <p className="text-5xl font-bold text-blue-700 dark:text-blue-300 mb-2">
+                  <div className={`${themeClasses.cardBg} rounded-lg p-6 text-center border-2 ${themeClasses.cardBorder}`}>
+                    <p className={`text-sm ${themeClasses.textSecondary} mb-2`}>Your Position</p>
+                    <p className={`text-5xl font-bold ${themeClasses.textPrimary} mb-2`}>
                       #{signup.queue_position}
                     </p>
                     {queueInfo && queueInfo.ahead_of_you > 0 && (
-                      <p className="text-sm text-blue-600 dark:text-blue-400">
+                      <p className={`text-sm ${themeClasses.textSecondary}`}>
                         {queueInfo.ahead_of_you} {queueInfo.ahead_of_you === 1 ? 'person' : 'people'} ahead of you
                       </p>
                     )}
                     {signup.queue_position === 1 && signup.status === 'next' && (
-                      <p className="text-sm font-semibold text-blue-700 dark:text-blue-300 mt-2">
+                      <p className={`text-sm font-semibold ${themeClasses.textPrimary} mt-2`}>
                         You're next! Get ready! 🎤
                       </p>
                     )}
                     {signup.is_priority && (
-                      <p className="text-xs text-blue-500 dark:text-blue-400 mt-2 flex items-center justify-center gap-1">
+                      <p className={`text-xs ${themeClasses.textSecondary} mt-2 flex items-center justify-center gap-1`}>
                         <ArrowUp className="w-3 h-3" />
                         Priority placement
                       </p>
@@ -249,7 +288,7 @@ export default function KaraokeStatusPage() {
                     onClick={() => setAutoRefresh(!autoRefresh)}
                     className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
                       autoRefresh
-                        ? 'bg-purple-600'
+                        ? themeClasses.buttonBg
                         : 'bg-gray-300 dark:bg-gray-600'
                     }`}
                   >
@@ -281,6 +320,9 @@ export default function KaraokeStatusPage() {
             )}
           </div>
         </div>
+
+        {/* Global Chat Widget */}
+        <GlobalChatWidget />
       </div>
     </>
   );

@@ -29,7 +29,8 @@ export default function ContactFormChat({ formData, submissionId, onClose, isMin
   const [showInfoBanner, setShowInfoBanner] = useState(true);
 
   // Theme colors based on page type - moved to component level
-  const isKaraokePage = router.pathname?.includes('/organizations/') && router.pathname?.includes('/sing');
+  const isKaraokePage = (router.pathname?.includes('/organizations/') && router.pathname?.includes('/sing')) ||
+                        router.pathname?.startsWith('/karaoke/');
   const themeClasses = isKaraokePage
     ? {
         button: 'bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700',

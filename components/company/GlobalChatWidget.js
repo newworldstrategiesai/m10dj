@@ -29,7 +29,8 @@ export default function GlobalChatWidget() {
   const isDJDashPage = router.pathname?.startsWith('/djdash') || router.pathname?.startsWith('/dj/');
 
   // Check if we're on a karaoke page
-  const isKaraokePage = router.pathname?.includes('/organizations/') && router.pathname?.includes('/sing');
+  const isKaraokePage = (router.pathname?.includes('/organizations/') && router.pathname?.includes('/sing')) ||
+                        router.pathname?.startsWith('/karaoke/');
   
   // Only render on client to avoid hydration mismatch
   useEffect(() => {
