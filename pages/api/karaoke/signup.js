@@ -43,8 +43,8 @@ export default async function handler(req, res) {
       .eq('organization_id', organization_id)
       .single();
 
-    // Check maximum concurrent singers limit
-    if (karaokeSettings?.max_concurrent_singers) {
+    // Check maximum concurrent singers limit (if setting exists)
+    if (karaokeSettings?.max_concurrent_singers != null) {
       const { data: currentSignups } = await supabase
         .from('karaoke_signups')
         .select('id')
@@ -60,8 +60,10 @@ export default async function handler(req, res) {
       }
     }
 
-    // Check phone field requirements based on admin setting
-    if (karaokeSettings?.phone_field_mode === 'required') {
+    // Check phone field requirements based on admin setting (default to required if not set)
+    const phoneFieldMode = karaokeSettings?.phone_field_mode || 'required';
+
+    if (phoneFieldMode === 'required') {
       if (!singer_phone || !singer_phone.trim()) {
         return res.status(400).json({
           error: 'Phone number is required',
@@ -77,7 +79,7 @@ export default async function handler(req, res) {
           message: 'Please enter a valid phone number (at least 10 digits)'
         });
       }
-    } else if (karaokeSettings?.phone_field_mode === 'optional' && singer_phone && singer_phone.trim()) {
+    } else if (phoneFieldMode === 'optional' && singer_phone && singer_phone.trim()) {
       // If optional and provided, validate format
       const phoneDigits = singer_phone.replace(/\D/g, '');
       if (phoneDigits.length < 10) {
@@ -119,7 +121,10 @@ export default async function handler(req, res) {
           priority_fee_cents: 1000,
           free_signups_allowed: true,
           max_singers_before_repeat: 3,
-          rotation_fairness_mode: 'strict'
+          rotation_fairness_mode: 'strict',
+          max_concurrent_singers: 10,
+          sms_notifications_enabled: true,
+          phone_field_mode: 'required'
         })
         .select()
         .single();
