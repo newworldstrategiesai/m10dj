@@ -109,8 +109,9 @@ export default function App({ Component, pageProps }) {
     router.pathname.startsWith('/crowd-request') ||
     (router.pathname.includes('/organizations/') && router.pathname.includes('/requests'));
   const isBidPage = router.pathname === '/bid';
-  // Check if we're on karaoke signup pages
-  const isKaraokePage = router.pathname.includes('/organizations/') && router.pathname.includes('/sing');
+  // Check if we're on karaoke pages (signup and status)
+  const isKaraokePage = (router.pathname.includes('/organizations/') && router.pathname.includes('/sing')) ||
+                        router.pathname.startsWith('/karaoke/');
   // Check if we're on DJ Dash pages (djdash.net domain or /djdash routes or /dj/ profile routes)
   const isDJDashPage = router.pathname.startsWith('/djdash') || router.pathname.startsWith('/dj/');
 
