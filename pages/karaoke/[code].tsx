@@ -14,6 +14,7 @@ export default function KaraokeSignupPage() {
   const router = useRouter();
   const { code } = router.query;
 
+
   const [groupSize, setGroupSize] = useState(1);
   const [groupMembers, setGroupMembers] = useState<string[]>(['']);
   const [singerName, setSingerName] = useState('');

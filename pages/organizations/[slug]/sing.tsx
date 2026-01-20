@@ -503,7 +503,7 @@ export default function OrganizationKaraokePage() {
                   <input
                     type="text"
                     readOnly
-                    value={`${typeof window !== 'undefined' ? window.location.origin : ''}/karaoke/status/${signupId}`}
+                    value={`${typeof window !== 'undefined' ? window.location.origin : ''}/status/karaoke/${signupId}`}
                     className="flex-1 h-8 px-2 bg-white/70 dark:bg-gray-800/70 border border-gray-200 dark:border-gray-700 rounded text-xs text-gray-900 dark:text-white"
                     onClick={(e) => (e.target as HTMLInputElement).select()}
                   />
@@ -519,12 +519,12 @@ export default function OrganizationKaraokePage() {
                     Copy
                   </Button>
                 </div>
-                <Button
-                  onClick={() => {
-                    if (typeof window !== 'undefined') {
-                      window.open(`/karaoke/status/${signupId}`, '_blank');
-                    }
-                  }}
+                  <Button
+                    onClick={() => {
+                      if (typeof window !== 'undefined') {
+                        window.open(`/status/karaoke/${signupId}`, '_blank');
+                      }
+                    }}
                   variant="outline"
                   className="w-full h-8 bg-white/70 dark:bg-gray-800/70 border border-gray-200 dark:border-gray-700 rounded text-xs"
                 >
@@ -556,7 +556,7 @@ export default function OrganizationKaraokePage() {
                   <Button
                     onClick={() => {
                       if (typeof window !== 'undefined') {
-                        window.location.href = `/karaoke/status/${signupId}`;
+                        window.location.href = `/status/karaoke/${signupId}`;
                       }
                     }}
                     className="flex-1 h-12 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300"
