@@ -474,7 +474,7 @@ export default function KaraokeAdminPage() {
   return (
     <>
       <Head>
-        <title>Karaoke Queue | Admin</title>
+        <title>Karaoke Queue</title>
       </Head>
       <AdminLayout title="Karaoke Queue" description="Manage your karaoke signups and queue">
         <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-6 pb-2 sm:pb-4 lg:pb-8">

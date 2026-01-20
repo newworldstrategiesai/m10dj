@@ -189,7 +189,7 @@ export default function AdminLayout({ children, title, description, showPageTitl
   return (
     <>
       <Head>
-        <title>{title ? `${title} - ${effectiveProductContext === 'tipjar' ? 'TipJar' : 'M10 DJ Admin'}` : (effectiveProductContext === 'tipjar' ? 'TipJar Admin' : 'M10 DJ Admin')}</title>
+        <title>{title ? `${title} - ${effectiveProductContext === 'tipjar' ? 'TipJar' : 'Admin'}` : (effectiveProductContext === 'tipjar' ? 'TipJar Admin' : 'Admin')}</title>
         {description && <meta name="description" content={description} />}
         <meta name="robots" content="noindex, nofollow" />
       </Head>
@@ -259,7 +259,7 @@ export default function AdminLayout({ children, title, description, showPageTitl
                         <div className="w-10 h-10 flex items-center justify-center flex-shrink-0">
                           <img
                             src={mounted ? logoSrc : (effectiveProductContext === 'tipjar' ? '/assets/TipJar-Logo-Icon.png' : '/assets/m10 dj company logo black.gif')}
-                            alt={effectiveProductContext === 'tipjar' ? 'TipJar Logo' : 'M10 DJ Company Logo'}
+                            alt={effectiveProductContext === 'tipjar' ? 'TipJar Logo' : 'Admin Logo'}
                             className="w-10 h-10 object-contain"
                           />
                         </div>
