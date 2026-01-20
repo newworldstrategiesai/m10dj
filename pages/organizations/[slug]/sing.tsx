@@ -543,8 +543,8 @@ export default function OrganizationKaraokePage() {
               )}
             </div>
 
-            {/* Scrollable form content */}
-            <div className="flex-1 overflow-y-auto px-6 py-4">
+            {/* Form content */}
+            <div className="flex-1 px-6 py-4">
               <form onSubmit={handleSubmit} className="space-y-5">
               {/* Group Size Selection - Compact horizontal layout */}
               <div>
