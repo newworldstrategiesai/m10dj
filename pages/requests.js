@@ -580,12 +580,18 @@ export function GeneralRequestsPage({
   
   // CRITICAL: Declare all variables used in useEffect hooks BEFORE the hooks
   // Use useMemo to ensure proper initialization order and prevent TDZ errors
-  // Detect domain context
-  const isTipJarDomain = useMemo(() => 
-    typeof window !== 'undefined' && 
-    (window.location.hostname === 'tipjar.live' || window.location.hostname === 'www.tipjar.live'),
-    []
-  );
+  // Detect domain context - check both client-side hostname and organization product_context for SSR compatibility
+  const isTipJarDomain = useMemo(() => {
+    // Check client-side hostname if available
+    if (typeof window !== 'undefined') {
+      const hostname = window.location.hostname;
+      if (hostname.includes('tipjar.live') || hostname.includes('tipjar.com')) {
+        return true;
+      }
+    }
+    // Fallback to organization product_context for SSR
+    return organizationData?.product_context === 'tipjar';
+  }, [organizationData?.product_context]);
   const isM10Domain = useMemo(() => 
     typeof window !== 'undefined' && 
     (window.location.hostname === 'm10djcompany.com' || window.location.hostname === 'www.m10djcompany.com'),
@@ -2375,8 +2381,10 @@ export function GeneralRequestsPage({
   const siteUrl = mainDomain;
   
   // Determine default OG image based on domain
+  // Check both isTipJarDomain and organizationData for SSR compatibility
   const getDefaultOGImage = () => {
-    if (isTipJarDomain) {
+    const isTipJar = isTipJarDomain || organizationData?.product_context === 'tipjar';
+    if (isTipJar) {
       // Use TipJar public requests OG image for TipJar public request pages
       // This is different from the general TipJar OG image to show it's a request page
       return 'https://tipjar.live/assets/tipjar-public-requests-og.png';
@@ -2394,7 +2402,9 @@ export function GeneralRequestsPage({
   const getAbsoluteImageUrl = (imageUrl) => {
     // For TipJar domains, always use TipJar OG image unless there's a custom cover photo
     // that's not the default M10 DJ Company image
-    if (isTipJarDomain) {
+    // Check both isTipJarDomain and organizationData for SSR compatibility
+    const isTipJar = isTipJarDomain || organizationData?.product_context === 'tipjar';
+    if (isTipJar) {
       // If no cover photo or it's the M10 default, use TipJar OG image
       if (!imageUrl || 
           imageUrl === DEFAULT_COVER_PHOTO || 
@@ -2435,7 +2445,8 @@ export function GeneralRequestsPage({
   
   // Determine default page title based on domain and organization
   const getDefaultPageTitle = () => {
-    if (isTipJarDomain) {
+    const isTipJar = isTipJarDomain || organizationData?.product_context === 'tipjar';
+    if (isTipJar) {
       // For TipJar pages, use "TipJar.Live | Display Name" format
       const displayName = organizationData?.requests_header_artist_name || organizationData?.name || 'Requests';
       return `TipJar.Live | ${displayName}`;
@@ -2549,7 +2560,7 @@ export function GeneralRequestsPage({
         <meta property="og:image:width" content="1200" />
         <meta property="og:image:height" content="630" />
         <meta property="og:image:alt" content={organizationData?.requests_header_artist_name || 'Request a Song or Shoutout'} />
-        <meta property="og:site_name" content={isTipJarDomain ? (organizationData?.requests_header_artist_name || organizationData?.name || 'TipJar.Live') : (organizationName || 'M10 DJ Company')} />
+        <meta property="og:site_name" content={(isTipJarDomain || organizationData?.product_context === 'tipjar') ? (organizationData?.requests_header_artist_name || organizationData?.name || 'TipJar.Live') : (organizationName || 'M10 DJ Company')} />
         <meta property="og:locale" content="en_US" />
         
         {/* Twitter Card */}
