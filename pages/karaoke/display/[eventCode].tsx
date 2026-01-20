@@ -3,9 +3,10 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
-import { Mic, Users, Music, Loader2, Play, ArrowUp, Zap, Wifi, WifiOff } from 'lucide-react';
+import { Mic, Users, Music, Loader2, Play, ArrowUp, Zap, Wifi, WifiOff, Monitor } from 'lucide-react';
 import { formatGroupDisplayName, getGroupLabel } from '@/types/karaoke';
 import { useRealtimeKaraoke } from '@/hooks/useRealtimeKaraoke';
+import KaraokeVideoDisplay from '@/components/karaoke/KaraokeVideoDisplay';
 
 export default function KaraokeDisplayPage() {
   const router = useRouter();
@@ -75,6 +76,37 @@ export default function KaraokeDisplayPage() {
     }
     getOrganization();
   }, [eventCode]);
+
+  // Open current singer's video in display window
+  const openCurrentVideoInDisplay = () => {
+    if (!currentSinger?.video_data?.youtube_video_id) return;
+
+    const displayUrl = `/karaoke/video-display?videoId=${encodeURIComponent(currentSinger.video_data.youtube_video_id)}&title=${encodeURIComponent(currentSinger.song_title)}&artist=${encodeURIComponent(currentSinger.song_artist || '')}`;
+
+    const newWindow = window.open(
+      displayUrl,
+      'karaokeVideoDisplay',
+      'width=1280,height=720,scrollbars=no,resizable=yes,status=no,toolbar=no,menubar=no,location=no,directories=no'
+    );
+
+    if (newWindow) {
+      newWindow.focus();
+    }
+  };
+
+  // Keyboard shortcuts for display controls
+  useEffect(() => {
+    const handleKeyPress = (e: KeyboardEvent) => {
+      // Ctrl/Cmd + Shift + V = Open current video in display window
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'V') {
+        e.preventDefault();
+        openCurrentVideoInDisplay();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyPress);
+    return () => window.removeEventListener('keydown', handleKeyPress);
+  }, [currentSinger]);
 
   if (loading && !organizationId) {
     return (
@@ -149,32 +181,43 @@ export default function KaraokeDisplayPage() {
                 </div>
               </div>
 
-              {/* Connection Status */}
-              <div className="flex items-center gap-2 text-sm">
-                {isConnected ? (
-                  <>
-                    <Wifi className="w-5 h-5 text-green-400" />
-                    <span className="text-green-400 font-semibold">LIVE</span>
-                  </>
-                ) : (
-                  <>
-                    <WifiOff className="w-5 h-5 text-red-400" />
-                    <span className="text-red-400 font-semibold">OFFLINE</span>
-                  </>
-                )}
-                {lastUpdate && (
-                  <span className="text-gray-400 text-xs ml-2">
-                    {lastUpdate.toLocaleTimeString()}
-                  </span>
+              {/* Connection Status & Shortcuts */}
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2 text-sm">
+                  {isConnected ? (
+                    <>
+                      <Wifi className="w-5 h-5 text-green-400" />
+                      <span className="text-green-400 font-semibold">LIVE</span>
+                    </>
+                  ) : (
+                    <>
+                      <WifiOff className="w-5 h-5 text-red-400" />
+                      <span className="text-red-400 font-semibold">OFFLINE</span>
+                    </>
+                  )}
+                  {lastUpdate && (
+                    <span className="text-gray-400 text-xs ml-2">
+                      {lastUpdate.toLocaleTimeString()}
+                    </span>
+                  )}
+                </div>
+
+                {/* Video Display Shortcut */}
+                {currentSinger?.video_data && (
+                  <div className="flex items-center gap-2 text-xs text-purple-300 bg-purple-900/30 px-2 py-1 rounded">
+                    <Monitor className="w-3 h-3" />
+                    <kbd className="px-1 py-0.5 bg-purple-800 rounded text-xs">Ctrl+Shift+V</kbd>
+                    <span>Video Display</span>
+                  </div>
                 )}
               </div>
             </div>
           </div>
 
           {/* Main Content Area - Optimized for Landscape TV */}
-          <div className="flex-1 overflow-hidden flex flex-col lg:flex-row gap-4 p-4 lg:p-6">
-            {/* Left Side - Current & Next (Takes 60% on large screens) */}
-            <div className="flex-1 lg:w-3/5 flex flex-col gap-4 min-w-0">
+          <div className="flex-1 overflow-hidden flex flex-col xl:flex-row gap-4 p-4 lg:p-6">
+            {/* Left Side - Current & Next (Takes 50% on extra large screens) */}
+            <div className="flex-1 xl:w-1/2 flex flex-col gap-4 min-w-0">
               {/* Current Singer - DOMINANT DISPLAY */}
               {currentSinger ? (
                 <div className="flex-1 bg-gradient-to-br from-green-600 to-green-700 rounded-3xl p-8 lg:p-12 shadow-2xl border-4 border-green-300 flex flex-col justify-center items-center min-h-0">
@@ -249,8 +292,21 @@ export default function KaraokeDisplayPage() {
               )}
             </div>
 
-            {/* Right Side - Queue List (Takes 40% on large screens) */}
-            <div className="flex-1 lg:w-2/5 bg-gray-900/80 backdrop-blur-sm rounded-3xl p-4 lg:p-6 shadow-2xl border-4 border-gray-700 flex flex-col min-w-0">
+            {/* Middle - Video Display (Takes 25% on extra large screens) */}
+            <div className="hidden xl:block xl:w-1/4 min-w-0">
+              {organizationId && (
+                <KaraokeVideoDisplay
+                  currentSinger={currentSinger}
+                  organizationId={organizationId}
+                  className="h-full"
+                  showControls={true}
+                  autoPlay={true}
+                />
+              )}
+            </div>
+
+            {/* Right Side - Queue List (Takes 25% on extra large screens) */}
+            <div className="flex-1 xl:w-1/4 bg-gray-900/80 backdrop-blur-sm rounded-3xl p-4 lg:p-6 shadow-2xl border-4 border-gray-700 flex flex-col min-w-0">
               <h3 className="text-3xl lg:text-4xl font-black text-center mb-4 lg:mb-6 pb-3 border-b-4 border-gray-600">
                 QUEUE
               </h3>

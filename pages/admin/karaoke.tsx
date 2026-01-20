@@ -45,6 +45,7 @@ import AdminLayout from '@/components/layouts/AdminLayout';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
+import VideoManager from '@/components/karaoke/VideoManager';
 import { getGroupLabel, formatGroupDisplayName, KaraokeSignup } from '@/types/karaoke';
 import { getSortedQueue, getCurrentSinger, getNextSinger, getQueue, calculateQueuePosition, calculateEstimatedWait, formatEstimatedWait, getQueueHealth } from '@/utils/karaoke-queue';
 import { getCurrentOrganization } from '@/utils/organization-context';
@@ -1643,7 +1644,7 @@ export default function KaraokeAdminPage() {
               <div className="flex-1 overflow-y-auto p-8">
                 {settings && (
                   <Tabs value={settingsTab} onValueChange={(v) => setSettingsTab(v)} className="w-full">
-                    <TabsList className="grid w-full grid-cols-6 mb-8 bg-gray-100 dark:bg-gray-800 p-1 rounded-xl">
+                    <TabsList className="grid w-full grid-cols-7 mb-8 bg-gray-100 dark:bg-gray-800 p-1 rounded-xl">
                       <TabsTrigger value="general" className="flex items-center gap-2 data-[state=active]:bg-white data-[state=active]:shadow-md">
                         <Settings className="w-4 h-4" />
                         <span className="hidden sm:inline">General</span>
@@ -1667,6 +1668,10 @@ export default function KaraokeAdminPage() {
                       <TabsTrigger value="content" className="flex items-center gap-2 data-[state=active]:bg-white data-[state=active]:shadow-md">
                         <FileText className="w-4 h-4" />
                         <span className="hidden sm:inline">Content</span>
+                      </TabsTrigger>
+                      <TabsTrigger value="videos" className="flex items-center gap-2 data-[state=active]:bg-white data-[state=active]:shadow-md">
+                        <Music className="w-4 h-4" />
+                        <span className="hidden sm:inline">Videos</span>
                       </TabsTrigger>
                     </TabsList>
 
@@ -2079,6 +2084,12 @@ export default function KaraokeAdminPage() {
                         </div>
                       </div>
                     </div>
+                  </TabsContent>
+
+                  <TabsContent value="videos" className="mt-6">
+                    {organization && (
+                      <VideoManager organizationId={organization.id} />
+                    )}
                   </TabsContent>
                 </Tabs>
               )}
