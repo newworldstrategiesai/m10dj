@@ -3,6 +3,7 @@ import { sendNextUpNotification, sendCurrentlySingingNotification } from '@/util
 import { withSecurity } from '@/utils/rate-limiting';
 import { karaokeQueueManager } from '@/utils/karaoke-atomic-operations';
 import { broadcastQueueUpdate } from './realtime/[...params]';
+import { invalidateCache } from '@/utils/karaoke-cache';
 
 /**
  * PATCH /api/karaoke/update-status
@@ -91,6 +92,9 @@ async function handler(req, res) {
         .update({ admin_notes })
         .eq('id', signup_id);
     }
+
+    // Invalidate cache for updated queue
+    invalidateCache('queue', updatedSignup.organization_id, updatedSignup.event_qr_code);
 
     // Broadcast real-time update to all connected clients
     try {

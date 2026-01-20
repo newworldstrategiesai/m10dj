@@ -31,6 +31,37 @@ export default function KaraokeStatusPage() {
       document.body.style.paddingTop = '80px';
     };
   }, []);
+
+  // Mobile UX state
+  const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
+  const [viewportHeight, setViewportHeight] = useState('100vh');
+
+  // Mobile keyboard and viewport handling
+  useEffect(() => {
+    const handleResize = () => {
+      const currentHeight = window.innerHeight;
+      const initialHeight = window.visualViewport?.height || currentHeight;
+
+      if (Math.abs(currentHeight - initialHeight) > 150) {
+        setIsKeyboardVisible(true);
+        setViewportHeight(`${currentHeight}px`);
+      } else {
+        setIsKeyboardVisible(false);
+        setViewportHeight('100dvh');
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
+    window.addEventListener('orientationchange', handleResize);
+
+    // Initial viewport setup
+    setViewportHeight('100dvh');
+
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      window.removeEventListener('orientationchange', handleResize);
+    };
+  }, []);
   const themeClasses = isKaraokePage ? {
     bgGradient: 'bg-gradient-to-br from-cyan-50 to-blue-50 dark:from-gray-900 dark:to-gray-800',
     iconBg: 'bg-cyan-100 dark:bg-cyan-900',
@@ -185,8 +216,54 @@ export default function KaraokeStatusPage() {
     <>
       <Head>
         <title>Your Queue Status | Karaoke</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+        <meta name="mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+        <style>{`
+          html, body, #__next {
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            height: 100dvh; /* Dynamic viewport height for mobile browsers */
+            overflow-x: hidden;
+          }
+
+          /* Prevent zoom on input focus for iOS */
+          input[type="text"],
+          input[type="email"],
+          input[type="tel"],
+          button {
+            font-size: 16px !important; /* Prevents zoom on iOS */
+          }
+
+          /* Better touch targets */
+          button, .cursor-pointer {
+            min-height: 44px;
+            min-width: 44px;
+          }
+
+          /* Smooth scrolling */
+          html {
+            scroll-behavior: smooth;
+          }
+
+          /* Hide scrollbar on mobile but keep functionality */
+          ::-webkit-scrollbar {
+            width: 0px;
+            background: transparent;
+          }
+        `}</style>
       </Head>
-      <div className={`min-h-screen ${themeClasses.bgGradient} py-8 px-4`} style={{ marginTop: 0, paddingTop: 0 }}>
+      <div
+        className={`${themeClasses.bgGradient} py-8 px-4`}
+        style={{
+          minHeight: viewportHeight,
+          marginTop: 0,
+          paddingTop: 0,
+          paddingBottom: isKeyboardVisible ? '20px' : '32px'
+        }}
+      >
         <div className="max-w-2xl mx-auto">
           <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6 md:p-8">
             {/* Header */}
@@ -295,7 +372,7 @@ export default function KaraokeStatusPage() {
                   </div>
                   <button
                     onClick={() => setAutoRefresh(!autoRefresh)}
-                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                    className={`relative inline-flex min-h-[44px] h-8 w-14 items-center rounded-full transition-colors touch-manipulation ${
                       autoRefresh
                         ? themeClasses.buttonBg
                         : 'bg-gray-300 dark:bg-gray-600'
@@ -313,7 +390,7 @@ export default function KaraokeStatusPage() {
                 <Button
                   onClick={fetchStatus}
                   disabled={loading}
-                  className="w-full"
+                  className="w-full min-h-[48px] h-12 text-base touch-manipulation active:scale-[0.98] transition-all"
                   variant="outline"
                 >
                   {loading ? (

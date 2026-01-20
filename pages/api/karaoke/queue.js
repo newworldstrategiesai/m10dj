@@ -7,6 +7,7 @@ import {
   formatEstimatedWait
 } from '@/utils/karaoke-queue';
 import { withSecurity } from '@/utils/rate-limiting';
+import { getCachedQueueData, invalidateCache } from '@/utils/karaoke-cache';
 
 /**
  * GET /api/karaoke/queue
@@ -35,6 +36,14 @@ async function handler(req, res) {
       });
     }
 
+    // Try to get cached queue data first
+    const cachedData = await getCachedQueueData(organization_id, event_code);
+    if (cachedData) {
+      console.log('Serving queue data from cache');
+      return res.status(200).json(cachedData);
+    }
+
+    console.log('Cache miss, querying database...');
     console.log('About to query karaoke_signups table');
 
     // Get all signups - either for specific event or all organization events

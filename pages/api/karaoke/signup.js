@@ -4,6 +4,7 @@ import { canSignupProceed } from '@/utils/karaoke-rotation';
 import { calculateQueuePosition } from '@/utils/karaoke-queue';
 import { withSecurity } from '@/utils/rate-limiting';
 import { logSignupChange, getClientInfo } from '@/utils/karaoke-audit';
+import { getCachedKaraokeSettings, invalidateCache } from '@/utils/karaoke-cache';
 
 /**
  * Comprehensive duplicate signup detection
@@ -197,18 +198,14 @@ async function handler(req, res) {
       });
     }
 
-    // Get karaoke settings to check SMS notifications and max singers
+    // Get karaoke settings from cache to reduce database load
     console.log('Fetching karaoke settings for org:', organization_id);
-    const { data: karaokeSettings, error: settingsError } = await supabase
-      .from('karaoke_settings')
-      .select('*')
-      .eq('organization_id', organization_id)
-      .single();
+    const karaokeSettings = await getCachedKaraokeSettings(organization_id);
 
-    if (settingsError) {
-      console.log('Karaoke settings not found or error:', settingsError);
+    if (!karaokeSettings) {
+      console.log('Karaoke settings not found, using defaults');
     } else {
-      console.log('Karaoke settings loaded:', karaokeSettings);
+      console.log('Karaoke settings loaded from cache:', karaokeSettings);
     }
 
     // Check maximum concurrent singers limit (if setting exists)
@@ -493,6 +490,9 @@ async function handler(req, res) {
       .in('status', ['queued', 'next', 'singing']);
 
     const queuePosition = calculateQueuePosition(signup, allSignups || []);
+
+    // Invalidate queue cache since we added a new signup
+    invalidateCache('queue', organization_id, event_qr_code);
 
     // Log successful signup
     await logSignupChange(

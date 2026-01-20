@@ -43,6 +43,63 @@ export default function OrganizationKaraokePage() {
   const [eventQrCode, setEventQrCode] = useState<string>('');
   const [karaokeSettings, setKaraokeSettings] = useState<any>(null);
 
+  // Mobile UX state
+  const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
+  const [viewportHeight, setViewportHeight] = useState('100vh');
+
+  // Mobile keyboard and viewport handling
+  useEffect(() => {
+    const handleResize = () => {
+      // Detect keyboard by checking if viewport height changed significantly
+      const currentHeight = window.innerHeight;
+      const initialHeight = window.visualViewport?.height || currentHeight;
+
+      if (Math.abs(currentHeight - initialHeight) > 150) {
+        setIsKeyboardVisible(true);
+        // Adjust viewport for keyboard
+        setViewportHeight(`${currentHeight}px`);
+      } else {
+        setIsKeyboardVisible(false);
+        setViewportHeight('100dvh');
+      }
+    };
+
+    const handleFocus = (e: FocusEvent) => {
+      // Scroll focused input into view on mobile
+      if (window.innerWidth <= 768) {
+        setTimeout(() => {
+          (e.target as HTMLElement)?.scrollIntoView({
+            behavior: 'smooth',
+            block: 'center',
+            inline: 'nearest'
+          });
+        }, 300);
+      }
+    };
+
+    const handleTouchStart = () => {
+      // Hide keyboard when tapping outside inputs
+      if (document.activeElement && 'blur' in document.activeElement) {
+        (document.activeElement as HTMLElement).blur();
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
+    window.addEventListener('orientationchange', handleResize);
+    document.addEventListener('focusin', handleFocus);
+    document.addEventListener('touchstart', handleTouchStart);
+
+    // Initial viewport setup
+    setViewportHeight('100dvh');
+
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      window.removeEventListener('orientationchange', handleResize);
+      document.removeEventListener('focusin', handleFocus);
+      document.removeEventListener('touchstart', handleTouchStart);
+    };
+  }, []);
+
   // Load organization
   useEffect(() => {
     async function loadOrganization() {
@@ -315,10 +372,13 @@ export default function OrganizationKaraokePage() {
       <>
         <Head>
           <title>Karaoke Sign-Up | Loading...</title>
+          <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
           <style>{`
             html, body, #__next {
               margin: 0;
               padding: 0;
+              height: 100vh;
+              height: 100dvh; /* Dynamic viewport height for mobile browsers */
             }
           `}</style>
         </Head>
@@ -341,10 +401,13 @@ export default function OrganizationKaraokePage() {
       <>
         <Head>
           <title>Organization Not Found</title>
+          <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
           <style>{`
             html, body, #__next {
               margin: 0;
               padding: 0;
+              height: 100vh;
+              height: 100dvh; /* Dynamic viewport height for mobile browsers */
             }
           `}</style>
         </Head>
@@ -375,10 +438,13 @@ export default function OrganizationKaraokePage() {
       <>
         <Head>
           <title>Signed Up! | {organization?.name || 'Karaoke'}</title>
+          <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
           <style>{`
             html, body, #__next {
               margin: 0;
               padding: 0;
+              height: 100vh;
+              height: 100dvh; /* Dynamic viewport height for mobile browsers */
             }
           `}</style>
         </Head>
@@ -510,8 +576,54 @@ export default function OrganizationKaraokePage() {
     <>
       <Head>
         <title>Karaoke Sign-Up | {organization?.name || slug}</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+        <meta name="mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+        <style>{`
+          html, body, #__next {
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            height: 100dvh; /* Dynamic viewport height for mobile browsers */
+            overflow-x: hidden;
+          }
+
+          /* Prevent zoom on input focus for iOS */
+          input[type="text"],
+          input[type="email"],
+          input[type="tel"],
+          input[type="search"],
+          textarea,
+          select {
+            font-size: 16px !important; /* Prevents zoom on iOS */
+          }
+
+          /* Better touch targets */
+          button, .cursor-pointer {
+            min-height: 44px;
+            min-width: 44px;
+          }
+
+          /* Smooth scrolling */
+          html {
+            scroll-behavior: smooth;
+          }
+
+          /* Hide scrollbar on mobile but keep functionality */
+          ::-webkit-scrollbar {
+            width: 0px;
+            background: transparent;
+          }
+        `}</style>
       </Head>
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 dark:from-slate-950 dark:via-blue-950 dark:to-indigo-950 py-2 px-3 relative overflow-hidden">
+      <div
+        className="bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 dark:from-slate-950 dark:via-blue-950 dark:to-indigo-950 py-2 px-3 relative overflow-hidden"
+        style={{
+          minHeight: viewportHeight,
+          paddingBottom: isKeyboardVisible ? '20px' : '8px'
+        }}
+      >
         {/* Futuristic background elements - reduced for mobile */}
         <div className="absolute inset-0 opacity-20">
           <div className="absolute top-10 left-5 w-24 h-24 bg-gradient-to-r from-cyan-400 to-blue-500 rounded-full blur-2xl animate-pulse"></div>
@@ -565,8 +677,8 @@ export default function OrganizationKaraokePage() {
             </div>
 
             {/* Form content */}
-            <div className="flex-1 px-6 py-4">
-              <form onSubmit={handleSubmit} className="space-y-5">
+            <div className={`flex-1 px-6 ${isKeyboardVisible ? 'py-2' : 'py-4'} overflow-y-auto`}>
+              <form onSubmit={handleSubmit} className="space-y-4">
               {/* Dynamic Group Member Names */}
               <div>
                 <label className="block text-xs font-semibold text-gray-900 dark:text-white mb-2 uppercase tracking-wider">
@@ -581,7 +693,10 @@ export default function OrganizationKaraokePage() {
                         onChange={(e) => handleMemberChange(index, e.target.value)}
                         placeholder={index === 0 ? 'Your name' : `Group member ${index + 1}`}
                         required
-                        className="flex-1 h-10 text-sm bg-white/70 dark:bg-gray-800/70 border-2 border-gray-200 dark:border-gray-700 rounded-lg focus:border-cyan-500"
+                        className="flex-1 min-h-[44px] h-11 text-base bg-white/70 dark:bg-gray-800/70 border-2 border-gray-200 dark:border-gray-700 rounded-lg focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 transition-all"
+                        autoComplete={index === 0 ? "name" : undefined}
+                        autoCapitalize="words"
+                        autoCorrect="off"
                       />
                       {index > 0 && (
                         <Button
@@ -589,7 +704,7 @@ export default function OrganizationKaraokePage() {
                           onClick={() => removeMember(index)}
                           variant="outline"
                           size="sm"
-                          className="h-10 px-3 border-red-200 text-red-600 hover:bg-red-50 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-900/20"
+                          className="min-h-[44px] h-11 px-3 border-red-200 text-red-600 hover:bg-red-50 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-900/20 active:scale-95 transition-all"
                         >
                           <X className="w-4 h-4" />
                         </Button>
@@ -602,7 +717,7 @@ export default function OrganizationKaraokePage() {
                     type="button"
                     onClick={addMember}
                     variant="outline"
-                    className="w-full h-10 mt-2 border-cyan-200 text-cyan-600 hover:bg-cyan-50 dark:border-cyan-800 dark:text-cyan-400 dark:hover:bg-cyan-900/20"
+                    className="w-full min-h-[44px] h-11 mt-2 border-cyan-200 text-cyan-600 hover:bg-cyan-50 dark:border-cyan-800 dark:text-cyan-400 dark:hover:bg-cyan-900/20 active:scale-95 transition-all"
                   >
                     <Plus className="w-4 h-4 mr-2" />
                     Add another singer
@@ -628,7 +743,7 @@ export default function OrganizationKaraokePage() {
                     }}
                     placeholder="Search for a song..."
                     organizationId={organization?.id}
-                    className="w-full h-10 text-sm bg-white/70 dark:bg-gray-800/70 border-2 border-gray-200 dark:border-gray-700 rounded-lg focus:border-cyan-500"
+                    className="w-full min-h-[44px] h-11 text-base bg-white/70 dark:bg-gray-800/70 border-2 border-gray-200 dark:border-gray-700 rounded-lg focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 transition-all"
                   />
                   <Input
                     type="text"
@@ -636,7 +751,10 @@ export default function OrganizationKaraokePage() {
                     onChange={(e) => setSongArtist(e.target.value)}
                     placeholder="Artist name"
                     required
-                    className="w-full h-10 text-sm bg-white/70 dark:bg-gray-800/70 border-2 border-gray-200 dark:border-gray-700 rounded-lg focus:border-cyan-500"
+                    className="w-full min-h-[44px] h-11 text-base bg-white/70 dark:bg-gray-800/70 border-2 border-gray-200 dark:border-gray-700 rounded-lg focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 transition-all"
+                    autoComplete="off"
+                    autoCorrect="off"
+                    spellCheck="false"
                   />
                 </div>
               </div>
@@ -655,7 +773,10 @@ export default function OrganizationKaraokePage() {
                     onChange={(e) => setSingerPhone(e.target.value)}
                     placeholder={`Phone number${(karaokeSettings?.phone_field_mode || 'required') === 'required' ? ' (required)' : ' (optional)'}`}
                     required={karaokeSettings?.phone_field_mode === 'required'}
-                    className="w-full h-10 text-sm bg-white/70 dark:bg-gray-800/70 border-2 border-gray-200 dark:border-gray-700 rounded-lg focus:border-cyan-500"
+                    className="w-full min-h-[44px] h-11 text-base bg-white/70 dark:bg-gray-800/70 border-2 border-gray-200 dark:border-gray-700 rounded-lg focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 transition-all"
+                    autoComplete="off"
+                    autoCorrect="off"
+                    spellCheck="false"
                   />
                   <p className="text-xs text-cyan-600 dark:text-cyan-400">
                     📱 {(karaokeSettings?.phone_field_mode || 'required') === 'required' ? "We'll text you when you're next up!" : "We'll text you updates if you provide your number"}
@@ -667,7 +788,10 @@ export default function OrganizationKaraokePage() {
                     value={singerEmail}
                     onChange={(e) => setSingerEmail(e.target.value)}
                     placeholder="Email (optional)"
-                    className="w-full h-10 text-sm bg-white/70 dark:bg-gray-800/70 border-2 border-gray-200 dark:border-gray-700 rounded-lg focus:border-cyan-500"
+                    className="w-full min-h-[44px] h-11 text-base bg-white/70 dark:bg-gray-800/70 border-2 border-gray-200 dark:border-gray-700 rounded-lg focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 transition-all"
+                    autoComplete="off"
+                    autoCorrect="off"
+                    spellCheck="false"
                   />
                 </div>
               </div>
@@ -686,7 +810,7 @@ export default function OrganizationKaraokePage() {
                   <Switch
                     checked={isPriority}
                     onCheckedChange={setIsPriority}
-                    className="data-[state=checked]:bg-yellow-500 scale-75"
+                    className="data-[state=checked]:bg-yellow-500 scale-90"
                   />
                 </div>
               </div>
@@ -703,7 +827,7 @@ export default function OrganizationKaraokePage() {
               <Button
                 type="submit"
                 disabled={submitting}
-                className="w-full h-12 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 text-white font-bold text-base rounded-xl shadow-md hover:shadow-lg transition-all duration-200"
+                className="w-full min-h-[48px] h-14 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold text-base rounded-xl shadow-md hover:shadow-lg active:scale-[0.98] transition-all duration-200"
               >
                 <div className="flex items-center justify-center gap-2">
                   {submitting ? (
