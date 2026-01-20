@@ -36,21 +36,47 @@ export default async function handler(req, res) {
       });
     }
 
-    // Phone number is now required for SMS notifications
-    if (!singer_phone || !singer_phone.trim()) {
-      return res.status(400).json({
-        error: 'Phone number is required',
-        message: 'Please provide a phone number so we can notify you when you\'re next up!'
-      });
+    // Get karaoke settings to check SMS notifications and max singers
+    const { data: karaokeSettings } = await supabase
+      .from('karaoke_settings')
+      .select('*')
+      .eq('organization_id', organization_id)
+      .single();
+
+    // Check maximum concurrent singers limit
+    if (karaokeSettings?.max_concurrent_singers) {
+      const { data: currentSignups } = await supabase
+        .from('karaoke_signups')
+        .select('id')
+        .eq('organization_id', organization_id)
+        .eq('event_qr_code', event_qr_code)
+        .in('status', ['queued', 'singing']);
+
+      if (currentSignups && currentSignups.length >= karaokeSettings.max_concurrent_singers) {
+        return res.status(400).json({
+          error: 'Maximum singers reached',
+          message: `Sorry, we've reached the maximum of ${karaokeSettings.max_concurrent_singers} singers for this event. Please try again later or check back soon!`
+        });
+      }
     }
 
-    // Validate phone number format (at least 10 digits)
-    const phoneDigits = singer_phone.replace(/\D/g, '');
-    if (phoneDigits.length < 10) {
-      return res.status(400).json({
-        error: 'Invalid phone number',
-        message: 'Please enter a valid phone number (at least 10 digits)'
-      });
+    // Check if SMS notifications are enabled
+    if (karaokeSettings?.sms_notifications_enabled !== false) {
+      if (!singer_phone || !singer_phone.trim()) {
+        return res.status(400).json({
+          error: 'Phone number is required',
+          message: 'Please provide a phone number so we can notify you when you\'re next up!'
+        });
+      }
+
+      // Validate phone number format (at least 10 digits)
+      const phoneDigits = singer_phone.replace(/\D/g, '');
+      if (phoneDigits.length < 10) {
+        return res.status(400).json({
+          error: 'Invalid phone number',
+          message: 'Please enter a valid phone number (at least 10 digits)'
+        });
+      }
     }
 
     if (group_size < 1 || group_size > 10) {

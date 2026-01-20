@@ -12,3 +12,8 @@ ADD COLUMN IF NOT EXISTS karaoke_show_current_singer BOOLEAN DEFAULT TRUE,
 ADD COLUMN IF NOT EXISTS karaoke_show_queue_preview BOOLEAN DEFAULT TRUE,
 ADD COLUMN IF NOT EXISTS karaoke_show_estimated_wait BOOLEAN DEFAULT TRUE,
 ADD COLUMN IF NOT EXISTS karaoke_theme TEXT DEFAULT 'default' CHECK (karaoke_theme IN ('default', 'dark', 'colorful', 'minimal'));
+
+-- Add karaoke operational settings to karaoke_settings table
+ALTER TABLE karaoke_settings
+ADD COLUMN IF NOT EXISTS max_concurrent_singers INTEGER DEFAULT 10,
+ADD COLUMN IF NOT EXISTS sms_notifications_enabled BOOLEAN DEFAULT TRUE;

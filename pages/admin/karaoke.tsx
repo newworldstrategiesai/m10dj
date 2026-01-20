@@ -91,6 +91,12 @@ export default function KaraokeAdminPage() {
     theme: 'default'
   });
 
+  // Operational settings
+  const [operationalSettings, setOperationalSettings] = useState({
+    maxConcurrentSingers: 10,
+    smsNotificationsEnabled: true
+  });
+
   // QR Generator state (reused from crowd-requests)
   const [qrEventCode, setQrEventCode] = useState('');
   const [qrEventName, setQrEventName] = useState('');
@@ -139,6 +145,12 @@ export default function KaraokeAdminPage() {
 
       if (data) {
         setSettings(data);
+
+        // Load operational settings from karaoke_settings
+        setOperationalSettings({
+          maxConcurrentSingers: (data as any).max_concurrent_singers || 10,
+          smsNotificationsEnabled: (data as any).sms_notifications_enabled !== false
+        });
 
         // Load page customization from organization
         if (organization) {
@@ -194,6 +206,25 @@ export default function KaraokeAdminPage() {
 
     setSavingSettings(true);
     try {
+      // Update karaoke_settings with operational settings
+      const karaokeSettingsUpdate: any = {
+        max_concurrent_singers: operationalSettings.maxConcurrentSingers,
+        sms_notifications_enabled: operationalSettings.smsNotificationsEnabled
+      };
+
+      const { error: karaokeError } = await (supabase
+        .from('karaoke_settings') as any)
+        .update(karaokeSettingsUpdate)
+        .eq('organization_id', organization.id);
+
+      if (karaokeError) {
+        console.error('Error updating karaoke settings:', karaokeError);
+        throw karaokeError;
+      }
+
+      // Update karaoke settings state
+      setSettings({ ...settings, ...karaokeSettingsUpdate });
+
       // Update organization with page customization settings
       const orgUpdateData: any = {
         karaoke_page_title: pageSettings.pageTitle || null,
@@ -1546,10 +1577,14 @@ export default function KaraokeAdminPage() {
               <div className="flex-1 overflow-y-auto p-8">
                 {settings && (
                   <Tabs value={settingsTab} onValueChange={(v) => setSettingsTab(v)} className="w-full">
-                    <TabsList className="grid w-full grid-cols-5 mb-8 bg-gray-100 dark:bg-gray-800 p-1 rounded-xl">
+                    <TabsList className="grid w-full grid-cols-6 mb-8 bg-gray-100 dark:bg-gray-800 p-1 rounded-xl">
                       <TabsTrigger value="general" className="flex items-center gap-2 data-[state=active]:bg-white data-[state=active]:shadow-md">
                         <Settings className="w-4 h-4" />
                         <span className="hidden sm:inline">General</span>
+                      </TabsTrigger>
+                      <TabsTrigger value="operational" className="flex items-center gap-2 data-[state=active]:bg-white data-[state=active]:shadow-md">
+                        <User className="w-4 h-4" />
+                        <span className="hidden sm:inline">Operations</span>
                       </TabsTrigger>
                       <TabsTrigger value="pricing" className="flex items-center gap-2 data-[state=active]:bg-white data-[state=active]:shadow-md">
                         <Zap className="w-4 h-4" />
@@ -1617,6 +1652,52 @@ export default function KaraokeAdminPage() {
                           }
                         }}
                       />
+                        </div>
+                      </div>
+                    </div>
+                  </TabsContent>
+
+                  <TabsContent value="operational" className="space-y-6 mt-6">
+                    <div className="space-y-4">
+                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Operational Settings</h3>
+                      <div className="grid gap-4">
+                        <div className="p-4 bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm border border-gray-200/50 dark:border-gray-700/50 rounded-xl">
+                          <label className="block text-sm font-medium text-gray-900 dark:text-white mb-3">
+                            Maximum Concurrent Singers
+                          </label>
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
+                            Maximum number of singers allowed at the same time
+                          </p>
+                          <Input
+                            type="number"
+                            min="1"
+                            max="50"
+                            value={operationalSettings.maxConcurrentSingers}
+                            onChange={(e) => setOperationalSettings(prev => ({
+                              ...prev,
+                              maxConcurrentSingers: parseInt(e.target.value) || 10
+                            }))}
+                            className="w-full h-10"
+                            placeholder="10"
+                          />
+                        </div>
+
+                        <div className="flex items-center justify-between p-4 bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm border border-gray-200/50 dark:border-gray-700/50 rounded-xl">
+                          <div>
+                            <label className="text-sm font-medium text-gray-900 dark:text-white">
+                              SMS Notifications
+                            </label>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                              Enable SMS notifications for queue updates and phone field collection
+                            </p>
+                          </div>
+                          <Switch
+                            checked={operationalSettings.smsNotificationsEnabled}
+                            onCheckedChange={(checked) => setOperationalSettings(prev => ({
+                              ...prev,
+                              smsNotificationsEnabled: checked
+                            }))}
+                          />
                         </div>
                       </div>
                     </div>
