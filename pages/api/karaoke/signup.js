@@ -13,6 +13,7 @@ export default async function handler(req, res) {
   }
 
   try {
+    console.log('Karaoke signup API called with body:', req.body);
     const supabase = createClient();
     
     const {
@@ -37,11 +38,18 @@ export default async function handler(req, res) {
     }
 
     // Get karaoke settings to check SMS notifications and max singers
-    const { data: karaokeSettings } = await supabase
+    console.log('Fetching karaoke settings for org:', organization_id);
+    const { data: karaokeSettings, error: settingsError } = await supabase
       .from('karaoke_settings')
       .select('*')
       .eq('organization_id', organization_id)
       .single();
+
+    if (settingsError) {
+      console.log('Karaoke settings not found or error:', settingsError);
+    } else {
+      console.log('Karaoke settings loaded:', karaokeSettings);
+    }
 
     // Check maximum concurrent singers limit (if setting exists)
     if (karaokeSettings?.max_concurrent_singers != null) {
@@ -220,6 +228,7 @@ export default async function handler(req, res) {
     }
 
     // Insert signup
+    console.log('Attempting to insert karaoke signup:', signupData);
     const { data: signup, error: insertError } = await supabase
       .from('karaoke_signups')
       .insert(signupData)
@@ -228,9 +237,22 @@ export default async function handler(req, res) {
 
     if (insertError) {
       console.error('Error creating karaoke signup:', insertError);
+      console.error('Insert error details:', JSON.stringify(insertError, null, 2));
+
+      // Handle case where table doesn't exist
+      if (insertError.code === 'PGRST116' || insertError.message?.includes('karaoke_signups')) {
+        console.log('Karaoke signups table not found - karaoke feature not yet set up');
+        return res.status(503).json({
+          error: 'Karaoke feature not available',
+          message: 'The karaoke feature has not been set up yet. Please contact support.',
+          details: 'Database table not found'
+        });
+      }
+
       return res.status(500).json({
         error: 'Failed to create karaoke signup',
-        details: insertError.message
+        details: insertError.message,
+        code: insertError.code
       });
     }
 
