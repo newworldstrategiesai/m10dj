@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useRouter } from 'next/router';
 import { Send, MessageCircle, CheckCircle2, Zap, Loader, X, Minimize2, Maximize2 } from 'lucide-react';
 
 /**
@@ -7,6 +8,7 @@ import { Send, MessageCircle, CheckCircle2, Zap, Loader, X, Minimize2, Maximize2
  * Uses OpenAI GPT-4 for intelligent, contextual responses
  */
 export default function ContactFormChat({ formData, submissionId, onClose, isMinimized, onMinimize, isMicro = false, paymentContext = null }) {
+  const router = useRouter();
   const [messages, setMessages] = useState([]);
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -33,11 +35,15 @@ export default function ContactFormChat({ formData, submissionId, onClose, isMin
         // Customize greeting based on context
         let greetingMessage;
         const isPaymentPage = paymentContext?.pageType === 'payment' && paymentContext?.invoice;
+        const isKaraokePage = router.pathname?.includes('/organizations/') && router.pathname?.includes('/sing');
         
         if (isPaymentPage) {
           const invoice = paymentContext.invoice;
           const customerName = invoice.contact?.name || formData?.name?.split(' ')[0] || 'there';
           greetingMessage = `Hi ${customerName}! 👋 I see you're on the payment page for Invoice ${invoice.invoice_number} ($${invoice.total_amount.toFixed(2)}). I'm here to help with any questions about your invoice, payment, or contract. What can I help you with?`;
+        } else if (isKaraokePage) {
+          const firstName = formData?.name?.split(' ')[0] || 'there';
+          greetingMessage = `Hey ${firstName}! 🎤 Welcome to TipJar Live karaoke! I'm here to help you sign up for karaoke or answer any questions about our karaoke service. Ready to sing? What can I help you with?`;
         } else {
           const firstName = formData?.name?.split(' ')[0] || 'there';
           greetingMessage = `Hey ${firstName}! 👋 Thanks for reaching out about your ${formData?.eventType || 'event'}. I'm here to help with any questions you have about our DJ services. What would you like to know?`;
@@ -50,13 +56,17 @@ export default function ContactFormChat({ formData, submissionId, onClose, isMin
           timestamp: new Date()
         }];
 
-        // Don't show service selection links on payment pages
-        if (isPaymentPage) {
+        // Don't show service selection links on payment pages or karaoke pages
+        if (isPaymentPage || isKaraokePage) {
           setMessages(initialMessages);
           conversationHistoryRef.current = [
             { role: 'assistant', content: greetingMessage }
           ];
-          console.log('✅ Chat initialized with payment page greeting');
+          if (isPaymentPage) {
+            console.log('✅ Chat initialized with payment page greeting');
+          } else if (isKaraokePage) {
+            console.log('✅ Chat initialized with karaoke page greeting');
+          }
           return;
         }
 

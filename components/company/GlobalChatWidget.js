@@ -133,8 +133,20 @@ export default function GlobalChatWidget() {
         console.warn('Could not save chat state:', e);
       }
     } else {
+      // Check if we're on a karaoke page
+      const isKaraokePage = router.pathname?.includes('/organizations/') && router.pathname?.includes('/sing');
+
       // Otherwise, create a default chat session
-      const defaultFormData = {
+      const defaultFormData = isKaraokePage ? {
+        name: 'Guest',
+        eventType: 'karaoke',
+        email: '',
+        phone: '',
+        eventDate: '',
+        guests: '',
+        venue: '',
+        message: ''
+      } : {
         name: 'Guest',
         eventType: 'event',
         email: '',
