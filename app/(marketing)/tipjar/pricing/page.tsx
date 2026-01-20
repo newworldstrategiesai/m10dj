@@ -42,7 +42,7 @@ export const metadata: Metadata = {
     siteName: 'TipJar Live',
     images: [
       {
-        url: '/assets/tipjar-og-image.png',
+        url: '/assets/tipjar-pricing-og.png',
         width: 1200,
         height: 630,
         alt: 'TipJar Live Pricing',
@@ -53,7 +53,7 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: 'TipJar Live Pricing - Best Tip Jar App for DJs',
     description: 'Start free, upgrade when you\'re making money. All plans include 3.5% + $0.30 platform fee only when you get paid.',
-    images: ['/assets/tipjar-og-image.png'],
+    images: ['/assets/tipjar-pricing-og.png'],
   },
 };
 

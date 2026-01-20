@@ -107,29 +107,56 @@ async function generateOGImage(imageId, outputFilename) {
   }
 }
 
-// Generate all TipJar OG images
-async function generateAllTipJarImages() {
+// Generate all OG images
+async function generateAllOGImages() {
   const images = [
+    // TipJar OG Images
     { id: 'tipjar', filename: 'tipjar-og-image.png' },
     { id: 'tipjar', filename: 'tipjar-open-graph-new.png' }, // Same design, different filename
     { id: 'tipjar-dashboard', filename: 'tipjar-dashboard-og.png' },
     { id: 'tipjar-crowd-requests', filename: 'tipjar-crowd-requests-og.png' },
-    { id: 'tipjar-public-requests', filename: 'tipjar-public-requests-og.png' }
+    { id: 'tipjar-public-requests', filename: 'tipjar-public-requests-og.png' },
+    { id: 'tipjar-pricing', filename: 'tipjar-pricing-og.png' },
+    { id: 'tipjar-features', filename: 'tipjar-features-og.png' },
+    { id: 'tipjar-how-it-works', filename: 'tipjar-how-it-works-og.png' },
+    { id: 'tipjar-embed', filename: 'tipjar-embed-og.png' },
+    
+    // DJ Dash OG Images
+    { id: 'djdash', filename: 'djdash-og-image.png' },
+    { id: 'djdash-pricing', filename: 'djdash-pricing-og.png' },
+    { id: 'djdash-features', filename: 'djdash-features-og.png' },
+    { id: 'djdash-business', filename: 'djdash-business-og.png' },
+    { id: 'djdash-how-it-works', filename: 'djdash-how-it-works-og.png' },
+    
+    // M10 DJ Company / General OG Images
+    { id: 'quote-booking', filename: 'quote-booking-og.png' },
   ];
+  
+  let successCount = 0;
+  let failCount = 0;
   
   for (const image of images) {
     try {
       await generateOGImage(image.id, image.filename);
       console.log(`✅ Successfully generated ${image.filename}\n`);
+      successCount++;
     } catch (error) {
       console.error(`❌ Failed to generate ${image.filename}:`, error.message);
+      failCount++;
       // Continue with next image even if one fails
     }
   }
   
-  console.log('🎉 Finished generating all TipJar OG images!');
+  console.log('\n🎉 Finished generating all OG images!');
+  console.log(`✅ Success: ${successCount}`);
+  console.log(`❌ Failed: ${failCount}`);
+  console.log(`📊 Total: ${images.length}`);
 }
 
 // Run the script
-generateAllTipJarImages().catch(console.error);
+if (require.main === module) {
+  generateAllOGImages().catch(console.error);
+}
+
+module.exports = { generateOGImage, generateAllOGImages };
 

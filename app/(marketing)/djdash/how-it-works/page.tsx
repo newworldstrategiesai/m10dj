@@ -26,6 +26,28 @@ export const metadata: Metadata = {
     'DJ booking workflow',
     'how DJ management software works'
   ],
+  openGraph: {
+    title: 'How DJ Dash Works - Find, Compare & Book Professional DJs',
+    description: 'See how our DJ event planner software works: from client inquiry to event completion. Complete event management workflow with automated contracts, invoicing, and analytics.',
+    url: 'https://www.djdash.net/how-it-works',
+    siteName: 'DJ Dash',
+    images: [
+      {
+        url: '/assets/djdash-how-it-works-og.png',
+        width: 1200,
+        height: 630,
+        alt: 'How DJ Dash Works - Find, Compare & Book Professional DJs',
+      },
+    ],
+    locale: 'en_US',
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'How DJ Dash Works - Find, Compare & Book Professional DJs',
+    description: 'Complete event management workflow with automated contracts, invoicing, and analytics.',
+    images: ['/assets/djdash-how-it-works-og.png'],
+  },
 };
 
 export default function HowItWorksPage() {

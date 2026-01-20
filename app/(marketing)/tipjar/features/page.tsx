@@ -38,6 +38,28 @@ export const metadata: Metadata = {
     'event song request app',
     'tip jar for events'
   ],
+  openGraph: {
+    title: 'TipJar Features - Powerful Features for Modern DJs',
+    description: 'Complete song request app for events with QR code tip jar functionality. Mobile tip jar, real-time requests, instant payments, and QR code song requests for DJs.',
+    url: 'https://www.tipjar.live/features',
+    siteName: 'TipJar Live',
+    images: [
+      {
+        url: '/assets/tipjar-features-og.png',
+        width: 1200,
+        height: 630,
+        alt: 'TipJar Features - Powerful Features for Modern DJs',
+      },
+    ],
+    locale: 'en_US',
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'TipJar Features - Powerful Features for Modern DJs',
+    description: 'Complete song request app for events with QR code tip jar functionality.',
+    images: ['/assets/tipjar-features-og.png'],
+  },
 };
 
 export default function FeaturesPage() {

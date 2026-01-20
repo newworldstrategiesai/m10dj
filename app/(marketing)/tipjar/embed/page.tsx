@@ -27,6 +27,28 @@ export const metadata: Metadata = {
     'tip jar widget',
     'song request widget'
   ],
+  openGraph: {
+    title: 'Embed TipJar - Just One Line of Code',
+    description: 'Embed mobile tip jar and QR code song requests for DJs on your website. One line of code to add tip collection and song requests to any site.',
+    url: 'https://www.tipjar.live/embed',
+    siteName: 'TipJar Live',
+    images: [
+      {
+        url: '/assets/tipjar-embed-og.png',
+        width: 1200,
+        height: 630,
+        alt: 'Embed TipJar - Just One Line of Code',
+      },
+    ],
+    locale: 'en_US',
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Embed TipJar - Just One Line of Code',
+    description: 'Embed mobile tip jar and QR code song requests on your website. Works on WordPress, Wix, Squarespace.',
+    images: ['/assets/tipjar-embed-og.png'],
+  },
 };
 
 export default function EmbedPage() {

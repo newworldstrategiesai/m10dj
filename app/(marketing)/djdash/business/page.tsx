@@ -43,7 +43,7 @@ export const metadata: Metadata = {
     siteName: 'DJ Dash',
     images: [
       {
-        url: '/assets/DJ-Dash-Logo-Black-1.PNG',
+        url: '/assets/djdash-business-og.png',
         width: 1200,
         height: 630,
         alt: 'DJ Dash - DJ Booking Software & DJ CRM',
@@ -56,7 +56,7 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: 'DJ Dash - DJ Booking Software & DJ CRM',
     description: 'The best DJ booking software and DJ CRM for managing your entire DJ business. Trusted by 1,200+ professional DJs.',
-    images: ['/assets/DJ-Dash-Logo-Black-1.PNG'],
+    images: ['/assets/djdash-business-og.png'],
   },
 };
 

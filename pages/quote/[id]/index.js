@@ -2357,11 +2357,11 @@ export default function PersonalizedQuote() {
           <meta property="og:url" content={`${process.env.NEXT_PUBLIC_SITE_URL || 'https://m10djcompany.com'}/quote/${id}`} />
           <meta property="og:title" content="Your Personalized Quote | M10 DJ Company" />
           <meta property="og:description" content="Select your perfect DJ package and customize your event" />
-          <meta property="og:image" content={`${process.env.NEXT_PUBLIC_SITE_URL || 'https://m10djcompany.com'}/assets/service-selection-og-image.png`} />
-          <meta property="og:image:secure_url" content={`${process.env.NEXT_PUBLIC_SITE_URL || 'https://m10djcompany.com'}/assets/service-selection-og-image.png`} />
+          <meta property="og:image" content={`${process.env.NEXT_PUBLIC_SITE_URL || 'https://m10djcompany.com'}/assets/quote-booking-og.png`} />
+          <meta property="og:image:secure_url" content={`${process.env.NEXT_PUBLIC_SITE_URL || 'https://m10djcompany.com'}/assets/quote-booking-og.png`} />
           <meta property="og:image:width" content="1200" />
           <meta property="og:image:height" content="630" />
-          <meta property="og:image:alt" content="Service Selection - M10 DJ Company" />
+          <meta property="og:image:alt" content="Get Your Personalized Quote - Free & Fast" />
           <meta property="og:image:type" content="image/png" />
           <meta property="og:site_name" content="M10 DJ Company" />
           
@@ -2412,11 +2412,11 @@ export default function PersonalizedQuote() {
           <meta property="og:url" content={`${process.env.NEXT_PUBLIC_SITE_URL || 'https://m10djcompany.com'}/quote/${id}`} />
           <meta property="og:title" content="Quote Not Found | M10 DJ Company" />
           <meta property="og:description" content="Quote not found. Please contact us to get your personalized quote." />
-          <meta property="og:image" content={`${process.env.NEXT_PUBLIC_SITE_URL || 'https://m10djcompany.com'}/assets/service-selection-og-image.png`} />
-          <meta property="og:image:secure_url" content={`${process.env.NEXT_PUBLIC_SITE_URL || 'https://m10djcompany.com'}/assets/service-selection-og-image.png`} />
+          <meta property="og:image" content={`${process.env.NEXT_PUBLIC_SITE_URL || 'https://m10djcompany.com'}/assets/quote-booking-og.png`} />
+          <meta property="og:image:secure_url" content={`${process.env.NEXT_PUBLIC_SITE_URL || 'https://m10djcompany.com'}/assets/quote-booking-og.png`} />
           <meta property="og:image:width" content="1200" />
           <meta property="og:image:height" content="630" />
-          <meta property="og:image:alt" content="Service Selection - M10 DJ Company" />
+          <meta property="og:image:alt" content="Get Your Personalized Quote - Free & Fast" />
           <meta property="og:image:type" content="image/png" />
           <meta property="og:site_name" content="M10 DJ Company" />
           

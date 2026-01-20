@@ -45,6 +45,28 @@ export const metadata: Metadata = {
     'song request management',
     'event tipping guide'
   ],
+  openGraph: {
+    title: 'How TipJar Works - Request Songs & Send Tips in 3 Easy Steps',
+    description: 'Complete guide to using TipJar for DJs. Learn how to set up your tip jar, generate QR codes, manage song requests, track earnings, and get paid instantly.',
+    url: 'https://www.tipjar.live/how-it-works',
+    siteName: 'TipJar Live',
+    images: [
+      {
+        url: '/assets/tipjar-how-it-works-og.png',
+        width: 1200,
+        height: 630,
+        alt: 'How TipJar Works - Request Songs & Send Tips in 3 Easy Steps',
+      },
+    ],
+    locale: 'en_US',
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'How TipJar Works - Request Songs & Send Tips in 3 Easy Steps',
+    description: 'Complete guide to using TipJar for DJs. Set up your tip jar in minutes.',
+    images: ['/assets/tipjar-how-it-works-og.png'],
+  },
 };
 
 export default function HowItWorksPage() {
