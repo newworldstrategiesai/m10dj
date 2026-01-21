@@ -4,9 +4,18 @@ import { createClient } from '@/utils/supabase/client';
 import { getCurrentOrganization } from '@/utils/organization-context';
 import { useToast } from '@/components/ui/Toasts/use-toast';
 
+// Global client instance to avoid multiple instances
+let globalSupabaseClient: any = null;
+
 export function useKaraokeAuth() {
   const router = useRouter();
-  const supabase = createClient();
+
+  // Use global client instance to avoid creating multiple clients
+  if (!globalSupabaseClient) {
+    globalSupabaseClient = createClient();
+  }
+  const supabase = globalSupabaseClient;
+
   const { toast } = useToast();
 
   const [user, setUser] = useState<any>(null);
