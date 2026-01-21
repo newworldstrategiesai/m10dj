@@ -254,6 +254,13 @@ export default function KaraokeAdminPage() {
     return () => clearInterval(interval);
   }, [autoRefresh, organization]);
 
+  // Auto-search for video suggestions when signup is viewed
+  useEffect(() => {
+    if (selectedSignup && selectedSignup.song_title && !selectedSignup.video_data && showDetailModal) {
+      searchVideoSuggestionsForSignup(selectedSignup);
+    }
+  }, [selectedSignup, showDetailModal]);
+
   const loadSettings = async (orgId: string) => {
     try {
       const { data } = await supabase
@@ -1479,13 +1486,6 @@ export default function KaraokeAdminPage() {
               </div>
             )}
           </div>
-
-          {/* Auto-search for video suggestions when signup is viewed */}
-          {useEffect(() => {
-            if (selectedSignup && selectedSignup.song_title && !selectedSignup.video_data && showDetailModal) {
-              searchVideoSuggestionsForSignup(selectedSignup);
-            }
-          }, [selectedSignup, showDetailModal])}
 
           {/* Detail Modal - Reused pattern from crowd-requests */}
           <Dialog open={showDetailModal} onOpenChange={(open) => {
