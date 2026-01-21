@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { useToast } from '@/components/ui/Toasts/use-toast';
 import {
   Play,
   Pause,
@@ -51,6 +52,7 @@ export default function KaraokePlayerPanel({
   onDisplayWindowChange,
   onDisplayVideoChange
 }: KaraokePlayerPanelProps) {
+  const { toast } = useToast();
   const [logoError, setLogoError] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
@@ -69,6 +71,23 @@ export default function KaraokePlayerPanel({
     duration: number;
     volume: number;
   } | null>(null);
+
+  // Progress bar interaction state
+  const [progressHoverTime, setProgressHoverTime] = useState<number | null>(null);
+  const [progressHoverPosition, setProgressHoverPosition] = useState<number | null>(null);
+  const progressBarRef = useRef<HTMLDivElement>(null);
+
+  // Loading states
+  const [isCommandLoading, setIsCommandLoading] = useState(false);
+  const [thumbnailLoading, setThumbnailLoading] = useState(true);
+
+  // Touch/swipe handling
+  const [touchStart, setTouchStart] = useState<number | null>(null);
+  const [touchEnd, setTouchEnd] = useState<number | null>(null);
+
+  // Drag and drop state
+  const [draggedItem, setDraggedItem] = useState<QueueItem | null>(null);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
 
   // Mock data for demonstration
   const mockQueue: QueueItem[] = [
@@ -120,6 +139,55 @@ export default function KaraokePlayerPanel({
     setQueue(queue.filter(song => song.id !== songId));
   };
 
+  // Drag and drop handlers
+  const handleDragStart = (e: React.DragEvent, item: QueueItem) => {
+    setDraggedItem(item);
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/html', item.id);
+  };
+
+  const handleDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    setDragOverIndex(index);
+  };
+
+  const handleDragLeave = () => {
+    setDragOverIndex(null);
+  };
+
+  const handleDrop = (e: React.DragEvent, dropIndex: number) => {
+    e.preventDefault();
+
+    if (!draggedItem) return;
+
+    const draggedIndex = queue.findIndex(item => item.id === draggedItem.id);
+    if (draggedIndex === -1 || draggedIndex === dropIndex) {
+      setDraggedItem(null);
+      setDragOverIndex(null);
+      return;
+    }
+
+    const newQueue = [...queue];
+    const [removed] = newQueue.splice(draggedIndex, 1);
+    newQueue.splice(dropIndex, 0, removed);
+
+    setQueue(newQueue);
+    setDraggedItem(null);
+    setDragOverIndex(null);
+
+    // Show success feedback
+    toast({
+      title: 'Queue reordered',
+      description: `"${removed.title}" moved to position ${dropIndex + 1}`,
+    });
+  };
+
+  const handleDragEnd = () => {
+    setDraggedItem(null);
+    setDragOverIndex(null);
+  };
+
   const totalQueueTime = queue.reduce((total, song) => {
     const [mins, secs] = song.duration.split(':').map(Number);
     return total + mins * 60 + secs;
@@ -157,12 +225,20 @@ export default function KaraokePlayerPanel({
   }, [propDisplayVideo, onDisplayVideoChange]);
 
   // Send control command to display window
-  const sendDisplayCommand = (action: string, data?: any) => {
+  const sendDisplayCommand = async (action: string, data?: any) => {
     if (propDisplayWindow && !propDisplayWindow.closed) {
-      propDisplayWindow.postMessage({
-        type: 'VIDEO_CONTROL',
-        data: { action, ...data }
-      }, window.location.origin);
+      setIsCommandLoading(true);
+      try {
+        propDisplayWindow.postMessage({
+          type: 'VIDEO_CONTROL',
+          data: { action, ...data }
+        }, window.location.origin);
+
+        // Small delay to show loading state
+        await new Promise(resolve => setTimeout(resolve, 200));
+      } finally {
+        setIsCommandLoading(false);
+      }
     }
   };
 
@@ -198,6 +274,36 @@ export default function KaraokePlayerPanel({
     sendDisplayCommand('getStatus');
   };
 
+  // Progress bar interaction functions
+  const handleProgressHover = (event: React.MouseEvent<HTMLDivElement>) => {
+    if (!progressBarRef.current || !displayStatus?.duration) return;
+
+    const rect = progressBarRef.current.getBoundingClientRect();
+    const x = event.clientX - rect.left;
+    const percentage = Math.max(0, Math.min(1, x / rect.width));
+    const time = percentage * displayStatus.duration;
+
+    setProgressHoverPosition(percentage * 100);
+    setProgressHoverTime(time);
+  };
+
+  const handleProgressLeave = () => {
+    setProgressHoverTime(null);
+    setProgressHoverPosition(null);
+  };
+
+  const handleProgressClick = (event: React.MouseEvent<HTMLDivElement>) => {
+    if (!progressBarRef.current || !displayStatus?.duration) return;
+
+    const rect = progressBarRef.current.getBoundingClientRect();
+    const x = event.clientX - rect.left;
+    const percentage = Math.max(0, Math.min(1, x / rect.width));
+    const seekTime = percentage * displayStatus.duration;
+
+    sendDisplayCommand('seek', { seconds: seekTime });
+    updateDisplayStatus();
+  };
+
   // Check if display window is still open
   useEffect(() => {
     const checkDisplayWindow = () => {
@@ -211,36 +317,162 @@ export default function KaraokePlayerPanel({
     return () => clearInterval(interval);
   }, [propDisplayWindow, onDisplayWindowChange]);
 
+  // Touch gesture handling for mobile
+  const handleTouchStart = (e: React.TouchEvent) => {
+    setTouchEnd(null);
+    setTouchStart(e.targetTouches[0].clientX);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    setTouchEnd(e.targetTouches[0].clientX);
+  };
+
+  const handleTouchEnd = () => {
+    if (!touchStart || !touchEnd) return;
+
+    const distance = touchStart - touchEnd;
+    const isLeftSwipe = distance > 50;
+    const isRightSwipe = distance < -50;
+
+    // Swipe left: next track
+    if (isLeftSwipe && displayStatus) {
+      sendDisplayCommand('seek', { seconds: Math.min(displayStatus.duration, displayStatus.currentTime + 10) });
+      updateDisplayStatus();
+    }
+
+    // Swipe right: previous track (or rewind)
+    if (isRightSwipe && displayStatus) {
+      sendDisplayCommand('seek', { seconds: Math.max(0, displayStatus.currentTime - 10) });
+      updateDisplayStatus();
+    }
+  };
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyPress = (event: KeyboardEvent) => {
+      // Only handle shortcuts when display window is active
+      if (!propDisplayWindow || !displayStatus) return;
+
+      // Ignore if user is typing in an input
+      if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) {
+        return;
+      }
+
+      switch (event.code) {
+        case 'Space':
+          event.preventDefault();
+          toggleDisplayPlayPause();
+          break;
+        case 'ArrowLeft':
+          if (event.ctrlKey || event.metaKey) {
+            event.preventDefault();
+            const newTime = Math.max(0, displayStatus.currentTime - 10);
+            sendDisplayCommand('seek', { seconds: newTime });
+            updateDisplayStatus();
+          }
+          break;
+        case 'ArrowRight':
+          if (event.ctrlKey || event.metaKey) {
+            event.preventDefault();
+            const newTime = Math.min(displayStatus.duration, displayStatus.currentTime + 10);
+            sendDisplayCommand('seek', { seconds: newTime });
+            updateDisplayStatus();
+          }
+          break;
+        case 'KeyM':
+          event.preventDefault();
+          toggleDisplayMute();
+          break;
+        case 'ArrowUp':
+          event.preventDefault();
+          setDisplayVolume(Math.min(100, volume + 5));
+          break;
+        case 'ArrowDown':
+          event.preventDefault();
+          setDisplayVolume(Math.max(0, volume - 5));
+          break;
+        case 'KeyR':
+          if (event.ctrlKey || event.metaKey) {
+            event.preventDefault();
+            updateDisplayStatus();
+          }
+          break;
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyPress);
+    return () => window.removeEventListener('keydown', handleKeyPress);
+  }, [propDisplayWindow, displayStatus, volume, toggleDisplayPlayPause, toggleDisplayMute, setDisplayVolume, sendDisplayCommand, updateDisplayStatus]);
+
   return (
-    <aside className="w-96 bg-gray-900/95 backdrop-blur-sm border-l border-gray-700/50 flex flex-col karaoke-scrollbar">
-      {/* Header with Karafun Branding */}
-      <div className="relative h-32 karaoke-gradient-primary flex items-center justify-center shadow-lg">
-        {!logoError ? (
-          <img
-            src="/assets/karafun-logo.png"
-            alt="Karafun"
-            className="h-12 object-contain"
-            onError={() => setLogoError(true)}
-          />
-        ) : (
-          <span className="text-white font-bold text-xl">KARAFUN</span>
-        )}
+    <aside className="w-full md:w-96 bg-gray-900/95 backdrop-blur-xl border-l border-gray-700/50 flex flex-col karaoke-scrollbar shadow-2xl">
+      {/* Enhanced Header with Modern Design */}
+      <div className="relative h-36 bg-gradient-to-br from-purple-600 via-purple-700 to-indigo-800 flex flex-col items-center justify-center shadow-xl overflow-hidden">
+        {/* Background Pattern */}
+        <div className="absolute inset-0 opacity-20">
+          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent animate-pulse" />
+        </div>
+
+        {/* Connection Status Indicator */}
+        <div className="absolute top-3 left-3 flex items-center gap-2">
+          <div className={`w-2 h-2 rounded-full ${propDisplayWindow && !propDisplayWindow.closed ? 'bg-green-400 animate-pulse' : 'bg-red-400'}`} />
+          <span className="text-xs text-white/80 font-medium">
+            {propDisplayWindow && !propDisplayWindow.closed ? 'Connected' : 'Disconnected'}
+          </span>
+        </div>
+
+        {/* Close Button */}
         <button
           onClick={onClose}
-          className="absolute top-3 right-3 p-1 rounded-full bg-black/20 hover:bg-black/40 text-white transition-colors"
+          className="absolute top-3 right-3 p-2 rounded-full bg-black/30 hover:bg-black/50 text-white transition-all duration-200 hover:scale-110"
         >
           <X className="w-4 h-4" />
         </button>
+
+        {/* Logo and Branding */}
+        <div className="relative z-10 text-center">
+          {!logoError ? (
+            <img
+              src="/assets/karafun-logo.png"
+              alt="Karafun"
+              className="h-14 object-contain mb-2 drop-shadow-lg"
+              onError={() => setLogoError(true)}
+            />
+          ) : (
+            <div className="mb-2">
+              <span className="text-white font-bold text-2xl drop-shadow-lg">KARAFUN</span>
+            </div>
+          )}
+
+          {/* Status Badge */}
+          <div className="inline-flex items-center gap-1 bg-white/20 backdrop-blur-sm rounded-full px-3 py-1">
+            <div className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse" />
+            <span className="text-xs text-white font-medium">Live Control</span>
+          </div>
+        </div>
       </div>
 
-      {/* Now Playing Section */}
-      <div className="p-6 border-b border-gray-800/50">
-        <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-4">
-          Now Playing
-        </h3>
+      {/* Enhanced Now Playing Section */}
+      <div className="p-6 border-b border-gray-800/50 bg-gradient-to-b from-gray-900/50 to-transparent">
+        <div className="flex items-center justify-between mb-6">
+          <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
+            <div className="w-1.5 h-1.5 bg-purple-500 rounded-full animate-pulse" />
+            Now Playing
+          </h3>
+
+          {/* Status indicator */}
+          {displayStatus && (
+            <div className="flex items-center gap-2 text-xs">
+              <div className={`w-2 h-2 rounded-full ${displayStatus.isPlaying ? 'bg-green-400 animate-pulse' : 'bg-yellow-400'}`} />
+              <span className="text-gray-400">
+                {displayStatus.isPlaying ? 'Playing' : 'Paused'}
+              </span>
+            </div>
+          )}
+        </div>
 
         {propDisplayVideo ? (
-          <div className="space-y-4">
+          <div className="space-y-6">
             {/* Header with display indicator */}
             <div className="flex items-center justify-between">
               <span className="text-xs text-purple-400 bg-purple-500/20 px-2 py-1 rounded-full">
@@ -255,94 +487,390 @@ export default function KaraokePlayerPanel({
               </button>
             </div>
 
-            {/* Thumbnail */}
-            <div className="w-full aspect-video bg-gray-800 rounded-lg overflow-hidden">
+            {/* Enhanced Thumbnail with Visual Effects */}
+            <div
+              className="relative w-full aspect-video bg-gradient-to-br from-gray-800 to-gray-900 rounded-xl overflow-hidden shadow-2xl group touch-manipulation"
+              onTouchStart={handleTouchStart}
+              onTouchMove={handleTouchMove}
+              onTouchEnd={handleTouchEnd}
+            >
+              {/* Background pattern for loading state */}
+              <div className="absolute inset-0 bg-gradient-to-br from-purple-500/10 to-pink-500/10 opacity-50" />
+
+              {thumbnailLoading && (
+                <div className="absolute inset-0 bg-gray-800 flex items-center justify-center">
+                  <div className="w-8 h-8 border-2 border-purple-500 border-t-transparent rounded-full animate-spin" />
+                </div>
+              )}
               <img
                 src={propDisplayVideo.thumbnailUrl}
                 alt={propDisplayVideo.title}
-                className="w-full h-full object-cover"
+                className={`w-full h-full object-cover transition-all duration-300 group-hover:scale-105 ${
+                  thumbnailLoading ? 'opacity-0' : 'opacity-100'
+                }`}
+                onLoad={() => setThumbnailLoading(false)}
                 onError={(e) => {
                   e.currentTarget.src = '/api/placeholder/320/180';
+                  setThumbnailLoading(false);
                 }}
               />
-              {displayStatus?.isPlaying && (
-                <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-                  <div className="w-16 h-16 bg-purple-500/80 rounded-full flex items-center justify-center">
-                    <Play className="w-8 h-8 text-white ml-1" />
+
+              {/* Overlay gradient */}
+              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+
+              {/* Play/Pause overlay */}
+              {displayStatus && (
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <div className={`w-20 h-20 rounded-full flex items-center justify-center transition-all duration-300 ${
+                    displayStatus.isPlaying
+                      ? 'bg-purple-500/90 scale-100 shadow-lg shadow-purple-500/50'
+                      : 'bg-black/70 scale-90 hover:scale-100'
+                  }`}>
+                    {displayStatus.isPlaying ? (
+                      <div className="flex gap-1">
+                        <div className="w-1 h-8 bg-white animate-pulse" style={{ animationDelay: '0ms' }} />
+                        <div className="w-1 h-8 bg-white animate-pulse" style={{ animationDelay: '200ms' }} />
+                        <div className="w-1 h-8 bg-white animate-pulse" style={{ animationDelay: '400ms' }} />
+                      </div>
+                    ) : (
+                      <Play className="w-10 h-10 text-white ml-1" />
+                    )}
                   </div>
                 </div>
               )}
+
+              {/* Quality badge */}
+              <div className="absolute top-3 right-3 bg-black/70 backdrop-blur-sm rounded-full px-2 py-1">
+                <span className="text-xs text-white font-medium">HD</span>
+              </div>
             </div>
 
-            {/* Song Info */}
-            <div className="text-center">
-              <h4 className="font-semibold text-white text-lg">{propDisplayVideo.title}</h4>
-              <p className="text-gray-400">{propDisplayVideo.artist}</p>
-            </div>
+            {/* Enhanced Song Info */}
+            <div className="text-center space-y-2">
+              <div>
+                <h4 className="font-bold text-white text-xl leading-tight line-clamp-2 hover:text-purple-300 transition-colors cursor-pointer">
+                  {propDisplayVideo.title}
+                </h4>
+                <p className="text-purple-300 font-medium text-sm mt-1">
+                  {propDisplayVideo.artist}
+                </p>
+              </div>
 
-            {/* Progress Bar */}
-            {displayStatus && (
-              <div className="space-y-2">
-                <div className="w-full bg-gray-700 rounded-full h-1">
-                  <div
-                    className="bg-gradient-to-r from-pink-500 to-purple-600 h-1 rounded-full"
-                    style={{ width: `${(displayStatus.currentTime / displayStatus.duration) * 100}%` }}
-                  />
+              {/* Rich Metadata Display */}
+              <div className="grid grid-cols-2 gap-4 text-xs">
+                <div className="bg-gray-800/30 rounded-lg p-3">
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="w-2 h-2 bg-red-500 rounded-full" />
+                    <span className="text-gray-400 font-medium">YouTube</span>
+                  </div>
+                  <div className="space-y-1">
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">Views</span>
+                      <span className="text-white">2.1M</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">Likes</span>
+                      <span className="text-white">45K</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">Uploaded</span>
+                      <span className="text-white">2 years ago</span>
+                    </div>
+                  </div>
                 </div>
-                <div className="flex justify-between text-xs text-gray-400">
-                  <span>{formatTime(displayStatus.currentTime)}</span>
-                  <span>{formatTime(displayStatus.duration)}</span>
+
+                <div className="bg-gray-800/30 rounded-lg p-3">
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="w-2 h-2 bg-purple-500 rounded-full" />
+                    <span className="text-gray-400 font-medium">Karaoke</span>
+                  </div>
+                  <div className="space-y-1">
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">Quality</span>
+                      <span className="text-green-400">HD</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">Lyrics</span>
+                      <span className="text-green-400">✓ Available</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">Source</span>
+                      <span className="text-purple-400">Karafun</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Enhanced Progress Bar */}
+            {displayStatus && (
+              <div className="space-y-3 relative">
+                {/* Progress Bar Container */}
+                <div className="relative group">
+                  <div
+                    ref={progressBarRef}
+                    className="w-full bg-gray-700/80 rounded-full h-2 cursor-pointer relative overflow-hidden hover:h-3 transition-all duration-200"
+                    onMouseMove={handleProgressHover}
+                    onMouseLeave={handleProgressLeave}
+                    onClick={handleProgressClick}
+                  >
+                    {/* Background track */}
+                    <div className="absolute inset-0 bg-gray-600/50 rounded-full" />
+
+                    {/* Progress fill */}
+                    <div
+                      className="absolute left-0 top-0 h-full bg-gradient-to-r from-pink-500 to-purple-600 rounded-full transition-all duration-200"
+                      style={{ width: `${(displayStatus.currentTime / displayStatus.duration) * 100}%` }}
+                    />
+
+                    {/* Hover indicator */}
+                    {progressHoverPosition !== null && (
+                      <div
+                        className="absolute top-0 h-full w-1 bg-white/80 rounded-full pointer-events-none transition-all duration-100"
+                        style={{ left: `${progressHoverPosition}%` }}
+                      />
+                    )}
+                  </div>
+
+                  {/* Hover tooltip */}
+                  {progressHoverTime !== null && (
+                    <div
+                      className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-black/90 text-white text-xs px-2 py-1 rounded pointer-events-none whitespace-nowrap z-10"
+                      style={{
+                        left: progressHoverPosition ? `${progressHoverPosition}%` : '50%'
+                      }}
+                    >
+                      {formatTime(progressHoverTime)}
+                    </div>
+                  )}
+                </div>
+
+                {/* Time display with remaining time toggle */}
+                <div className="flex justify-between items-center text-xs">
+                  <span className="text-gray-400 font-mono">
+                    {formatTime(displayStatus.currentTime)}
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-gray-500 hover:text-gray-400 cursor-pointer transition-colors">
+                      -{formatTime(displayStatus.duration - displayStatus.currentTime)}
+                    </span>
+                    <span className="text-gray-600">/</span>
+                    <span className="text-gray-400 font-mono">
+                      {formatTime(displayStatus.duration)}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Seek controls */}
+                <div className="flex justify-center gap-1">
+                  <button
+                    onClick={() => {
+                      const newTime = Math.max(0, displayStatus.currentTime - 10);
+                      sendDisplayCommand('seek', { seconds: newTime });
+                      updateDisplayStatus();
+                    }}
+                    className="text-xs text-gray-500 hover:text-gray-400 transition-colors px-2 py-1 rounded hover:bg-gray-800/50"
+                    title="Rewind 10s"
+                  >
+                    -10s
+                  </button>
+                  <button
+                    onClick={() => {
+                      const newTime = Math.max(0, displayStatus.currentTime - 30);
+                      sendDisplayCommand('seek', { seconds: newTime });
+                      updateDisplayStatus();
+                    }}
+                    className="text-xs text-gray-500 hover:text-gray-400 transition-colors px-2 py-1 rounded hover:bg-gray-800/50"
+                    title="Rewind 30s"
+                  >
+                    -30s
+                  </button>
+                  <span className="text-gray-600">|</span>
+                  <button
+                    onClick={() => {
+                      const newTime = Math.min(displayStatus.duration, displayStatus.currentTime + 10);
+                      sendDisplayCommand('seek', { seconds: newTime });
+                      updateDisplayStatus();
+                    }}
+                    className="text-xs text-gray-500 hover:text-gray-400 transition-colors px-2 py-1 rounded hover:bg-gray-800/50"
+                    title="Forward 10s"
+                  >
+                    +10s
+                  </button>
+                  <button
+                    onClick={() => {
+                      const newTime = Math.min(displayStatus.duration, displayStatus.currentTime + 30);
+                      sendDisplayCommand('seek', { seconds: newTime });
+                      updateDisplayStatus();
+                    }}
+                    className="text-xs text-gray-500 hover:text-gray-400 transition-colors px-2 py-1 rounded hover:bg-gray-800/50"
+                    title="Forward 30s"
+                  >
+                    +30s
+                  </button>
                 </div>
               </div>
             )}
 
-            {/* Controls */}
-            <div className="flex items-center justify-center gap-4">
-              <button className="p-2 rounded-full bg-gray-800/50 hover:bg-gray-700/50 text-gray-400 hover:text-white transition-colors">
-                <SkipBack className="w-5 h-5" />
+            {/* Enhanced Touch-Friendly Controls */}
+            <div className="flex items-center justify-center gap-6 px-4">
+              <button className="p-3 rounded-full bg-gray-800/50 hover:bg-gray-700/50 active:bg-gray-600/50 text-gray-400 hover:text-white active:text-white transition-all touch-manipulation min-w-[48px] min-h-[48px] flex items-center justify-center">
+                <SkipBack className="w-6 h-6" />
               </button>
 
               <button
                 onClick={toggleDisplayPlayPause}
-                className="p-3 rounded-full karaoke-gradient-primary hover:shadow-xl text-white shadow-lg transition-all"
+                disabled={isCommandLoading}
+                className={`p-4 rounded-full text-white shadow-lg transition-all touch-manipulation min-w-[64px] min-h-[64px] flex items-center justify-center ${
+                  isCommandLoading
+                    ? 'bg-gray-600 cursor-not-allowed'
+                    : 'karaoke-gradient-primary hover:shadow-xl active:shadow-lg hover:scale-105 active:scale-95'
+                }`}
+                title="Space: Play/Pause"
               >
-                {displayStatus?.isPlaying ? (
-                  <Pause className="w-6 h-6" />
+                {isCommandLoading ? (
+                  <div className="w-8 h-8 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                ) : displayStatus?.isPlaying ? (
+                  <Pause className="w-8 h-8" />
                 ) : (
-                  <Play className="w-6 h-6 ml-1" />
+                  <Play className="w-8 h-8 ml-1" />
                 )}
               </button>
 
               <button
                 onClick={stopDisplayVideo}
-                className="p-2 rounded-full bg-gray-800/50 hover:bg-gray-700/50 text-gray-400 hover:text-white transition-colors"
+                className="p-3 rounded-full bg-gray-800/50 hover:bg-gray-700/50 active:bg-gray-600/50 text-gray-400 hover:text-white active:text-white transition-all touch-manipulation min-w-[48px] min-h-[48px] flex items-center justify-center"
               >
-                <SkipForward className="w-5 h-5" />
+                <SkipForward className="w-6 h-6" />
               </button>
             </div>
 
-            {/* Volume */}
-            <div className="flex items-center gap-3">
-              <button
-                onClick={toggleDisplayMute}
-                className="text-gray-400 hover:text-white transition-colors"
-              >
-                {isMuted ? (
-                  <VolumeX className="w-4 h-4" />
-                ) : (
-                  <Volume2 className="w-4 h-4" />
-                )}
-              </button>
-              <div className="flex-1">
-                <div className="w-full bg-gray-700 rounded-full h-1">
+            {/* Mobile Instructions */}
+            <div className="md:hidden text-center">
+              <div className="bg-gradient-to-r from-purple-500/20 to-pink-500/20 rounded-lg p-3">
+                <p className="text-xs text-gray-300 mb-1">
+                  <span className="font-medium">🎵 Touch Controls:</span>
+                </p>
+                <p className="text-xs text-gray-400">
+                  Swipe thumbnail to seek • Tap play button to control
+                </p>
+              </div>
+            </div>
+
+            {/* Desktop Keyboard Shortcuts Help */}
+            <div className="hidden md:block text-center">
+              <div className="inline-flex items-center gap-1 text-xs text-gray-500 bg-gray-800/30 px-2 py-1 rounded-full">
+                <span>⌨️</span>
+                <span>Space, ↑↓ vol, Ctrl+←→ seek</span>
+              </div>
+            </div>
+
+            {/* Enhanced Volume Controls */}
+            <div className="bg-gray-800/30 rounded-lg p-4 space-y-3">
+              <div className="flex items-center justify-between text-xs text-gray-400">
+                <span className="font-medium">Volume</span>
+                <span className="font-mono">{isMuted ? 'Muted' : `${volume}%`}</span>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={toggleDisplayMute}
+                  className={`p-3 rounded-full transition-all duration-200 touch-manipulation min-w-[48px] min-h-[48px] flex items-center justify-center ${
+                    isMuted
+                      ? 'bg-red-500/20 text-red-400 hover:bg-red-500/30 active:bg-red-500/40'
+                      : 'bg-gray-700/50 text-gray-400 hover:bg-gray-600/50 active:bg-gray-500/50 hover:text-white active:text-white'
+                  }`}
+                  title={isMuted ? 'Unmute' : 'Mute'}
+                >
+                  {isMuted ? (
+                    <VolumeX className="w-4 h-4" />
+                  ) : (
+                    <Volume2 className="w-4 h-4" />
+                  )}
+                </button>
+
+                <div className="flex-1 relative">
                   <div
-                    className="bg-gradient-to-r from-pink-500 to-purple-600 h-1 rounded-full"
-                    style={{ width: `${isMuted ? 0 : volume}%` }}
-                  />
+                    className="w-full bg-gray-700/80 rounded-full h-2 cursor-pointer hover:h-3 transition-all duration-200"
+                    onClick={(e) => {
+                      const rect = e.currentTarget.getBoundingClientRect();
+                      const x = e.clientX - rect.left;
+                      const percentage = Math.max(0, Math.min(1, x / rect.width));
+                      const newVolume = Math.round(percentage * 100);
+                      setDisplayVolume(newVolume);
+                    }}
+                  >
+                    <div
+                      className="bg-gradient-to-r from-green-500 to-blue-500 h-full rounded-full transition-all duration-200"
+                      style={{ width: `${isMuted ? 0 : volume}%` }}
+                    />
+                  </div>
+
+                  {/* Volume level indicator */}
+                  <div className="absolute -bottom-5 left-0 right-0 flex justify-between text-xs text-gray-500">
+                    <span>0</span>
+                    <span>50</span>
+                    <span>100</span>
+                  </div>
                 </div>
               </div>
-              <span className="text-xs text-gray-400 w-8">{isMuted ? 0 : volume}</span>
+
+              {/* Quick volume presets */}
+              <div className="flex justify-center gap-2">
+                {[25, 50, 75, 100].map((preset) => (
+                  <button
+                    key={preset}
+                    onClick={() => setDisplayVolume(preset)}
+                    className={`px-2 py-1 text-xs rounded transition-all ${
+                      volume === preset && !isMuted
+                        ? 'bg-purple-500 text-white'
+                        : 'bg-gray-700/50 text-gray-400 hover:bg-gray-600/50 hover:text-gray-300'
+                    }`}
+                  >
+                    {preset}%
+                  </button>
+                ))}
+              </div>
             </div>
+
+            {/* Audio Visualization */}
+            {displayStatus?.isPlaying && (
+              <div className="bg-gray-800/30 rounded-lg p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-xs text-gray-400 font-medium">Audio Levels</span>
+                  <div className="flex items-center gap-1">
+                    <div className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse" />
+                    <span className="text-xs text-green-400">Live</span>
+                  </div>
+                </div>
+
+                {/* Spectrum Bars */}
+                <div className="flex items-end justify-center gap-1 h-12">
+                  {Array.from({ length: 12 }, (_, i) => {
+                    const height = Math.random() * 100;
+                    const delay = i * 100;
+                    return (
+                      <div
+                        key={i}
+                        className="bg-gradient-to-t from-purple-500 to-pink-500 rounded-sm min-w-[3px] transition-all duration-300"
+                        style={{
+                          height: `${height}%`,
+                          animationDelay: `${delay}ms`,
+                          animation: displayStatus.isPlaying ? 'pulse 0.5s ease-in-out infinite' : 'none'
+                        }}
+                      />
+                    );
+                  })}
+                </div>
+
+                {/* Frequency Labels */}
+                <div className="flex justify-between text-xs text-gray-500 mt-2">
+                  <span>60Hz</span>
+                  <span>1kHz</span>
+                  <span>10kHz</span>
+                </div>
+              </div>
+            )}
           </div>
         ) : currentSong ? (
           <div className="space-y-4">
@@ -416,10 +944,48 @@ export default function KaraokePlayerPanel({
               <span className="text-xs text-gray-400 w-8">{isMuted ? 0 : volume}</span>
             </div>
           </div>
+        ) : propDisplayWindow && !propDisplayWindow.closed ? (
+          /* Loading state when display window is connected but no video loaded */
+          <div className="space-y-6">
+            <div className="flex items-center justify-center">
+              <div className="text-center">
+                <div className="w-16 h-16 bg-gray-800 rounded-xl flex items-center justify-center mb-4 animate-pulse">
+                  <div className="w-8 h-8 bg-purple-500/50 rounded animate-pulse" />
+                </div>
+                <p className="text-gray-400 text-sm">Waiting for video...</p>
+                <button
+                  onClick={updateDisplayStatus}
+                  className="mt-2 text-xs text-purple-400 hover:text-purple-300 transition-colors"
+                >
+                  Refresh Status
+                </button>
+              </div>
+            </div>
+
+            {/* Skeleton controls */}
+            <div className="space-y-4 opacity-50">
+              <div className="flex items-center justify-center gap-4">
+                <div className="w-10 h-10 bg-gray-800 rounded-full animate-pulse" />
+                <div className="w-12 h-12 bg-gray-800 rounded-full animate-pulse" />
+                <div className="w-10 h-10 bg-gray-800 rounded-full animate-pulse" />
+              </div>
+
+              <div className="w-full bg-gray-800 rounded-full h-2 animate-pulse" />
+
+              <div className="bg-gray-800/30 rounded-lg p-4 space-y-3 animate-pulse">
+                <div className="h-4 bg-gray-700 rounded w-1/4 mx-auto" />
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-gray-700 rounded-full" />
+                  <div className="flex-1 h-2 bg-gray-700 rounded-full" />
+                </div>
+              </div>
+            </div>
+          </div>
         ) : (
           <div className="text-center py-8">
             <Music className="w-12 h-12 text-gray-600 mx-auto mb-4" />
-            <p className="text-gray-400 text-sm">No item is being played</p>
+            <p className="text-gray-400 text-sm mb-2">No display window active</p>
+            <p className="text-gray-500 text-xs">Open a video in display mode to control playback</p>
           </div>
         )}
       </div>
@@ -485,11 +1051,35 @@ export default function KaraokePlayerPanel({
                 .map((song, index) => (
                   <div
                     key={song.id}
-                    className={`p-3 hover:bg-gray-800/30 transition-colors cursor-pointer ${
-                      index === 0 ? 'bg-gradient-to-r from-pink-500/10 to-purple-600/10' : ''
-                    }`}
+                    draggable
+                    onDragStart={(e) => handleDragStart(e, song)}
+                    onDragEnd={handleDragEnd}
+                    onDragOver={(e) => handleDragOver(e, index)}
+                    onDragLeave={handleDragLeave}
+                    onDrop={(e) => handleDrop(e, index)}
+                    className={`p-3 transition-all duration-200 cursor-move ${
+                      index === 0
+                        ? 'bg-gradient-to-r from-pink-500/10 to-purple-600/10 border-l-4 border-pink-500'
+                        : dragOverIndex === index
+                        ? 'bg-blue-500/20 border-2 border-blue-500 border-dashed'
+                        : 'hover:bg-gray-800/30'
+                    } ${draggedItem?.id === song.id ? 'opacity-50' : ''}`}
                   >
                     <div className="flex items-center gap-3">
+                      {/* Drag Handle */}
+                      <div className="flex-shrink-0 text-gray-500 hover:text-gray-300 transition-colors">
+                        <div className="flex flex-col gap-1">
+                          <div className="w-1 h-1 bg-current rounded-full" />
+                          <div className="w-1 h-1 bg-current rounded-full" />
+                          <div className="w-1 h-1 bg-current rounded-full" />
+                        </div>
+                      </div>
+
+                      {/* Position Indicator */}
+                      <div className="flex-shrink-0 w-6 h-6 bg-gray-700 rounded-full flex items-center justify-center text-xs text-gray-400 font-medium">
+                        {index + 1}
+                      </div>
+
                       {/* Thumbnail */}
                       <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-pink-500 rounded flex items-center justify-center flex-shrink-0">
                         <Music className="w-4 h-4 text-white/50" />
@@ -504,6 +1094,7 @@ export default function KaraokePlayerPanel({
                           )}
                         </div>
                         <p className="text-gray-400 text-xs truncate">{song.artist}</p>
+                        <p className="text-gray-500 text-xs">{song.duration}</p>
                       </div>
 
                       {/* Duration and Actions */}
