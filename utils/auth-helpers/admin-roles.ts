@@ -3,10 +3,7 @@
  * Replaces hardcoded admin email arrays throughout the codebase
  */
 
-import { createClient } from '@supabase/supabase-js';
-
-// Singleton client for client-side operations to prevent multiple GoTrueClient instances
-let clientSideSupabaseInstance: ReturnType<typeof createClient> | null = null;
+import { createClient } from '@/utils/supabase/client';
 
 export interface AdminRole {
   id: string;
@@ -40,24 +37,8 @@ export async function isAdminEmail(userEmail: string | null | undefined): Promis
       return isAdminEmailFallback(userEmail);
     }
 
-    let supabase;
-    if (isClient) {
-      // Client-side: use singleton pattern to prevent multiple GoTrueClient instances
-      if (!clientSideSupabaseInstance) {
-        clientSideSupabaseInstance = createClient(supabaseUrl, supabaseAnonKey);
-      }
-      supabase = clientSideSupabaseInstance;
-    } else {
-      // Server-side: try to use service role key for admin operations
-      const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-      if (serviceRoleKey) {
-        supabase = createClient(supabaseUrl, serviceRoleKey);
-      } else {
-        // If service role key not available, fallback to anon key
-        console.warn('Service role key not available, using anon key');
-        supabase = createClient(supabaseUrl, supabaseAnonKey);
-      }
-    }
+    // Use our singleton client (works for both client and server)
+    const supabase = createClient();
 
     // Use database function for fast lookup
     const { data, error } = await supabase.rpc('is_platform_admin', {

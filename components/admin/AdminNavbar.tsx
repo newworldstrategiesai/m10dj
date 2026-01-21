@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useTheme } from 'next-themes';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { createClient } from '@/utils/supabase/client';
 import {
   Home,
   Users,
@@ -52,7 +52,7 @@ interface NavItem {
 
 export default function AdminNavbar() {
   const router = useRouter();
-  const supabase = createClientComponentClient();
+  const supabase = createClient();
   const { theme, systemTheme } = useTheme();
   const [user, setUser] = useState<any>(null);
   const [isAdmin, setIsAdmin] = useState(false);
