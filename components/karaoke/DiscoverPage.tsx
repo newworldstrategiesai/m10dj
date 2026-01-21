@@ -12,7 +12,7 @@ import {
   Music,
   Gamepad2,
   Star,
-  Users,
+  User,
   Clock,
   Heart
 } from 'lucide-react';
@@ -285,7 +285,7 @@ export default function DiscoverPage({ isPremium }: DiscoverPageProps) {
 
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <Users className="w-4 h-4 text-gray-500" />
+                    <User className="w-4 h-4 text-gray-500" />
                     <span className="text-gray-500 text-sm">
                       {quiz.playerCount?.toLocaleString()} played
                     </span>

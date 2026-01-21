@@ -450,6 +450,14 @@ export function getYouTubeWatchUrl(videoId: string): string {
  */
 let youtubeAPI: YouTubeAPI | null = null;
 
+/**
+ * Validate if a YouTube video exists and get its metadata
+ */
+export async function validateVideo(videoId: string): Promise<YouTubeVideo | null> {
+  const api = getYouTubeAPI();
+  return api.validateVideo(videoId);
+}
+
 export function getYouTubeAPI(): YouTubeAPI {
   if (!youtubeAPI) {
     youtubeAPI = new YouTubeAPI();
