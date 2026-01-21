@@ -41,6 +41,24 @@ const DEFAULT_CONFIG: YouTubeAPIConfig = {
 };
 
 /**
+ * Get human-readable error type from YouTube API status codes
+ */
+function getYouTubeErrorType(statusCode: number): string {
+  switch (statusCode) {
+    case 400: return 'Bad Request';
+    case 401: return 'Authentication Failed';
+    case 402: return 'Quota Exceeded (Payment Required)';
+    case 403: return 'Access Forbidden';
+    case 404: return 'Not Found';
+    case 409: return 'Conflict';
+    case 429: return 'Rate Limited';
+    case 500: return 'Server Error';
+    case 503: return 'Service Unavailable';
+    default: return `HTTP ${statusCode}`;
+  }
+}
+
+/**
  * YouTube API client class
  */
 export class YouTubeAPI {
@@ -87,13 +105,15 @@ export class YouTubeAPI {
       });
 
       if (!response.ok) {
-        throw new Error(`YouTube API error: ${response.status} ${response.statusText}`);
+        const errorType = getYouTubeErrorType(response.status);
+        throw new Error(`YouTube API ${errorType}: ${response.status} ${response.statusText}`);
       }
 
       const data = await response.json();
 
       if (data.error) {
-        throw new Error(`YouTube API error: ${data.error.message}`);
+        const errorType = getYouTubeErrorType(data.error.code);
+        throw new Error(`YouTube API ${errorType}: ${data.error.message}`);
       }
 
       // Get video details for duration and statistics

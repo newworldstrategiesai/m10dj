@@ -232,11 +232,35 @@ export default function VideoManager({ organizationId }: VideoManagerProps) {
       if (response.ok && !data.error) {
         setSearchResults(data.videos || []);
 
-        // Show info message if YouTube is not available
+        // Show appropriate messages based on YouTube status
         if (!data.youtubeAvailable) {
           toast({
             title: 'YouTube Search Unavailable',
             description: 'YouTube API key not configured. Video search results may be limited.',
+            variant: 'default'
+          });
+        } else if (data.youtubeError) {
+          // Show specific error messages for different YouTube API issues
+          let title = 'YouTube Search Limited';
+          let description = 'Some video results may be unavailable.';
+
+          if (data.youtubeError.includes('Quota Exceeded')) {
+            title = 'YouTube API Quota Exceeded';
+            description = 'Daily search limit reached. Video results may be limited.';
+          } else if (data.youtubeError.includes('Authentication Failed')) {
+            title = 'YouTube API Key Issue';
+            description = 'Video search temporarily unavailable due to API configuration.';
+          } else if (data.youtubeError.includes('Rate Limited')) {
+            title = 'YouTube Rate Limited';
+            description = 'Too many requests. Video search will resume shortly.';
+          } else if (data.youtubeError.includes('Service Unavailable')) {
+            title = 'YouTube Service Issue';
+            description = 'YouTube is temporarily unavailable. Please try again later.';
+          }
+
+          toast({
+            title,
+            description,
             variant: 'default'
           });
         }

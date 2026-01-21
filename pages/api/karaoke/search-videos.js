@@ -57,14 +57,26 @@ export default async function handler(req, res) {
     const hasYouTubeAPI = !!process.env.YOUTUBE_API_KEY?.trim();
 
     let videos = [];
+    let youtubeError = null;
     if (hasYouTubeAPI) {
       try {
         videos = await searchKaraokeVideos(searchQuery, searchArtist, {
           maxResults: Math.min(maxResults, 50), // Allow more results for enhanced UI
           filters
         });
-      } catch (youtubeError) {
-        console.error('YouTube search failed:', youtubeError);
+      } catch (error) {
+        console.error('YouTube search failed:', error);
+        youtubeError = error.message || 'YouTube search failed';
+
+        // Log specific error types for monitoring
+        if (error.message.includes('Quota Exceeded')) {
+          console.warn('YouTube API quota exceeded - consider upgrading API plan');
+        } else if (error.message.includes('Authentication Failed')) {
+          console.warn('YouTube API key invalid or expired');
+        } else if (error.message.includes('Rate Limited')) {
+          console.warn('YouTube API rate limit exceeded - temporary issue');
+        }
+
         // Continue with empty results - graceful degradation
       }
     }
@@ -103,7 +115,8 @@ export default async function handler(req, res) {
         organizationId
       },
       totalResults: videos.length,
-      youtubeAvailable: hasYouTubeAPI
+      youtubeAvailable: hasYouTubeAPI,
+      youtubeError: youtubeError
     });
 
   } catch (error) {
