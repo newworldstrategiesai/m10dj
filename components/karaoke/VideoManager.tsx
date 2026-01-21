@@ -85,6 +85,11 @@ interface VideoSearchResult {
 
 interface VideoManagerProps {
   organizationId: string;
+  preSearchQuery?: string;
+  mode?: 'normal' | 'signup-link';
+  signupToLink?: any;
+  onVideoLinked?: (signupId: string, videoData: any) => void;
+  onClose?: () => void;
 }
 
 interface VideoLibraryItem {
@@ -120,7 +125,14 @@ interface PlayerState {
   duration: number;
 }
 
-export default function VideoManager({ organizationId }: VideoManagerProps) {
+export default function VideoManager({
+  organizationId,
+  preSearchQuery = '',
+  mode = 'normal',
+  signupToLink,
+  onVideoLinked,
+  onClose
+}: VideoManagerProps) {
   const { toast } = useToast();
 
   // State
@@ -182,6 +194,18 @@ export default function VideoManager({ organizationId }: VideoManagerProps) {
       loadPlaylists();
     }
   }, [activeTab]);
+
+  // Auto-search when preSearchQuery is provided (for signup linking)
+  useEffect(() => {
+    if (preSearchQuery && mode === 'signup-link') {
+      setSearchTerm(preSearchQuery);
+      setActiveTab('search');
+      // Trigger search after a brief delay to ensure component is mounted
+      setTimeout(() => {
+        searchVideos(preSearchQuery);
+      }, 500);
+    }
+  }, [preSearchQuery, mode]);
 
   const loadVideos = async () => {
     try {
@@ -368,6 +392,74 @@ export default function VideoManager({ organizationId }: VideoManagerProps) {
 
   // Link video to song
   const linkVideo = async (youtubeVideoId: string, videoData: VideoSearchResult) => {
+    // Handle signup linking mode
+    if (mode === 'signup-link' && signupToLink && onVideoLinked) {
+      setLinking(true);
+      try {
+        const response = await fetch('/api/karaoke/link-video', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            songTitle: signupToLink.song_title,
+            songArtist: signupToLink.song_artist,
+            youtubeVideoId,
+            organizationId,
+            source: 'signup-link'
+          })
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+
+          // Link the video to the signup
+          const linkResponse = await fetch('/api/karaoke/link-signup-video', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              signupId: signupToLink.id,
+              videoId: data.video.id,
+              organizationId
+            })
+          });
+
+          if (linkResponse.ok) {
+            toast({
+              title: 'Video Linked to Signup',
+              description: `Successfully linked "${signupToLink.song_title}" to karaoke video`,
+            });
+
+            // Call the callback to update the parent component
+            onVideoLinked(signupToLink.id, data.video);
+
+            // Close the modal
+            onClose?.();
+          } else {
+            throw new Error('Failed to link video to signup');
+          }
+        } else {
+          const error = await response.json();
+          throw new Error(error.error || 'Failed to link video');
+        }
+      } catch (error: unknown) {
+        console.error('Video linking error:', error);
+        const errorMessage = error instanceof Error
+          ? error.message
+          : typeof error === 'string'
+          ? error
+          : 'Failed to link video';
+
+        toast({
+          title: 'Linking Failed',
+          description: errorMessage,
+          variant: 'destructive'
+        });
+      } finally {
+        setLinking(false);
+      }
+      return;
+    }
+
+    // Original linking logic for normal mode
     if (!linkingSong) return;
 
     setLinking(true);

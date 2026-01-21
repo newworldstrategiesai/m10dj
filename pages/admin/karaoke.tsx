@@ -76,6 +76,8 @@ export default function KaraokeAdminPage() {
   const [settings, setSettings] = useState<any>(null);
   const [savingSettings, setSavingSettings] = useState(false);
   const [activeTab, setActiveTab] = useState('discover');
+  const [showVideoSearchForSignup, setShowVideoSearchForSignup] = useState(false);
+  const [videoSearchSignup, setVideoSearchSignup] = useState<KaraokeSignup | null>(null);
 
   // Page customization settings
   const [pageSettings, setPageSettings] = useState({
@@ -1395,6 +1397,65 @@ export default function KaraokeAdminPage() {
                     )}
                   </div>
 
+                  {/* Karaoke Video Search */}
+                  {selectedSignup.song_title && (
+                    <div className="mt-6">
+                      <label className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-3 block">
+                        Karaoke Videos
+                      </label>
+                      <div className="p-4 bg-gradient-to-r from-pink-50 to-purple-50 dark:from-pink-900/20 dark:to-purple-900/20 rounded-lg border border-pink-200 dark:border-pink-800">
+                        <div className="flex items-center justify-between mb-3">
+                          <div className="flex items-center gap-2">
+                            <Music className="w-4 h-4 text-pink-600" />
+                            <span className="text-sm font-medium text-gray-900 dark:text-white">
+                              Find Karaoke Videos
+                            </span>
+                          </div>
+                          <Button
+                            size="sm"
+                            onClick={() => {
+                              // Open video search modal for this song
+                              setShowVideoSearchForSignup(true);
+                              setVideoSearchSignup(selectedSignup);
+                            }}
+                            className="bg-pink-600 hover:bg-pink-700 text-white"
+                          >
+                            <Search className="w-4 h-4 mr-1" />
+                            Search YouTube
+                          </Button>
+                        </div>
+                        <p className="text-xs text-gray-600 dark:text-gray-400 mb-3">
+                          Search for karaoke videos on YouTube. Karafun videos are prioritized.
+                        </p>
+
+                        {/* Show current video if linked */}
+                        {selectedSignup.video_data && (
+                          <div className="flex items-center gap-3 p-3 bg-white dark:bg-gray-800 rounded border">
+                            <img
+                              src={`https://img.youtube.com/vi/${selectedSignup.video_data.youtube_video_id}/default.jpg`}
+                              alt="Current video"
+                              className="w-12 h-9 rounded object-cover"
+                            />
+                            <div className="flex-1">
+                              <p className="text-sm font-medium text-gray-900 dark:text-white">
+                                Current: {selectedSignup.video_data.youtube_video_title || 'Linked Video'}
+                              </p>
+                              <p className="text-xs text-gray-500">
+                                {selectedSignup.video_data.youtube_channel_name} • {selectedSignup.video_data.video_quality_score}/100
+                              </p>
+                            </div>
+                            {isKarafunVideo(selectedSignup.video_data.youtube_channel_name, selectedSignup.video_data.youtube_channel_id) && (
+                              <Badge className="bg-purple-500 text-white text-xs">
+                                <Music className="w-3 h-3 mr-1" />
+                                Karafun
+                              </Badge>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
                   {/* Video Information */}
                   <div>
                     <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Video Status</label>
@@ -2399,6 +2460,59 @@ export default function KaraokeAdminPage() {
           </div>
         </TabsContent>
       </Tabs>
+
+      {/* Video Search Modal for Karaoke Signups */}
+      <Dialog open={showVideoSearchForSignup} onOpenChange={setShowVideoSearchForSignup}>
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-hidden">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Music className="w-5 h-5 text-pink-600" />
+              Find Karaoke Video for "{videoSearchSignup?.song_title}"
+            </DialogTitle>
+            <DialogDescription>
+              Search YouTube for karaoke videos. Karafun videos are automatically prioritized.
+            </DialogDescription>
+          </DialogHeader>
+
+          {videoSearchSignup && (
+            <VideoManager
+              organizationId={organization?.id || ''}
+              preSearchQuery={`${videoSearchSignup.song_title}${videoSearchSignup.song_artist ? ` ${videoSearchSignup.song_artist}` : ''}`}
+              mode="signup-link"
+              signupToLink={videoSearchSignup}
+              onVideoLinked={(signupId, videoData) => {
+                // Update the signup in the local state
+                setSignups(prev => prev.map(signup =>
+                  signup.id === signupId
+                    ? { ...signup, video_id: videoData.id, video_data: videoData }
+                    : signup
+                ));
+
+                // Update selected signup if it's the current one
+                if (selectedSignup && selectedSignup.id === signupId) {
+                  setSelectedSignup(prev => prev ? {
+                    ...prev,
+                    video_id: videoData.id,
+                    video_data: videoData
+                  } : null);
+                }
+
+                setShowVideoSearchForSignup(false);
+                setVideoSearchSignup(null);
+
+                toast({
+                  title: 'Video Linked',
+                  description: 'Karaoke video has been linked to this signup',
+                });
+              }}
+              onClose={() => {
+                setShowVideoSearchForSignup(false);
+                setVideoSearchSignup(null);
+              }}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </KaraokeLayout>
   );
 }

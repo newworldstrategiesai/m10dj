@@ -23,7 +23,7 @@ import {
 interface KaraokeSidebarProps {
   isCollapsed: boolean;
   onToggleCollapse: () => void;
-  currentPage: 'discover' | 'playlists' | 'quizzes' | 'library';
+  currentPage: 'discover' | 'playlists' | 'quizzes' | 'library' | 'favorites' | 'history' | 'my-songs';
   user: any;
   isPremium: boolean;
 }

@@ -63,12 +63,10 @@ export default function KaraokePlaylistsPage() {
       if (error) throw error;
 
       // Add video count for each playlist
-      const playlistsWithCount = await Promise.all(
-        (playlistsData || []).map(async (playlist) => ({
-          ...playlist,
-          video_count: playlist.video_ids?.length || 0
-        }))
-      );
+      const playlistsWithCount = (playlistsData || []).map((playlist: any) => ({
+        ...playlist,
+        video_count: (playlist.video_ids as any[])?.length || 0
+      }));
 
       setPlaylists(playlistsWithCount);
     } catch (error) {

@@ -63,7 +63,7 @@ export default function FavoritesPage() {
       if (error) throw error;
 
       // Mock favorites - in real app this would come from user preferences
-      const mockFavorites = videos?.slice(0, 15).map((v, index) => ({
+      const mockFavorites = (videos as any[])?.slice(0, 15).map((v: any, index: number) => ({
         ...v,
         is_favorite: true,
         favorited_at: new Date(Date.now() - index * 24 * 60 * 60 * 1000).toISOString(),

@@ -74,13 +74,13 @@ export default function MySongsPage() {
       if (error) throw error;
 
       // Mock user-specific data - in real app this would come from user preferences
-      const mockRecent = videos?.slice(0, 10).map(v => ({
+      const mockRecent = (videos as any[])?.slice(0, 10).map((v: any) => ({
         ...v,
         play_count: Math.floor(Math.random() * 20) + 1,
         last_played_at: new Date(Date.now() - Math.random() * 7 * 24 * 60 * 60 * 1000).toISOString()
       })) || [];
 
-      const mockFavorites = videos?.slice(10, 20).map(v => ({
+      const mockFavorites = (videos as any[])?.slice(10, 20).map((v: any) => ({
         ...v,
         is_favorite: true,
         play_count: Math.floor(Math.random() * 50) + 10

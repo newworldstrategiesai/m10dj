@@ -11,7 +11,7 @@ interface KaraokeLayoutProps {
   children: React.ReactNode;
   title?: string;
   showBackButton?: boolean;
-  currentPage?: 'discover' | 'playlists' | 'quizzes' | 'library';
+  currentPage?: 'discover' | 'playlists' | 'quizzes' | 'library' | 'favorites' | 'history' | 'my-songs';
 }
 
 export default function KaraokeLayout({

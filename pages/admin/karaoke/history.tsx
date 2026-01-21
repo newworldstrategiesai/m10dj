@@ -67,7 +67,7 @@ export default function HistoryPage() {
       if (error) throw error;
 
       // Mock history data - in real app this would come from play history table
-      const mockHistory = videos?.map((v, index) => ({
+      const mockHistory = (videos as any[])?.map((v: any, index: number) => ({
         ...v,
         played_at: new Date(Date.now() - index * 2 * 60 * 60 * 1000).toISOString(), // Spread over last 100 hours
         play_count: Math.floor(Math.random() * 10) + 1,

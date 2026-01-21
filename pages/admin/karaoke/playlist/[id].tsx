@@ -97,24 +97,25 @@ export default function PlaylistDetailPage() {
 
       if (playlistError) throw playlistError;
 
-      setPlaylist(playlistData);
-      setEditName(playlistData.name);
-      setEditDescription(playlistData.description || '');
-      setEditIsPublic(playlistData.is_public);
+      const playlist = playlistData as any;
+      setPlaylist(playlist);
+      setEditName(playlist.name);
+      setEditDescription(playlist.description || '');
+      setEditIsPublic(playlist.is_public);
 
       // Get videos
-      if (playlistData.video_ids && playlistData.video_ids.length > 0) {
+      if (playlist.video_ids && playlist.video_ids.length > 0) {
         const { data: videosData, error: videosError } = await supabase
           .from('karaoke_song_videos')
-          .select('id, song_title, song_artist, youtube_video_title, youtube_channel_name, youtube_video_duration, is_premium')
-          .in('id', playlistData.video_ids);
+          .select('id, song_title, song_artist, youtube_video_title, youtube_channel_name, youtube_video_duration, is_premium, youtube_video_id')
+          .in('id', playlist.video_ids);
 
         if (videosError) throw videosError;
 
         // Sort videos in the order they appear in video_ids
-        const sortedVideos = playlistData.video_ids
-          .map(videoId => {
-            const video = videosData?.find(v => v.id === videoId);
+        const sortedVideos = playlist.video_ids
+          .map((videoId: string) => {
+            const video = (videosData as any[])?.find((v: any) => v.id === videoId);
             if (video) {
               return {
                 id: video.id,
