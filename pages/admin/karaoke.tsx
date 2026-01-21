@@ -3079,6 +3079,12 @@ export default function KaraokeAdminPage() {
       {/* Manual Signup Modal */}
       <Dialog open={showManualSignup} onOpenChange={setShowManualSignup}>
         <DialogContent className="max-w-4xl w-[95vw] max-h-[90vh] overflow-hidden p-0">
+          <DialogHeader className="sr-only">
+            <DialogTitle>Manual Karaoke Signup</DialogTitle>
+            <DialogDescription>
+              Add a new karaoke signup manually with song selection and participant details.
+            </DialogDescription>
+          </DialogHeader>
           <ManualKaraokeSignup
             organizationId={organization?.id || ''}
             eventCode={eventCodeFilter}
