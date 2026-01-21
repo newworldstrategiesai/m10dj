@@ -1533,6 +1533,21 @@ export default function KaraokeAdminPage() {
                                 {selectedSignup.video_data.youtube_channel_name} • Quality: {selectedSignup.video_data.video_quality_score}/100
                               </p>
                             </div>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => {
+                                window.open(
+                                  `https://www.youtube.com/watch?v=${selectedSignup.video_data.youtube_video_id}`,
+                                  '_blank',
+                                  'noopener,noreferrer'
+                                );
+                              }}
+                              className="border-green-300 hover:bg-green-50"
+                            >
+                              <Play className="w-4 h-4 mr-1" />
+                              Play Video
+                            </Button>
                           </div>
                         </div>
                       ) : (
@@ -1588,6 +1603,23 @@ export default function KaraokeAdminPage() {
                                     <Badge variant="outline" className="text-xs">
                                       Quality: {signupVideoSuggestions[selectedSignup.id].karaokeScore}/100
                                     </Badge>
+
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() => {
+                                        const video = signupVideoSuggestions[selectedSignup.id];
+                                        window.open(
+                                          `https://www.youtube.com/watch?v=${video.id}`,
+                                          '_blank',
+                                          'noopener,noreferrer'
+                                        );
+                                      }}
+                                      className="border-gray-300 hover:bg-gray-50"
+                                    >
+                                      <Play className="w-4 h-4 mr-1" />
+                                      Play Video
+                                    </Button>
 
                                     <Button
                                       size="sm"

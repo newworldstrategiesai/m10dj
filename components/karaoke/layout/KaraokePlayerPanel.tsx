@@ -297,8 +297,21 @@ export default function KaraokePlayerPanel({ onClose, isPremium }: KaraokePlayer
                       <div className="flex items-center gap-2">
                         <span className="text-gray-500 text-xs">{song.duration}</span>
                         <button
+                          onClick={() => {
+                            // Open video in new window if we have video data
+                            // For now, this is a placeholder - in real implementation
+                            // we'd need video data associated with queue items
+                            console.log('Play video for:', song.title);
+                          }}
+                          className="text-pink-400 hover:text-pink-300 transition-colors"
+                          title="Play Video"
+                        >
+                          <Play className="w-4 h-4" />
+                        </button>
+                        <button
                           onClick={() => removeFromQueue(song.id)}
                           className="text-gray-500 hover:text-gray-400 transition-colors"
+                          title="Remove from Queue"
                         >
                           <X className="w-4 h-4" />
                         </button>
