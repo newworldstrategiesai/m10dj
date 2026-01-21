@@ -1,6 +1,6 @@
 import { createServerSupabaseClient } from '@supabase/auth-helpers-nextjs';
 import { createClient } from '@supabase/supabase-js';
-import { validateYouTubeVideo as validateVideo } from '@/utils/youtube-api';
+import { validateYouTubeVideo } from '@/utils/youtube-api';
 import { withSecurity } from '@/utils/rate-limiting';
 
 /**
@@ -50,7 +50,7 @@ export default async function handler(req, res) {
     }
 
     // Validate YouTube video exists
-    const videoData = await validateVideo(youtubeVideoId);
+    const videoData = await validateYouTubeVideo(youtubeVideoId);
     if (!videoData) {
       return res.status(400).json({ error: 'YouTube video not found or unavailable' });
     }
