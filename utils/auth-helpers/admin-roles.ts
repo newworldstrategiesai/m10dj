@@ -50,11 +50,19 @@ export async function isAdminEmail(userEmail: string | null | undefined): Promis
     }
 
     // Check if user is admin by calling a database function that bypasses RLS
-    const { data, error } = await (supabase as any).rpc('check_user_admin_status', { user_id_param: userData.user.id });
+    // Try both parameter formats in case one works
+    let result = await (supabase as any).rpc('check_user_admin_status', { user_id_param: userData.user.id });
 
-    if (error) {
-      console.error('Error checking admin role:', error);
+    // If that fails, try the array format
+    if (result.error) {
+      console.log('Trying array format for RPC call');
+      result = await (supabase as any).rpc('check_user_admin_status', [userData.user.id]);
+    }
+
+    if (result.error) {
+      console.error('Error checking admin role:', result.error);
       // Fallback to hardcoded list
+      console.log('Falling back to email-based admin check');
       return isAdminEmailFallback(userEmail);
     }
 

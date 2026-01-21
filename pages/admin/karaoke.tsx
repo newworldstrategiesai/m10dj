@@ -606,7 +606,8 @@ export default function KaraokeAdminPage() {
         body: JSON.stringify({
           signup_id: signupId,
           status: newStatus,
-          admin_notes: adminNotes
+          admin_notes: adminNotes,
+          organization_id: organization?.id
         }),
       });
 
