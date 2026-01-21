@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -60,63 +60,61 @@ export default function DiscoverPage({ isPremium }: DiscoverPageProps) {
   }
   const supabase = supabaseRef.current;
 
-  const loadPlaylists = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
+  useEffect(() => {
+    const loadPlaylists = async () => {
+      try {
+        setLoading(true);
+        setError(null);
 
-      // Get current organization
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
-      if (userError) throw new Error(`Authentication error: ${userError.message}`);
-      if (!user) throw new Error('Not authenticated - please sign in');
+        // Get current organization
+        const { data: { user }, error: userError } = await supabase.auth.getUser();
+        if (userError) throw new Error(`Authentication error: ${userError.message}`);
+        if (!user) throw new Error('Not authenticated - please sign in');
 
-      const { data: userOrgs, error: orgError } = await supabase
-        .from('organization_members')
-        .select('organization_id')
-        .eq('user_id', user.id)
-        .limit(1);
+        const { data: userOrgs, error: orgError } = await supabase
+          .from('organization_members')
+          .select('organization_id')
+          .eq('user_id', user.id)
+          .limit(1);
 
-      if (orgError) throw new Error(`Organization access error: ${orgError.message}`);
-      if (!userOrgs?.length) throw new Error('No organization access - please contact administrator');
+        if (orgError) throw new Error(`Organization access error: ${orgError.message}`);
+        if (!userOrgs?.length) throw new Error('No organization access - please contact administrator');
 
-      const organizationId = (userOrgs[0] as any).organization_id;
+        const organizationId = (userOrgs[0] as any).organization_id;
 
-      // Load playlists
-      const { data: playlistData, error: playlistError } = await supabase
-        .from('user_playlists')
-        .select('*')
-        .eq('organization_id', organizationId)
-        .eq('is_public', true)
-        .order('created_at', { ascending: false });
+        // Load playlists
+        const { data: playlistData, error: playlistError } = await supabase
+          .from('user_playlists')
+          .select('*')
+          .eq('organization_id', organizationId)
+          .eq('is_public', true)
+          .order('created_at', { ascending: false });
 
-      if (playlistError) {
-        console.error('Error loading playlists:', playlistError);
-        throw new Error(`Failed to load playlists: ${playlistError.message}`);
-      }
+        if (playlistError) {
+          console.error('Error loading playlists:', playlistError);
+          throw new Error(`Failed to load playlists: ${playlistError.message}`);
+        }
 
-      // Calculate song count for each playlist
-      const playlistsWithCount = await Promise.all(
-        (playlistData || []).map(async (playlist: any) => {
+        // Calculate song count for each playlist
+        const playlistsWithCount = (playlistData || []).map((playlist: any) => {
           const songCount = playlist.video_ids?.length || 0;
           return {
             ...playlist,
             songCount
           };
-        })
-      );
+        });
 
-      setPlaylists(playlistsWithCount);
-    } catch (err) {
-      console.error('Error loading playlists:', err);
-      setError(err instanceof Error ? err.message : 'Failed to load playlists');
-    } finally {
-      setLoading(false);
-    }
-  }, []); // supabase is stable via useRef
+        setPlaylists(playlistsWithCount);
+      } catch (err) {
+        console.error('Error loading playlists:', err);
+        setError(err instanceof Error ? err.message : 'Failed to load playlists');
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  useEffect(() => {
     loadPlaylists();
-  }, [loadPlaylists]);
+  }, []); // Empty dependency array - only run once
 
   const quizzes: Quiz[] = [
     {

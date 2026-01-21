@@ -33,6 +33,7 @@ interface Contact {
   lead_status: string | null;
   lead_source: string | null;
   lead_temperature: string | null;
+  spam_status: string | null; // 'not_spam', 'spam', 'potential_spam'
   budget_range: string | null;
   special_requests: string | null;
   notes: string | null;
@@ -129,6 +130,7 @@ export default function ContactsWrapper({ userId, apiKeys }: ContactsWrapperProp
   const [eventTypeFilter, setEventTypeFilter] = useState('all');
   const [leadStatusFilter, setLeadStatusFilter] = useState('all');
   const [temperatureFilter, setTemperatureFilter] = useState('all');
+  const [spamFilter, setSpamFilter] = useState<'all' | 'not_spam' | 'spam'>('not_spam'); // Default to hide spam
   const [sortBy, setSortBy] = useState('lead_score'); // Default to sorting by lead score
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [dateRangeFilter, setDateRangeFilter] = useState<'all' | 'today' | 'week' | 'month' | 'year' | 'custom'>('all');
@@ -300,6 +302,11 @@ export default function ContactsWrapper({ userId, apiKeys }: ContactsWrapperProp
     // Apply temperature filter
     if (temperatureFilter !== 'all') {
       filtered = filtered.filter(contact => contact.lead_temperature === temperatureFilter);
+    }
+
+    // Apply spam filter
+    if (spamFilter !== 'all') {
+      filtered = filtered.filter(contact => contact.spam_status === spamFilter || (!contact.spam_status && spamFilter === 'not_spam'));
     }
 
     // Apply date range filter
@@ -796,6 +803,17 @@ export default function ContactsWrapper({ userId, apiKeys }: ContactsWrapperProp
               <SelectItem value="Hot">Hot</SelectItem>
               <SelectItem value="Warm">Warm</SelectItem>
               <SelectItem value="Cold">Cold</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Select value={spamFilter} onValueChange={(value: any) => setSpamFilter(value)}>
+            <SelectTrigger className="w-full lg:w-40 h-12 lg:h-10">
+              <SelectValue placeholder="Spam Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="not_spam">Not Spam</SelectItem>
+              <SelectItem value="spam">Spam Only</SelectItem>
+              <SelectItem value="all">All Contacts</SelectItem>
             </SelectContent>
           </Select>
 

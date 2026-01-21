@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useRouter } from 'next/router';
-import { ArrowLeft, Save, Phone, Mail, Calendar, MapPin, Music, DollarSign, User, MessageSquare, Edit3, Trash2, CheckCircle, Loader2, FileText, Copy, Clock, Sparkles, Link2, Unlink } from 'lucide-react';
+import { ArrowLeft, Save, Phone, Mail, Calendar, MapPin, Music, DollarSign, User, MessageSquare, Edit3, Trash2, CheckCircle, Loader2, FileText, Copy, Clock, Sparkles, Link2, Unlink, ShieldX, AlertTriangle } from 'lucide-react';
 import { createClient } from '@/utils/supabase/client';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -61,6 +61,7 @@ interface Contact {
   lead_temperature: string | null;
   communication_preference: string | null;
   source_domain: string | null; // Domain where the inquiry originated from
+  spam_status: string | null; // 'not_spam', 'spam', 'potential_spam'
   payment_status: string | null;
   notes: string | null;
   custom_fields?: any; // For storing service selections and other custom data
@@ -135,6 +136,8 @@ export default function ContactDetailPage() {
   const [saving, setSaving] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [lookingUpVenue, setLookingUpVenue] = useState(false);
+  const [deletingContact, setDeletingContact] = useState(false);
+  const [markingSpam, setMarkingSpam] = useState(false);
   const venueLookupTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [showEmailParser, setShowEmailParser] = useState(false);
   const [emailContent, setEmailContent] = useState('');
@@ -794,6 +797,82 @@ export default function ContactDetailPage() {
     }
   };
 
+  const handleDeleteContact = async () => {
+    if (!confirm('Are you sure you want to delete this contact? This action cannot be undone.')) {
+      return;
+    }
+
+    setDeletingContact(true);
+    try {
+      const response = await fetch(`/api/contacts/${id}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' }
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        toast({
+          title: "Success",
+          description: "Contact deleted successfully",
+        });
+        // Redirect back to contacts list
+        router.push('/admin/contacts');
+      } else {
+        throw new Error(data.error || 'Failed to delete contact');
+      }
+    } catch (error) {
+      console.error('Error deleting contact:', error);
+      toast({
+        title: "Error",
+        description: (error as Error).message || "Failed to delete contact",
+        variant: "destructive"
+      });
+    } finally {
+      setDeletingContact(false);
+    }
+  };
+
+  const handleMarkAsSpam = async () => {
+    const isCurrentlySpam = contact?.spam_status === 'spam';
+    const action = isCurrentlySpam ? 'unmark as spam' : 'mark as spam';
+
+    if (!confirm(`Are you sure you want to ${action} this contact?`)) {
+      return;
+    }
+
+    setMarkingSpam(true);
+    try {
+      const method = isCurrentlySpam ? 'DELETE' : 'POST';
+      const response = await fetch(`/api/contacts/${id}/spam`, {
+        method: method,
+        headers: { 'Content-Type': 'application/json' }
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        // Update local contact state
+        setContact(prev => prev ? { ...prev, spam_status: isCurrentlySpam ? 'not_spam' : 'spam' } : null);
+        toast({
+          title: "Success",
+          description: `Contact ${action}ed successfully`,
+        });
+      } else {
+        throw new Error(data.error || `Failed to ${action} contact`);
+      }
+    } catch (error) {
+      console.error(`Error ${action}ing contact:`, error);
+      toast({
+        title: "Error",
+        description: (error as Error).message || `Failed to ${action} contact`,
+        variant: "destructive"
+      });
+    } finally {
+      setMarkingSpam(false);
+    }
+  };
+
   const handleParseEmail = async () => {
     if (!emailContent.trim()) {
       toast({
@@ -1040,10 +1119,34 @@ export default function ContactDetailPage() {
             </Link>
             <div className="flex gap-2 w-full sm:w-auto">
               {!isEditing ? (
-                <Button onClick={() => setIsEditing(true)} className="flex items-center gap-2 flex-1 sm:flex-initial">
-                  <Edit3 className="h-4 w-4" />
-                  <span className="text-xs sm:text-sm">Edit Contact</span>
-            </Button>
+                <>
+                  <Button onClick={() => setIsEditing(true)} className="flex items-center gap-2 flex-1 sm:flex-initial">
+                    <Edit3 className="h-4 w-4" />
+                    <span className="text-xs sm:text-sm">Edit Contact</span>
+                  </Button>
+                  <Button
+                    onClick={handleMarkAsSpam}
+                    disabled={markingSpam}
+                    variant={contact?.spam_status === 'spam' ? 'default' : 'outline'}
+                    className="flex items-center gap-2 flex-1 sm:flex-initial text-xs sm:text-sm"
+                  >
+                    {contact?.spam_status === 'spam' ? (
+                      <ShieldX className="h-4 w-4" />
+                    ) : (
+                      <AlertTriangle className="h-4 w-4" />
+                    )}
+                    {markingSpam ? 'Processing...' : (contact?.spam_status === 'spam' ? 'Unmark Spam' : 'Mark as Spam')}
+                  </Button>
+                  <Button
+                    onClick={handleDeleteContact}
+                    disabled={deletingContact}
+                    variant="destructive"
+                    className="flex items-center gap-2 flex-1 sm:flex-initial text-xs sm:text-sm"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                    {deletingContact ? 'Deleting...' : 'Delete Contact'}
+                  </Button>
+                </>
               ) : (
                 <div className="flex gap-2 w-full sm:w-auto">
                   <Button
@@ -1056,17 +1159,17 @@ export default function ContactDetailPage() {
                   >
                     Cancel
                   </Button>
-                  <Button 
+                  <Button
                     onClick={handleSave}
                     disabled={saving}
                     className="flex items-center gap-2 flex-1 sm:flex-initial text-xs sm:text-sm"
                   >
                     <Save className="h-4 w-4" />
                     {saving ? 'Saving...' : 'Save Changes'}
-                      </Button>
-                    </div>
+                  </Button>
+                </div>
               )}
-              </div>
+            </div>
             </div>
 
           <div className="flex flex-col sm:flex-row sm:items-center gap-4">

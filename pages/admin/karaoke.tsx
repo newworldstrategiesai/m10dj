@@ -3,6 +3,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/router';
+import { createClient } from '@/utils/supabase/client';
 import {
   Mic,
   Users,
@@ -59,25 +60,12 @@ import { useKaraokeAuth } from '@/hooks/useKaraokeAuth';
 export default function KaraokeAdminPage() {
   const router = useRouter();
   const { toast } = useToast();
-  const { user, organization, subscriptionTier, isLoading: authLoading, isAuthenticated, supabase: authSupabase } = useKaraokeAuth();
+
+  // Simplified auth - just use the hook directly without additional state
+  const { user, organization, subscriptionTier, isLoading: authLoading, isAuthenticated } = useKaraokeAuth();
 
   // Create a stable supabase client reference to prevent infinite re-renders
-  const supabase = useMemo(() => authSupabase, []);
-
-  // Add timeout for authentication loading to prevent infinite loading
-  const [authTimeout, setAuthTimeout] = useState(false);
-  const [hasAuthError, setHasAuthError] = useState(false);
-
-  useEffect(() => {
-    if (authLoading && !authTimeout) {
-      const timeout = setTimeout(() => {
-        setAuthTimeout(true);
-        setHasAuthError(true);
-      }, 15000); // 15 second timeout
-
-      return () => clearTimeout(timeout);
-    }
-  }, [authLoading, authTimeout]);
+  const supabase = useMemo(() => createClient(), []);
 
   const [signups, setSignups] = useState<KaraokeSignup[]>([]);
   const [loading, setLoading] = useState(true);
@@ -773,7 +761,7 @@ export default function KaraokeAdminPage() {
   };
 
   // Show loading state while authentication is being checked
-  if (authLoading && !authTimeout) {
+  if (authLoading) {
     return (
       <KaraokeLayout title="Discover" currentPage="discover" user={user} subscriptionTier={subscriptionTier}>
         <div className="flex items-center justify-center min-h-[400px]">
@@ -786,31 +774,18 @@ export default function KaraokeAdminPage() {
     );
   }
 
-  // If authentication timed out or failed, show error
-  if (hasAuthError || (!authLoading && !isAuthenticated)) {
+  // If not authenticated, show login prompt
+  if (!isAuthenticated) {
     return (
       <KaraokeLayout title="Discover" currentPage="discover" user={user} subscriptionTier={subscriptionTier}>
         <div className="flex items-center justify-center min-h-[400px]">
           <div className="text-center">
-            {authTimeout ? (
-              <>
-                <p className="text-red-600 dark:text-red-400 mb-4">
-                  Authentication is taking too long. Please try refreshing the page.
-                </p>
-                <Button onClick={() => window.location.reload()}>
-                  Refresh Page
-                </Button>
-              </>
-            ) : (
-              <>
-                <p className="text-gray-600 dark:text-gray-400 mb-4">
-                  Please sign in to access karaoke features
-                </p>
-                <Button onClick={() => router.push('/signin')}>
-                  Sign In
-                </Button>
-              </>
-            )}
+            <p className="text-gray-600 dark:text-gray-400 mb-4">
+              Please sign in to access karaoke features
+            </p>
+            <Button onClick={() => router.push('/signin')}>
+              Sign In
+            </Button>
           </div>
         </div>
       </KaraokeLayout>
@@ -818,7 +793,7 @@ export default function KaraokeAdminPage() {
   }
 
   return (
-    <KaraokeLayout title="Discover" currentPage="discover">
+    <KaraokeLayout title="Discover" currentPage="discover" user={user} subscriptionTier={subscriptionTier}>
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="grid w-full grid-cols-4 mb-6">
           <TabsTrigger value="discover">Discover</TabsTrigger>
