@@ -53,10 +53,21 @@ export default async function handler(req, res) {
       searchArtist = undefined;
     }
 
-    const videos = await searchKaraokeVideos(searchQuery, searchArtist, {
-      maxResults: Math.min(maxResults, 50), // Allow more results for enhanced UI
-      filters
-    });
+    // Check if YouTube API is configured
+    const hasYouTubeAPI = !!process.env.YOUTUBE_API_KEY?.trim();
+
+    let videos = [];
+    if (hasYouTubeAPI) {
+      try {
+        videos = await searchKaraokeVideos(searchQuery, searchArtist, {
+          maxResults: Math.min(maxResults, 50), // Allow more results for enhanced UI
+          filters
+        });
+      } catch (youtubeError) {
+        console.error('YouTube search failed:', youtubeError);
+        // Continue with empty results - graceful degradation
+      }
+    }
 
     // Check if we already have links for any of these videos
     const videoIds = videos.map(v => v.id);
@@ -91,7 +102,8 @@ export default async function handler(req, res) {
         artist: songArtist?.trim(),
         organizationId
       },
-      totalResults: videos.length
+      totalResults: videos.length,
+      youtubeAvailable: hasYouTubeAPI
     });
 
   } catch (error) {
@@ -101,7 +113,8 @@ export default async function handler(req, res) {
     return res.status(200).json({
       videos: [],
       error: 'Video search temporarily unavailable',
-      searchQuery: req.body
+      searchQuery: req.body,
+      youtubeAvailable: !!process.env.YOUTUBE_API_KEY?.trim()
     });
   }
 }

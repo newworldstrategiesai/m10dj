@@ -227,11 +227,21 @@ export default function VideoManager({ organizationId }: VideoManagerProps) {
         })
       });
 
-      if (response.ok) {
-        const data = await response.json();
+      const data = await response.json();
+
+      if (response.ok && !data.error) {
         setSearchResults(data.videos || []);
+
+        // Show info message if YouTube is not available
+        if (!data.youtubeAvailable) {
+          toast({
+            title: 'YouTube Search Unavailable',
+            description: 'YouTube API key not configured. Video search results may be limited.',
+            variant: 'default'
+          });
+        }
       } else {
-        throw new Error('Search failed');
+        throw new Error(data.error || 'Search failed');
       }
     } catch (error) {
       console.error('Video search error:', error);
