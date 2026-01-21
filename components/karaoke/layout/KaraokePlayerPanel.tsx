@@ -345,21 +345,6 @@ export default function KaraokePlayerPanel({
     const pollDisplayStatus = () => {
       if (propDisplayWindow && !propDisplayWindow.closed) {
         try {
-          // Try to get status directly
-          propDisplayWindow.postMessage({
-            type: 'VIDEO_CONTROL',
-            data: { action: 'getStatus' }
-          }, '*');
-        } catch (error) {
-          console.warn('❌ Failed to poll display status:', error);
-        }
-      }
-    };
-
-    // Channel 4: Periodic polling (last resort)
-    const pollDisplayStatus = () => {
-      if (propDisplayWindow && !propDisplayWindow.closed) {
-        try {
           // Try to get status directly via postMessage ping
           propDisplayWindow.postMessage({
             type: 'VIDEO_CONTROL',
