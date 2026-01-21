@@ -83,7 +83,7 @@ export default function KaraokePlaylistsPage() {
   useEffect(() => {
     if (isAuthenticated && organization && !authLoading) {
       loadPlaylists(organization.id);
-    } else if (!authLoading && !isAuthenticated) {
+    } else if (!authLoading && (!isAuthenticated || !organization)) {
       setLoading(false);
     }
   }, [isAuthenticated, organization, authLoading, loadPlaylists]);
