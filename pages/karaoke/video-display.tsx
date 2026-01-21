@@ -163,6 +163,33 @@ export default function VideoDisplayPage() {
               const control = (window as any).youtubePlayerControl;
               if (control && control.loadVideoById) {
                 control.loadVideoById(data.videoId);
+                // Send immediate status update after video change
+                setTimeout(() => {
+                  if (control && event.source) {
+                    try {
+                      const currentTime = control.getCurrentTime();
+                      const duration = control.getDuration();
+                      const playerState = control.getPlayerState();
+
+                      event.source.postMessage({
+                        type: 'VIDEO_STATUS',
+                        data: {
+                          videoChanged: true,
+                          isPlaying: playerState === 1,
+                          currentTime: currentTime || 0,
+                          duration: duration || 0,
+                          volume: volume,
+                          videoId: data.videoId,
+                          title: data.title,
+                          artist: data.artist || '',
+                          playerState: playerState
+                        }
+                      }, { targetOrigin: event.origin });
+                    } catch (error) {
+                      console.warn('Error sending video change status:', error);
+                    }
+                  }
+                }, 500); // Wait for video to load
               }
 
               // Send confirmation back
@@ -202,6 +229,47 @@ export default function VideoDisplayPage() {
 
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
+  }, [currentVideo.videoId, currentVideo.title, currentVideo.artist, volume]);
+
+  // Send periodic status updates to admin panel
+  useEffect(() => {
+    const sendStatusUpdate = () => {
+      const control = (window as any).youtubePlayerControl;
+      if (control && window.opener) {
+        try {
+          const currentTime = control.getCurrentTime();
+          const duration = control.getDuration();
+          const playerState = control.getPlayerState();
+
+          window.opener.postMessage({
+            type: 'VIDEO_STATUS',
+            data: {
+              isPlaying: playerState === 1, // YT.PlayerState.PLAYING
+              currentTime: currentTime || 0,
+              duration: duration || 0,
+              volume: volume,
+              videoId: currentVideo.videoId,
+              title: currentVideo.title,
+              artist: currentVideo.artist,
+              playerState: playerState
+            }
+          }, window.location.origin);
+        } catch (error) {
+          // Silently handle errors - window might be closed
+        }
+      }
+    };
+
+    // Send initial status update
+    const initialTimer = setTimeout(sendStatusUpdate, 1000);
+
+    // Send periodic updates every 500ms while playing
+    const interval = setInterval(sendStatusUpdate, 500);
+
+    return () => {
+      clearTimeout(initialTimer);
+      clearInterval(interval);
+    };
   }, [currentVideo.videoId, currentVideo.title, currentVideo.artist, volume]);
 
   // Toggle fullscreen

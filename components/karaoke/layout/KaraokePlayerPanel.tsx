@@ -617,9 +617,24 @@ export default function KaraokePlayerPanel({
               </div>
             </div>
 
-            {/* Enhanced Progress Bar */}
-            {displayStatus && (
-              <div className="space-y-3 relative">
+            {/* Enhanced Progress Bar - Mirrors External Display */}
+            {propDisplayWindow && !propDisplayWindow.closed && (
+              <div className="space-y-3 relative bg-gray-800/20 rounded-lg p-4 border border-gray-700/30">
+                {/* Progress Bar Label */}
+                <div className="flex items-center justify-between text-xs text-gray-400 mb-2">
+                  <span className="font-medium">Live Progress</span>
+                  <div className="flex items-center gap-1">
+                    <div className={`w-1.5 h-1.5 rounded-full animate-pulse ${
+                      displayStatus && displayStatus.duration > 0 ? 'bg-green-400' : 'bg-yellow-400'
+                    }`} />
+                    <span>
+                      {displayStatus && displayStatus.duration > 0 ? 'Mirroring Display' : 'Waiting for video...'}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Progress Bar Content */}
+                {displayStatus && displayStatus.duration > 0 ? (
                 {/* Progress Bar Container */}
                 <div className="relative group">
                   <div
@@ -724,6 +739,19 @@ export default function KaraokePlayerPanel({
                     +30s
                   </button>
                 </div>
+                ) : (
+                  /* Loading state for progress bar */
+                  <div className="space-y-3">
+                    <div className="w-full bg-gray-700/80 rounded-full h-2 relative overflow-hidden">
+                      <div className="absolute inset-0 bg-gray-600/50 rounded-full" />
+                      <div className="absolute left-0 top-0 h-full bg-gradient-to-r from-gray-500 to-gray-600 rounded-full animate-pulse w-1/3" />
+                    </div>
+                    <div className="flex justify-between text-xs text-gray-500">
+                      <span>Waiting for video...</span>
+                      <span>0:00 / 0:00</span>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 

@@ -60,6 +60,20 @@ const KaraokeLayout = forwardRef<KaraokeLayoutRef, KaraokeLayoutProps>(({
         artist: video.artist,
         thumbnailUrl: `https://img.youtube.com/vi/${video.videoId}/default.jpg`
       });
+
+      // Request initial status update from the display window
+      setTimeout(() => {
+        if (window && !window.closed) {
+          try {
+            window.postMessage({
+              type: 'VIDEO_CONTROL',
+              data: { action: 'getStatus' }
+            }, window.location.origin);
+          } catch (error) {
+            console.warn('Error requesting initial status:', error);
+          }
+        }
+      }, 2000); // Wait for video to load
     },
     changeDisplayVideo: (video: { videoId: string; title: string; artist: string }) => {
       // If window exists, send change command; otherwise just update local state
