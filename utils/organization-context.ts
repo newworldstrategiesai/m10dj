@@ -71,6 +71,14 @@ export async function getCurrentOrganization(
       .eq('owner_id', user.id)
       .maybeSingle();
 
+    console.log('getCurrentOrganization: Owner lookup result:', {
+      userId: user.id,
+      orgFound: !!org,
+      orgError: orgError?.message,
+      orgName: org?.name,
+      isPlatformOwner: org?.is_platform_owner
+    });
+
     // Log RLS policy errors for debugging (but don't throw - these are expected if user has no org)
     // Skip AbortError logging as it's expected during component unmount
     if (orgError && orgError.code !== 'PGRST116' && orgError.name !== 'AbortError' && !orgError.message?.includes('aborted')) {
@@ -110,6 +118,11 @@ export async function getCurrentOrganization(
         if (!memberOrgError && memberOrg) {
           org = memberOrg;
           orgError = null;
+          console.log('getCurrentOrganization: Found via membership:', {
+            orgId: org?.id,
+            orgName: org?.name,
+            isPlatformOwner: org?.is_platform_owner
+          });
         }
       }
     }

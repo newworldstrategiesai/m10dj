@@ -52,6 +52,19 @@ export default function KaraokePlaylistsPage() {
 
   const isPremium = subscriptionTier !== 'free';
 
+  // Debug logging
+  console.log('PlaylistsPage: Auth state:', {
+    authLoading,
+    isAuthenticated,
+    hasUser: !!user,
+    hasOrganization: !!organization,
+    organizationId: organization?.id,
+    organizationName: organization?.name,
+    isPlatformOwner: organization?.is_platform_owner,
+    userId: user?.id,
+    userEmail: user?.email
+  });
+
   const loadPlaylists = useCallback(async (orgId: string) => {
     try {
       const { data: playlistsData, error } = await supabase
