@@ -62,6 +62,9 @@ export default function KaraokePlayerPanel({
   onSignupStatusChange
 }: KaraokePlayerPanelProps) {
   const { toast } = useToast();
+
+  // Debug window reference
+  console.log('🎪 KaraokePlayerPanel render - displayWindow:', propDisplayWindow, 'closed:', propDisplayWindow?.closed);
   const [logoError, setLogoError] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
@@ -407,6 +410,25 @@ export default function KaraokePlayerPanel({
   const sendDisplayCommand = async (action: string, data?: any) => {
     console.log('🎮 Sending command:', action, 'to window:', propDisplayWindow, 'closed:', propDisplayWindow?.closed, 'window exists:', !!propDisplayWindow);
 
+    // Emergency fallback: try to find any karaoke display window
+    let targetWindow = propDisplayWindow;
+    if (!targetWindow || targetWindow.closed) {
+      console.log('🎯 Looking for alternative display window...');
+      // Try to find any open window with karaoke in the title/URL
+      for (let i = 0; i < 10; i++) {
+        try {
+          const testWindow = window.open('', `karaokeVideoDisplay_${i}`);
+          if (testWindow && !testWindow.closed && testWindow.location.href.includes('video-display')) {
+            console.log('🎯 Found alternative window:', i);
+            targetWindow = testWindow;
+            break;
+          }
+        } catch (e) {
+          // Ignore cross-origin errors
+        }
+      }
+    }
+
     setIsCommandLoading(true);
 
     const message = {
@@ -446,14 +468,14 @@ export default function KaraokePlayerPanel({
       }
 
       // Channel 3: Direct postMessage to window (traditional)
-      if (propDisplayWindow && !propDisplayWindow.closed) {
-        propDisplayWindow.postMessage(message, window.location.origin);
+      if (targetWindow && !targetWindow.closed) {
+        targetWindow.postMessage(message, window.location.origin);
         console.log('📤 Sent command via postMessage:', message);
 
         // Also try with '*' origin as fallback
         setTimeout(() => {
           try {
-            propDisplayWindow.postMessage(message, '*');
+            targetWindow.postMessage(message, '*');
             console.log('📤 Also sent with * origin');
           } catch (error) {
             console.warn('❌ Error with * origin:', error);

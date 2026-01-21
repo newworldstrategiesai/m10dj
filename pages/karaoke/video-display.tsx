@@ -102,12 +102,17 @@ export default function VideoDisplayPage() {
       const { type, data } = message;
 
       if (type === 'VIDEO_CONTROL') {
-        console.log('🎬 Processing command:', data.action, data);
+        console.log('🎬 Processing command:', data.action, data, 'from source:', message.source);
         const control = (window as any).youtubePlayerControl;
         console.log('🎮 YouTube control available:', !!control);
 
         if (!control) {
-          console.warn('⚠️ YouTube player control not available yet');
+          console.warn('⚠️ YouTube player control not available yet - queuing command');
+          // Queue the command for when player becomes available
+          setTimeout(() => {
+            console.log('🔄 Retrying queued command:', data.action);
+            processControlCommand({ type: 'VIDEO_CONTROL', data, source: message.source });
+          }, 1000);
           return;
         }
 
