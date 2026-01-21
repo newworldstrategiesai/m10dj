@@ -1,4 +1,4 @@
-import { createClient } from '@supabase/supabase-js';
+import { createServerSupabaseClient } from '@supabase/auth-helpers-nextjs';
 import { sendNextUpNotification, sendCurrentlySingingNotification } from '@/utils/karaoke-notifications';
 import { withSecurity } from '@/utils/rate-limiting';
 import { karaokeQueueManager } from '@/utils/karaoke-atomic-operations';
@@ -15,11 +15,9 @@ async function handler(req, res) {
   }
 
   try {
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-    );
-    
+    // Create server-side Supabase client (automatically extracts session from cookies)
+    const supabase = createServerSupabaseClient({ req, res });
+
     // Check authentication
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
