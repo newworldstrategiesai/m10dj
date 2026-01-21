@@ -89,7 +89,7 @@ export default function ManualKaraokeSignup({
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          event_qr_code: eventCode,
+          event_qr_code: eventCode || 'admin-manual', // Default event code for admin signups
           organization_id: organizationId,
           group_size: groupMembers.filter(m => m.trim() !== '').length,
           singer_name: groupMembers[0]?.trim() || '',
@@ -142,7 +142,7 @@ export default function ManualKaraokeSignup({
   };
 
   return (
-    <div className="max-w-2xl mx-auto">
+    <div className="w-full max-w-2xl mx-auto px-4 sm:px-0">
       <div className="bg-white dark:bg-gray-900 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
         {/* Header */}
         <div className="bg-gradient-to-r from-blue-600 to-purple-600 px-6 py-4">
@@ -158,7 +158,7 @@ export default function ManualKaraokeSignup({
         </div>
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-6">
+        <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-4 sm:space-y-6">
           {/* Error Display */}
           {error && (
             <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
@@ -184,7 +184,7 @@ export default function ManualKaraokeSignup({
                       onChange={(e) => handleMemberChange(index, e.target.value)}
                       placeholder={index === 0 ? 'Primary singer name' : `Additional singer ${index + 1}`}
                       required={index === 0}
-                      className="h-10"
+                      className="h-11 sm:h-10 text-base"
                     />
                   </div>
                   {groupMembers.length > 1 && (
@@ -206,7 +206,7 @@ export default function ManualKaraokeSignup({
                 onClick={addMember}
                 variant="outline"
                 size="sm"
-                className="w-full h-9 border-dashed border-gray-300 text-gray-600 hover:border-gray-400 hover:text-gray-700 dark:border-gray-600 dark:text-gray-400"
+                className="w-full h-10 sm:h-9 border-dashed border-gray-300 text-gray-600 hover:border-gray-400 hover:text-gray-700 dark:border-gray-600 dark:text-gray-400"
               >
                 <Plus className="w-4 h-4 mr-2" />
                 Add Another Singer
@@ -233,7 +233,7 @@ export default function ManualKaraokeSignup({
                   }}
                   placeholder="Search for a song..."
                   organizationId={organizationId}
-                  className="h-10"
+                  className="h-11 sm:h-10"
                 />
               </div>
 
@@ -245,7 +245,7 @@ export default function ManualKaraokeSignup({
                   onChange={(e) => setSongArtist(e.target.value)}
                   placeholder="Artist name"
                   required
-                  className="h-10"
+                  className="h-11 sm:h-10"
                 />
               </div>
             </div>
@@ -264,7 +264,7 @@ export default function ManualKaraokeSignup({
                   value={singerEmail}
                   onChange={(e) => setSingerEmail(e.target.value)}
                   placeholder="singer@example.com"
-                  className="h-10"
+                  className="h-11 sm:h-10"
                 />
               </div>
 
@@ -275,14 +275,14 @@ export default function ManualKaraokeSignup({
                   value={singerPhone}
                   onChange={(e) => setSingerPhone(e.target.value)}
                   placeholder="(555) 123-4567"
-                  className="h-10"
+                  className="h-11 sm:h-10"
                 />
               </div>
             </div>
           </div>
 
           {/* Priority Option */}
-          <div className="flex items-center justify-between p-4 bg-gradient-to-r from-yellow-50 to-orange-50 dark:from-yellow-900/20 dark:to-orange-900/20 rounded-lg border border-yellow-200 dark:border-yellow-800">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 gap-3 sm:gap-0 bg-gradient-to-r from-yellow-50 to-orange-50 dark:from-yellow-900/20 dark:to-orange-900/20 rounded-lg border border-yellow-200 dark:border-yellow-800">
             <div className="flex items-center gap-3">
               <Zap className="w-5 h-5 text-yellow-600 dark:text-yellow-400" />
               <div>
@@ -297,13 +297,13 @@ export default function ManualKaraokeSignup({
           </div>
 
           {/* Submit Buttons */}
-          <div className="flex gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
+          <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
             {onClose && (
               <Button
                 type="button"
                 onClick={onClose}
                 variant="outline"
-                className="flex-1 h-11"
+                className="flex-1 h-12 sm:h-11 order-2 sm:order-1"
                 disabled={submitting}
               >
                 Cancel
@@ -312,7 +312,7 @@ export default function ManualKaraokeSignup({
             <Button
               type="submit"
               disabled={submitting}
-              className="flex-1 h-11 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+              className="flex-1 h-12 sm:h-11 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 order-1 sm:order-2"
             >
               {submitting ? (
                 <>
