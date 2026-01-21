@@ -302,18 +302,15 @@ export default function KaraokePlayerPanel({
     return total + mins * 60 + secs;
   }, 0);
 
-  // Listen for status updates from display window via multiple channels
+  // Listen for status updates from display window - SIMPLE APPROACH
   useEffect(() => {
     // Only run on client side to prevent hydration errors
     if (!mounted) return;
 
-    let broadcastChannel: BroadcastChannel | null = null;
-    let statusCheckInterval: NodeJS.Timeout | null = null;
-
-    // Channel 1: postMessage (existing)
     const handleMessage = (event: MessageEvent) => {
-      console.log('🎧 Player panel received postMessage:', event.data, 'from origin:', event.origin);
+      console.log('🎧 SIMPLE: Received message:', event.data, 'from origin:', event.origin);
 
+      // Accept messages from our display window or any localhost/tipjar domain
       const isValidOrigin = event.origin === window.location.origin ||
                            event.origin === 'null' ||
                            event.origin.includes('localhost') ||
@@ -321,63 +318,16 @@ export default function KaraokePlayerPanel({
                            event.origin.includes('m10djcompany.com');
 
       if (!isValidOrigin) {
-        console.log('🚫 Player panel rejected message from invalid origin:', event.origin);
+        console.log('🚫 Rejected message from invalid origin:', event.origin);
         return;
       }
 
-      processStatusUpdate(event.data);
-    };
-
-    // Channel 2: BroadcastChannel (more reliable)
-    if (typeof BroadcastChannel !== 'undefined') {
-      try {
-        broadcastChannel = new BroadcastChannel('karaoke_sync');
-        broadcastChannel.onmessage = (event) => {
-          console.log('🎧 Player panel received BroadcastChannel message:', event.data);
-          processStatusUpdate(event.data);
-        };
-        console.log('✅ BroadcastChannel connected for karaoke sync');
-      } catch (error) {
-        console.warn('❌ Failed to create BroadcastChannel:', error);
-      }
-    }
-
-    // Channel 3: localStorage events (fallback)
-    const handleStorageChange = (event: StorageEvent) => {
-      if (event.key === 'karaoke_display_status') {
-        try {
-          const data = JSON.parse(event.newValue || '{}');
-          console.log('🎧 Player panel received localStorage status:', data);
-          processStatusUpdate({ type: 'VIDEO_STATUS', data });
-        } catch (error) {
-          console.warn('❌ Failed to parse localStorage status:', error);
-        }
-      }
-    };
-
-    // Channel 4: Periodic status polling (last resort)
-    const pollDisplayStatus = () => {
-      if (propDisplayWindow && !propDisplayWindow.closed) {
-        try {
-          // Try to get status directly via postMessage ping
-          propDisplayWindow.postMessage({
-            type: 'VIDEO_CONTROL',
-            data: { action: 'getStatus' }
-          }, '*');
-        } catch (error) {
-          console.warn('❌ Failed to poll display status:', error);
-        }
-      }
-    };
-
-    // Process status updates from any channel
-    const processStatusUpdate = (message: any) => {
-      const { type, data } = message;
+      const { type, data } = event.data;
 
       if (type === 'VIDEO_STATUS') {
-        console.log('📊 Player panel processing VIDEO_STATUS:', data);
+        console.log('📊 Processing VIDEO_STATUS:', data);
         setDisplayStatus({
-          isPlaying: data.playerState === 1 || data.isPlaying, // Support both formats
+          isPlaying: data.playerState === 1 || data.isPlaying,
           currentTime: data.currentTime || 0,
           duration: data.duration || 0,
           volume: data.volume || 50
@@ -395,49 +345,21 @@ export default function KaraokePlayerPanel({
       }
     };
 
-    // Set up all listeners
     window.addEventListener('message', handleMessage);
-    window.addEventListener('storage', handleStorageChange);
-    if (broadcastChannel) {
-      window.addEventListener('beforeunload', () => broadcastChannel.close());
-    }
-
-    // Start periodic polling as backup (every 3 seconds)
-    statusCheckInterval = setInterval(pollDisplayStatus, 3000);
+    console.log('✅ Listening for display window messages');
 
     return () => {
       window.removeEventListener('message', handleMessage);
-      window.removeEventListener('storage', handleStorageChange);
-      if (broadcastChannel) {
-        broadcastChannel.close();
-      }
-      if (statusCheckInterval) {
-        clearInterval(statusCheckInterval);
-      }
     };
-  }, [propDisplayVideo, onDisplayVideoChange, propDisplayWindow, mounted]);
+  }, [propDisplayVideo, onDisplayVideoChange, mounted]);
 
-  // Send control command to display window via multiple channels
+  // Send control command to display window - SIMPLE APPROACH
   const sendDisplayCommand = async (action: string, data?: any) => {
-    console.log('🎮 Sending command:', action, 'to window:', propDisplayWindow, 'closed:', propDisplayWindow?.closed, 'window exists:', !!propDisplayWindow);
+    console.log('🎮 SIMPLE: Sending command:', action, 'to window:', propDisplayWindow);
 
-    // Emergency fallback: try to find any karaoke display window
-    let targetWindow = propDisplayWindow;
-    if (!targetWindow || targetWindow.closed) {
-      console.log('🎯 Looking for alternative display window...');
-      // Try to find any open window with karaoke in the title/URL
-      for (let i = 0; i < 10; i++) {
-        try {
-          const testWindow = window.open('', `karaokeVideoDisplay_${i}`);
-          if (testWindow && !testWindow.closed && testWindow.location.href.includes('video-display')) {
-            console.log('🎯 Found alternative window:', i);
-            targetWindow = testWindow;
-            break;
-          }
-        } catch (e) {
-          // Ignore cross-origin errors
-        }
-      }
+    if (!propDisplayWindow || propDisplayWindow.closed) {
+      console.warn('❌ No display window available');
+      return;
     }
 
     setIsCommandLoading(true);
@@ -449,58 +371,12 @@ export default function KaraokePlayerPanel({
       source: 'player_panel'
     };
 
-    let commandSent = false;
-
     try {
-      // Channel 1: BroadcastChannel (most reliable)
-      if (typeof BroadcastChannel !== 'undefined') {
-        try {
-          const broadcastChannel = new BroadcastChannel('karaoke_sync');
-          broadcastChannel.postMessage(message);
-          broadcastChannel.close();
-          console.log('📤 Sent command via BroadcastChannel:', message);
-          commandSent = true;
-        } catch (error) {
-          console.warn('❌ BroadcastChannel failed:', error);
-        }
-      }
+      // ONLY use direct postMessage - simplest approach
+      console.log('📤 Sending to display window:', message);
+      propDisplayWindow.postMessage(message, window.location.origin);
 
-      // Channel 2: localStorage (fallback)
-      try {
-        localStorage.setItem('karaoke_control_command', JSON.stringify(message));
-        // Clean up after 2 seconds
-        setTimeout(() => {
-          localStorage.removeItem('karaoke_control_command');
-        }, 2000);
-        console.log('📤 Sent command via localStorage:', message);
-        commandSent = true;
-      } catch (error) {
-        console.warn('❌ localStorage failed:', error);
-      }
-
-      // Channel 3: Direct postMessage to window (traditional)
-      if (targetWindow && !targetWindow.closed) {
-        targetWindow.postMessage(message, window.location.origin);
-        console.log('📤 Sent command via postMessage:', message);
-
-        // Also try with '*' origin as fallback
-        setTimeout(() => {
-          try {
-            targetWindow.postMessage(message, '*');
-            console.log('📤 Also sent with * origin');
-          } catch (error) {
-            console.warn('❌ Error with * origin:', error);
-          }
-        }, 100);
-
-        commandSent = true;
-      }
-
-      if (!commandSent) {
-        console.warn('❌ No communication channel available');
-      }
-
-      // Small delay to show loading state
+      // Small delay for visual feedback
       await new Promise(resolve => setTimeout(resolve, 200));
 
     } catch (error) {

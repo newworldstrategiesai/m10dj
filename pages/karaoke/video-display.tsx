@@ -52,10 +52,11 @@ export default function VideoDisplayPage() {
   useEffect(() => {
     let broadcastChannel: BroadcastChannel | null = null;
 
-    // Channel 1: postMessage (existing)
+    // SIMPLE: Listen for messages from admin panel
     const handleMessage = (event: MessageEvent) => {
-      console.log('📨 Display received postMessage:', event.data, 'from:', event.origin);
+      console.log('🎧 DISPLAY WINDOW: Received message:', event.data, 'from:', event.origin);
 
+      // Accept messages from our admin panel
       const isValidOrigin = event.origin === window.location.origin ||
                            event.origin === 'null' ||
                            event.origin.includes('localhost') ||
@@ -68,33 +69,6 @@ export default function VideoDisplayPage() {
       }
 
       processControlCommand(event.data);
-    };
-
-    // Channel 2: BroadcastChannel
-    if (typeof BroadcastChannel !== 'undefined') {
-      try {
-        broadcastChannel = new BroadcastChannel('karaoke_sync');
-        broadcastChannel.onmessage = (event) => {
-          console.log('📨 Display received BroadcastChannel message:', event.data);
-          processControlCommand(event.data);
-        };
-        console.log('✅ Display BroadcastChannel connected');
-      } catch (error) {
-        console.warn('❌ Failed to create BroadcastChannel:', error);
-      }
-    }
-
-    // Channel 3: localStorage events
-    const handleStorageChange = (event: StorageEvent) => {
-      if (event.key === 'karaoke_control_command') {
-        try {
-          const message = JSON.parse(event.newValue || '{}');
-          console.log('📨 Display received localStorage command:', message);
-          processControlCommand(message);
-        } catch (error) {
-          console.warn('❌ Failed to parse localStorage command:', error);
-        }
-      }
     };
 
     // Process control commands from any channel
@@ -119,13 +93,11 @@ export default function VideoDisplayPage() {
         switch (data.action) {
           case 'ping':
             // Send back pong to confirm connection
-            // Since we don't have event.source in other channels, broadcast the response
             const pongMessage = {
               type: 'VIDEO_STATUS',
               data: { pong: true, ready: !!(window as any).youtubePlayerControl }
             };
-            // Send via all channels
-            if (broadcastChannel) broadcastChannel.postMessage(pongMessage);
+            // Send via postMessage only
             if (window.opener) window.opener.postMessage(pongMessage, window.location.origin);
             break;
           case 'play':
@@ -257,7 +229,7 @@ export default function VideoDisplayPage() {
       }
     };
 
-    // Helper function to send status updates via all channels
+    // SIMPLE: Send status updates to admin panel
     const sendStatusUpdate = (overrides = {}) => {
       try {
         const control = (window as any).youtubePlayerControl;
@@ -285,40 +257,21 @@ export default function VideoDisplayPage() {
           timestamp: Date.now()
         };
 
-        // Send via BroadcastChannel
-        if (broadcastChannel) {
-          broadcastChannel.postMessage(message);
-        }
-
-        // Send via localStorage
-        try {
-          localStorage.setItem('karaoke_display_status', JSON.stringify(statusData));
-          setTimeout(() => localStorage.removeItem('karaoke_display_status'), 1000);
-        } catch (error) {
-          console.warn('❌ localStorage status send failed:', error);
-        }
-
-        // Send via postMessage (traditional)
+        // ONLY send via postMessage to opener
         if (window.opener) {
           window.opener.postMessage(message, window.location.origin);
+          console.log('📡 DISPLAY: Sent status to admin panel:', statusData);
         }
-
-        console.log('📡 Sent status update:', statusData);
       } catch (error) {
         console.warn('❌ Error sending status update:', error);
       }
     };
 
-    // Set up all listeners
+    // Set up listener - SIMPLE approach
     window.addEventListener('message', handleMessage);
-    window.addEventListener('storage', handleStorageChange);
 
     return () => {
       window.removeEventListener('message', handleMessage);
-      window.removeEventListener('storage', handleStorageChange);
-      if (broadcastChannel) {
-        broadcastChannel.close();
-      }
     };
   }, [currentVideo?.videoId, currentVideo?.title, currentVideo?.artist, volume]);
 
