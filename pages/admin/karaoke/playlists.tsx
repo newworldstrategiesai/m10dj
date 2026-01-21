@@ -82,6 +82,7 @@ export default function KaraokePlaylistsPage() {
       }));
 
       setPlaylists(playlistsWithCount);
+      setLoading(false);
     } catch (error) {
       console.error('Error loading playlists:', error);
       toast({
@@ -89,6 +90,7 @@ export default function KaraokePlaylistsPage() {
         description: 'Failed to load playlists',
         variant: 'destructive'
       });
+      setLoading(false);
     }
   }, [supabase, toast]);
 
