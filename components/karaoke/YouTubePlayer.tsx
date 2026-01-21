@@ -103,20 +103,46 @@ export default function YouTubePlayer({
   // Expose control methods for external use
   useEffect(() => {
     if (enableExternalControl && playerRef.current) {
+      console.log('🎮 Exposing YouTube player control methods');
       // Make control methods available globally for postMessage handling
       (window as any).youtubePlayerControl = {
-        play: () => playerRef.current?.playVideo(),
-        pause: () => playerRef.current?.pauseVideo(),
-        stop: () => playerRef.current?.stopVideo(),
-        seekTo: (seconds: number) => playerRef.current?.seekTo(seconds),
-        setVolume: (volume: number) => playerRef.current?.setVolume(volume),
-        mute: () => playerRef.current?.mute(),
-        unMute: () => playerRef.current?.unMute(),
-        loadVideoById: (videoId: string) => playerRef.current?.loadVideoById(videoId),
+        play: () => {
+          console.log('▶️ Calling playVideo()');
+          return playerRef.current?.playVideo();
+        },
+        pause: () => {
+          console.log('⏸️ Calling pauseVideo()');
+          return playerRef.current?.pauseVideo();
+        },
+        stop: () => {
+          console.log('⏹️ Calling stopVideo()');
+          return playerRef.current?.stopVideo();
+        },
+        seekTo: (seconds: number) => {
+          console.log('⏩ Calling seekTo()', seconds);
+          return playerRef.current?.seekTo(seconds);
+        },
+        setVolume: (volume: number) => {
+          console.log('🔊 Calling setVolume()', volume);
+          return playerRef.current?.setVolume(volume);
+        },
+        mute: () => {
+          console.log('🔇 Calling mute()');
+          return playerRef.current?.mute();
+        },
+        unMute: () => {
+          console.log('🔊 Calling unMute()');
+          return playerRef.current?.unMute();
+        },
+        loadVideoById: (videoId: string) => {
+          console.log('📺 Calling loadVideoById()', videoId);
+          return playerRef.current?.loadVideoById(videoId);
+        },
         getCurrentTime: () => playerRef.current?.getCurrentTime(),
         getDuration: () => playerRef.current?.getDuration(),
         getPlayerState: () => playerRef.current?.getPlayerState()
       };
+      console.log('✅ YouTube player control methods exposed successfully');
     }
   }, [enableExternalControl]);
 

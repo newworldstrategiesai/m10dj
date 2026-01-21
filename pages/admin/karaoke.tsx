@@ -1470,7 +1470,17 @@ export default function KaraokeAdminPage() {
                                       e.stopPropagation();
 
                                       // Check if we already have a display window open
-                                      const existingWindow = window.open('', 'karaokeVideoDisplay');
+                                      let existingWindow: Window | null = null;
+                                      try {
+                                        // This will return the existing window if it exists and is accessible
+                                        existingWindow = window.open('', 'karaokeVideoDisplay');
+                                      } catch (e) {
+                                        // Cross-origin or other access issues - window might be navigated away
+                                        existingWindow = null;
+                                      }
+
+                                      // Check if window exists and isn't closed
+                                      // postMessage will fail gracefully if window is not our video display
                                       const hasExistingWindow = existingWindow && !existingWindow.closed;
 
                                       if (hasExistingWindow && karaokeLayoutRef.current?.changeDisplayVideo) {

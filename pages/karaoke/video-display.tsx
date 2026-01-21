@@ -33,15 +33,23 @@ export default function VideoDisplayPage() {
   // Listen for control messages from admin window
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
+      console.log('📨 Display window received message:', event.data, 'from:', event.origin);
+
       // Only accept messages from the same origin for security
-      if (event.origin !== window.location.origin) return;
+      if (event.origin !== window.location.origin) {
+        console.log('🚫 Rejected message from different origin:', event.origin);
+        return;
+      }
 
       const { type, data } = event.data;
 
       if (type === 'VIDEO_CONTROL') {
+        console.log('🎬 Processing command:', data.action, data);
         const control = (window as any).youtubePlayerControl;
+        console.log('🎮 YouTube control available:', !!control);
+
         if (!control) {
-          console.warn('YouTube player control not available yet');
+          console.warn('⚠️ YouTube player control not available yet');
           return;
         }
 
@@ -152,7 +160,7 @@ export default function VideoDisplayPage() {
             break;
           case 'changeVideo':
             if (data.videoId && data.title) {
-              console.log('Changing video to:', data);
+              console.log('🔄 Changing video to:', data);
               setCurrentVideo({
                 videoId: data.videoId,
                 title: data.title,
@@ -162,9 +170,11 @@ export default function VideoDisplayPage() {
               // Change the video in the YouTube player
               const control = (window as any).youtubePlayerControl;
               if (control && control.loadVideoById) {
+                console.log('🎬 Loading new video in player');
                 control.loadVideoById(data.videoId);
-                // Send immediate status update after video change
-                setTimeout(() => {
+
+                // Send status updates at multiple intervals to ensure sync
+                const sendStatusUpdate = () => {
                   if (control && event.source) {
                     try {
                       const currentTime = control.getCurrentTime();
@@ -185,14 +195,22 @@ export default function VideoDisplayPage() {
                           playerState: playerState
                         }
                       }, { targetOrigin: event.origin });
+                      console.log('📊 Sent status update after video change');
                     } catch (error) {
-                      console.warn('Error sending video change status:', error);
+                      console.warn('⚠️ Error sending video change status:', error);
                     }
                   }
-                }, 500); // Wait for video to load
+                };
+
+                // Send updates at 500ms, 1s, and 2s intervals
+                setTimeout(sendStatusUpdate, 500);
+                setTimeout(sendStatusUpdate, 1000);
+                setTimeout(sendStatusUpdate, 2000);
+              } else {
+                console.warn('⚠️ YouTube control not available for video change');
               }
 
-              // Send confirmation back
+              // Send confirmation back immediately
               event.source?.postMessage({
                 type: 'VIDEO_STATUS',
                 data: {

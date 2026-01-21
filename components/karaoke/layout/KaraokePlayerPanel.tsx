@@ -226,23 +226,28 @@ export default function KaraokePlayerPanel({
 
   // Send control command to display window
   const sendDisplayCommand = async (action: string, data?: any) => {
+    console.log('🎮 Sending command:', action, 'to window:', propDisplayWindow, 'closed:', propDisplayWindow?.closed);
+
     if (!propDisplayWindow || propDisplayWindow.closed) {
-      console.warn('Cannot send command - display window not available or closed');
+      console.warn('❌ Cannot send command - display window not available or closed');
       return;
     }
 
     setIsCommandLoading(true);
     try {
       // Send the command to the display window
-      propDisplayWindow.postMessage({
+      const message = {
         type: 'VIDEO_CONTROL',
-        data: { action, ...data }
-      }, window.location.origin);
+        data: { action, ...data },
+        timestamp: Date.now()
+      };
+      propDisplayWindow.postMessage(message, window.location.origin);
+      console.log('📤 Sent message:', message);
 
       // Small delay to show loading state
       await new Promise(resolve => setTimeout(resolve, 200));
     } catch (error) {
-      console.error('Error sending command to display window:', error);
+      console.error('❌ Error sending command to display window:', error);
     } finally {
       setIsCommandLoading(false);
     }
@@ -801,6 +806,33 @@ export default function KaraokePlayerPanel({
                 </p>
               </div>
             </div>
+
+            {/* Debug Controls (Development Only) */}
+            {process.env.NODE_ENV === 'development' && (
+              <div className="bg-yellow-900/20 border border-yellow-700/50 rounded-lg p-3 space-y-2">
+                <div className="text-xs text-yellow-400 font-medium">🔧 Debug Controls</div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => console.log('Display Window:', propDisplayWindow, 'Closed:', propDisplayWindow?.closed)}
+                    className="px-2 py-1 text-xs bg-gray-700 text-gray-300 rounded"
+                  >
+                    Log Window
+                  </button>
+                  <button
+                    onClick={() => sendDisplayCommand('ping')}
+                    className="px-2 py-1 text-xs bg-blue-700 text-blue-200 rounded"
+                  >
+                    Ping Display
+                  </button>
+                  <button
+                    onClick={() => updateDisplayStatus()}
+                    className="px-2 py-1 text-xs bg-green-700 text-green-200 rounded"
+                  >
+                    Get Status
+                  </button>
+                </div>
+              </div>
+            )}
 
             {/* Desktop Keyboard Shortcuts Help */}
             <div className="hidden md:block text-center">
