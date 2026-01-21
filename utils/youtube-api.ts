@@ -453,10 +453,18 @@ let youtubeAPI: YouTubeAPI | null = null;
 /**
  * Validate if a YouTube video exists and get its metadata
  */
-export async function validateVideo(videoId: string): Promise<YouTubeVideo | null> {
-  const api = getYouTubeAPI();
-  return api.validateVideo(videoId);
+export async function validateYouTubeVideo(videoId: string): Promise<YouTubeVideo | null> {
+  try {
+    const api = getYouTubeAPI();
+    return await api.validateVideo(videoId);
+  } catch (error) {
+    console.error('Error validating video:', error);
+    return null;
+  }
 }
+
+// Alias for backward compatibility
+export const validateVideo = validateYouTubeVideo;
 
 export function getYouTubeAPI(): YouTubeAPI {
   if (!youtubeAPI) {
