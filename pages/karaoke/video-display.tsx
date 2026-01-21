@@ -11,14 +11,25 @@ export default function VideoDisplayPage() {
   const router = useRouter();
   const { videoId: initialVideoId, title: initialTitle, artist: initialArtist } = router.query;
 
-  const [currentVideo, setCurrentVideo] = useState({
-    videoId: initialVideoId as string,
-    title: initialTitle as string,
-    artist: initialArtist as string
-  });
+  const [currentVideo, setCurrentVideo] = useState<{
+    videoId: string;
+    title: string;
+    artist: string;
+  } | null>(null);
 
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [volume, setVolume] = useState(50);
+
+  // Initialize video data when router is ready
+  useEffect(() => {
+    if (router.isReady && initialVideoId) {
+      setCurrentVideo({
+        videoId: initialVideoId as string,
+        title: initialTitle as string || 'Karaoke Video',
+        artist: initialArtist as string || ''
+      });
+    }
+  }, [router.isReady, initialVideoId, initialTitle, initialArtist]);
 
   // Handle fullscreen changes
   useEffect(() => {
@@ -161,11 +172,12 @@ export default function VideoDisplayPage() {
           case 'changeVideo':
             if (data.videoId && data.title) {
               console.log('🔄 Changing video to:', data);
-              setCurrentVideo({
+              const newVideo = {
                 videoId: data.videoId,
                 title: data.title,
                 artist: data.artist || ''
-              });
+              };
+              setCurrentVideo(newVideo);
 
               // Change the video in the YouTube player
               const control = (window as any).youtubePlayerControl;
@@ -235,9 +247,9 @@ export default function VideoDisplayPage() {
                 duration,
                 playerState,
                 volume,
-                videoId: currentVideo.videoId,
-                title: currentVideo.title,
-                artist: currentVideo.artist
+                videoId: currentVideo!.videoId,
+                title: currentVideo!.title,
+                artist: currentVideo!.artist
               }
             }, { targetOrigin: event.origin });
             break;
@@ -247,10 +259,12 @@ export default function VideoDisplayPage() {
 
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
-  }, [currentVideo.videoId, currentVideo.title, currentVideo.artist, volume]);
+  }, [currentVideo!.videoId, currentVideo!.title, currentVideo!.artist, volume]);
 
   // Send periodic status updates to admin panel
   useEffect(() => {
+    if (!currentVideo) return;
+
     const sendStatusUpdate = () => {
       const control = (window as any).youtubePlayerControl;
       if (control && window.opener) {
@@ -266,9 +280,9 @@ export default function VideoDisplayPage() {
               currentTime: currentTime || 0,
               duration: duration || 0,
               volume: volume,
-              videoId: currentVideo.videoId,
-              title: currentVideo.title,
-              artist: currentVideo.artist,
+              videoId: currentVideo!.videoId,
+              title: currentVideo!.title,
+              artist: currentVideo!.artist,
               playerState: playerState
             }
           }, window.location.origin);
@@ -288,7 +302,7 @@ export default function VideoDisplayPage() {
       clearTimeout(initialTimer);
       clearInterval(interval);
     };
-  }, [currentVideo.videoId, currentVideo.title, currentVideo.artist, volume]);
+  }, [currentVideo, volume]);
 
   // Toggle fullscreen
   const toggleFullscreen = () => {
@@ -309,11 +323,25 @@ export default function VideoDisplayPage() {
     window.location.reload();
   };
 
-  if (!currentVideo.videoId) {
+  // Show loading while waiting for router query
+  if (!router.isReady) {
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <div className="text-white text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mb-4"></div>
+          <p className="text-lg">Loading video...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show error if no video ID provided
+  if (!currentVideo?.videoId) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
         <div className="text-white text-center">
           <p className="text-xl mb-4">No video specified</p>
+          <p className="text-gray-400 mb-6">Please select a video from the admin panel</p>
           <Button onClick={closeWindow} variant="outline" className="text-white border-white">
             Close Window
           </Button>
@@ -356,16 +384,18 @@ export default function VideoDisplayPage() {
       <div className="relative w-screen h-screen bg-black overflow-hidden">
         {/* Video Player */}
         <div className="w-full h-full">
-          <YouTubePlayer
-            videoId={currentVideo.videoId}
-            isPlaying={true}
-            showControls={false} // Hide YouTube controls for clean display
-            autoPlay={true}
-            volume={volume}
-            onVolumeChange={setVolume}
-            enableExternalControl={true} // Enable external control via postMessage
-            className="w-full h-full"
-          />
+          {currentVideo && (
+            <YouTubePlayer
+              videoId={currentVideo.videoId}
+              isPlaying={true}
+              showControls={false} // Hide YouTube controls for clean display
+              autoPlay={true}
+              volume={volume}
+              onVolumeChange={setVolume}
+              enableExternalControl={true} // Enable external control via postMessage
+              className="w-full h-full"
+            />
+          )}
         </div>
 
         {/* Control Overlay */}
@@ -373,7 +403,7 @@ export default function VideoDisplayPage() {
           {/* Left side - Song info */}
           <div className="flex-1 min-w-0">
             <h1 className="text-white text-lg font-bold truncate">
-              {currentVideo.title}
+              {currentVideo.title || 'Karaoke Video'}
             </h1>
             {currentVideo.artist && (
               <p className="text-gray-300 text-sm truncate">
