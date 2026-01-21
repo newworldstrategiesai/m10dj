@@ -17,7 +17,7 @@ interface SongSuggestion {
 interface SongAutocompleteProps {
   value: string;
   onChange: (value: string) => void;
-  onSelect?: (song: { title: string; artist: string }) => void;
+  onSelect?: (song: { title: string; artist: string; videoData?: any }) => void;
   placeholder?: string;
   organizationId?: string | null;
   className?: string;
@@ -148,7 +148,17 @@ export default function SongAutocomplete({
     if (onSelect) {
       onSelect({
         title: suggestion.title,
-        artist: suggestion.artist
+        artist: suggestion.artist,
+        videoData: {
+          youtube_video_id: suggestion.id, // The ID is the video ID
+          youtube_video_title: suggestion.title,
+          youtube_channel_name: null,
+          youtube_channel_id: null,
+          album_art_url: suggestion.albumArt,
+          youtube_video_duration: null, // Could be added later
+          is_premium: false, // Default to free
+          karaoke_score: suggestion.popularity || 0
+        }
       });
     }
     setShowSuggestions(false);

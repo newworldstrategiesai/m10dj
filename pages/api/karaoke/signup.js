@@ -185,6 +185,7 @@ async function handler(req, res) {
       group_members = [],
       song_title,
       song_artist,
+      video_data, // Include video data
       singer_email,
       singer_phone,
       is_priority = false
@@ -395,6 +396,7 @@ async function handler(req, res) {
       group_members: group_size > 1 ? group_members.map((m) => m.trim()) : null,
       song_title,
       song_artist: song_artist?.trim() || null,
+      video_data: video_data || null, // Include video data if provided
       singer_email: singer_email?.trim() || null,
       singer_phone: singer_phone?.trim() || null,
       singer_rotation_id,

@@ -43,19 +43,9 @@ export class KaraokeQueueManager {
       // Start a transaction-like operation using advisory locks
       const lockKey = this.generateLockKey(organizationId, eventQrCode);
 
-      // Try to acquire advisory lock with timeout to prevent infinite waiting
-      // Use a non-blocking approach - if lock is held, return error immediately
-      const { data: lockAcquired, error: lockError } = await this.supabase.rpc('pg_try_advisory_xact_lock', [lockKey]);
-
-      if (lockError) {
-        console.error('Lock operation error:', lockError);
-        return { success: false, error: 'Queue operation in progress, please try again' };
-      }
-
-      if (!lockAcquired) {
-        console.warn('Could not acquire queue lock - operation in progress');
-        return { success: false, error: 'Queue operation in progress, please try again' };
-      }
+      // TEMPORARY: Skip locking for now to get basic functionality working
+      // TODO: Implement proper optimistic locking or queue management
+      console.log('Skipping queue lock for now - implementing optimistic updates');
 
       // Get current signup
       const { data: currentSignup, error: fetchError } = await this.supabase

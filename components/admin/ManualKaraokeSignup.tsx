@@ -28,6 +28,7 @@ export default function ManualKaraokeSignup({
   const [groupMembers, setGroupMembers] = useState<string[]>(['']);
   const [songTitle, setSongTitle] = useState('');
   const [songArtist, setSongArtist] = useState('');
+  const [selectedVideoData, setSelectedVideoData] = useState<any>(null);
   const [singerEmail, setSingerEmail] = useState('');
   const [singerPhone, setSingerPhone] = useState('');
   const [isPriority, setIsPriority] = useState(false);
@@ -96,6 +97,7 @@ export default function ManualKaraokeSignup({
           group_members: groupMembers.slice(1).filter(m => m.trim() !== ''),
           song_title: songTitle.trim(),
           song_artist: songArtist.trim() || null,
+          video_data: selectedVideoData, // Include the linked video data
           singer_email: singerEmail.trim() || null,
           singer_phone: singerPhone.trim() || null,
           is_priority: isPriority,
@@ -119,6 +121,7 @@ export default function ManualKaraokeSignup({
       setGroupMembers(['']);
       setSongTitle('');
       setSongArtist('');
+      setSelectedVideoData(null);
       setSingerEmail('');
       setSingerPhone('');
       setIsPriority(false);
@@ -230,6 +233,10 @@ export default function ManualKaraokeSignup({
                     if (song.artist) {
                       setSongArtist(song.artist);
                     }
+                    // Store video data for signup creation
+                    if ((song as any).videoData) {
+                      setSelectedVideoData((song as any).videoData);
+                    }
                   }}
                   placeholder="Search for a song..."
                   organizationId={organizationId}
@@ -247,6 +254,12 @@ export default function ManualKaraokeSignup({
                   required
                   className="h-11 sm:h-10"
                 />
+                {selectedVideoData && (
+                  <div className="mt-2 flex items-center gap-2 text-xs text-green-600 dark:text-green-400">
+                    <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></div>
+                    Karaoke video linked
+                  </div>
+                )}
               </div>
             </div>
           </div>
