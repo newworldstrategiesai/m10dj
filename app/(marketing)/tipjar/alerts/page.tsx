@@ -131,7 +131,7 @@ export default function StreamAlertsPageQuery() {
               table: 'stream_alert_events',
               filter: `user_id=eq.${userId}`,
             },
-            async (payload) => {
+            async (payload: any) => {
               const newEvent = payload.new as AlertEvent;
               
               if (mounted) {

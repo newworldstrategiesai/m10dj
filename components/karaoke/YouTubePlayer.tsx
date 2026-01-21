@@ -13,6 +13,7 @@ interface YouTubePlayerProps {
   volume?: number; // 0-100
   onVolumeChange?: (volume: number) => void;
   muted?: boolean;
+  enableExternalControl?: boolean; // Enable control via postMessage
 }
 
 export default function YouTubePlayer({
@@ -24,19 +25,107 @@ export default function YouTubePlayer({
   autoPlay = true,
   volume = 50,
   onVolumeChange,
-  muted = false
+  muted = false,
+  enableExternalControl = false
 }: YouTubePlayerProps) {
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const mountedRef = useRef(true);
+  const playerRef = useRef<any>(null);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
 
-  // Generate iframe embed URL - simplified, no complex controls
-  const embedUrl = `https://www.youtube.com/embed/${videoId}?enablejsapi=0&controls=${showControls ? 1 : 0}&autoplay=${autoPlay && isPlaying ? 1 : 0}&mute=${muted ? 1 : 0}&modestbranding=1&rel=0&iv_load_policy=3&showinfo=0`;
+  // Generate iframe embed URL with YouTube API enabled for external control
+  const embedUrl = `https://www.youtube.com/embed/${videoId}?enablejsapi=1&controls=${showControls ? 1 : 0}&autoplay=${autoPlay && isPlaying ? 1 : 0}&mute=${muted ? 1 : 0}&modestbranding=1&rel=0&iv_load_policy=3&showinfo=0&origin=${typeof window !== 'undefined' ? window.location.origin : ''}`;
+
+  // Load YouTube IFrame API and create player
+  useEffect(() => {
+    if (!enableExternalControl || typeof window === 'undefined') return;
+
+    // Load YouTube IFrame API if not already loaded
+    if (!(window as any).YT) {
+      const tag = document.createElement('script');
+      tag.src = 'https://www.youtube.com/iframe_api';
+      const firstScriptTag = document.getElementsByTagName('script')[0];
+      firstScriptTag.parentNode?.insertBefore(tag, firstScriptTag);
+
+      (window as any).onYouTubeIframeAPIReady = () => {
+        createPlayer();
+      };
+    } else {
+      createPlayer();
+    }
+
+    function createPlayer() {
+      if (!iframeRef.current || !(window as any).YT) return;
+
+      playerRef.current = new (window as any).YT.Player(iframeRef.current, {
+        events: {
+          onReady: () => {
+            if (mountedRef.current) {
+              setIsLoading(false);
+              setError(null);
+              onStateChange?.('playing');
+            }
+          },
+          onStateChange: (event: any) => {
+            if (!mountedRef.current) return;
+            const state = event.data;
+            switch (state) {
+              case (window as any).YT.PlayerState.PLAYING:
+                onStateChange?.('playing');
+                break;
+              case (window as any).YT.PlayerState.PAUSED:
+                onStateChange?.('paused');
+                break;
+              case (window as any).YT.PlayerState.ENDED:
+                onStateChange?.('ended');
+                break;
+            }
+          },
+          onError: () => {
+            if (mountedRef.current) {
+              setError('Failed to load video');
+              setIsLoading(false);
+              onStateChange?.('error');
+            }
+          }
+        }
+      });
+    }
+
+    return () => {
+      if (playerRef.current) {
+        playerRef.current.destroy();
+      }
+    };
+  }, [videoId, enableExternalControl]);
+
+  // Expose control methods for external use
+  useEffect(() => {
+    if (enableExternalControl && playerRef.current) {
+      // Make control methods available globally for postMessage handling
+      (window as any).youtubePlayerControl = {
+        play: () => playerRef.current?.playVideo(),
+        pause: () => playerRef.current?.pauseVideo(),
+        stop: () => playerRef.current?.stopVideo(),
+        seekTo: (seconds: number) => playerRef.current?.seekTo(seconds),
+        setVolume: (volume: number) => playerRef.current?.setVolume(volume),
+        mute: () => playerRef.current?.mute(),
+        unMute: () => playerRef.current?.unMute(),
+        getCurrentTime: () => playerRef.current?.getCurrentTime(),
+        getDuration: () => playerRef.current?.getDuration(),
+        getPlayerState: () => playerRef.current?.getPlayerState()
+      };
+    }
+  }, [enableExternalControl]);
 
   // Cleanup on unmount
   useEffect(() => {
     return () => {
       mountedRef.current = false;
+      if ((window as any).youtubePlayerControl) {
+        delete (window as any).youtubePlayerControl;
+      }
     };
   }, []);
 
@@ -83,13 +172,14 @@ export default function YouTubePlayer({
         )}
 
         <iframe
+          ref={iframeRef}
           src={embedUrl}
           className="w-full h-full"
           frameBorder="0"
           allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
           allowFullScreen
-          onLoad={handleIframeLoad}
-          onError={handleIframeError}
+          onLoad={enableExternalControl ? undefined : handleIframeLoad}
+          onError={enableExternalControl ? undefined : handleIframeError}
         />
       </div>
     </div>

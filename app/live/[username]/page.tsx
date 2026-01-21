@@ -218,7 +218,7 @@ export default function LiveStreamPage() {
           .on(
             'broadcast',
             { event: 'viewer_count_update' },
-            (payload) => {
+            (payload: any) => {
               setViewerCount(payload.payload.count || 0);
             }
           )
@@ -237,7 +237,7 @@ export default function LiveStreamPage() {
               table: 'live_streams',
               filter: `id=eq.${typedStreamData.id}`,
             },
-            (payload) => {
+            (payload: any) => {
               const updatedStream = payload.new as LiveStream;
               if (!updatedStream.is_live) {
                 // Stream ended - show offline message

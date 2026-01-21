@@ -64,7 +64,13 @@ export default function FavoritesPage() {
 
       // Mock favorites - in real app this would come from user preferences
       const mockFavorites = (videos as any[])?.slice(0, 15).map((v: any, index: number) => ({
-        ...v,
+        id: v.id,
+        title: v.song_title || v.youtube_video_title || 'Unknown Title',
+        artist: v.song_artist || v.youtube_channel_name || 'Unknown Artist',
+        thumbnail_url: `https://img.youtube.com/vi/${v.youtube_video_id}/default.jpg`,
+        duration: v.youtube_video_duration ? `${Math.floor(v.youtube_video_duration / 60)}:${(v.youtube_video_duration % 60).toString().padStart(2, '0')}` : '0:00',
+        is_premium: v.is_premium || false,
+        category: v.category || 'Unknown',
         is_favorite: true,
         favorited_at: new Date(Date.now() - index * 24 * 60 * 60 * 1000).toISOString(),
         play_count: Math.floor(Math.random() * 50) + 10
@@ -100,8 +106,8 @@ export default function FavoritesPage() {
   };
 
   const filteredSongs = favoriteSongs.filter(song =>
-    song.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    song.artist.toLowerCase().includes(searchQuery.toLowerCase())
+    (song.title || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (song.artist || '').toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   if (authLoading || loading) {

@@ -111,7 +111,7 @@ export default function ThemeProviderWrapper({ children }: { children: React.Rea
     loadThemePreference();
     
     // Listen for auth state changes to update theme when user logs in/out
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event: any, session: any) => {
       if (!isMountedRef.current) return;
       
       if (!session) {

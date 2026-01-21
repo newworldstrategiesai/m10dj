@@ -24,6 +24,72 @@ export default function VideoDisplayPage() {
     return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
   }, []);
 
+  // Listen for control messages from admin window
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      // Only accept messages from the same origin for security
+      if (event.origin !== window.location.origin) return;
+
+      const { type, data } = event.data;
+
+      if (type === 'VIDEO_CONTROL') {
+        const control = (window as any).youtubePlayerControl;
+        if (!control) return;
+
+        switch (data.action) {
+          case 'play':
+            control.play();
+            break;
+          case 'pause':
+            control.pause();
+            break;
+          case 'stop':
+            control.stop();
+            break;
+          case 'seek':
+            if (data.seconds !== undefined) {
+              control.seekTo(data.seconds);
+            }
+            break;
+          case 'volume':
+            if (data.volume !== undefined) {
+              setVolume(data.volume);
+              control.setVolume(data.volume);
+            }
+            break;
+          case 'mute':
+            control.mute();
+            break;
+          case 'unmute':
+            control.unMute();
+            break;
+          case 'getStatus':
+            // Send back current status
+            const currentTime = control.getCurrentTime();
+            const duration = control.getDuration();
+            const playerState = control.getPlayerState();
+
+            event.source?.postMessage({
+              type: 'VIDEO_STATUS',
+              data: {
+                currentTime,
+                duration,
+                playerState,
+                volume,
+                videoId,
+                title,
+                artist
+              }
+            }, { targetOrigin: event.origin });
+            break;
+        }
+      }
+    };
+
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, [videoId, title, artist, volume]);
+
   // Toggle fullscreen
   const toggleFullscreen = () => {
     if (!document.fullscreenElement) {
@@ -97,6 +163,7 @@ export default function VideoDisplayPage() {
             autoPlay={true}
             volume={volume}
             onVolumeChange={setVolume}
+            enableExternalControl={true} // Enable external control via postMessage
             className="w-full h-full"
           />
         </div>

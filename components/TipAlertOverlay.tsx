@@ -30,7 +30,7 @@ export function TipAlertOverlay({ roomName, theme = 'dark' }: TipAlertOverlayPro
       .on(
         'broadcast',
         { event: 'new_tip' },
-        (payload) => {
+        (payload: any) => {
           const tipData = payload.payload as TipAlert;
           
           // Show alert

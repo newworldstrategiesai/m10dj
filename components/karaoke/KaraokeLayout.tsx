@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef, useImperativeHandle, forwardRef } from 'react';
 import { useRouter } from 'next/router';
 import { createClient } from '@/utils/supabase/client';
 import KaraokeHeader from './layout/KaraokeHeader';
@@ -16,17 +16,30 @@ interface KaraokeLayoutProps {
   subscriptionTier?: string;
 }
 
-export default function KaraokeLayout({
+export interface KaraokeLayoutRef {
+  registerDisplayWindow: (window: Window, video: { videoId: string; title: string; artist: string }) => void;
+}
+
+const KaraokeLayout = forwardRef<KaraokeLayoutRef, KaraokeLayoutProps>(({
   children,
   title = 'Discover',
   showBackButton = false,
   currentPage = 'discover',
   user: propUser,
   subscriptionTier: propSubscriptionTier = 'free'
-}: KaraokeLayoutProps) {
+}: KaraokeLayoutProps, ref) => {
   const router = useRouter();
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isPlayerPanelVisible, setIsPlayerPanelVisible] = useState(true);
+
+  // External display window tracking
+  const [displayWindow, setDisplayWindow] = useState<Window | null>(null);
+  const [displayVideo, setDisplayVideo] = useState<{
+    videoId: string;
+    title: string;
+    artist: string;
+    thumbnailUrl: string;
+  } | null>(null);
 
   const handleSignOut = async () => {
     const supabase = createClient();
@@ -35,6 +48,19 @@ export default function KaraokeLayout({
   };
 
   const isPremium = propSubscriptionTier !== 'free';
+
+  // Expose methods to parent components
+  useImperativeHandle(ref, () => ({
+    registerDisplayWindow: (window: Window, video: { videoId: string; title: string; artist: string }) => {
+      setDisplayWindow(window);
+      setDisplayVideo({
+        videoId: video.videoId,
+        title: video.title,
+        artist: video.artist,
+        thumbnailUrl: `https://img.youtube.com/vi/${video.videoId}/default.jpg`
+      });
+    }
+  }));
 
   return (
     <div className="min-h-screen karaoke-gradient-bg karaoke-scrollbar">
@@ -100,9 +126,17 @@ export default function KaraokeLayout({
           <KaraokePlayerPanel
             onClose={() => setIsPlayerPanelVisible(false)}
             isPremium={isPremium}
+            displayWindow={displayWindow}
+            displayVideo={displayVideo}
+            onDisplayWindowChange={setDisplayWindow}
+            onDisplayVideoChange={setDisplayVideo}
           />
         )}
       </div>
     </div>
   );
-}
+});
+
+KaraokeLayout.displayName = 'KaraokeLayout';
+
+export default KaraokeLayout;

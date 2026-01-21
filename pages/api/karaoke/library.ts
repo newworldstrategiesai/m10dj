@@ -57,15 +57,31 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   } catch (error) {
     console.error('Library API error:', error);
+    console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace');
     return res.status(500).json({
       error: 'Internal server error',
-      message: error instanceof Error ? error.message : String(error)
+      message: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined
     });
   }
 }
 
 async function getLibrary(req: NextApiRequest, res: NextApiResponse, supabase: any, organizationId: string, userId: string) {
   try {
+    console.log('Get library called with:', { organizationId, userId });
+
+    // First check if user_video_library table exists
+    const { data: tableCheck, error: tableError } = await supabase
+      .from('user_video_library')
+      .select('count', { count: 'exact', head: true });
+
+    if (tableError) {
+      console.error('Table check error:', tableError);
+      throw new Error(`Table access error: ${tableError.message}`);
+    }
+
+    console.log('Table exists, count:', tableCheck);
+
     // Get user's video library
     const { data: libraryVideos, error } = await supabase
       .from('user_video_library')
@@ -88,7 +104,12 @@ async function getLibrary(req: NextApiRequest, res: NextApiResponse, supabase: a
       .eq('user_id', userId)
       .order('added_at', { ascending: false });
 
-    if (error) throw error;
+    if (error) {
+      console.error('Query error:', error);
+      throw error;
+    }
+
+    console.log('Query successful, returned videos:', libraryVideos?.length || 0);
 
     return res.status(200).json({
       videos: libraryVideos || [],
@@ -96,7 +117,16 @@ async function getLibrary(req: NextApiRequest, res: NextApiResponse, supabase: a
     });
   } catch (error) {
     console.error('Get library error:', error);
-    return res.status(500).json({ error: 'Failed to get library' });
+    console.error('Error details:', {
+      message: error instanceof Error ? error.message : String(error),
+      code: (error as any)?.code,
+      details: (error as any)?.details,
+      hint: (error as any)?.hint
+    });
+    return res.status(500).json({
+      error: 'Failed to get library',
+      details: error instanceof Error ? error.message : String(error)
+    });
   }
 }
 

@@ -75,13 +75,25 @@ export default function MySongsPage() {
 
       // Mock user-specific data - in real app this would come from user preferences
       const mockRecent = (videos as any[])?.slice(0, 10).map((v: any) => ({
-        ...v,
+        id: v.id,
+        title: v.song_title || v.youtube_video_title || 'Unknown Title',
+        artist: v.song_artist || v.youtube_channel_name || 'Unknown Artist',
+        thumbnail_url: `https://img.youtube.com/vi/${v.youtube_video_id}/default.jpg`,
+        duration: v.youtube_video_duration ? `${Math.floor(v.youtube_video_duration / 60)}:${(v.youtube_video_duration % 60).toString().padStart(2, '0')}` : '0:00',
+        is_premium: v.is_premium || false,
+        category: v.category || 'Unknown',
         play_count: Math.floor(Math.random() * 20) + 1,
         last_played_at: new Date(Date.now() - Math.random() * 7 * 24 * 60 * 60 * 1000).toISOString()
       })) || [];
 
       const mockFavorites = (videos as any[])?.slice(10, 20).map((v: any) => ({
-        ...v,
+        id: v.id,
+        title: v.song_title || v.song_artist || v.youtube_video_title || 'Unknown Title',
+        artist: v.song_artist || v.youtube_channel_name || 'Unknown Artist',
+        thumbnail_url: `https://img.youtube.com/vi/${v.youtube_video_id}/default.jpg`,
+        duration: v.youtube_video_duration ? `${Math.floor(v.youtube_video_duration / 60)}:${(v.youtube_video_duration % 60).toString().padStart(2, '0')}` : '0:00',
+        is_premium: v.is_premium || false,
+        category: v.category || 'Unknown',
         is_favorite: true,
         play_count: Math.floor(Math.random() * 50) + 10
       })) || [];
@@ -134,8 +146,8 @@ export default function MySongsPage() {
 
   const filteredSongs = (songs: Video[]) => {
     return songs.filter(song =>
-      song.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      song.artist.toLowerCase().includes(searchQuery.toLowerCase())
+      (song.title || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (song.artist || '').toLowerCase().includes(searchQuery.toLowerCase())
     );
   };
 

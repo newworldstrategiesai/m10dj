@@ -42,7 +42,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/components/ui/Toasts/use-toast';
-import KaraokeLayout from '@/components/karaoke/KaraokeLayout';
+import KaraokeLayout, { KaraokeLayoutRef } from '@/components/karaoke/KaraokeLayout';
 import DiscoverPage from '@/components/karaoke/DiscoverPage';
 import VideoManager from '@/components/karaoke/VideoManager';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
@@ -94,7 +94,8 @@ export default function KaraokeAdminPage() {
   const [activeTab, setActiveTab] = useState('discover');
   const [showVideoSearchForSignup, setShowVideoSearchForSignup] = useState(false);
   const [videoSearchSignup, setVideoSearchSignup] = useState<KaraokeSignup | null>(null);
-  const [signupVideoSuggestions, setSignupVideoSuggestions] = useState<{[key: string]: any}>({});
+  const [signupVideoSuggestions, setSignupVideoSuggestions] = useState<{[key: string]: any[]}>({});
+  const [currentSuggestionIndex, setCurrentSuggestionIndex] = useState<{[key: string]: number}>({});
   const [loadingVideoSuggestions, setLoadingVideoSuggestions] = useState<{[key: string]: boolean}>({});
 
   // Search for video suggestions for a signup
@@ -117,10 +118,10 @@ export default function KaraokeAdminPage() {
 
       if (response.ok) {
         const data = await response.json();
-        if (data.bestVideo) {
+        if (data.suggestions && data.suggestions.length > 0) {
           setSignupVideoSuggestions(prev => ({
             ...prev,
-            [signup.id]: data.bestVideo
+            [signup.id]: data.suggestions
           }));
         }
       } else {
@@ -170,6 +171,13 @@ export default function KaraokeAdminPage() {
           const newSuggestions = { ...prev };
           delete newSuggestions[signupId];
           return newSuggestions;
+        });
+
+        // Reset suggestion index
+        setCurrentSuggestionIndex(prev => {
+          const newIndices = { ...prev };
+          delete newIndices[signupId];
+          return newIndices;
         });
 
         // Trigger new video search for suggestions
@@ -311,6 +319,9 @@ export default function KaraokeAdminPage() {
   // Video playback state for modal
   const [modalVideoPlaying, setModalVideoPlaying] = useState(false);
 
+  // Ref to KaraokeLayout for display window management
+  const karaokeLayoutRef = useRef<KaraokeLayoutRef>(null);
+
   // Check if video is from Karafun
   const isKarafunVideo = (channelName?: string, channelId?: string) => {
     if (!channelName && !channelId) return false;
@@ -319,6 +330,25 @@ export default function KaraokeAdminPage() {
       channelId?.toLowerCase().includes(term.toLowerCase()) ||
       channelName?.toLowerCase().includes(term.toLowerCase())
     );
+  };
+
+  // Format ISO 8601 duration to human readable format
+  const formatDuration = (isoDuration: string) => {
+    if (!isoDuration) return 'Unknown';
+
+    // Parse ISO 8601 duration (PT4M13S)
+    const match = isoDuration.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
+    if (!match) return 'Unknown';
+
+    const hours = parseInt(match[1] || '0');
+    const minutes = parseInt(match[2] || '0');
+    const seconds = parseInt(match[3] || '0');
+
+    if (hours > 0) {
+      return `${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+    } else {
+      return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+    }
   };
 
   // Load data when organization is available
@@ -888,7 +918,13 @@ export default function KaraokeAdminPage() {
   }
 
   return (
-    <KaraokeLayout title="Discover" currentPage="discover" user={user} subscriptionTier={subscriptionTier}>
+    <KaraokeLayout
+      ref={karaokeLayoutRef}
+      title="Discover"
+      currentPage="discover"
+      user={user}
+      subscriptionTier={subscriptionTier}
+    >
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="grid w-full grid-cols-4 mb-6 bg-gray-100 dark:bg-gray-800">
           <TabsTrigger value="discover" className="text-gray-700 dark:text-gray-300 data-[state=active]:text-gray-900 dark:data-[state=active]:text-white">Discover</TabsTrigger>
@@ -1432,7 +1468,14 @@ export default function KaraokeAdminPage() {
                                     variant="outline"
                                     onClick={(e) => {
                                       e.stopPropagation();
-                                      window.open(`/karaoke/video-display?videoId=${videoData.youtube_video_id}&title=${encodeURIComponent(signup.song_title)}&artist=${encodeURIComponent(signup.song_artist || '')}`, 'karaokeVideoDisplay', 'width=1280,height=720,scrollbars=no,resizable=yes,status=no,toolbar=no,menubar=no,location=no,directories=no');
+                                      const displayWindow = window.open(`/karaoke/video-display?videoId=${videoData.youtube_video_id}&title=${encodeURIComponent(signup.song_title)}&artist=${encodeURIComponent(signup.song_artist || '')}`, 'karaokeVideoDisplay', 'width=1280,height=720,scrollbars=no,resizable=yes,status=no,toolbar=no,menubar=no,location=no,directories=no');
+                                      if (displayWindow && karaokeLayoutRef.current) {
+                                        karaokeLayoutRef.current.registerDisplayWindow(displayWindow, {
+                                          videoId: videoData.youtube_video_id,
+                                          title: signup.song_title,
+                                          artist: signup.song_artist || ''
+                                        });
+                                      }
                                     }}
                                     className="h-8 px-2 bg-green-50 hover:bg-green-100 border-green-200 text-green-700 hover:text-green-800"
                                     title="Open in display window"
@@ -1712,71 +1755,165 @@ export default function KaraokeAdminPage() {
                                 Finding the best karaoke video...
                               </p>
                             </div>
-                          ) : signupVideoSuggestions[selectedSignup.id] ? (
-                            <div key="video-suggestion" className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
-                              <div className="flex items-start gap-4">
-                                {/* Video Thumbnail */}
-                                <img
-                                  src={`https://img.youtube.com/vi/${signupVideoSuggestions[selectedSignup.id].id}/mqdefault.jpg`}
-                                  alt="Suggested karaoke video"
-                                  className="w-24 h-18 rounded-lg object-cover border-2 border-blue-300"
-                                />
+                          ) : signupVideoSuggestions[selectedSignup.id] && signupVideoSuggestions[selectedSignup.id].length > 0 ? (
+                            <div key="video-suggestions" className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                              {(() => {
+                                const suggestions = signupVideoSuggestions[selectedSignup.id];
+                                const currentIndex = currentSuggestionIndex[selectedSignup.id] || 0;
+                                const currentVideo = suggestions[currentIndex];
 
-                                {/* Video Details */}
-                                <div className="flex-1">
-                                  <div className="flex items-center gap-2 mb-1">
-                                    <h4 className="font-semibold text-gray-900 dark:text-white text-sm">
-                                      {signupVideoSuggestions[selectedSignup.id].title}
-                                    </h4>
-                                    {isKarafunVideo(
-                                      signupVideoSuggestions[selectedSignup.id].channelTitle,
-                                      signupVideoSuggestions[selectedSignup.id].channelId
-                                    ) && (
-                                      <Badge className="bg-purple-500 text-white text-xs">
-                                        <Music className="w-3 h-3 mr-1" />
-                                        Karafun
-                                      </Badge>
+                                return (
+                                  <div className="space-y-4">
+                                    {/* Navigation Header */}
+                                    <div className="flex items-center justify-between">
+                                      <div className="flex items-center gap-2">
+                                        <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                                          Video Suggestions ({currentIndex + 1} of {suggestions.length})
+                                        </span>
+                                        {suggestions.length > 1 && (
+                                          <select
+                                            value={currentIndex}
+                                            onChange={(e) => setCurrentSuggestionIndex(prev => ({
+                                              ...prev,
+                                              [selectedSignup.id]: parseInt(e.target.value)
+                                            }))}
+                                            className="text-xs bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded px-2 py-1"
+                                          >
+                                            {suggestions.map((_, index) => (
+                                              <option key={index} value={index}>
+                                                Option {index + 1} (Quality: {suggestions[index].karaokeScore}/100)
+                                              </option>
+                                            ))}
+                                          </select>
+                                        )}
+                                      </div>
+                                      {suggestions.length > 1 && (
+                                        <div className="flex items-center gap-1">
+                                          <Button
+                                            size="sm"
+                                            variant="outline"
+                                            onClick={() => setCurrentSuggestionIndex(prev => ({
+                                              ...prev,
+                                              [selectedSignup.id]: Math.max(0, currentIndex - 1)
+                                            }))}
+                                            disabled={currentIndex === 0}
+                                            className="h-7 px-2"
+                                          >
+                                            ←
+                                          </Button>
+                                          <Button
+                                            size="sm"
+                                            variant="outline"
+                                            onClick={() => setCurrentSuggestionIndex(prev => ({
+                                              ...prev,
+                                              [selectedSignup.id]: Math.min(suggestions.length - 1, currentIndex + 1)
+                                            }))}
+                                            disabled={currentIndex === suggestions.length - 1}
+                                            className="h-7 px-2"
+                                          >
+                                            →
+                                          </Button>
+                                        </div>
+                                      )}
+                                    </div>
+
+                                    {/* Current Video Display */}
+                                    <div className="flex items-start gap-4">
+                                      {/* Video Thumbnail */}
+                                      <img
+                                        src={`https://img.youtube.com/vi/${currentVideo.id}/mqdefault.jpg`}
+                                        alt="Suggested karaoke video"
+                                        className="w-24 h-18 rounded-lg object-cover border-2 border-blue-300"
+                                      />
+
+                                      {/* Video Details */}
+                                      <div className="flex-1">
+                                        <div className="flex items-center gap-2 mb-1">
+                                          <h4 className="font-semibold text-gray-900 dark:text-white text-sm">
+                                            {currentVideo.title}
+                                          </h4>
+                                          {isKarafunVideo(
+                                            currentVideo.channelTitle,
+                                            currentVideo.channelId
+                                          ) && (
+                                            <Badge className="bg-purple-500 text-white text-xs">
+                                              <Music className="w-3 h-3 mr-1" />
+                                              Karafun
+                                            </Badge>
+                                          )}
+                                        </div>
+
+                                        <div className="text-xs text-gray-600 dark:text-gray-400 space-y-1 mb-2">
+                                          <p>{currentVideo.channelTitle}</p>
+                                          <p>
+                                            {currentVideo.viewCount?.toLocaleString()} views •
+                                            Duration: {currentVideo.duration ? formatDuration(currentVideo.duration) : 'Unknown'}
+                                          </p>
+                                        </div>
+
+                                        <div className="flex items-center gap-3">
+                                          <Badge variant="outline" className="text-xs">
+                                            Quality: {currentVideo.karaokeScore}/100
+                                          </Badge>
+
+                                          <Button
+                                            size="sm"
+                                            variant="outline"
+                                            onClick={() => {
+                                              window.open(
+                                                `https://www.youtube.com/watch?v=${currentVideo.id}`,
+                                                '_blank',
+                                                'noopener,noreferrer'
+                                              );
+                                            }}
+                                            className="border-gray-300 hover:bg-gray-50"
+                                          >
+                                            <Play className="w-4 h-4 mr-1" />
+                                            Play Video
+                                          </Button>
+
+                                          <Button
+                                            size="sm"
+                                            onClick={() => linkSuggestedVideoToSignup(selectedSignup.id, currentVideo)}
+                                            className="bg-blue-600 hover:bg-blue-700 text-white"
+                                          >
+                                            <CheckCircle2 className="w-4 h-4 mr-1" />
+                                            Use This Video
+                                          </Button>
+                                        </div>
+                                      </div>
+                                    </div>
+
+                                    {/* Suggestions List (if more than 1) */}
+                                    {suggestions.length > 1 && (
+                                      <div className="border-t border-blue-200 dark:border-blue-700 pt-3">
+                                        <p className="text-xs text-gray-600 dark:text-gray-400 mb-2">All suggestions:</p>
+                                        <div className="grid grid-cols-1 gap-2 max-h-32 overflow-y-auto">
+                                          {suggestions.map((video, index) => (
+                                            <button
+                                              key={video.id}
+                                              onClick={() => setCurrentSuggestionIndex(prev => ({
+                                                ...prev,
+                                                [selectedSignup.id]: index
+                                              }))}
+                                              className={`text-left p-2 rounded text-xs transition-colors ${
+                                                index === currentIndex
+                                                  ? 'bg-blue-200 dark:bg-blue-700 text-blue-900 dark:text-blue-100'
+                                                  : 'bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300'
+                                              }`}
+                                            >
+                                              <div className="font-medium truncate">{video.title}</div>
+                                              <div className="text-gray-500 dark:text-gray-400">
+                                                {video.channelTitle} • {video.viewCount?.toLocaleString()} views • {video.karaokeScore}/100
+                                              </div>
+                                            </button>
+                                          ))}
+                                        </div>
+                                      </div>
                                     )}
                                   </div>
-
-                                  <p className="text-xs text-gray-600 dark:text-gray-400 mb-2">
-                                    {signupVideoSuggestions[selectedSignup.id].channelTitle} •
-                                    {signupVideoSuggestions[selectedSignup.id].viewCount?.toLocaleString()} views
-                                  </p>
-
-                                  <div className="flex items-center gap-3">
-                                    <Badge variant="outline" className="text-xs">
-                                      Quality: {signupVideoSuggestions[selectedSignup.id].karaokeScore}/100
-                                    </Badge>
-
-                                    <Button
-                                      size="sm"
-                                      variant="outline"
-                                      onClick={() => {
-                                        const video = signupVideoSuggestions[selectedSignup.id];
-                                        window.open(
-                                          `https://www.youtube.com/watch?v=${video.id}`,
-                                          '_blank',
-                                          'noopener,noreferrer'
-                                        );
-                                      }}
-                                      className="border-gray-300 hover:bg-gray-50"
-                                    >
-                                      <Play className="w-4 h-4 mr-1" />
-                                      Play Video
-                                    </Button>
-
-                                    <Button
-                                      size="sm"
-                                      onClick={() => linkSuggestedVideoToSignup(selectedSignup.id, signupVideoSuggestions[selectedSignup.id])}
-                                      className="bg-blue-600 hover:bg-blue-700 text-white"
-                                    >
-                                      <CheckCircle2 className="w-4 h-4 mr-1" />
-                                      Use This Video
-                                    </Button>
-                                  </div>
-                                </div>
-                              </div>
+                                );
+                              })()}
                             </div>
                           ) : (
                             /* Search and browse options when no video is linked */
@@ -1872,7 +2009,16 @@ export default function KaraokeAdminPage() {
                             <Button
                               size="sm"
                               variant="outline"
-                              onClick={() => window.open(`/karaoke/video-display?videoId=${selectedSignup.video_data!.youtube_video_id}&title=${encodeURIComponent(selectedSignup.song_title)}&artist=${encodeURIComponent(selectedSignup.song_artist || '')}`, 'karaokeVideoDisplay', 'width=1280,height=720,scrollbars=no,resizable=yes,status=no,toolbar=no,menubar=no,location=no,directories=no')}
+                              onClick={() => {
+                                const displayWindow = window.open(`/karaoke/video-display?videoId=${selectedSignup.video_data!.youtube_video_id}&title=${encodeURIComponent(selectedSignup.song_title)}&artist=${encodeURIComponent(selectedSignup.song_artist || '')}`, 'karaokeVideoDisplay', 'width=1280,height=720,scrollbars=no,resizable=yes,status=no,toolbar=no,menubar=no,location=no,directories=no');
+                                if (displayWindow && karaokeLayoutRef.current) {
+                                  karaokeLayoutRef.current.registerDisplayWindow(displayWindow, {
+                                    videoId: selectedSignup.video_data!.youtube_video_id,
+                                    title: selectedSignup.song_title,
+                                    artist: selectedSignup.song_artist || ''
+                                  });
+                                }
+                              }}
                               className="text-green-700 border-green-300 hover:bg-green-100"
                             >
                               <Monitor className="w-4 h-4" />
@@ -1965,7 +2111,14 @@ export default function KaraokeAdminPage() {
                             variant="outline"
                             onClick={() => {
                               if (selectedSignup.video_data?.youtube_video_id) {
-                                window.open(`/karaoke/video-display?videoId=${selectedSignup.video_data.youtube_video_id}&title=${encodeURIComponent(selectedSignup.song_title)}&artist=${encodeURIComponent(selectedSignup.song_artist || '')}`, 'karaokeVideoDisplay', 'width=1280,height=720,scrollbars=no,resizable=yes,status=no,toolbar=no,menubar=no,location=no,directories=no');
+                                const displayWindow = window.open(`/karaoke/video-display?videoId=${selectedSignup.video_data.youtube_video_id}&title=${encodeURIComponent(selectedSignup.song_title)}&artist=${encodeURIComponent(selectedSignup.song_artist || '')}`, 'karaokeVideoDisplay', 'width=1280,height=720,scrollbars=no,resizable=yes,status=no,toolbar=no,menubar=no,location=no,directories=no');
+                                if (displayWindow && karaokeLayoutRef.current) {
+                                  karaokeLayoutRef.current.registerDisplayWindow(displayWindow, {
+                                    videoId: selectedSignup.video_data.youtube_video_id,
+                                    title: selectedSignup.song_title,
+                                    artist: selectedSignup.song_artist || ''
+                                  });
+                                }
                               }
                             }}
                             className="text-blue-600 hover:text-blue-700"

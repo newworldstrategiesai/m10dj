@@ -68,7 +68,13 @@ export default function HistoryPage() {
 
       // Mock history data - in real app this would come from play history table
       const mockHistory = (videos as any[])?.map((v: any, index: number) => ({
-        ...v,
+        id: v.id,
+        title: v.song_title || v.youtube_video_title || 'Unknown Title',
+        artist: v.song_artist || v.youtube_channel_name || 'Unknown Artist',
+        thumbnail_url: `https://img.youtube.com/vi/${v.youtube_video_id}/default.jpg`,
+        duration: v.youtube_video_duration ? `${Math.floor(v.youtube_video_duration / 60)}:${(v.youtube_video_duration % 60).toString().padStart(2, '0')}` : '0:00',
+        is_premium: v.is_premium || false,
+        category: v.category || 'Unknown',
         played_at: new Date(Date.now() - index * 2 * 60 * 60 * 1000).toISOString(), // Spread over last 100 hours
         play_count: Math.floor(Math.random() * 10) + 1,
         is_favorite: Math.random() > 0.7
@@ -126,8 +132,8 @@ export default function HistoryPage() {
   };
 
   const filteredSongs = historySongs.filter(song => {
-    const matchesSearch = song.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         song.artist.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesSearch = (song.title || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         (song.artist || '').toLowerCase().includes(searchQuery.toLowerCase());
 
     if (!matchesSearch) return false;
 

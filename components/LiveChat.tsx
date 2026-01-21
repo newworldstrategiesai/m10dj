@@ -72,7 +72,7 @@ export function LiveChat({
           table: 'live_stream_messages',
           filter: `stream_id=eq.${streamId}`,
         },
-        (payload) => {
+        (payload: any) => {
           const message = payload.new as ChatMessage;
           if (!message.is_deleted && (!message.is_banned || message.banned_until && new Date(message.banned_until) < new Date())) {
             setMessages((prev) => [...prev, message]);
@@ -87,7 +87,7 @@ export function LiveChat({
           table: 'live_stream_messages',
           filter: `stream_id=eq.${streamId}`,
         },
-        (payload) => {
+        (payload: any) => {
           const updatedMessage = payload.new as ChatMessage;
           setMessages((prev) =>
             prev.map((msg) => (msg.id === updatedMessage.id ? updatedMessage : msg))
@@ -97,7 +97,7 @@ export function LiveChat({
       .on(
         'broadcast',
         { event: 'new_tip' },
-        (payload) => {
+        (payload: any) => {
           // Add tip message to chat
           const tipData = payload.payload;
           const tipMessage: ChatMessage = {

@@ -79,7 +79,7 @@ export function useUser() {
     try {
       const {
         data: { subscription: authSubscription },
-      } = supabase.auth.onAuthStateChange((event, session) => {
+      } = supabase.auth.onAuthStateChange((event: any, session: any) => {
         if (isMounted) {
           setUser(session?.user ?? null);
           setLoading(false);

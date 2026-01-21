@@ -49,15 +49,10 @@ export async function isAdminEmail(userEmail: string | null | undefined): Promis
       return isAdminEmailFallback(userEmail);
     }
 
-    // Check if user is admin by querying the database
-    const { data, error } = await supabase
-      .from('organization_members')
-      .select('role')
-      .eq('user_id', userData.user.id)
-      .eq('role', 'admin')
-      .single();
+    // Check if user is admin by calling a database function that bypasses RLS
+    const { data, error } = await (supabase as any).rpc('check_user_admin_status', [userData.user.id]);
 
-    if (error && error.code !== 'PGRST116') { // PGRST116 is "not found"
+    if (error) {
       console.error('Error checking admin role:', error);
       // Fallback to hardcoded list
       return isAdminEmailFallback(userEmail);
@@ -119,18 +114,27 @@ export async function getAdminRole(userEmail: string | null | undefined): Promis
       return null;
     }
 
-    const { data, error } = await supabase
-      .from('organization_members')
-      .select('role')
-      .eq('user_id', userData.user.id)
-      .single();
+    const { data, error } = await (supabase as any).rpc('check_user_admin_status', [userData.user.id]);
 
     if (error) {
       console.error('Error getting admin role:', error);
       return null;
     }
 
-    return data as AdminRole;
+    // Return role info if user is admin
+    if (data) {
+      return {
+        id: userData.user.id,
+        user_id: userData.user.id,
+        email: userEmail,
+        role: 'admin',
+        is_active: true,
+        full_name: null,
+        last_login: null
+      } as AdminRole;
+    }
+
+    return null;
   } catch (error) {
     console.error('Error in getAdminRole:', error);
     return null;
@@ -193,18 +197,15 @@ export async function getAllAdminEmails(): Promise<string[]> {
       serviceRoleKey || anonKey!
     );
 
-    const { data, error } = await supabase
-      .from('organization_members')
-      .select('user_id')
-      .eq('role', 'admin');
+    const { data, error } = await (supabase as any).rpc('get_all_admin_user_ids');
 
     if (error || !data) {
-      console.error('Error fetching admin emails:', error);
+      console.error('Error fetching admin user IDs:', error);
       return [];
     }
 
     // Get user emails from auth.users
-    const userIds = data.map(row => row.user_id);
+    const userIds = data as string[];
     if (userIds.length === 0) {
       return [];
     }

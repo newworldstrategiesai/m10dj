@@ -171,7 +171,7 @@ export default function GoLivePage() {
       .on(
         'broadcast',
         { event: 'viewer_count_update' },
-        (payload) => {
+        (payload: any) => {
           setViewerCount(payload.payload.count || 0);
         }
       )
@@ -192,7 +192,7 @@ export default function GoLivePage() {
       .on(
         'broadcast',
         { event: 'earnings_update' },
-        (payload) => {
+        (payload: any) => {
           setEarnings(prev => prev + (payload.payload.tip_amount || 0));
         }
       )

@@ -63,69 +63,51 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
     }
 
-    // Find the best video (prioritize embeddable, then Karafun, then highest quality)
-    let bestVideo = null;
-
-    // First priority: embeddable videos
+    // Get top embeddable videos (up to 5 suggestions)
     const embeddableVideos = videos.filter(video => video.embeddable !== false);
 
-    if (embeddableVideos.length > 0) {
-      if (prioritizeKarafun) {
-        // Within embeddable videos, try to find a Karafun video
-        const embeddableKarafunVideos = embeddableVideos.filter(video => {
-          const karafunTerms = (process.env.KARAFUN_CHANNEL_IDS || 'karafun').split(',');
-          return karafunTerms.some(term =>
-            video.channelTitle?.toLowerCase().includes(term.toLowerCase()) ||
-            video.channelId?.toLowerCase().includes(term.toLowerCase())
-          );
-        });
-
-        if (embeddableKarafunVideos.length > 0) {
-          // Get the highest quality embeddable Karafun video
-          bestVideo = embeddableKarafunVideos.reduce((best, current) =>
-            (current.karaokeScore || 0) > (best.karaokeScore || 0) ? current : best
-          );
-        }
-      }
-
-      // If no embeddable Karafun video found, get the highest quality embeddable video
-      if (!bestVideo) {
-        bestVideo = embeddableVideos.reduce((best, current) =>
-          (current.karaokeScore || 0) > (best.karaokeScore || 0) ? current : best
-        );
-      }
-    } else {
-      // Fallback: if no embeddable videos found, use the highest scoring video anyway
-      // (though this should be rare due to the scoring penalties)
-      bestVideo = videos.reduce((best, current) =>
-        (current.karaokeScore || 0) > (best.karaokeScore || 0) ? current : best
-      );
+    if (embeddableVideos.length === 0) {
+      return res.status(200).json({
+        suggestions: [],
+        noEmbeddableVideos: true,
+        totalVideosFound: videos.length
+      });
     }
 
-    // Check if this video is already linked
-    let existingLink = null;
-    if (bestVideo) {
-      try {
-        const { data: existingLinks } = await supabase
-          .from('karaoke_song_videos')
-          .select('id, video_quality_score, confidence_score')
-          .eq('youtube_video_id', bestVideo.id)
-          .eq('organization_id', organizationId)
-          .limit(1);
+    // Sort by karaoke score (highest first)
+    embeddableVideos.sort((a, b) => (b.karaokeScore || 0) - (a.karaokeScore || 0));
 
-        if (existingLinks && existingLinks.length > 0) {
-          existingLink = existingLinks[0];
+    // Take top 5 suggestions
+    const topSuggestions = embeddableVideos.slice(0, 5);
+
+    // Check existing links for each suggestion
+    const suggestionsWithLinks = await Promise.all(
+      topSuggestions.map(async (video) => {
+        let existingLink = null;
+        try {
+          const { data: existingLinks } = await supabase
+            .from('karaoke_song_videos')
+            .select('id, video_quality_score, confidence_score')
+            .eq('youtube_video_id', video.id)
+            .eq('organization_id', organizationId)
+            .limit(1);
+
+          if (existingLinks && existingLinks.length > 0) {
+            existingLink = existingLinks[0];
+          }
+        } catch (linkError) {
+          console.warn('Error checking existing links for video', video.id, ':', linkError);
         }
-      } catch (linkError) {
-        console.warn('Error checking existing links:', linkError);
-      }
-    }
+
+        return {
+          ...video,
+          existingLink
+        };
+      })
+    );
 
     return res.status(200).json({
-      bestVideo: bestVideo ? {
-        ...bestVideo,
-        existingLink
-      } : null,
+      suggestions: suggestionsWithLinks,
       totalVideosFound: videos.length,
       karafunPrioritized: prioritizeKarafun
     });
