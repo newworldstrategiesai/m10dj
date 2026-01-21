@@ -7,6 +7,21 @@ BEGIN;
 DROP POLICY IF EXISTS "Users can insert song videos for their organization" ON karaoke_song_videos;
 DROP POLICY IF EXISTS "Users can update song videos for their organization" ON karaoke_song_videos;
 DROP POLICY IF EXISTS "Users can view song videos for their organization" ON karaoke_song_videos;
+DROP POLICY IF EXISTS "karaoke_song_videos_premium_access" ON karaoke_song_videos;
+
+-- Create safe premium access policy that doesn't use organization_members
+CREATE POLICY "Premium karaoke access"
+  ON karaoke_song_videos
+  FOR SELECT
+  TO authenticated
+  USING (
+    NOT is_premium
+    OR organization_id IN (
+      SELECT id FROM organizations
+      WHERE owner_id = auth.uid()
+      AND subscription_tier <> 'free'
+    )
+  );
 
 -- Remove old user_playlists policies that use organization_members
 DROP POLICY IF EXISTS "user_playlists_insert" ON user_playlists;
