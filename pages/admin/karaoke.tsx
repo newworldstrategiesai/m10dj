@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/router';
-import Head from 'next/head';
 import { createClient } from '@/utils/supabase/client';
 import {
   Mic,
@@ -42,11 +41,12 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/components/ui/Toasts/use-toast';
-import AdminLayout from '@/components/layouts/AdminLayout';
+import KaraokeLayout from '@/components/karaoke/KaraokeLayout';
+import DiscoverPage from '@/components/karaoke/DiscoverPage';
+import VideoManager from '@/components/karaoke/VideoManager';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
-import VideoManager from '@/components/karaoke/VideoManager';
 import { getGroupLabel, formatGroupDisplayName, KaraokeSignup } from '@/types/karaoke';
 import { getSortedQueue, getCurrentSinger, getNextSinger, getQueue, calculateQueuePosition, calculateEstimatedWait, formatEstimatedWait, getQueueHealth } from '@/utils/karaoke-queue';
 import { getCurrentOrganization } from '@/utils/organization-context';
@@ -70,10 +70,12 @@ export default function KaraokeAdminPage() {
   const [settingsTab, setSettingsTab] = useState('general');
   const [showQRGenerator, setShowQRGenerator] = useState(false);
   const [organization, setOrganization] = useState<any>(null);
+  const [subscriptionTier, setSubscriptionTier] = useState<string>('free');
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [availableEvents, setAvailableEvents] = useState<string[]>([]);
   const [settings, setSettings] = useState<any>(null);
   const [savingSettings, setSavingSettings] = useState(false);
+  const [activeTab, setActiveTab] = useState('discover');
 
   // Page customization settings
   const [pageSettings, setPageSettings] = useState({
@@ -132,6 +134,7 @@ export default function KaraokeAdminPage() {
     async function loadOrganization() {
       const org = await getCurrentOrganization(supabase);
       setOrganization(org);
+      setSubscriptionTier(org?.subscription_tier || 'free');
       if (org) {
         loadSettings(org.id);
         loadSignups(org.id);
@@ -661,12 +664,21 @@ export default function KaraokeAdminPage() {
   };
 
   return (
-    <>
-      <Head>
-        <title>Karaoke Queue</title>
-      </Head>
-      <AdminLayout title="Karaoke Queue" description="Manage your karaoke signups and queue">
-        <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-6 pb-2 sm:pb-4 lg:pb-8">
+    <KaraokeLayout title="Discover" currentPage="discover">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <TabsList className="grid w-full grid-cols-4 mb-6">
+          <TabsTrigger value="discover">Discover</TabsTrigger>
+          <TabsTrigger value="queue">Queue</TabsTrigger>
+          <TabsTrigger value="videos">Videos</TabsTrigger>
+          <TabsTrigger value="settings">Settings</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="discover" className="space-y-6">
+          <DiscoverPage isPremium={subscriptionTier !== 'free'} />
+        </TabsContent>
+
+        <TabsContent value="queue" className="space-y-6">
+          <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-6 pb-2 sm:pb-4 lg:pb-8">
           {/* Header - Reused pattern from crowd-requests */}
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4 sm:mb-6">
             <div>
@@ -2369,8 +2381,24 @@ export default function KaraokeAdminPage() {
               </div>
             </DialogContent>
           </Dialog>
-        </div>
-      </AdminLayout>
-    </>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="videos" className="space-y-6">
+          {organization && (
+            <VideoManager organizationId={organization.id} />
+          )}
+        </TabsContent>
+
+        <TabsContent value="settings" className="space-y-6">
+          {/* Settings content will go here */}
+          <div className="text-center py-12">
+            <Settings className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+            <h3 className="text-lg font-semibold text-gray-300 mb-2">Settings</h3>
+            <p className="text-gray-500">Karaoke settings and preferences will be available here.</p>
+          </div>
+        </TabsContent>
+      </Tabs>
+    </KaraokeLayout>
   );
 }

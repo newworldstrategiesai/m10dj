@@ -290,7 +290,16 @@ export function calculateKaraokeScore(video: YouTubeVideo, songTitle: string, so
 export async function searchKaraokeVideos(
   songTitle: string,
   songArtist?: string,
-  options: { maxResults?: number } = {}
+  options: {
+    maxResults?: number;
+    filters?: {
+      minQuality?: number;
+      maxDuration?: number;
+      channel?: string;
+      hasLyrics?: boolean | null;
+      sortBy?: 'karaokeScore' | 'viewCount' | 'date' | 'relevance';
+    }
+  } = {}
 ): Promise<VideoSearchResult[]> {
   const api = new YouTubeAPI();
 
@@ -345,14 +354,51 @@ export async function searchKaraokeVideos(
     }
   }
 
-  // Remove duplicates and sort by quality
+  // Remove duplicates
   const uniqueResults = allResults.filter((result, index, self) =>
     index === self.findIndex(r => r.id === result.id)
   );
 
-  return uniqueResults
-    .sort((a, b) => b.karaokeScore - a.karaokeScore)
-    .slice(0, options.maxResults || 10);
+  // Apply filters
+  let filteredResults = uniqueResults;
+  if (options.filters) {
+    const { minQuality, maxDuration, channel, hasLyrics, sortBy } = options.filters;
+
+    filteredResults = uniqueResults.filter(result => {
+      // Quality filter
+      if (minQuality !== undefined && result.karaokeScore < minQuality) return false;
+
+      // Duration filter
+      if (maxDuration !== undefined) {
+        const durationSeconds = parseDuration(result.duration);
+        if (durationSeconds > maxDuration) return false;
+      }
+
+      // Channel filter
+      if (channel && !result.channelTitle.toLowerCase().includes(channel.toLowerCase())) return false;
+
+      return true;
+    });
+
+    // Apply sorting
+    filteredResults.sort((a, b) => {
+      switch (sortBy) {
+        case 'viewCount':
+          return b.viewCount - a.viewCount;
+        case 'date':
+          return new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime();
+        case 'relevance':
+          return b.relevanceScore - a.relevanceScore;
+        default:
+          return b.karaokeScore - a.karaokeScore;
+      }
+    });
+  } else {
+    // Default sorting by karaoke score
+    filteredResults.sort((a, b) => b.karaokeScore - a.karaokeScore);
+  }
+
+  return filteredResults.slice(0, options.maxResults || 10);
 }
 
 /**

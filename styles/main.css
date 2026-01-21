@@ -41,6 +41,133 @@ select:focus {
   border: 0 !important;
 }
 
+/* ===========================================
+   KARAOKE THEME - Dark Mode with Magenta/Pink Accents
+   =========================================== */
+
+:root {
+  /* Karaoke Theme Colors */
+  --karaoke-primary: #ff2ea9;
+  --karaoke-primary-hover: #e02596;
+  --karaoke-secondary: #c71585;
+  --karaoke-accent: #ff1493;
+  --karaoke-dark-bg: #0f0a14;
+  --karaoke-darker-bg: #0a0610;
+  --karaoke-card-bg: rgba(31, 24, 43, 0.8);
+  --karaoke-border: rgba(255, 255, 255, 0.1);
+  --karaoke-text-primary: #ffffff;
+  --karaoke-text-secondary: #b8b8b8;
+  --karaoke-text-muted: #666666;
+}
+
+/* Karaoke-specific focus styles */
+.karaoke-focus:focus {
+  @apply outline-none ring-2 ring-pink-500 ring-opacity-75;
+}
+
+/* Karaoke button styles */
+.karaoke-btn-primary {
+  @apply bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 text-white font-semibold shadow-lg;
+}
+
+.karaoke-btn-secondary {
+  @apply bg-gray-800/50 hover:bg-gray-700/50 text-gray-300 hover:text-white border border-gray-600/50;
+}
+
+/* Karaoke card styles */
+.karaoke-card {
+  @apply bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl overflow-hidden;
+}
+
+.karaoke-card-hover {
+  @apply transition-all duration-300 hover:bg-gray-800/70 hover:shadow-xl hover:shadow-pink-500/10;
+}
+
+/* Karaoke text styles */
+.karaoke-text-primary {
+  @apply text-white;
+}
+
+.karaoke-text-secondary {
+  @apply text-gray-300;
+}
+
+.karaoke-text-muted {
+  @apply text-gray-500;
+}
+
+/* Karaoke gradient backgrounds */
+.karaoke-gradient-primary {
+  background: linear-gradient(135deg, #ff2ea9 0%, #c71585 100%);
+}
+
+.karaoke-gradient-secondary {
+  background: linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%);
+}
+
+.karaoke-gradient-bg {
+  background: linear-gradient(135deg, #2d1b3f 0%, #1a0f29 100%);
+}
+
+/* Karaoke animations */
+@keyframes karaoke-float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-6px); }
+}
+
+.karaoke-float {
+  animation: karaoke-float 3s ease-in-out infinite;
+}
+
+/* Premium lock overlay */
+.karaoke-premium-overlay {
+  @apply relative;
+}
+
+.karaoke-premium-overlay::after {
+  content: '';
+  @apply absolute inset-0 bg-black/60 backdrop-blur-sm rounded-lg flex items-center justify-center;
+  background-image: linear-gradient(45deg, rgba(255, 46, 169, 0.1), rgba(199, 21, 133, 0.1));
+}
+
+.karaoke-premium-badge {
+  @apply absolute top-3 right-3 z-10 bg-gradient-to-r from-pink-500 to-purple-600 text-white text-xs font-bold px-2 py-1 rounded-full flex items-center gap-1;
+}
+
+/* Line clamp utilities */
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.line-clamp-3 {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Custom scrollbar for karaoke theme */
+.karaoke-scrollbar::-webkit-scrollbar {
+  width: 8px;
+}
+
+.karaoke-scrollbar::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+}
+
+.karaoke-scrollbar::-webkit-scrollbar-thumb {
+  background: linear-gradient(135deg, #ff2ea9, #c71585);
+  border-radius: 4px;
+}
+
+.karaoke-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(135deg, #e02596, #a8126a);
+}
+
 .sr-only:focus,
 .focus\:not-sr-only:focus {
   position: static !important;

@@ -21,7 +21,7 @@ export default async function handler(req, res) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
 
-    const { songTitle, songArtist, organizationId, maxResults = 10 } = req.body;
+    const { songTitle, songArtist, organizationId, maxResults = 10, filters, generalSearch } = req.body;
 
     if (!songTitle || songTitle.trim().length < 1) {
       return res.status(400).json({ error: 'Song title is required' });
@@ -44,8 +44,18 @@ export default async function handler(req, res) {
     }
 
     // Search for videos
-    const videos = await searchKaraokeVideos(songTitle.trim(), songArtist?.trim(), {
-      maxResults: Math.min(maxResults, 20) // Cap at 20 for performance
+    let searchQuery = songTitle?.trim();
+    let searchArtist = songArtist?.trim();
+
+    // Support general search
+    if (generalSearch) {
+      searchQuery = generalSearch.trim();
+      searchArtist = undefined;
+    }
+
+    const videos = await searchKaraokeVideos(searchQuery, searchArtist, {
+      maxResults: Math.min(maxResults, 50), // Allow more results for enhanced UI
+      filters
     });
 
     // Check if we already have links for any of these videos

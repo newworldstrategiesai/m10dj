@@ -14,6 +14,7 @@ interface YouTubePlayerProps {
   autoPlay?: boolean;
   volume?: number; // 0-100
   onVolumeChange?: (volume: number) => void;
+  isMuted?: boolean;
 }
 
 declare global {
@@ -31,11 +32,12 @@ export default function YouTubePlayer({
   showControls = true,
   autoPlay = true,
   volume = 50,
-  onVolumeChange
+  onVolumeChange,
+  isMuted = false
 }: YouTubePlayerProps) {
   const [player, setPlayer] = useState<any>(null);
   const [playerState, setPlayerState] = useState<'unstarted' | 'ended' | 'playing' | 'paused' | 'buffering' | 'cued'>('unstarted');
-  const [isMuted, setIsMuted] = useState(false);
+  const [isMuted, setIsMuted] = useState(isMuted);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
