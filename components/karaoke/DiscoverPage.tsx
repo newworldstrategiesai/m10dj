@@ -17,10 +17,10 @@ import {
   Heart,
   Loader2
 } from 'lucide-react';
-import { createClient } from '@/utils/supabase/client';
 
 interface DiscoverPageProps {
   isPremium: boolean;
+  supabase: any;
 }
 
 interface Playlist {
@@ -46,7 +46,7 @@ interface Quiz {
   playerCount?: number;
 }
 
-export default function DiscoverPage({ isPremium }: DiscoverPageProps) {
+export default function DiscoverPage({ isPremium, supabase }: DiscoverPageProps) {
   const [hoveredPlaylist, setHoveredPlaylist] = useState<string | null>(null);
   const [hoveredQuiz, setHoveredQuiz] = useState<string | null>(null);
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
@@ -58,8 +58,6 @@ export default function DiscoverPage({ isPremium }: DiscoverPageProps) {
       try {
         setLoading(true);
         setError(null);
-
-        const supabase = createClient();
 
         // Get current organization
         const { data: { user }, error: userError } = await supabase.auth.getUser();

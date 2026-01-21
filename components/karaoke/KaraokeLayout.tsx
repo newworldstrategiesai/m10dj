@@ -1,8 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/router';
-import { createClient } from '@/utils/supabase/client';
 import KaraokeHeader from './layout/KaraokeHeader';
 import KaraokeSidebar from './layout/KaraokeSidebar';
 import KaraokePlayerPanel from './layout/KaraokePlayerPanel';
@@ -12,48 +11,28 @@ interface KaraokeLayoutProps {
   title?: string;
   showBackButton?: boolean;
   currentPage?: 'discover' | 'playlists' | 'quizzes' | 'library' | 'favorites' | 'history' | 'my-songs';
+  user?: any;
+  subscriptionTier?: string;
 }
 
 export default function KaraokeLayout({
   children,
   title = 'Discover',
   showBackButton = false,
-  currentPage = 'discover'
+  currentPage = 'discover',
+  user: propUser,
+  subscriptionTier: propSubscriptionTier = 'free'
 }: KaraokeLayoutProps) {
   const router = useRouter();
-  const supabase = createClient();
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isPlayerPanelVisible, setIsPlayerPanelVisible] = useState(true);
-  const [user, setUser] = useState<any>(null);
-  const [subscriptionTier, setSubscriptionTier] = useState<string>('free');
-
-  // Check user authentication and subscription
-  useEffect(() => {
-    const checkUser = async () => {
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        setUser(user);
-
-        if (user) {
-          // Get organization and subscription info
-          const { getCurrentOrganization } = await import('@/utils/organization-context');
-          const org = await getCurrentOrganization(supabase);
-          setSubscriptionTier(org?.subscription_tier || 'free');
-        }
-      } catch (error) {
-        console.error('Error checking user:', error);
-      }
-    };
-
-    checkUser();
-  }, [supabase]);
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
     router.push('/signin');
   };
 
-  const isPremium = subscriptionTier !== 'free';
+  const isPremium = propSubscriptionTier !== 'free';
 
   return (
     <div className="min-h-screen karaoke-gradient-bg karaoke-scrollbar">

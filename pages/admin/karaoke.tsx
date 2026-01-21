@@ -772,7 +772,7 @@ export default function KaraokeAdminPage() {
   // Show loading state while authentication is being checked
   if (authLoading && !authTimeout) {
     return (
-      <KaraokeLayout title="Discover" currentPage="discover">
+      <KaraokeLayout title="Discover" currentPage="discover" user={user} subscriptionTier={subscriptionTier}>
         <div className="flex items-center justify-center min-h-[400px]">
           <div className="text-center">
             <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-purple-500" />
@@ -786,7 +786,7 @@ export default function KaraokeAdminPage() {
   // If authentication timed out or failed, show error
   if (hasAuthError || (!authLoading && !isAuthenticated)) {
     return (
-      <KaraokeLayout title="Discover" currentPage="discover">
+      <KaraokeLayout title="Discover" currentPage="discover" user={user} subscriptionTier={subscriptionTier}>
         <div className="flex items-center justify-center min-h-[400px]">
           <div className="text-center">
             {authTimeout ? (
@@ -825,7 +825,7 @@ export default function KaraokeAdminPage() {
         </TabsList>
 
         <TabsContent value="discover" className="space-y-6">
-          <DiscoverPage isPremium={subscriptionTier !== 'free'} />
+          <DiscoverPage isPremium={subscriptionTier !== 'free'} supabase={supabase} />
         </TabsContent>
 
         <TabsContent value="queue" className="space-y-6">
