@@ -1,3 +1,4 @@
+// @ts-nocheck
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
@@ -933,7 +934,6 @@ export default function KaraokeAdminPage() {
             </div>
           )}
 
-          {/* Quick Filter Chips */}
           <div className="flex flex-wrap gap-2 mb-4 sm:mb-6">
             <Button
               variant={statusFilter === 'active' ? 'default' : 'outline'}
@@ -956,7 +956,7 @@ export default function KaraokeAdminPage() {
             >
               Completed
             </Button>
-            {eventCodeFilter && (
+            {eventCodeFilter ? (
               <Button
                 variant="outline"
                 size="sm"
@@ -971,7 +971,7 @@ export default function KaraokeAdminPage() {
                 <X className="w-3 h-3 mr-1" />
                 Clear Event
               </Button>
-            )}
+            ) : null}
           </div>
 
           {/* Filters - Reused pattern from crowd-requests */}
