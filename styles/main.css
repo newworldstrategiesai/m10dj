@@ -106,7 +106,12 @@ select:focus {
 }
 
 .karaoke-gradient-bg {
-  background: linear-gradient(135deg, #2d1b3f 0%, #1a0f29 100%);
+  background: linear-gradient(135deg, #000000 0%, #1a1a1a 100%);
+}
+
+/* Light mode override for karaoke pages */
+.light .karaoke-gradient-bg {
+  background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
 }
 
 /* Karaoke animations */

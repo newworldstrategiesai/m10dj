@@ -890,11 +890,11 @@ export default function KaraokeAdminPage() {
   return (
     <KaraokeLayout title="Discover" currentPage="discover" user={user} subscriptionTier={subscriptionTier}>
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-4 mb-6">
-          <TabsTrigger value="discover">Discover</TabsTrigger>
-          <TabsTrigger value="queue">Queue</TabsTrigger>
-          <TabsTrigger value="videos">Videos</TabsTrigger>
-          <TabsTrigger value="settings">Settings</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-4 mb-6 bg-gray-100 dark:bg-gray-800">
+          <TabsTrigger value="discover" className="text-gray-700 dark:text-gray-300 data-[state=active]:text-gray-900 dark:data-[state=active]:text-white">Discover</TabsTrigger>
+          <TabsTrigger value="queue" className="text-gray-700 dark:text-gray-300 data-[state=active]:text-gray-900 dark:data-[state=active]:text-white">Queue</TabsTrigger>
+          <TabsTrigger value="videos" className="text-gray-700 dark:text-gray-300 data-[state=active]:text-gray-900 dark:data-[state=active]:text-white">Videos</TabsTrigger>
+          <TabsTrigger value="settings" className="text-gray-700 dark:text-gray-300 data-[state=active]:text-gray-900 dark:data-[state=active]:text-white">Settings</TabsTrigger>
         </TabsList>
 
         <TabsContent value="discover" className="space-y-6">
@@ -907,7 +907,7 @@ export default function KaraokeAdminPage() {
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4 sm:mb-6">
             <div>
               <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                <Mic className="w-6 h-6" />
+                <Mic className="w-6 h-6 text-gray-700 dark:text-pink-400" />
                 Karaoke Queue
               </h1>
               <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
