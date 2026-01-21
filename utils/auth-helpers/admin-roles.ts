@@ -66,7 +66,7 @@ export async function isAdminEmail(userEmail: string | null | undefined): Promis
       return isAdminEmailFallback(userEmail);
     }
 
-    return !!data;
+    return !!result.data;
   } catch (error: any) {
     // Handle AbortError gracefully (component unmounted or request cancelled)
     if (error?.name === 'AbortError' || error?.message?.includes('aborted')) {
