@@ -345,7 +345,7 @@ export default function AdminDashboard() {
 
       // CRITICAL: Get organization_id to filter events
       const { data: { user }, error: userError } = await supabase.auth.getUser();
-      if (error?.message?.includes('rate limit') || error?.status === 429) {
+      if (userError?.message?.includes('rate limit') || userError?.status === 429) {
         setRateLimited();
         return;
       }
@@ -384,7 +384,7 @@ export default function AdminDashboard() {
 
       const { data, error: queryError } = await eventsQuery;
 
-      if (!error && data) {
+      if (!queryError && data) {
         setUpcomingEvents(data);
       }
     } catch (error) {
@@ -402,7 +402,7 @@ export default function AdminDashboard() {
 
       // CRITICAL: Get organization_id to filter contacts
       const { data: { user }, error: contactUserError } = await supabase.auth.getUser();
-      if (error?.message?.includes('rate limit') || error?.status === 429) {
+      if (contactUserError?.message?.includes('rate limit') || contactUserError?.status === 429) {
         setRateLimited();
         return;
       }
@@ -434,7 +434,7 @@ export default function AdminDashboard() {
 
       const { data, error: contactsError } = await contactsQuery;
 
-      if (!error && data) {
+      if (!contactsError && data) {
         // For each contact, try to find the source (form submission or crowd request)
         const contactsWithSource = await Promise.all(
           data.map(async (contact: any) => {
@@ -466,7 +466,7 @@ export default function AdminDashboard() {
               const { data: submission } = await submissionQuery.single();
 
               if (submission) {
-                contactWithSource.submission_id = submission.id;
+                contactWithSource.submission_id = (submission as any).id;
                 return contactWithSource;
               }
             }
@@ -496,8 +496,8 @@ export default function AdminDashboard() {
               const { data: request } = await requestQuery.single();
 
               if (request) {
-                contactWithSource.request_id = request.id;
-                contactWithSource.request_type = request.request_type;
+                contactWithSource.request_id = (request as any).id;
+                contactWithSource.request_type = (request as any).request_type;
                 return contactWithSource;
               }
             }
