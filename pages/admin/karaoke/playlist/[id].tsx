@@ -362,7 +362,7 @@ export default function PlaylistDetailPage() {
   };
 
   // Fetch video suggestions for a song
-  const fetchVideoSuggestions = async (songTitle: string, songArtist?: string, songId: string) => {
+  const fetchVideoSuggestions = async (songTitle: string, songId: string, songArtist?: string) => {
     if (!organization) return;
 
     setLoadingSuggestions(prev => ({ ...prev, [songId]: true }));
@@ -435,7 +435,7 @@ export default function PlaylistDetailPage() {
             ...video,
             video_id: newVideoId,
             thumbnail_url: newVideoData.thumbnail_url,
-            duration: newVideoData.youtube_video_duration ? `${Math.floor(newVideoData.youtube_video_duration / 60)}:${(newVideoData.youtube_video_duration % 60).toString().padStart(2, '0')}` : video.duration,
+            duration: newVideoData.youtube_video_duration && typeof newVideoData.youtube_video_duration === 'number' ? `${Math.floor(newVideoData.youtube_video_duration / 60)}:${(newVideoData.youtube_video_duration % 60).toString().padStart(2, '0')}` : video.duration,
             is_premium: newVideoData.is_premium
           } : video
         ));
@@ -850,7 +850,7 @@ export default function PlaylistDetailPage() {
                             onClick={() => {
                               setShowVideoSelector(video.id);
                               if (!videoSuggestions[video.id] && !loadingSuggestions[video.id]) {
-                                fetchVideoSuggestions(video.title, video.artist, video.id);
+                                fetchVideoSuggestions(video.title, video.id, video.artist);
                               }
                             }}
                             className="text-blue-400 hover:bg-blue-500/10 hover:text-blue-300"
@@ -1045,7 +1045,7 @@ export default function PlaylistDetailPage() {
                             </p>
                             <div className="flex items-center gap-4 mt-1">
                               <span className="text-xs text-gray-500">
-                                {suggestion.youtube_video_duration ? `${Math.floor(suggestion.youtube_video_duration / 60)}:${(suggestion.youtube_video_duration % 60).toString().padStart(2, '0')}` : 'Unknown'}
+                                {suggestion.youtube_video_duration && typeof suggestion.youtube_video_duration === 'number' ? `${Math.floor(suggestion.youtube_video_duration / 60)}:${(suggestion.youtube_video_duration % 60).toString().padStart(2, '0')}` : 'Unknown'}
                               </span>
                               {suggestion.karaokeScore && (
                                 <span className="text-xs text-green-400 bg-green-500/20 px-2 py-1 rounded">
