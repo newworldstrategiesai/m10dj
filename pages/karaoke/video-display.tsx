@@ -80,101 +80,145 @@ export default function VideoDisplayPage() {
             }, { targetOrigin: event.origin });
             break;
           case 'play':
-            control.play();
-            // Send status update back
-            setTimeout(() => {
-              const currentTime = control.getCurrentTime();
-              const duration = control.getDuration();
-              event.source?.postMessage({
-                type: 'VIDEO_STATUS',
-                data: {
-                  isPlaying: true,
-                  currentTime,
-                  duration,
-                  volume: volume
-                }
-              }, { targetOrigin: event.origin });
-            }, 100);
-            break;
-          case 'pause':
-            control.pause();
-            // Send status update back
-            setTimeout(() => {
-              const currentTime = control.getCurrentTime();
-              const duration = control.getDuration();
-              event.source?.postMessage({
-                type: 'VIDEO_STATUS',
-                data: {
-                  isPlaying: false,
-                  currentTime,
-                  duration,
-                  volume: volume
-                }
-              }, { targetOrigin: event.origin });
-            }, 100);
-            break;
-          case 'stop':
-            control.stop();
-            // Send status update back
-            event.source?.postMessage({
-              type: 'VIDEO_STATUS',
-              data: {
-                isPlaying: false,
-                currentTime: 0,
-                duration: control.getDuration(),
-                volume: volume
-              }
-            }, { targetOrigin: event.origin });
-            break;
-          case 'seek':
-            if (data.seconds !== undefined) {
-              control.seekTo(data.seconds);
+            try {
+              control.play();
               // Send status update back
               setTimeout(() => {
+                try {
+                  const currentTime = control.getCurrentTime();
+                  const duration = control.getDuration();
+                  event.source?.postMessage({
+                    type: 'VIDEO_STATUS',
+                    data: {
+                      isPlaying: true,
+                      currentTime,
+                      duration,
+                      volume: volume
+                    }
+                  }, { targetOrigin: event.origin });
+                } catch (error) {
+                  console.error('❌ Error sending play status:', error);
+                }
+              }, 100);
+            } catch (error) {
+              console.error('❌ Error calling play:', error);
+            }
+            break;
+          case 'pause':
+            try {
+              control.pause();
+              // Send status update back
+              setTimeout(() => {
+                try {
+                  const currentTime = control.getCurrentTime();
+                  const duration = control.getDuration();
+                  event.source?.postMessage({
+                    type: 'VIDEO_STATUS',
+                    data: {
+                      isPlaying: false,
+                      currentTime,
+                      duration,
+                      volume: volume
+                    }
+                  }, { targetOrigin: event.origin });
+                } catch (error) {
+                  console.error('❌ Error sending pause status:', error);
+                }
+              }, 100);
+            } catch (error) {
+              console.error('❌ Error calling pause:', error);
+            }
+            break;
+          case 'stop':
+            try {
+              control.stop();
+              // Send status update back
+              try {
                 event.source?.postMessage({
                   type: 'VIDEO_STATUS',
                   data: {
-                    isPlaying: control.getPlayerState() === 1, // Playing
-                    currentTime: data.seconds,
+                    isPlaying: false,
+                    currentTime: 0,
                     duration: control.getDuration(),
                     volume: volume
                   }
                 }, { targetOrigin: event.origin });
-              }, 100);
+              } catch (error) {
+                console.error('❌ Error sending stop status:', error);
+              }
+            } catch (error) {
+              console.error('❌ Error calling stop:', error);
+            }
+            break;
+          case 'seek':
+            if (data.seconds !== undefined) {
+              try {
+                control.seekTo(data.seconds);
+                // Send status update back
+                setTimeout(() => {
+                  try {
+                    event.source?.postMessage({
+                      type: 'VIDEO_STATUS',
+                      data: {
+                        isPlaying: control.getPlayerState() === 1, // Playing
+                        currentTime: data.seconds,
+                        duration: control.getDuration(),
+                        volume: volume
+                      }
+                    }, { targetOrigin: event.origin });
+                  } catch (error) {
+                    console.error('❌ Error sending seek status:', error);
+                  }
+                }, 100);
+              } catch (error) {
+                console.error('❌ Error calling seekTo:', error);
+              }
             }
             break;
           case 'volume':
             if (data.volume !== undefined) {
               setVolume(data.volume);
-              control.setVolume(data.volume);
+              try {
+                control.setVolume(data.volume);
+                // Send status update back
+                event.source?.postMessage({
+                  type: 'VIDEO_STATUS',
+                  data: {
+                    volume: data.volume
+                  }
+                }, { targetOrigin: event.origin });
+              } catch (error) {
+                console.error('❌ Error calling setVolume:', error);
+              }
+            }
+            break;
+          case 'mute':
+            try {
+              control.mute();
               // Send status update back
               event.source?.postMessage({
                 type: 'VIDEO_STATUS',
                 data: {
-                  volume: data.volume
+                  volume: 0
                 }
               }, { targetOrigin: event.origin });
+            } catch (error) {
+              console.error('❌ Error calling mute:', error);
             }
             break;
-          case 'mute':
-            control.mute();
-            // Send status update back
-            event.source?.postMessage({
-              type: 'VIDEO_STATUS',
-              data: {
-                volume: 0
-              }
-            }, { targetOrigin: event.origin });
-            break;
           case 'unmute':
-            control.unMute();
-            // Send status update back
-            event.source?.postMessage({
-              type: 'VIDEO_STATUS',
-              data: {
-                volume: volume
-              }
-            }, { targetOrigin: event.origin });
+            try {
+              control.unMute();
+              // Send status update back
+              event.source?.postMessage({
+                type: 'VIDEO_STATUS',
+                data: {
+                  volume: volume
+                }
+              }, { targetOrigin: event.origin });
+            } catch (error) {
+              console.error('❌ Error calling unMute:', error);
+            }
             break;
           case 'changeVideo':
             if (data.videoId && data.title) {
@@ -190,75 +234,100 @@ export default function VideoDisplayPage() {
               const control = (window as any).youtubePlayerControl;
               if (control && control.loadVideoById) {
                 console.log('🎬 Loading new video in player');
-                control.loadVideoById(data.videoId);
+                try {
+                  control.loadVideoById(data.videoId);
 
-                // Send status updates at multiple intervals to ensure sync
-                const sendStatusUpdate = () => {
-                  if (control && event.source) {
-                    try {
-                      const currentTime = control.getCurrentTime();
-                      const duration = control.getDuration();
-                      const playerState = control.getPlayerState();
+                  // Send status updates at multiple intervals to ensure sync
+                  const sendStatusUpdate = () => {
+                    if (control && event.source) {
+                      try {
+                        const currentTime = control.getCurrentTime();
+                        const duration = control.getDuration();
+                        const playerState = control.getPlayerState();
 
-                      event.source.postMessage({
-                        type: 'VIDEO_STATUS',
-                        data: {
-                          videoChanged: true,
-                          isPlaying: playerState === 1,
-                          currentTime: currentTime || 0,
-                          duration: duration || 0,
-                          volume: volume,
-                          videoId: data.videoId,
-                          title: data.title,
-                          artist: data.artist || '',
-                          playerState: playerState
-                        }
-                      }, { targetOrigin: event.origin });
-                      console.log('📊 Sent status update after video change');
-                    } catch (error) {
-                      console.warn('⚠️ Error sending video change status:', error);
+                        event.source.postMessage({
+                          type: 'VIDEO_STATUS',
+                          data: {
+                            videoChanged: true,
+                            isPlaying: playerState === 1,
+                            currentTime: currentTime || 0,
+                            duration: duration || 0,
+                            volume: volume,
+                            videoId: data.videoId,
+                            title: data.title,
+                            artist: data.artist || '',
+                            playerState: playerState
+                          }
+                        }, { targetOrigin: event.origin });
+                        console.log('📊 Sent status update after video change');
+                      } catch (error) {
+                        console.warn('⚠️ Error sending video change status:', error);
+                      }
                     }
-                  }
-                };
+                  };
 
-                // Send updates at 500ms, 1s, and 2s intervals
-                setTimeout(sendStatusUpdate, 500);
-                setTimeout(sendStatusUpdate, 1000);
-                setTimeout(sendStatusUpdate, 2000);
+                  // Send updates at 500ms, 1s, and 2s intervals
+                  setTimeout(sendStatusUpdate, 500);
+                  setTimeout(sendStatusUpdate, 1000);
+                  setTimeout(sendStatusUpdate, 2000);
+                } catch (error) {
+                  console.error('❌ Error loading video:', error);
+                }
               } else {
                 console.warn('⚠️ YouTube control not available for video change');
               }
 
               // Send confirmation back immediately
-              event.source?.postMessage({
-                type: 'VIDEO_STATUS',
-                data: {
-                  videoChanged: true,
-                  videoId: data.videoId,
-                  title: data.title,
-                  artist: data.artist || ''
-                }
-              }, { targetOrigin: event.origin });
+              try {
+                event.source?.postMessage({
+                  type: 'VIDEO_STATUS',
+                  data: {
+                    videoChanged: true,
+                    videoId: data.videoId,
+                    title: data.title,
+                    artist: data.artist || ''
+                  }
+                }, { targetOrigin: event.origin });
+              } catch (error) {
+                console.error('❌ Error sending video change confirmation:', error);
+              }
             }
             break;
           case 'getStatus':
             // Send back current status
-            const currentTime = control.getCurrentTime();
-            const duration = control.getDuration();
-            const playerState = control.getPlayerState();
+            try {
+              const currentTime = control.getCurrentTime();
+              const duration = control.getDuration();
+              const playerState = control.getPlayerState();
 
-            event.source?.postMessage({
-              type: 'VIDEO_STATUS',
-              data: {
-                currentTime,
-                duration,
-                playerState,
-                volume,
-                videoId: currentVideo!.videoId,
-                title: currentVideo!.title,
-                artist: currentVideo!.artist
-              }
-            }, { targetOrigin: event.origin });
+              event.source?.postMessage({
+                type: 'VIDEO_STATUS',
+                data: {
+                  currentTime,
+                  duration,
+                  playerState,
+                  volume,
+                  videoId: currentVideo?.videoId || '',
+                  title: currentVideo?.title || '',
+                  artist: currentVideo?.artist || ''
+                }
+              }, { targetOrigin: event.origin });
+            } catch (error) {
+              console.error('❌ Error getting status:', error);
+              // Send fallback status
+              event.source?.postMessage({
+                type: 'VIDEO_STATUS',
+                data: {
+                  currentTime: 0,
+                  duration: 0,
+                  playerState: -1,
+                  volume,
+                  videoId: currentVideo?.videoId || '',
+                  title: currentVideo?.title || '',
+                  artist: currentVideo?.artist || ''
+                }
+              }, { targetOrigin: event.origin });
+            }
             break;
         }
       }
@@ -266,15 +335,15 @@ export default function VideoDisplayPage() {
 
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
-  }, [currentVideo!.videoId, currentVideo!.title, currentVideo!.artist, volume]);
+  }, [currentVideo?.videoId, currentVideo?.title, currentVideo?.artist, volume]);
 
   // Send periodic status updates to admin panel
   useEffect(() => {
-    if (!currentVideo) return;
+    if (!currentVideo?.videoId) return;
 
     const sendStatusUpdate = () => {
       const control = (window as any).youtubePlayerControl;
-      if (control && window.opener) {
+      if (control && window.opener && currentVideo) {
         try {
           const currentTime = control.getCurrentTime();
           const duration = control.getDuration();
@@ -287,14 +356,15 @@ export default function VideoDisplayPage() {
               currentTime: currentTime || 0,
               duration: duration || 0,
               volume: volume,
-              videoId: currentVideo!.videoId,
-              title: currentVideo!.title,
-              artist: currentVideo!.artist,
+              videoId: currentVideo.videoId,
+              title: currentVideo.title,
+              artist: currentVideo.artist,
               playerState: playerState
             }
           }, window.location.origin);
         } catch (error) {
-          // Silently handle errors - window might be closed
+          // Silently handle errors - window might be closed or player not ready
+          console.warn('⚠️ Error sending periodic status update:', error);
         }
       }
     };

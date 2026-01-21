@@ -108,39 +108,100 @@ export default function YouTubePlayer({
       (window as any).youtubePlayerControl = {
         play: () => {
           console.log('▶️ Calling playVideo()');
-          return playerRef.current?.playVideo();
+          try {
+            return playerRef.current?.playVideo();
+          } catch (error) {
+            console.error('❌ Error calling playVideo():', error);
+            return null;
+          }
         },
         pause: () => {
           console.log('⏸️ Calling pauseVideo()');
-          return playerRef.current?.pauseVideo();
+          try {
+            return playerRef.current?.pauseVideo();
+          } catch (error) {
+            console.error('❌ Error calling pauseVideo():', error);
+            return null;
+          }
         },
         stop: () => {
           console.log('⏹️ Calling stopVideo()');
-          return playerRef.current?.stopVideo();
+          try {
+            return playerRef.current?.stopVideo();
+          } catch (error) {
+            console.error('❌ Error calling stopVideo():', error);
+            return null;
+          }
         },
         seekTo: (seconds: number) => {
           console.log('⏩ Calling seekTo()', seconds);
-          return playerRef.current?.seekTo(seconds);
+          try {
+            return playerRef.current?.seekTo(seconds);
+          } catch (error) {
+            console.error('❌ Error calling seekTo():', error);
+            return null;
+          }
         },
         setVolume: (volume: number) => {
           console.log('🔊 Calling setVolume()', volume);
-          return playerRef.current?.setVolume(volume);
+          try {
+            return playerRef.current?.setVolume(volume);
+          } catch (error) {
+            console.error('❌ Error calling setVolume():', error);
+            return null;
+          }
         },
         mute: () => {
           console.log('🔇 Calling mute()');
-          return playerRef.current?.mute();
+          try {
+            return playerRef.current?.mute();
+          } catch (error) {
+            console.error('❌ Error calling mute():', error);
+            return null;
+          }
         },
         unMute: () => {
           console.log('🔊 Calling unMute()');
-          return playerRef.current?.unMute();
+          try {
+            return playerRef.current?.unMute();
+          } catch (error) {
+            console.error('❌ Error calling unMute():', error);
+            return null;
+          }
         },
         loadVideoById: (videoId: string) => {
           console.log('📺 Calling loadVideoById()', videoId);
-          return playerRef.current?.loadVideoById(videoId);
+          try {
+            return playerRef.current?.loadVideoById(videoId);
+          } catch (error) {
+            console.error('❌ Error calling loadVideoById():', error);
+            return null;
+          }
         },
-        getCurrentTime: () => playerRef.current?.getCurrentTime(),
-        getDuration: () => playerRef.current?.getDuration(),
-        getPlayerState: () => playerRef.current?.getPlayerState()
+        getCurrentTime: () => {
+          try {
+            return playerRef.current?.getCurrentTime() || 0;
+          } catch (error) {
+            console.error('❌ Error getting currentTime:', error);
+            return 0;
+          }
+        },
+        getDuration: () => {
+          try {
+            return playerRef.current?.getDuration() || 0;
+          } catch (error) {
+            console.error('❌ Error getting duration:', error);
+            return 0;
+          }
+        },
+        getPlayerState: () => {
+          try {
+            return playerRef.current?.getPlayerState() || -1;
+          } catch (error) {
+            console.error('❌ Error getting playerState:', error);
+            return -1;
+          }
+        }
       };
       console.log('✅ YouTube player control methods exposed successfully');
     }

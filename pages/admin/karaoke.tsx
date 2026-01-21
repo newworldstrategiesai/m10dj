@@ -31,6 +31,7 @@ import {
   Mail,
   ExternalLink,
   MoreVertical,
+  UserPlus,
   QrCode,
   Copy,
   Monitor,
@@ -55,6 +56,7 @@ import { DecoratedQRCode } from '@/components/ui/DecoratedQRCode';
 import { logSettingsChange, getClientInfo } from '@/utils/karaoke-audit';
 import YouTubePlayer from '@/components/karaoke/YouTubePlayer';
 import { useKaraokeAuth } from '@/hooks/useKaraokeAuth';
+import ManualKaraokeSignup from '@/components/admin/ManualKaraokeSignup';
 
 export default function KaraokeAdminPage() {
   const router = useRouter();
@@ -97,6 +99,7 @@ export default function KaraokeAdminPage() {
   const [signupVideoSuggestions, setSignupVideoSuggestions] = useState<{[key: string]: any[]}>({});
   const [currentSuggestionIndex, setCurrentSuggestionIndex] = useState<{[key: string]: number}>({});
   const [loadingVideoSuggestions, setLoadingVideoSuggestions] = useState<{[key: string]: boolean}>({});
+  const [showManualSignup, setShowManualSignup] = useState(false);
 
   // Search for video suggestions for a signup
   const searchVideoSuggestionsForSignup = async (signup: KaraokeSignup) => {
@@ -970,6 +973,14 @@ export default function KaraokeAdminPage() {
               >
                 <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
                 Refresh
+              </Button>
+              <Button
+                size="sm"
+                onClick={() => setShowManualSignup(true)}
+                className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white"
+              >
+                <UserPlus className="w-4 h-4 mr-2" />
+                Add Signup
               </Button>
               <Button
                 variant="outline"
@@ -3084,6 +3095,23 @@ export default function KaraokeAdminPage() {
               }}
             />
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Manual Signup Modal */}
+      <Dialog open={showManualSignup} onOpenChange={setShowManualSignup}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden p-0">
+          <ManualKaraokeSignup
+            organizationId={organization?.id || ''}
+            eventCode={eventCodeFilter}
+            onSignupCreated={(signup) => {
+              // Refresh the signups list after creating a new signup
+              if (organization) {
+                loadSignups(organization.id);
+              }
+            }}
+            onClose={() => setShowManualSignup(false)}
+          />
         </DialogContent>
       </Dialog>
     </KaraokeLayout>
