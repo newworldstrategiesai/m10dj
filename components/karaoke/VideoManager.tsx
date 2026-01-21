@@ -781,7 +781,7 @@ export default function VideoManager({ organizationId }: VideoManagerProps) {
             <YouTubePlayer
               videoId={playerState.videoId}
               isPlaying={playerState.isPlaying}
-              isMuted={playerState.isMuted}
+              muted={playerState.isMuted}
               volume={playerState.volume}
               onStateChange={(state) => setPlayerState(prev => ({ ...prev, isPlaying: state === 'playing' }))}
               className="w-full aspect-video"
@@ -1437,7 +1437,7 @@ export default function VideoManager({ organizationId }: VideoManagerProps) {
               <YouTubePlayer
                 videoId={previewVideoId}
                 isPlaying={false}
-                isMuted={true}
+                muted={true}
                 volume={30}
                 className="w-full h-full"
               />
