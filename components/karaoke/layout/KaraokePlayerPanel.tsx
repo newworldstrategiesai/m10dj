@@ -88,6 +88,9 @@ export default function KaraokePlayerPanel({
     volume: number;
   } | null>(null);
 
+  // Prevent hydration errors by ensuring browser APIs are only used after mount
+  const [mounted, setMounted] = useState(false);
+
   // Progress bar interaction state
   const [progressHoverTime, setProgressHoverTime] = useState<number | null>(null);
   const [progressHoverPosition, setProgressHoverPosition] = useState<number | null>(null);
@@ -117,6 +120,11 @@ export default function KaraokePlayerPanel({
   // Touch/swipe handling
   const [touchStart, setTouchStart] = useState<number | null>(null);
   const [touchEnd, setTouchEnd] = useState<number | null>(null);
+
+  // Set mounted after component mounts to prevent hydration errors
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Drag and drop state
   const [draggedItem, setDraggedItem] = useState<QueueItem | null>(null);
@@ -296,6 +304,9 @@ export default function KaraokePlayerPanel({
 
   // Listen for status updates from display window via multiple channels
   useEffect(() => {
+    // Only run on client side to prevent hydration errors
+    if (!mounted) return;
+
     let broadcastChannel: BroadcastChannel | null = null;
     let statusCheckInterval: NodeJS.Timeout | null = null;
 
@@ -404,7 +415,7 @@ export default function KaraokePlayerPanel({
         clearInterval(statusCheckInterval);
       }
     };
-  }, [propDisplayVideo, onDisplayVideoChange, propDisplayWindow]);
+  }, [propDisplayVideo, onDisplayVideoChange, propDisplayWindow, mounted]);
 
   // Send control command to display window via multiple channels
   const sendDisplayCommand = async (action: string, data?: any) => {
@@ -666,6 +677,9 @@ export default function KaraokePlayerPanel({
 
   // Keyboard shortcuts
   useEffect(() => {
+    // Only run on client side to prevent hydration errors
+    if (!mounted) return;
+
     const handleKeyPress = (event: KeyboardEvent) => {
       // Only handle shortcuts when display window is active
       if (!propDisplayWindow || !displayStatus) return;
@@ -719,7 +733,7 @@ export default function KaraokePlayerPanel({
 
     window.addEventListener('keydown', handleKeyPress);
     return () => window.removeEventListener('keydown', handleKeyPress);
-  }, [propDisplayWindow, displayStatus, volume, toggleDisplayPlayPause, toggleDisplayMute, setDisplayVolume, sendDisplayCommand, updateDisplayStatus]);
+  }, [propDisplayWindow, displayStatus, volume, toggleDisplayPlayPause, toggleDisplayMute, setDisplayVolume, sendDisplayCommand, updateDisplayStatus, mounted]);
 
   return (
     <aside className="w-full md:w-96 bg-gray-900/95 backdrop-blur-xl border-l border-gray-700/50 flex flex-col karaoke-scrollbar shadow-2xl">
