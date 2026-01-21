@@ -1,7 +1,7 @@
 // @ts-nocheck
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/router';
 import {
   Mic,
@@ -59,22 +59,25 @@ import { useKaraokeAuth } from '@/hooks/useKaraokeAuth';
 export default function KaraokeAdminPage() {
   const router = useRouter();
   const { toast } = useToast();
-  const { user, organization, subscriptionTier, isLoading: authLoading, isAuthenticated, supabase } = useKaraokeAuth();
+  const { user, organization, subscriptionTier, isLoading: authLoading, isAuthenticated, supabase: authSupabase } = useKaraokeAuth();
+
+  // Create a stable supabase client reference to prevent infinite re-renders
+  const supabase = useMemo(() => authSupabase, []);
 
   // Add timeout for authentication loading to prevent infinite loading
   const [authTimeout, setAuthTimeout] = useState(false);
   const [hasAuthError, setHasAuthError] = useState(false);
 
   useEffect(() => {
-    if (authLoading) {
+    if (authLoading && !authTimeout) {
       const timeout = setTimeout(() => {
         setAuthTimeout(true);
         setHasAuthError(true);
-      }, 10000); // 10 second timeout
+      }, 15000); // 15 second timeout
 
       return () => clearTimeout(timeout);
     }
-  }, [authLoading]);
+  }, [authLoading, authTimeout]);
 
   const [signups, setSignups] = useState<KaraokeSignup[]>([]);
   const [loading, setLoading] = useState(true);
@@ -825,7 +828,12 @@ export default function KaraokeAdminPage() {
         </TabsList>
 
         <TabsContent value="discover" className="space-y-6">
-          <DiscoverPage isPremium={subscriptionTier !== 'free'} supabase={supabase} />
+          {/* Temporarily disabled to fix infinite rendering */}
+          <div className="text-center py-12">
+            <p className="text-gray-600 dark:text-gray-400">Discover page temporarily disabled</p>
+            <p className="text-sm text-gray-500 mt-2">Fixing infinite rendering issue</p>
+          </div>
+          {/* <DiscoverPage isPremium={subscriptionTier !== 'free'} supabase={supabase} /> */}
         </TabsContent>
 
         <TabsContent value="queue" className="space-y-6">
