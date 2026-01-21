@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/router';
+import { createClient } from '@/utils/supabase/client';
 import KaraokeHeader from './layout/KaraokeHeader';
 import KaraokeSidebar from './layout/KaraokeSidebar';
 import KaraokePlayerPanel from './layout/KaraokePlayerPanel';
@@ -28,6 +29,7 @@ export default function KaraokeLayout({
   const [isPlayerPanelVisible, setIsPlayerPanelVisible] = useState(true);
 
   const handleSignOut = async () => {
+    const supabase = createClient();
     await supabase.auth.signOut();
     router.push('/signin');
   };
@@ -38,7 +40,7 @@ export default function KaraokeLayout({
     <div className="min-h-screen karaoke-gradient-bg karaoke-scrollbar">
       {/* Global Header */}
       <KaraokeHeader
-        user={user}
+        user={propUser}
         onSignOut={handleSignOut}
         isPremium={isPremium}
       />
@@ -50,7 +52,7 @@ export default function KaraokeLayout({
           isCollapsed={isSidebarCollapsed}
           onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
           currentPage={currentPage}
-          user={user}
+          user={propUser}
           isPremium={isPremium}
         />
 

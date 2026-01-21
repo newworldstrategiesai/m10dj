@@ -96,10 +96,10 @@ export default function DiscoverPage({ isPremium }: DiscoverPageProps) {
 
       // Calculate song count for each playlist
       const playlistsWithCount = await Promise.all(
-        (playlistData || []).map(async (playlist) => {
-          const songCount = (playlist as any).video_ids?.length || 0;
+        (playlistData || []).map(async (playlist: any) => {
+          const songCount = playlist.video_ids?.length || 0;
           return {
-            ...(playlist as any),
+            ...playlist,
             songCount
           };
         })
