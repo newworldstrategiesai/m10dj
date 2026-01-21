@@ -18,6 +18,7 @@ import {
   Users,
   Lock
 } from 'lucide-react';
+import SongBrowser from '@/components/karaoke/SongBrowser';
 
 interface KaraokePlayerPanelProps {
   onClose: () => void;
@@ -42,6 +43,7 @@ export default function KaraokePlayerPanel({ onClose, isPremium }: KaraokePlayer
   const [currentSong, setCurrentSong] = useState<QueueItem | null>(null);
   const [queue, setQueue] = useState<QueueItem[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [showSongBrowser, setShowSongBrowser] = useState(false);
 
   // Mock data for demonstration
   const mockQueue: QueueItem[] = [
@@ -252,7 +254,11 @@ export default function KaraokePlayerPanel({ onClose, isPremium }: KaraokePlayer
               <p className="text-sm text-gray-500 mb-4">
                 Add songs or take quizzes to keep singing.
               </p>
-              <Button size="sm" className="karaoke-btn-primary">
+              <Button
+                size="sm"
+                className="karaoke-btn-primary"
+                onClick={() => setShowSongBrowser(true)}
+              >
                 Browse Songs
               </Button>
             </div>
@@ -304,6 +310,25 @@ export default function KaraokePlayerPanel({ onClose, isPremium }: KaraokePlayer
           )}
         </div>
       </div>
+
+      {/* Song Browser Dialog */}
+      <SongBrowser
+        isOpen={showSongBrowser}
+        onClose={() => setShowSongBrowser(false)}
+        onAddToQueue={(video) => {
+          // Add to queue logic here
+          const newItem: QueueItem = {
+            id: video.id,
+            title: video.title,
+            artist: video.artist,
+            duration: video.duration,
+            thumbnailUrl: video.thumbnail_url,
+            isPremium: video.is_premium
+          };
+          setQueue(prev => [...prev, newItem]);
+        }}
+        mode="queue"
+      />
     </aside>
   );
 }

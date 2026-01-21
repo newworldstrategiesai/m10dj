@@ -41,7 +41,7 @@ export default function KaraokeSidebar({
     { id: 'discover', label: 'Discover', icon: Home, href: '/admin/karaoke' },
     { id: 'playlists', label: 'Playlists', icon: ListMusic, href: '/admin/karaoke/playlists' },
     { id: 'quizzes', label: 'Quizzes', icon: Gamepad2, href: '/admin/karaoke/quizzes' },
-    { id: 'top', label: 'Top', icon: TrendingUp, href: '/admin/karaoke/top' },
+    { id: 'top', label: 'Top Charts', icon: TrendingUp, href: '/admin/karaoke/top' },
     { id: 'genres', label: 'Genres', icon: Music, href: '/admin/karaoke/genres' },
     { id: 'new', label: 'New Releases', icon: Calendar, href: '/admin/karaoke/new' },
   ];
@@ -147,11 +147,19 @@ export default function KaraokeSidebar({
                 </div>
 
                 <Link
+                  href="/admin/karaoke/playlists"
+                  className="flex items-center gap-3 px-3 py-2 rounded-lg text-gray-300 hover:bg-gray-800/50 hover:text-white transition-colors"
+                >
+                  <ListMusic className="w-5 h-5 flex-shrink-0" />
+                  <span className="font-medium">View All Playlists</span>
+                </Link>
+
+                <Link
                   href="/admin/karaoke/create-playlist"
                   className="flex items-center gap-3 px-3 py-2 rounded-lg text-gray-300 hover:bg-gray-800/50 hover:text-white transition-colors"
                 >
                   <Plus className="w-5 h-5 flex-shrink-0" />
-                  <span className="font-medium">Create a Playlist...</span>
+                  <span className="font-medium">Create Playlist</span>
                 </Link>
 
                 {playlistsExpanded && (
