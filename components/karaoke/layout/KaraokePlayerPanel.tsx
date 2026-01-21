@@ -635,8 +635,9 @@ export default function KaraokePlayerPanel({
 
                 {/* Progress Bar Content */}
                 {displayStatus && displayStatus.duration > 0 ? (
-                {/* Progress Bar Container */}
-                <div className="relative group">
+                  <div>
+                    {/* Progress Bar Container */}
+                    <div className="relative group">
                   <div
                     ref={progressBarRef}
                     className="w-full bg-gray-700/80 rounded-full h-2 cursor-pointer relative overflow-hidden hover:h-3 transition-all duration-200"
@@ -737,8 +738,9 @@ export default function KaraokePlayerPanel({
                     title="Forward 30s"
                   >
                     +30s
-                  </button>
-                </div>
+                    </button>
+                  </div>
+                  </div>
                 ) : (
                   /* Loading state for progress bar */
                   <div className="space-y-3">
