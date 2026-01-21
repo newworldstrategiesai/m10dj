@@ -61,6 +61,21 @@ export default function KaraokeAdminPage() {
   const { toast } = useToast();
   const { user, organization, subscriptionTier, isLoading: authLoading, isAuthenticated, supabase } = useKaraokeAuth();
 
+  // Add timeout for authentication loading to prevent infinite loading
+  const [authTimeout, setAuthTimeout] = useState(false);
+  const [hasAuthError, setHasAuthError] = useState(false);
+
+  useEffect(() => {
+    if (authLoading) {
+      const timeout = setTimeout(() => {
+        setAuthTimeout(true);
+        setHasAuthError(true);
+      }, 10000); // 10 second timeout
+
+      return () => clearTimeout(timeout);
+    }
+  }, [authLoading]);
+
   const [signups, setSignups] = useState<KaraokeSignup[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -755,13 +770,44 @@ export default function KaraokeAdminPage() {
   };
 
   // Show loading state while authentication is being checked
-  if (authLoading) {
+  if (authLoading && !authTimeout) {
     return (
       <KaraokeLayout title="Discover" currentPage="discover">
         <div className="flex items-center justify-center min-h-[400px]">
           <div className="text-center">
             <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-purple-500" />
             <p className="text-gray-600 dark:text-gray-400">Loading karaoke system...</p>
+          </div>
+        </div>
+      </KaraokeLayout>
+    );
+  }
+
+  // If authentication timed out or failed, show error
+  if (hasAuthError || (!authLoading && !isAuthenticated)) {
+    return (
+      <KaraokeLayout title="Discover" currentPage="discover">
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center">
+            {authTimeout ? (
+              <>
+                <p className="text-red-600 dark:text-red-400 mb-4">
+                  Authentication is taking too long. Please try refreshing the page.
+                </p>
+                <Button onClick={() => window.location.reload()}>
+                  Refresh Page
+                </Button>
+              </>
+            ) : (
+              <>
+                <p className="text-gray-600 dark:text-gray-400 mb-4">
+                  Please sign in to access karaoke features
+                </p>
+                <Button onClick={() => router.push('/signin')}>
+                  Sign In
+                </Button>
+              </>
+            )}
           </div>
         </div>
       </KaraokeLayout>

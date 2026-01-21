@@ -62,8 +62,9 @@ export default function DiscoverPage({ isPremium }: DiscoverPageProps) {
         const supabase = createClient();
 
         // Get current organization
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) throw new Error('Not authenticated');
+        const { data: { user }, error: userError } = await supabase.auth.getUser();
+        if (userError) throw new Error(`Authentication error: ${userError.message}`);
+        if (!user) throw new Error('Not authenticated - please sign in');
 
         const { data: userOrgs, error: orgError } = await supabase
           .from('organization_members')
@@ -71,9 +72,8 @@ export default function DiscoverPage({ isPremium }: DiscoverPageProps) {
           .eq('user_id', user.id)
           .limit(1);
 
-        if (orgError || !userOrgs?.length) {
-          throw new Error('No organization access');
-        }
+        if (orgError) throw new Error(`Organization access error: ${orgError.message}`);
+        if (!userOrgs?.length) throw new Error('No organization access - please contact administrator');
 
         const organizationId = (userOrgs[0] as any).organization_id;
 
@@ -87,7 +87,7 @@ export default function DiscoverPage({ isPremium }: DiscoverPageProps) {
 
         if (playlistError) {
           console.error('Error loading playlists:', playlistError);
-          throw new Error('Failed to load playlists');
+          throw new Error(`Failed to load playlists: ${playlistError.message}`);
         }
 
         // Calculate song count for each playlist
