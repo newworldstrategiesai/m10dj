@@ -133,6 +133,72 @@ export default function KaraokeAdminPage() {
     }
   };
 
+  // Unlink video from signup
+  const unlinkVideoFromSignup = async (signupId: string) => {
+    try {
+      const response = await fetch('/api/karaoke/unlink-signup-video', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          signupId,
+          organizationId: organization?.id
+        })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+
+        // Update signups list
+        setSignups(prev => prev.map(signup =>
+          signup.id === signupId
+            ? { ...signup, video_id: null, video_url: null, video_data: null }
+            : signup
+        ));
+
+        // Update selected signup if it's the current one
+        if (selectedSignup && selectedSignup.id === signupId) {
+          setSelectedSignup(prev => prev ? {
+            ...prev,
+            video_id: null,
+            video_url: null,
+            video_data: null
+          } : null);
+        }
+
+        // Clear any existing suggestions and trigger new search
+        setSignupVideoSuggestions(prev => {
+          const newSuggestions = { ...prev };
+          delete newSuggestions[signupId];
+          return newSuggestions;
+        });
+
+        // Trigger new video search for suggestions
+        if (selectedSignup && selectedSignup.song_title) {
+          setTimeout(() => {
+            if (isMountedRef.current) {
+              searchVideoSuggestionsForSignup(selectedSignup);
+            }
+          }, 100);
+        }
+
+        toast({
+          title: 'Video Unlinked',
+          description: 'Video has been removed from this signup',
+        });
+      } else {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to unlink video');
+      }
+    } catch (error: any) {
+      console.error('Error unlinking video from signup:', error);
+      toast({
+        title: 'Unlinking Failed',
+        description: error.message || 'Failed to unlink video from signup',
+        variant: 'destructive'
+      });
+    }
+  };
+
   // Link suggested video to signup
   const linkSuggestedVideoToSignup = async (signupId: string, videoData: any) => {
     console.log('Starting video linking for signup:', signupId);
@@ -1599,23 +1665,34 @@ export default function KaraokeAdminPage() {
                                 {selectedSignup.video_data?.youtube_channel_name} • Quality: {selectedSignup.video_data?.video_quality_score}/100
                               </p>
                             </div>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => {
-                                if (selectedSignup.video_data?.youtube_video_id) {
-                                  window.open(
-                                    `https://www.youtube.com/watch?v=${selectedSignup.video_data.youtube_video_id}`,
-                                    '_blank',
-                                    'noopener,noreferrer'
-                                  );
-                                }
-                              }}
-                              className="border-green-300 hover:bg-green-50"
-                            >
-                              <Play className="w-4 h-4 mr-1" />
-                              Play Video
-                            </Button>
+                            <div className="flex gap-2">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => {
+                                  if (selectedSignup.video_data?.youtube_video_id) {
+                                    window.open(
+                                      `https://www.youtube.com/watch?v=${selectedSignup.video_data.youtube_video_id}`,
+                                      '_blank',
+                                      'noopener,noreferrer'
+                                    );
+                                  }
+                                }}
+                                className="border-green-300 hover:bg-green-50"
+                              >
+                                <Play className="w-4 h-4 mr-1" />
+                                Play Video
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => unlinkVideoFromSignup(selectedSignup.id)}
+                                className="border-red-300 text-red-600 hover:bg-red-50 hover:border-red-400"
+                              >
+                                <X className="w-4 h-4 mr-1" />
+                                Unlink Video
+                              </Button>
+                            </div>
                           </div>
                         </div>
                       ) : (
@@ -1702,30 +1779,56 @@ export default function KaraokeAdminPage() {
                               </div>
                             </div>
                           ) : (
-                            /* Manual search option */
-                            <div key="no-video-found" className="p-4 bg-gradient-to-r from-pink-50 to-purple-50 dark:from-pink-900/20 dark:to-purple-900/20 rounded-lg border border-pink-200 dark:border-pink-800">
-                              <div className="flex items-center justify-between mb-3">
-                                <div className="flex items-center gap-2">
-                                  <Music className="w-4 h-4 text-pink-600" />
-                                  <span className="text-sm font-medium text-gray-900 dark:text-white">
-                                    No automatic video found
-                                  </span>
+                            /* Search and browse options when no video is linked */
+                            <div key="video-search-options" className="space-y-3">
+                              <div className="p-4 bg-gradient-to-r from-pink-50 to-purple-50 dark:from-pink-900/20 dark:to-purple-900/20 rounded-lg border border-pink-200 dark:border-pink-800">
+                                <div className="flex items-center justify-between mb-3">
+                                  <div className="flex items-center gap-2">
+                                    <Music className="w-4 h-4 text-pink-600" />
+                                    <span className="text-sm font-medium text-gray-900 dark:text-white">
+                                      Find Karaoke Video
+                                    </span>
+                                  </div>
                                 </div>
-                                <Button
-                                  size="sm"
-                                  onClick={() => {
-                                    setShowVideoSearchForSignup(true);
-                                    setVideoSearchSignup(selectedSignup);
-                                  }}
-                                  className="bg-pink-600 hover:bg-pink-700 text-white"
-                                >
-                                  <Search className="w-4 h-4 mr-1" />
-                                  Search YouTube
-                                </Button>
+
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                  {/* Manual Search */}
+                                  <Button
+                                    variant="outline"
+                                    onClick={() => {
+                                      setShowVideoSearchForSignup(true);
+                                      setVideoSearchSignup(selectedSignup);
+                                    }}
+                                    className="flex items-center gap-2 h-auto p-3 justify-start border-pink-300 hover:bg-pink-50"
+                                  >
+                                    <Search className="w-4 h-4 text-pink-600" />
+                                    <div className="text-left">
+                                      <div className="text-sm font-medium">Advanced Search</div>
+                                      <div className="text-xs text-gray-600 dark:text-gray-400">Browse and filter YouTube results</div>
+                                    </div>
+                                  </Button>
+
+                                  {/* Retry Auto-Search */}
+                                  <Button
+                                    variant="outline"
+                                    onClick={() => {
+                                      searchVideoSuggestionsForSignup(selectedSignup);
+                                    }}
+                                    disabled={loadingVideoSuggestions[selectedSignup.id]}
+                                    className="flex items-center gap-2 h-auto p-3 justify-start border-blue-300 hover:bg-blue-50"
+                                  >
+                                    <RefreshCw className={`w-4 h-4 text-blue-600 ${loadingVideoSuggestions[selectedSignup.id] ? 'animate-spin' : ''}`} />
+                                    <div className="text-left">
+                                      <div className="text-sm font-medium">Find Suggestion</div>
+                                      <div className="text-xs text-gray-600 dark:text-gray-400">Get AI-powered recommendation</div>
+                                    </div>
+                                  </Button>
+                                </div>
+
+                                <p className="text-xs text-gray-600 dark:text-gray-400 mt-3">
+                                  Karafun videos are automatically prioritized for the best karaoke experience.
+                                </p>
                               </div>
-                              <p className="text-xs text-gray-600 dark:text-gray-400">
-                                Search manually for karaoke videos on YouTube. Karafun videos are prioritized.
-                              </p>
                             </div>
                           )}
                         </div>
