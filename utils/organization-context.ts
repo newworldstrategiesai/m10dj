@@ -41,6 +41,21 @@ export interface Organization {
   parent_organization_id?: string | null; // For performer organizations, references the parent venue
   performer_slug?: string | null; // Unique slug for performer within their parent venue
   is_active?: boolean | null; // Whether the organization is active
+
+  // Artist page fields
+  artist_page_enabled?: boolean | null;
+  artist_page_headline?: string | null;
+  artist_page_bio?: string | null;
+  artist_page_profile_image_url?: string | null;
+  artist_page_cover_image_url?: string | null;
+  artist_page_gallery_images?: string[] | null;
+  artist_page_video_urls?: string[] | null;
+  artist_page_links?: any[] | null; // JSONB array of link objects
+  artist_page_contact_email?: string | null;
+  artist_page_contact_phone?: string | null;
+  artist_page_booking_url?: string | null;
+  artist_page_custom_css?: string | null;
+
   created_at: string;
   updated_at: string;
 }
