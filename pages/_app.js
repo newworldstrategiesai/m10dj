@@ -311,8 +311,8 @@ export default function App({ Component, pageProps }) {
       </ErrorRecoveryBoundary>
 
       {isAdminRoute && !isSignInPage && <FloatingAdminAssistant />}
-      {/* Only show chat widget on m10djcompany.com, not on djdash.net, sign-contract pages, or quote pages */}
-      {!isSignInPage && !isRequestsPage && !isBidPage && !isAdminRoute && !isDJDashPage && !isSignContractPage && !isQuotePage && <GlobalChatWidget />}
+      {/* Only show chat widget on m10djcompany.com, not on djdash.net, sign-contract pages, quote pages, or karaoke pages */}
+      {!isSignInPage && !isRequestsPage && !isBidPage && !isAdminRoute && !isDJDashPage && !isSignContractPage && !isQuotePage && !isKaraokePage && <GlobalChatWidget />}
       {/* Toast notifications for Pages Router */}
       <Toaster />
       {/* Temporarily disabled to prevent rate limiting issues */}
