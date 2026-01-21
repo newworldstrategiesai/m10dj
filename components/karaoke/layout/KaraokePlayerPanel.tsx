@@ -35,6 +35,7 @@ interface QueueItem {
 }
 
 export default function KaraokePlayerPanel({ onClose, isPremium }: KaraokePlayerPanelProps) {
+  const [logoError, setLogoError] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
@@ -104,19 +105,16 @@ export default function KaraokePlayerPanel({ onClose, isPremium }: KaraokePlayer
     <aside className="w-96 bg-gray-900/95 backdrop-blur-sm border-l border-gray-700/50 flex flex-col karaoke-scrollbar">
       {/* Header with Karafun Branding */}
       <div className="relative h-32 karaoke-gradient-primary flex items-center justify-center shadow-lg">
-        <img
-          src="/assets/karafun-logo.png"
-          alt="Karafun"
-          className="h-12 object-contain"
-          onError={(e) => {
-            // Fallback to text if image doesn't exist
-            e.currentTarget.style.display = 'none';
-            const text = document.createElement('span');
-            text.textContent = 'KARAFUN';
-            text.className = 'text-white font-bold text-xl';
-            e.currentTarget.parentElement?.appendChild(text);
-          }}
-        />
+        {!logoError ? (
+          <img
+            src="/assets/karafun-logo.png"
+            alt="Karafun"
+            className="h-12 object-contain"
+            onError={() => setLogoError(true)}
+          />
+        ) : (
+          <span className="text-white font-bold text-xl">KARAFUN</span>
+        )}
         <button
           onClick={onClose}
           className="absolute top-3 right-3 p-1 rounded-full bg-black/20 hover:bg-black/40 text-white transition-colors"

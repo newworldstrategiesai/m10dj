@@ -1,6 +1,6 @@
 /** @type {import('next').NextConfig} */
 module.exports = {
-  reactStrictMode: true,
+  reactStrictMode: false, // Temporarily disabled to prevent DOM manipulation conflicts
   experimental: {
     serverActions: true,
     serverComponentsExternalPackages: ['@supabase/supabase-js'],

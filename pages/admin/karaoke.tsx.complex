@@ -1147,7 +1147,7 @@ export default function KaraokeAdminPage() {
                   )}
                   <p className="text-xl sm:text-2xl text-green-100 mb-1">
                     <Music className="w-5 h-5 inline mr-2" />
-                    &quot;{currentSinger.song_title}&quot;
+                    "{currentSinger.song_title}"
                     {currentSinger.song_artist && ` by ${currentSinger.song_artist}`}
                   </p>
                 </div>
@@ -1197,7 +1197,7 @@ export default function KaraokeAdminPage() {
                   )}
                   <p className="text-lg sm:text-xl text-yellow-100">
                     <Music className="w-5 h-5 inline mr-2" />
-                    &quot;{nextSinger.song_title}&quot;
+                    "{nextSinger.song_title}"
                     {nextSinger.song_artist && ` by ${nextSinger.song_artist}`}
                   </p>
                 </div>
@@ -1324,7 +1324,7 @@ export default function KaraokeAdminPage() {
                             </p>
                             <p className="text-gray-700 dark:text-gray-300 mb-1">
                               <Music className="w-4 h-4 inline mr-1" />
-                              &quot;{signup.song_title}&quot;
+                              "{signup.song_title}"
                               {signup.song_artist && ` by ${signup.song_artist}`}
                             </p>
                             <div className="flex items-center gap-4 text-sm text-gray-500 dark:text-gray-400 mt-2 flex-wrap">
@@ -1579,7 +1579,7 @@ export default function KaraokeAdminPage() {
                   <div>
                     <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Song</label>
                     <p className="text-lg font-semibold text-gray-900 dark:text-white">
-                      &quot;{selectedSignup.song_title}&quot;
+                      "{selectedSignup.song_title}"
                     </p>
                     {selectedSignup.song_artist && (
                       <p className="text-gray-700 dark:text-gray-300">by {selectedSignup.song_artist}</p>
@@ -1865,6 +1865,62 @@ export default function KaraokeAdminPage() {
                                 setModalVideoPlaying(false);
                               }
                             }}
+                            onVideoChange={async (newVideoId) => {
+                              // When user selects an alternative video, update the signup
+                              try {
+                                const response = await fetch('/api/karaoke/link-signup-video', {
+                                  method: 'POST',
+                                  headers: {
+                                    'Content-Type': 'application/json',
+                                  },
+                                  body: JSON.stringify({
+                                    signupId: selectedSignup.id,
+                                    videoId: newVideoId,
+                                    source: 'alternative'
+                                  }),
+                                });
+
+                                if (response.ok) {
+                                  toast({
+                                    title: 'Video Updated',
+                                    description: 'Successfully switched to alternative video.',
+                                  });
+
+                                  // Refresh the signup data
+                                  const updatedSignups = signups.map(signup =>
+                                    signup.id === selectedSignup.id
+                                      ? {
+                                          ...signup,
+                                          video_data: signup.video_data ? {
+                                            ...signup.video_data,
+                                            youtube_video_id: newVideoId
+                                          } : {
+                                            id: '',
+                                            youtube_video_id: newVideoId,
+                                            youtube_video_title: '',
+                                            youtube_channel_name: '',
+                                            youtube_channel_id: '',
+                                            video_quality_score: 50,
+                                            confidence_score: 0.5,
+                                            link_status: 'active' as const
+                                          }
+                                        }
+                                      : signup
+                                  );
+                                  setSignups(updatedSignups);
+                                  setSelectedSignup(updatedSignups.find(s => s.id === selectedSignup.id) || null);
+                                } else {
+                                  throw new Error('Failed to update video');
+                                }
+                              } catch (error) {
+                                console.error('Error updating video:', error);
+                                toast({
+                                  title: 'Update Failed',
+                                  description: 'Could not switch to alternative video.',
+                                  variant: 'destructive',
+                                });
+                              }
+                            }}
                             showControls={true}
                             autoPlay={false}
                             volume={30} // Lower volume for modal preview
@@ -2115,7 +2171,7 @@ export default function KaraokeAdminPage() {
                     ))}
                   </select>
                   <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                    Organization-wide display shows karaoke from all events. Event-specific display shows only that event&apos;s karaoke.
+                    Organization-wide display shows karaoke from all events. Event-specific display shows only that event's karaoke.
                   </p>
                 </div>
 
@@ -2584,7 +2640,7 @@ export default function KaraokeAdminPage() {
                               Show Current Singer
                             </label>
                             <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                              Display who&apos;s currently singing
+                              Display who's currently singing
                             </p>
                           </div>
                           <Switch
@@ -2775,7 +2831,7 @@ export default function KaraokeAdminPage() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Music className="w-5 h-5 text-pink-600" />
-              Find Karaoke Video for &quot;{videoSearchSignup?.song_title}&quot;
+              Find Karaoke Video for "{videoSearchSignup?.song_title}"
             </DialogTitle>
             <DialogDescription>
               Search YouTube for karaoke videos. Karafun videos are automatically prioritized.

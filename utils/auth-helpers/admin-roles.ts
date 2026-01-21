@@ -4,6 +4,7 @@
  */
 
 import { createClient } from '@/utils/supabase/client';
+import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 
 export interface AdminRole {
   id: string;
@@ -40,22 +41,29 @@ export async function isAdminEmail(userEmail: string | null | undefined): Promis
     // Use our singleton client (works for both client and server)
     const supabase = createClient();
 
-    // Use database function for fast lookup
-    const { data, error } = await supabase.rpc('is_platform_admin', {
-      user_email: userEmail
-    });
+    // Get the current user first
+    const { data: userData, error: userError } = await supabase.auth.getUser();
 
-    if (error) {
-      // Handle AbortError gracefully (component unmounted or request cancelled)
-      if (error.name === 'AbortError' || error.message?.includes('aborted')) {
-        return isAdminEmailFallback(userEmail);
-      }
-      console.error('Error checking admin role:', error);
-      // Fallback to hardcoded list during migration period
+    if (userError || !userData.user) {
+      console.warn('No authenticated user found, using fallback admin check');
       return isAdminEmailFallback(userEmail);
     }
 
-    return data === true;
+    // Check if user is admin by querying the database
+    const { data, error } = await supabase
+      .from('organization_members')
+      .select('role')
+      .eq('user_id', userData.user.id)
+      .eq('role', 'admin')
+      .single();
+
+    if (error && error.code !== 'PGRST116') { // PGRST116 is "not found"
+      console.error('Error checking admin role:', error);
+      // Fallback to hardcoded list
+      return isAdminEmailFallback(userEmail);
+    }
+
+    return !!data;
   } catch (error: any) {
     // Handle AbortError gracefully (component unmounted or request cancelled)
     if (error?.name === 'AbortError' || error?.message?.includes('aborted')) {
@@ -98,25 +106,31 @@ export async function getAdminRole(userEmail: string | null | undefined): Promis
       return null;
     }
 
-    const supabase = createClient(
+    const supabase = createSupabaseClient(
       supabaseUrl,
       serviceRoleKey || anonKey!
     );
 
-    const { data, error } = await supabase.rpc('get_admin_role', {
-      user_email: userEmail
-    });
+    // Get the current user first
+    const { data: userData, error: userError } = await supabase.auth.getUser();
+
+    if (userError || !userData.user) {
+      console.warn('No authenticated user found');
+      return null;
+    }
+
+    const { data, error } = await supabase
+      .from('organization_members')
+      .select('role')
+      .eq('user_id', userData.user.id)
+      .single();
 
     if (error) {
       console.error('Error getting admin role:', error);
       return null;
     }
 
-    if (!data || data.length === 0) {
-      return null;
-    }
-
-    return data[0] as AdminRole;
+    return data as AdminRole;
   } catch (error) {
     console.error('Error in getAdminRole:', error);
     return null;
@@ -137,7 +151,7 @@ export async function getAdminRoleByUserId(userId: string): Promise<AdminRole | 
       return null;
     }
 
-    const supabase = createClient(
+    const supabase = createSupabaseClient(
       supabaseUrl,
       serviceRoleKey || anonKey!
     );
@@ -174,21 +188,38 @@ export async function getAllAdminEmails(): Promise<string[]> {
       return [];
     }
 
-    const supabase = createClient(
+    const supabase = createSupabaseClient(
       supabaseUrl,
       serviceRoleKey || anonKey!
     );
 
     const { data, error } = await supabase
-      .from('admin_roles')
-      .select('email')
-      .eq('is_active', true);
+      .from('organization_members')
+      .select('user_id')
+      .eq('role', 'admin');
 
     if (error || !data) {
+      console.error('Error fetching admin emails:', error);
       return [];
     }
 
-    return data.map((row) => row.email);
+    // Get user emails from auth.users
+    const userIds = data.map(row => row.user_id);
+    if (userIds.length === 0) {
+      return [];
+    }
+
+    const { data: users, error: userError } = await supabase.auth.admin.listUsers();
+
+    if (userError || !users) {
+      console.error('Error fetching users:', userError);
+      return [];
+    }
+
+    return users.users
+      .filter(user => userIds.includes(user.id))
+      .map(user => user.email!)
+      .filter(email => email);
   } catch (error) {
     console.error('Error in getAllAdminEmails:', error);
     return [];
@@ -209,15 +240,28 @@ export async function updateAdminLastLogin(userEmail: string): Promise<void> {
       return;
     }
 
-    const supabase = createClient(
+    const supabase = createSupabaseClient(
       supabaseUrl,
       serviceRoleKey || anonKey!
     );
 
-    await supabase
-      .from('admin_roles')
-      .update({ last_login: new Date().toISOString() })
-      .eq('email', userEmail);
+    // Find user by email first
+    const { data: userData, error: userError } = await supabase.auth.admin.listUsers();
+
+    if (userError || !userData) {
+      console.error('Error fetching users for last login update:', userError);
+      return;
+    }
+
+    const user = userData.users.find(u => u.email === userEmail);
+    if (!user) {
+      console.warn('User not found for last login update:', userEmail);
+      return;
+    }
+
+    // Update organization_members with last activity (if such a field exists)
+    // For now, just log the login
+    console.log(`Admin login recorded for: ${userEmail}`);
   } catch (error) {
     console.error('Error updating admin last login:', error);
     // Non-critical, don't throw

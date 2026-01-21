@@ -10,25 +10,27 @@ CREATE TABLE IF NOT EXISTS user_video_library (
   user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
 
   -- Video metadata
+  title TEXT NOT NULL,
+  artist TEXT NULL,
   youtube_video_id TEXT NOT NULL,
-  youtube_video_title TEXT NOT NULL,
-  youtube_channel_name TEXT NULL,
-  youtube_channel_id TEXT NULL,
-  youtube_video_duration INTEGER NULL,
-  youtube_view_count INTEGER DEFAULT 0,
-  youtube_like_count INTEGER DEFAULT 0,
-  youtube_publish_date TIMESTAMP WITH TIME ZONE NULL,
+  thumbnail_url TEXT NOT NULL,
+  duration TEXT NOT NULL, -- ISO 8601 duration
+  channel_title TEXT NOT NULL,
+  quality_score INTEGER DEFAULT 50 CHECK (quality_score >= 0 AND quality_score <= 100),
 
-  -- User notes and organization
-  user_notes TEXT NULL,
+  -- User preferences
   is_favorite BOOLEAN DEFAULT false,
+  tags TEXT[] DEFAULT '{}',
+  play_count INTEGER DEFAULT 0,
+  last_played_at TIMESTAMP WITH TIME ZONE NULL,
 
   -- Metadata
+  added_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
   created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
 
   -- Constraints
-  UNIQUE(user_id, youtube_video_id)
+  UNIQUE(organization_id, user_id, youtube_video_id)
 );
 
 CREATE TABLE IF NOT EXISTS user_playlists (

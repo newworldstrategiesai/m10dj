@@ -91,7 +91,7 @@ interface RecentPayment {
 export default function AdminDashboard() {
   const router = useRouter();
   const supabase = createClientComponentClient();
-  
+
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [user, setUser] = useState<any>(null);
@@ -100,30 +100,21 @@ export default function AdminDashboard() {
   const [upcomingEvents, setUpcomingEvents] = useState<UpcomingEvent[]>([]);
   const [recentContacts, setRecentContacts] = useState<RecentContact[]>([]);
   const [recentPayments, setRecentPayments] = useState<RecentPayment[]>([]);
+  const [authChecked, setAuthChecked] = useState(false);
 
   useEffect(() => {
-    checkAuth();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  useEffect(() => {
-    // Only fetch data if user is set AND organization is set (prevents TipJar users from fetching)
-    if (user && organization) {
-      // Double-check: Don't fetch if this is a TipJar user
-      const productContext = user.user_metadata?.product_context;
-      if (productContext === 'tipjar' || organization?.product_context === 'tipjar') {
-        router.push('/admin/crowd-requests');
-        return;
-      }
-      fetchDashboardData();
+    if (!authChecked) {
+      checkAuth();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, organization]);
+  }, [authChecked]);
 
   const checkAuth = async () => {
+    if (authChecked) return; // Prevent multiple auth checks
+
     try {
       const { data: { user }, error } = await supabase.auth.getUser();
-      
+
       if (error || !user) {
         router.push('/signin?redirect=/admin/dashboard');
         return;
@@ -134,6 +125,7 @@ export default function AdminDashboard() {
       if (productContext === 'tipjar') {
         // TipJar users go directly to crowd requests (their main admin interface)
         // Redirect immediately - do NOT fetch any data
+        setAuthChecked(true);
         router.push('/admin/crowd-requests');
         return;
       }
@@ -151,8 +143,9 @@ export default function AdminDashboard() {
       const org = await getCurrentOrganization(supabase);
       
       if (!org && !isPlatformAdmin) {
-        // No organization and not admin - redirect to onboarding
-        router.push('/onboarding/welcome');
+        // No organization and not admin - show error instead of redirecting to non-existent page
+        console.error('User has no organization and is not an admin');
+        setAuthChecked(true);
         return;
       }
 
@@ -161,12 +154,14 @@ export default function AdminDashboard() {
         
         // Check if this is a TipJar organization (double-check)
         if (org.product_context === 'tipjar') {
+          setAuthChecked(true);
           router.push('/admin/crowd-requests');
           return;
         }
-        
+
         if (!isPlatformAdmin && org.subscription_tier === 'starter') {
           // Redirect starter tier users to simplified dashboard
+          setAuthChecked(true);
           router.push('/admin/dashboard-starter');
           return;
         }
@@ -174,8 +169,13 @@ export default function AdminDashboard() {
 
       // Platform admins and paid tier users see full dashboard
       setUser(user);
+      setAuthChecked(true);
+
+      // Now fetch dashboard data since auth is complete
+      fetchDashboardData();
     } catch (err) {
       console.error('Auth error:', err);
+      setAuthChecked(true);
       router.push('/signin?redirect=/admin/dashboard');
     }
   };

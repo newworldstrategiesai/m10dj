@@ -1,12 +1,11 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/router';
 
-export default function CrowdRequests() {
+export default function AdminIndex() {
   const router = useRouter();
 
   useEffect(() => {
-    // For now, redirect back to dashboard since crowd requests functionality
-    // is not implemented in this simplified version
+    // Redirect to the main dashboard
     router.replace('/admin/dashboard');
   }, [router]);
 
@@ -14,7 +13,7 @@ export default function CrowdRequests() {
     <div className="min-h-screen flex items-center justify-center">
       <div className="text-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-        <p className="text-gray-600">Loading crowd requests...</p>
+        <p className="text-gray-600">Loading admin dashboard...</p>
       </div>
     </div>
   );

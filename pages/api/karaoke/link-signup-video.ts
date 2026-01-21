@@ -57,13 +57,24 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
     }
 
-    // If no existing video found and we have videoData, create a new video record
+    // If no existing video found and we have videoData, check if video already exists by youtube_video_id
     if (!video && videoData) {
-      try {
-        // Create video record in karaoke_song_videos table
-        const { data: newVideo, error: createError } = await supabase
-          .from('karaoke_song_videos')
-          .insert({
+      // First check if a video with this YouTube ID already exists for this organization
+      const { data: existingByYouTubeId, error: youtubeCheckError } = await supabase
+        .from('karaoke_song_videos')
+        .select('*')
+        .eq('youtube_video_id', videoData.id)
+        .eq('organization_id', organizationId)
+        .single();
+
+      if (!youtubeCheckError && existingByYouTubeId) {
+        // Video already exists, use it
+        video = existingByYouTubeId;
+        console.log('Found existing video by YouTube ID:', existingByYouTubeId.id);
+      } else {
+        // Create new video record
+        try {
+          console.log('Attempting to create video record with data:', {
             organization_id: organizationId,
             song_title: '', // We don't have song info here
             song_artist: '',
@@ -73,21 +84,38 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             youtube_channel_id: videoData.channelId,
             video_quality_score: videoData.karaokeScore || 50,
             confidence_score: videoData.confidenceScore || 0.8,
-            source: 'signup-link',
+            source: 'manual',
             created_by: user.id
-          })
-          .select()
-          .single();
+          });
 
-        if (!createError && newVideo) {
-          video = newVideo;
-        } else {
-          console.error('Failed to create video record:', createError);
+          const { data: newVideo, error: createError } = await supabase
+            .from('karaoke_song_videos')
+            .insert({
+              organization_id: organizationId,
+              song_title: '', // We don't have song info here
+              song_artist: '',
+              youtube_video_id: videoData.id,
+              youtube_video_title: videoData.title,
+              youtube_channel_name: videoData.channelTitle,
+              youtube_channel_id: videoData.channelId,
+              video_quality_score: videoData.karaokeScore || 50,
+              confidence_score: videoData.confidenceScore || 0.8,
+              source: 'manual',
+              created_by: user.id
+            })
+            .select()
+            .single();
+
+          if (!createError && newVideo) {
+            video = newVideo;
+          } else {
+            console.error('Failed to create video record:', createError);
+            return res.status(500).json({ error: 'Failed to create video record' });
+          }
+        } catch (createError) {
+          console.error('Error creating video record:', createError);
           return res.status(500).json({ error: 'Failed to create video record' });
         }
-      } catch (createError) {
-        console.error('Error creating video record:', createError);
-        return res.status(500).json({ error: 'Failed to create video record' });
       }
     }
 
