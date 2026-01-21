@@ -37,7 +37,7 @@ export default function YouTubePlayer({
 }: YouTubePlayerProps) {
   const [player, setPlayer] = useState<any>(null);
   const [playerState, setPlayerState] = useState<'unstarted' | 'ended' | 'playing' | 'paused' | 'buffering' | 'cued'>('unstarted');
-  const [isMuted, setIsMuted] = useState(isMuted);
+  const [playerMuted, setPlayerMuted] = useState(muted);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -207,10 +207,10 @@ export default function YouTubePlayer({
     try {
       if (playerMuted) {
         player.unMute();
-        setIsMuted(false);
+        setPlayerMuted(false);
       } else {
         player.mute();
-        setIsMuted(true);
+        setPlayerMuted(true);
       }
     } catch (err) {
       console.error('Error toggling mute:', err);
