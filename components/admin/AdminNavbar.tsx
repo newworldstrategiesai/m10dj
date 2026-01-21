@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useTheme } from 'next-themes';
 import { createClient } from '@/utils/supabase/client';
+import { isRateLimited, setRateLimited } from '@/utils/supabase/rate-limiter';
 import {
   Home,
   Users,
@@ -113,8 +114,20 @@ export default function AdminNavbar() {
       setProductContext(detectedProductContext);
     }
     
-    const { data: { user } } = await supabase.auth.getUser();
-    setUser(user);
+    // Skip auth call if globally rate limited
+    if (isRateLimited()) {
+      console.log('⏳ Skipping AdminNavbar auth check - rate limited');
+      setUser(null);
+    } else {
+      const { data: { user }, error } = await supabase.auth.getUser();
+
+      if (error?.message?.includes('rate limit') || error?.status === 429) {
+        setRateLimited();
+        setUser(null);
+      } else {
+        setUser(user);
+      }
+    }
     
     // Check if user is platform admin
     if (user?.email) {

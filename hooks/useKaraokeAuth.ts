@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/router';
 import { createClient } from '@/utils/supabase/client';
 import { getCurrentOrganization } from '@/utils/organization-context';
+import { isRateLimited, setRateLimited, getRemainingCooldown } from '@/utils/supabase/rate-limiter';
 import { useToast } from '@/components/ui/Toasts/use-toast';
 
 export function useKaraokeAuth() {
@@ -26,6 +27,13 @@ export function useKaraokeAuth() {
     let isMounted = true; // Prevent state updates if component unmounts
 
     async function checkAuth() {
+      // Check global rate limiter first
+      if (isRateLimited()) {
+        console.log(`⏳ Skipping karaoke auth check - rate limited (${getRemainingCooldown()}s remaining)`);
+        setIsLoading(false);
+        return;
+      }
+
       // Rate limiting check
       const now = Date.now();
       if (now - lastAuthCheck.current < AUTH_CHECK_THROTTLE) {
@@ -43,9 +51,9 @@ export function useKaraokeAuth() {
         if (!isMounted) return;
 
         if (authError) {
-          // Handle rate limiting gracefully - don't redirect, just set loading to false
+          // Handle rate limiting globally
           if (authError.message?.includes('rate limit') || authError.status === 429) {
-            console.warn('Auth rate limited, skipping check');
+            setRateLimited();
             setIsLoading(false);
             return;
           }
@@ -69,8 +77,9 @@ export function useKaraokeAuth() {
         } catch (orgError: any) {
           if (!isMounted) return;
           console.warn('Organization lookup failed:', orgError);
-          // If rate limited, don't redirect - just set loading to false
+          // If rate limited, set global rate limit
           if (orgError?.status === 429 || orgError?.message?.includes('rate limit')) {
+            setRateLimited();
             setIsLoading(false);
             return;
           }
@@ -97,9 +106,9 @@ export function useKaraokeAuth() {
       } catch (error: any) {
         if (!isMounted) return;
 
-        // Handle rate limiting gracefully
+        // Handle rate limiting globally
         if (error?.status === 429 || error?.message?.includes('rate limit')) {
-          console.warn('Auth rate limited, will retry later');
+          setRateLimited();
           setIsLoading(false);
           return;
         }
