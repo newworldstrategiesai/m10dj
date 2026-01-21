@@ -48,24 +48,63 @@ export default function VideoDisplayPage() {
     return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
   }, []);
 
-  // Listen for control messages from admin window
+  // Listen for control messages from admin window via multiple channels
   useEffect(() => {
-    const handleMessage = (event: MessageEvent) => {
-      console.log('📨 Display window received message:', event.data, 'from:', event.origin, 'source:', event.source);
+    let broadcastChannel: BroadcastChannel | null = null;
 
-      // Only accept messages from the same origin for security
-      // Temporarily allow all origins for debugging
-      if (event.origin !== window.location.origin && event.origin !== 'null') {
-        console.log('🚫 Rejected message from different origin:', event.origin, 'expected:', window.location.origin);
+    // Channel 1: postMessage (existing)
+    const handleMessage = (event: MessageEvent) => {
+      console.log('📨 Display received postMessage:', event.data, 'from:', event.origin);
+
+      const isValidOrigin = event.origin === window.location.origin ||
+                           event.origin === 'null' ||
+                           event.origin.includes('localhost') ||
+                           event.origin.includes('tipjar.live') ||
+                           event.origin.includes('m10djcompany.com');
+
+      if (!isValidOrigin) {
+        console.log('🚫 Rejected message from invalid origin:', event.origin);
         return;
       }
 
-      const { type, data } = event.data;
+      processControlCommand(event.data);
+    };
+
+    // Channel 2: BroadcastChannel
+    if (typeof BroadcastChannel !== 'undefined') {
+      try {
+        broadcastChannel = new BroadcastChannel('karaoke_sync');
+        broadcastChannel.onmessage = (event) => {
+          console.log('📨 Display received BroadcastChannel message:', event.data);
+          processControlCommand(event.data);
+        };
+        console.log('✅ Display BroadcastChannel connected');
+      } catch (error) {
+        console.warn('❌ Failed to create BroadcastChannel:', error);
+      }
+    }
+
+    // Channel 3: localStorage events
+    const handleStorageChange = (event: StorageEvent) => {
+      if (event.key === 'karaoke_control_command') {
+        try {
+          const message = JSON.parse(event.newValue || '{}');
+          console.log('📨 Display received localStorage command:', message);
+          processControlCommand(message);
+        } catch (error) {
+          console.warn('❌ Failed to parse localStorage command:', error);
+        }
+      }
+    };
+
+    // Process control commands from any channel
+    const processControlCommand = (message: any) => {
+      const { type, data } = message;
 
       if (type === 'VIDEO_CONTROL') {
         console.log('🎬 Processing command:', data.action, data);
         const control = (window as any).youtubePlayerControl;
-        console.log('🎮 YouTube control available:', !!control, 'window.opener:', !!window.opener);
+        console.log('🎮 YouTube control available:', !!control);
 
         if (!control) {
           console.warn('⚠️ YouTube player control not available yet');
@@ -75,31 +114,21 @@ export default function VideoDisplayPage() {
         switch (data.action) {
           case 'ping':
             // Send back pong to confirm connection
-            event.source?.postMessage({
+            // Since we don't have event.source in other channels, broadcast the response
+            const pongMessage = {
               type: 'VIDEO_STATUS',
               data: { pong: true, ready: !!(window as any).youtubePlayerControl }
-            }, { targetOrigin: event.origin });
+            };
+            // Send via all channels
+            if (broadcastChannel) broadcastChannel.postMessage(pongMessage);
+            if (window.opener) window.opener.postMessage(pongMessage, window.location.origin);
             break;
           case 'play':
             try {
               control.play();
-              // Send status update back
+              // Send status update back via all channels
               setTimeout(() => {
-                try {
-                  const currentTime = control.getCurrentTime();
-                  const duration = control.getDuration();
-                  event.source?.postMessage({
-                    type: 'VIDEO_STATUS',
-                    data: {
-                      isPlaying: true,
-                      currentTime,
-                      duration,
-                      volume: volume
-                    }
-                  }, { targetOrigin: event.origin });
-                } catch (error) {
-                  console.error('❌ Error sending play status:', error);
-                }
+                sendStatusUpdate({ isPlaying: true });
               }, 100);
             } catch (error) {
               console.error('❌ Error calling play:', error);
@@ -110,21 +139,7 @@ export default function VideoDisplayPage() {
               control.pause();
               // Send status update back
               setTimeout(() => {
-                try {
-                  const currentTime = control.getCurrentTime();
-                  const duration = control.getDuration();
-                  event.source?.postMessage({
-                    type: 'VIDEO_STATUS',
-                    data: {
-                      isPlaying: false,
-                      currentTime,
-                      duration,
-                      volume: volume
-                    }
-                  }, { targetOrigin: event.origin });
-                } catch (error) {
-                  console.error('❌ Error sending pause status:', error);
-                }
+                sendStatusUpdate({ isPlaying: false });
               }, 100);
             } catch (error) {
               console.error('❌ Error calling pause:', error);
@@ -134,19 +149,7 @@ export default function VideoDisplayPage() {
             try {
               control.stop();
               // Send status update back
-              try {
-                event.source?.postMessage({
-                  type: 'VIDEO_STATUS',
-                  data: {
-                    isPlaying: false,
-                    currentTime: 0,
-                    duration: control.getDuration(),
-                    volume: volume
-                  }
-                }, { targetOrigin: event.origin });
-              } catch (error) {
-                console.error('❌ Error sending stop status:', error);
-              }
+              sendStatusUpdate({ isPlaying: false, currentTime: 0 });
             } catch (error) {
               console.error('❌ Error calling stop:', error);
             }
@@ -157,19 +160,7 @@ export default function VideoDisplayPage() {
                 control.seekTo(data.seconds);
                 // Send status update back
                 setTimeout(() => {
-                  try {
-                    event.source?.postMessage({
-                      type: 'VIDEO_STATUS',
-                      data: {
-                        isPlaying: control.getPlayerState() === 1, // Playing
-                        currentTime: data.seconds,
-                        duration: control.getDuration(),
-                        volume: volume
-                      }
-                    }, { targetOrigin: event.origin });
-                  } catch (error) {
-                    console.error('❌ Error sending seek status:', error);
-                  }
+                  sendStatusUpdate({ currentTime: data.seconds });
                 }, 100);
               } catch (error) {
                 console.error('❌ Error calling seekTo:', error);
@@ -182,12 +173,7 @@ export default function VideoDisplayPage() {
               try {
                 control.setVolume(data.volume);
                 // Send status update back
-                event.source?.postMessage({
-                  type: 'VIDEO_STATUS',
-                  data: {
-                    volume: data.volume
-                  }
-                }, { targetOrigin: event.origin });
+                sendStatusUpdate({ volume: data.volume });
               } catch (error) {
                 console.error('❌ Error calling setVolume:', error);
               }
@@ -197,12 +183,7 @@ export default function VideoDisplayPage() {
             try {
               control.mute();
               // Send status update back
-              event.source?.postMessage({
-                type: 'VIDEO_STATUS',
-                data: {
-                  volume: 0
-                }
-              }, { targetOrigin: event.origin });
+              sendStatusUpdate({ volume: 0 });
             } catch (error) {
               console.error('❌ Error calling mute:', error);
             }
@@ -211,12 +192,7 @@ export default function VideoDisplayPage() {
             try {
               control.unMute();
               // Send status update back
-              event.source?.postMessage({
-                type: 'VIDEO_STATUS',
-                data: {
-                  volume: volume
-                }
-              }, { targetOrigin: event.origin });
+              sendStatusUpdate({ volume: volume });
             } catch (error) {
               console.error('❌ Error calling unMute:', error);
             }
@@ -239,38 +215,19 @@ export default function VideoDisplayPage() {
                   control.loadVideoById(data.videoId);
 
                   // Send status updates at multiple intervals to ensure sync
-                  const sendStatusUpdate = () => {
-                    if (control && event.source) {
-                      try {
-                        const currentTime = control.getCurrentTime();
-                        const duration = control.getDuration();
-                        const playerState = control.getPlayerState();
-
-                        event.source.postMessage({
-                          type: 'VIDEO_STATUS',
-                          data: {
-                            videoChanged: true,
-                            isPlaying: playerState === 1,
-                            currentTime: currentTime || 0,
-                            duration: duration || 0,
-                            volume: volume,
-                            videoId: data.videoId,
-                            title: data.title,
-                            artist: data.artist || '',
-                            playerState: playerState
-                          }
-                        }, { targetOrigin: event.origin });
-                        console.log('📊 Sent status update after video change');
-                      } catch (error) {
-                        console.warn('⚠️ Error sending video change status:', error);
-                      }
-                    }
+                  const sendVideoChangeUpdate = () => {
+                    sendStatusUpdate({
+                      videoChanged: true,
+                      videoId: data.videoId,
+                      title: data.title,
+                      artist: data.artist || ''
+                    });
                   };
 
                   // Send updates at 500ms, 1s, and 2s intervals
-                  setTimeout(sendStatusUpdate, 500);
-                  setTimeout(sendStatusUpdate, 1000);
-                  setTimeout(sendStatusUpdate, 2000);
+                  setTimeout(sendVideoChangeUpdate, 500);
+                  setTimeout(sendVideoChangeUpdate, 1000);
+                  setTimeout(sendVideoChangeUpdate, 2000);
                 } catch (error) {
                   console.error('❌ Error loading video:', error);
                 }
@@ -279,68 +236,102 @@ export default function VideoDisplayPage() {
               }
 
               // Send confirmation back immediately
-              try {
-                event.source?.postMessage({
-                  type: 'VIDEO_STATUS',
-                  data: {
-                    videoChanged: true,
-                    videoId: data.videoId,
-                    title: data.title,
-                    artist: data.artist || ''
-                  }
-                }, { targetOrigin: event.origin });
-              } catch (error) {
-                console.error('❌ Error sending video change confirmation:', error);
-              }
+              sendStatusUpdate({
+                videoChanged: true,
+                videoId: data.videoId,
+                title: data.title,
+                artist: data.artist || ''
+              });
             }
             break;
           case 'getStatus':
             // Send back current status
-            try {
-              const currentTime = control.getCurrentTime();
-              const duration = control.getDuration();
-              const playerState = control.getPlayerState();
-
-              event.source?.postMessage({
-                type: 'VIDEO_STATUS',
-                data: {
-                  currentTime,
-                  duration,
-                  playerState,
-                  volume,
-                  videoId: currentVideo?.videoId || '',
-                  title: currentVideo?.title || '',
-                  artist: currentVideo?.artist || ''
-                }
-              }, { targetOrigin: event.origin });
-            } catch (error) {
-              console.error('❌ Error getting status:', error);
-              // Send fallback status
-              event.source?.postMessage({
-                type: 'VIDEO_STATUS',
-                data: {
-                  currentTime: 0,
-                  duration: 0,
-                  playerState: -1,
-                  volume,
-                  videoId: currentVideo?.videoId || '',
-                  title: currentVideo?.title || '',
-                  artist: currentVideo?.artist || ''
-                }
-              }, { targetOrigin: event.origin });
-            }
+            sendStatusUpdate();
             break;
         }
       }
     };
 
+    // Helper function to send status updates via all channels
+    const sendStatusUpdate = (overrides = {}) => {
+      try {
+        const control = (window as any).youtubePlayerControl;
+        if (!control) return;
+
+        const currentTime = control.getCurrentTime();
+        const duration = control.getDuration();
+        const playerState = control.getPlayerState();
+
+        const statusData = {
+          isPlaying: playerState === 1,
+          currentTime: currentTime || 0,
+          duration: duration || 0,
+          volume: volume,
+          videoId: currentVideo?.videoId || '',
+          title: currentVideo?.title || '',
+          artist: currentVideo?.artist || '',
+          playerState: playerState,
+          ...overrides
+        };
+
+        const message = {
+          type: 'VIDEO_STATUS',
+          data: statusData,
+          timestamp: Date.now()
+        };
+
+        // Send via BroadcastChannel
+        if (broadcastChannel) {
+          broadcastChannel.postMessage(message);
+        }
+
+        // Send via localStorage
+        try {
+          localStorage.setItem('karaoke_display_status', JSON.stringify(statusData));
+          setTimeout(() => localStorage.removeItem('karaoke_display_status'), 1000);
+        } catch (error) {
+          console.warn('❌ localStorage status send failed:', error);
+        }
+
+        // Send via postMessage (traditional)
+        if (window.opener) {
+          window.opener.postMessage(message, window.location.origin);
+        }
+
+        console.log('📡 Sent status update:', statusData);
+      } catch (error) {
+        console.warn('❌ Error sending status update:', error);
+      }
+    };
+
+    // Set up all listeners
     window.addEventListener('message', handleMessage);
-    return () => window.removeEventListener('message', handleMessage);
+    window.addEventListener('storage', handleStorageChange);
+
+    return () => {
+      window.removeEventListener('message', handleMessage);
+      window.removeEventListener('storage', handleStorageChange);
+      if (broadcastChannel) {
+        broadcastChannel.close();
+      }
+    };
   }, [currentVideo?.videoId, currentVideo?.title, currentVideo?.artist, volume]);
 
-  // Send periodic status updates to admin panel
+  // Send periodic status updates to admin panel via multiple channels
   useEffect(() => {
     if (!currentVideo?.videoId) return;
+
+    let broadcastChannel: BroadcastChannel | null = null;
+
+    // Set up BroadcastChannel for reliable cross-window communication
+    if (typeof BroadcastChannel !== 'undefined') {
+      try {
+        broadcastChannel = new BroadcastChannel('karaoke_sync');
+        console.log('✅ Display window BroadcastChannel connected');
+      } catch (error) {
+        console.warn('❌ Failed to create BroadcastChannel:', error);
+      }
+    }
 
     const sendStatusUpdate = () => {
       const control = (window as any).youtubePlayerControl;
@@ -361,38 +352,42 @@ export default function VideoDisplayPage() {
             playerState: playerState
           };
 
-          console.log('📡 Sending status update:', statusData);
+          const message = {
+            type: 'VIDEO_STATUS',
+            data: statusData,
+            timestamp: Date.now()
+          };
 
-          // Send to window.opener if it exists
-          if (window.opener) {
-            console.log('📡 Sending to opener');
-            window.opener.postMessage({
-              type: 'VIDEO_STATUS',
-              data: statusData
-            }, window.location.origin);
+          console.log('📡 Display sending status update:', statusData);
+
+          // Channel 1: BroadcastChannel (most reliable)
+          if (broadcastChannel) {
+            broadcastChannel.postMessage(message);
+            console.log('📡 Sent via BroadcastChannel');
           }
 
-          // Also try sending to parent window if different
-          if (window.parent && window.parent !== window.opener && window.parent !== window) {
-            console.log('📡 Also sending to parent');
-            window.parent.postMessage({
-              type: 'VIDEO_STATUS',
-              data: statusData
-            }, window.location.origin);
-          }
-
-          // Broadcast to all windows (fallback)
+          // Channel 2: localStorage (fallback)
           try {
-            // This is a bit hacky but might work for debugging
-            if (typeof window !== 'undefined' && window.top && window.top !== window) {
-              console.log('📡 Broadcasting to top window');
-              window.top.postMessage({
-                type: 'VIDEO_STATUS',
-                data: { ...statusData, broadcast: true }
-              }, window.location.origin);
-            }
+            localStorage.setItem('karaoke_display_status', JSON.stringify(statusData));
+            // Clean up after 1 second to avoid buildup
+            setTimeout(() => {
+              localStorage.removeItem('karaoke_display_status');
+            }, 1000);
+            console.log('📡 Sent via localStorage');
           } catch (error) {
-            // Ignore broadcast errors
+            console.warn('❌ localStorage failed:', error);
+          }
+
+          // Channel 3: postMessage to opener (traditional)
+          if (window.opener) {
+            window.opener.postMessage(message, window.location.origin);
+            console.log('📡 Sent to opener via postMessage');
+          }
+
+          // Channel 4: postMessage to parent (additional)
+          if (window.parent && window.parent !== window.opener && window.parent !== window) {
+            window.parent.postMessage(message, window.location.origin);
+            console.log('📡 Sent to parent via postMessage');
           }
 
         } catch (error) {
@@ -402,15 +397,18 @@ export default function VideoDisplayPage() {
       }
     };
 
-    // Send initial status update
-    const initialTimer = setTimeout(sendStatusUpdate, 1000);
+    // Send initial status update after player loads
+    const initialTimer = setTimeout(sendStatusUpdate, 2000);
 
-    // Send periodic updates every 500ms while playing
-    const interval = setInterval(sendStatusUpdate, 500);
+    // Send periodic updates every 200ms for smooth sync
+    const interval = setInterval(sendStatusUpdate, 200);
 
     return () => {
       clearTimeout(initialTimer);
       clearInterval(interval);
+      if (broadcastChannel) {
+        broadcastChannel.close();
+      }
     };
   }, [currentVideo, volume]);
 
