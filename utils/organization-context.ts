@@ -69,14 +69,60 @@ export async function getCurrentOrganization(
 ): Promise<Organization | null> {
   try {
     const { data: { user }, error: userError } = await supabase.auth.getUser();
-    
+
     // Handle AbortError gracefully (component unmounted or request cancelled)
     if (userError && (userError.name === 'AbortError' || userError.message?.includes('aborted'))) {
       return null;
     }
-    
+
     if (userError || !user) {
       return null;
+    }
+
+    // SPECIAL CASE: Check if user is a super admin first
+    // Super admins get access to the platform owner organization
+    try {
+      // Check if user is admin using our admin roles system
+      const { isAdminEmail } = await import('@/utils/auth-helpers/admin-roles');
+      const isAdmin = await isAdminEmail(user.email);
+
+      if (isAdmin) {
+        console.log('User is super admin, looking for platform owner organization');
+
+        // Look for platform owner organization
+        const { data: platformOrg, error: platformError } = await supabase
+          .from('organizations')
+          .select('*')
+          .eq('is_platform_owner', true)
+          .maybeSingle();
+
+        if (!platformError && platformOrg) {
+          console.log('Found platform owner organization for super admin:', platformOrg.id);
+          return platformOrg as Organization;
+        } else {
+          console.log('No platform owner organization found, creating fallback for super admin');
+
+          // If no platform owner org exists, create a virtual one for super admins
+          // This allows super admins to access admin features even without a real organization
+          const virtualPlatformOrg: Organization = {
+            id: 'platform-admin',
+            name: 'M10 DJ Company Platform',
+            slug: 'm10dj-platform',
+            owner_id: user.id,
+            subscription_tier: 'enterprise',
+            subscription_status: 'active',
+            is_platform_owner: true,
+            product_context: 'm10dj',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          };
+
+          return virtualPlatformOrg;
+        }
+      }
+    } catch (adminCheckError) {
+      console.warn('Error checking admin status:', adminCheckError);
+      // Continue with normal organization lookup
     }
 
     // First try: user is owner

@@ -24,7 +24,15 @@ import {
   Users,
   Crown,
   Save,
-  X
+  X,
+  Shuffle,
+  Heart,
+  Share,
+  MoreHorizontal,
+  Pause,
+  SkipBack,
+  SkipForward,
+  Volume2
 } from 'lucide-react';
 import { useKaraokeAuth } from '@/hooks/useKaraokeAuth';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
@@ -336,10 +344,17 @@ export default function PlaylistDetailPage() {
   if (authLoading || loading) {
     return (
       <KaraokeLayout title="Loading..." showBackButton currentPage="playlists">
-        <div className="flex items-center justify-center h-64">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-pink-500 mx-auto mb-4"></div>
-            <p className="text-gray-400">Loading playlist...</p>
+        <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900/20 to-gray-900">
+          <div className="flex items-center justify-center h-64">
+            <div className="text-center">
+              <div className="relative">
+                <div className="w-16 h-16 border-4 border-purple-500/20 border-t-purple-500 rounded-full animate-spin mx-auto mb-4"></div>
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <Music className="w-6 h-6 text-purple-400 animate-pulse" />
+                </div>
+              </div>
+              <p className="text-gray-300 font-medium">Loading playlist...</p>
+            </div>
           </div>
         </div>
       </KaraokeLayout>
@@ -349,16 +364,28 @@ export default function PlaylistDetailPage() {
   if (!playlist) {
     return (
       <KaraokeLayout title="Playlist Not Found" showBackButton currentPage="playlists">
-        <div className="text-center py-12">
-          <Music className="w-16 h-16 text-gray-600 mx-auto mb-4" />
-          <h3 className="text-xl font-semibold text-white mb-2">Playlist Not Found</h3>
-          <p className="text-gray-400 mb-6">The playlist you're looking for doesn't exist or has been deleted.</p>
-          <Link href="/admin/karaoke/playlists">
-            <Button className="karaoke-btn-primary">
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Back to Playlists
-            </Button>
-          </Link>
+        <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900/20 to-gray-900">
+          <div className="text-center py-20">
+            <div className="relative">
+              <div className="w-24 h-24 bg-gradient-to-br from-gray-800 to-gray-700 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-2xl">
+                <Music className="w-12 h-12 text-gray-500" />
+              </div>
+              <div className="absolute -top-2 -right-2 w-8 h-8 bg-gradient-to-br from-red-500 to-pink-500 rounded-full flex items-center justify-center animate-pulse">
+                <X className="w-4 h-4 text-white" />
+              </div>
+            </div>
+
+            <h3 className="text-2xl font-bold text-white mb-3">Playlist Not Found</h3>
+            <p className="text-gray-400 text-lg mb-8 max-w-md mx-auto">
+              The playlist you're looking for doesn't exist or has been deleted.
+            </p>
+            <Link href="/admin/karaoke/playlists">
+              <Button className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white px-8 py-4 rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105">
+                <ArrowLeft className="w-5 h-5 mr-2" />
+                Back to Playlists
+              </Button>
+            </Link>
+          </div>
         </div>
       </KaraokeLayout>
     );
@@ -366,241 +393,402 @@ export default function PlaylistDetailPage() {
 
   return (
     <KaraokeLayout title={playlist.name} showBackButton currentPage="playlists">
-      <div className="max-w-4xl mx-auto space-y-6">
-        {/* Header */}
-        <div className="flex items-start justify-between">
-          <div className="flex-1">
-            {isEditing ? (
-              <div className="space-y-4">
-                <Input
-                  value={editName}
-                  onChange={(e) => setEditName(e.target.value)}
-                  className="text-3xl font-bold bg-gray-800/50 border-gray-700 text-white"
-                  placeholder="Playlist name"
-                />
-                <Textarea
-                  value={editDescription}
-                  onChange={(e) => setEditDescription(e.target.value)}
-                  placeholder="Playlist description"
-                  rows={2}
-                  className="bg-gray-800/50 border-gray-700 text-white"
-                />
-                <div className="flex items-center gap-4">
-                  <label className="flex items-center gap-2 text-sm">
-                    <input
-                      type="checkbox"
-                      checked={editIsPublic}
-                      onChange={(e) => setEditIsPublic(e.target.checked)}
-                      className="rounded"
-                    />
-                    Public playlist
-                  </label>
-                  <Button
-                    onClick={savePlaylistChanges}
-                    disabled={!editName.trim() || saving}
-                    size="sm"
-                    className="karaoke-btn-primary"
-                  >
-                    {saving ? 'Saving...' : 'Save Changes'}
-                  </Button>
-                  <Button
-                    onClick={() => {
-                      setIsEditing(false);
-                      setEditName(playlist.name);
-                      setEditDescription(playlist.description || '');
-                      setEditIsPublic(playlist.is_public);
-                    }}
-                    variant="outline"
-                    size="sm"
-                  >
-                    Cancel
-                  </Button>
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900/10 to-gray-900">
+        {/* Spotify-Style Hero Section */}
+        <div className="relative overflow-hidden">
+          {/* Dynamic Background Gradient */}
+          <div className="absolute inset-0 bg-gradient-to-br from-purple-600/30 via-pink-600/20 to-blue-600/30 animate-pulse"></div>
+
+          {/* Floating Background Elements */}
+          <div className="absolute top-20 right-20 w-40 h-40 bg-purple-500/10 rounded-full blur-2xl animate-pulse"></div>
+          <div className="absolute bottom-20 left-20 w-32 h-32 bg-pink-500/10 rounded-full blur-2xl animate-pulse delay-1000"></div>
+
+          <div className="relative z-10 p-8 md:p-12">
+            <div className="max-w-6xl mx-auto">
+              {/* Playlist Cover and Info */}
+              <div className="flex flex-col md:flex-row items-start md:items-end gap-8 mb-8">
+                {/* Large Cover Art */}
+                <div className="relative group">
+                  <div className="w-48 h-48 md:w-64 md:h-64 bg-gradient-to-br from-purple-500/20 via-pink-500/10 to-blue-500/20 rounded-2xl backdrop-blur-sm border border-white/10 shadow-2xl overflow-hidden">
+                    <div className="absolute inset-0 bg-gradient-to-br from-purple-500/30 to-pink-500/30 flex items-center justify-center">
+                      <Music className="w-24 h-24 text-white/60" />
+                    </div>
+
+                    {/* Premium Badge Overlay */}
+                    {isPremium && (
+                      <div className="absolute top-4 right-4 w-10 h-10 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-full flex items-center justify-center shadow-lg">
+                        <Crown className="w-5 h-5 text-white" />
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
-            ) : (
-              <div>
-                <div className="flex items-center gap-3 mb-2">
-                  <h1 className="text-3xl font-bold text-white">{playlist.name}</h1>
-                  {playlist.is_public && (
-                    <Badge variant="outline" className="border-green-500/50 text-green-400">
-                      <Users className="w-3 h-3 mr-1" />
-                      Public
-                    </Badge>
+
+                {/* Playlist Details */}
+                <div className="flex-1 min-w-0">
+                  {isEditing ? (
+                    <div className="space-y-6">
+                      <div className="space-y-2">
+                        <Input
+                          value={editName}
+                          onChange={(e) => setEditName(e.target.value)}
+                          className="text-4xl md:text-6xl font-black bg-transparent border-0 text-white placeholder-white/50 focus:ring-0 p-0 h-auto"
+                          placeholder="Playlist name"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Textarea
+                          value={editDescription}
+                          onChange={(e) => setEditDescription(e.target.value)}
+                          placeholder="Add an optional description"
+                          rows={2}
+                          className="bg-gray-800/50 border-gray-600 text-white placeholder-gray-400 rounded-xl resize-none focus:border-purple-500 transition-colors"
+                        />
+                      </div>
+                      <div className="flex items-center gap-4">
+                        <label className="flex items-center gap-3 text-white cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={editIsPublic}
+                            onChange={(e) => setEditIsPublic(e.target.checked)}
+                            className="w-5 h-5 text-purple-500 bg-gray-700 border-gray-600 rounded focus:ring-purple-500 focus:ring-2"
+                          />
+                          <span className="text-lg">Make playlist public</span>
+                        </label>
+                        <Button
+                          onClick={savePlaylistChanges}
+                          disabled={!editName.trim() || saving}
+                          className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white px-6 py-2 rounded-xl font-semibold"
+                        >
+                          {saving ? (
+                            <>
+                              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+                              Saving...
+                            </>
+                          ) : (
+                            'Save'
+                          )}
+                        </Button>
+                        <Button
+                          onClick={() => {
+                            setIsEditing(false);
+                            setEditName(playlist.name);
+                            setEditDescription(playlist.description || '');
+                            setEditIsPublic(playlist.is_public);
+                          }}
+                          variant="outline"
+                          className="border-gray-600 text-gray-300 hover:bg-gray-800"
+                        >
+                          Cancel
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      <div className="flex items-center gap-3">
+                        <span className="text-sm font-medium text-purple-400 bg-purple-500/20 px-3 py-1 rounded-full">
+                          Playlist
+                        </span>
+                        {playlist.is_public && (
+                          <span className="text-sm font-medium text-green-400 bg-green-500/20 px-3 py-1 rounded-full flex items-center gap-1">
+                            <Users className="w-3 h-3" />
+                            Public
+                          </span>
+                        )}
+                      </div>
+
+                      <h1 className="text-4xl md:text-6xl font-black text-white leading-tight">
+                        {playlist.name}
+                      </h1>
+
+                      {playlist.description && (
+                        <p className="text-gray-300 text-lg md:text-xl max-w-2xl leading-relaxed">
+                          {playlist.description}
+                        </p>
+                      )}
+
+                      <div className="flex items-center gap-6 text-sm text-gray-400">
+                        <span className="flex items-center gap-2">
+                          <Music className="w-4 h-4" />
+                          {videos.length} song{videos.length !== 1 ? 's' : ''}
+                        </span>
+                        <span className="flex items-center gap-2">
+                          <Clock className="w-4 h-4" />
+                          {new Date(playlist.created_at).toLocaleDateString()}
+                        </span>
+                      </div>
+                    </div>
                   )}
                 </div>
-                {playlist.description && (
-                  <p className="text-gray-400 mb-4">{playlist.description}</p>
-                )}
-                <div className="flex items-center gap-4 text-sm text-gray-400">
-                  <span>{videos.length} songs</span>
-                  <span>Created {new Date(playlist.created_at).toLocaleDateString()}</span>
-                </div>
               </div>
-            )}
-          </div>
 
-          {!isEditing && (
-            <div className="flex items-center gap-2">
-              <Button
-                onClick={() => setShowAddSongs(true)}
-                className="karaoke-btn-secondary"
-              >
-                <Plus className="w-4 h-4 mr-2" />
-                Add Songs
-              </Button>
-
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm">
-                    <MoreVertical className="w-4 h-4" />
+              {/* Action Buttons */}
+              {!isEditing && (
+                <div className="flex flex-wrap items-center gap-4">
+                  {/* Play Button */}
+                  <Button className="bg-green-500 hover:bg-green-400 text-black font-bold px-8 py-4 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 flex items-center gap-3 text-lg">
+                    <Play className="w-6 h-6 ml-1" />
+                    Play
                   </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent>
-                  <DropdownMenuItem onClick={() => setIsEditing(true)}>
-                    <Edit3 className="w-4 h-4 mr-2" />
-                    Edit Details
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onClick={deletePlaylist}
-                    className="text-red-400 focus:text-red-400"
+
+                  {/* Shuffle */}
+                  <Button variant="ghost" className="text-white hover:bg-white/10 rounded-full p-3">
+                    <Shuffle className="w-6 h-6" />
+                  </Button>
+
+                  {/* Heart */}
+                  <Button variant="ghost" className="text-white hover:bg-white/10 rounded-full p-3">
+                    <Heart className="w-6 h-6" />
+                  </Button>
+
+                  {/* Share */}
+                  <Button variant="ghost" className="text-white hover:bg-white/10 rounded-full p-3">
+                    <Share className="w-6 h-6" />
+                  </Button>
+
+                  {/* More Options */}
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" className="text-white hover:bg-white/10 rounded-full p-3">
+                        <MoreHorizontal className="w-6 h-6" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent className="bg-gray-800 border-gray-700">
+                      <DropdownMenuItem
+                        onClick={() => setIsEditing(true)}
+                        className="text-white hover:bg-gray-700"
+                      >
+                        <Edit3 className="w-4 h-4 mr-2" />
+                        Edit Details
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={deletePlaylist}
+                        className="text-red-400 hover:bg-red-500/10 hover:text-red-300"
+                      >
+                        <Trash2 className="w-4 h-4 mr-2" />
+                        Delete Playlist
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+
+                  {/* Add Songs Button */}
+                  <Button
+                    onClick={() => setShowAddSongs(true)}
+                    className="bg-white/10 hover:bg-white/20 text-white border border-white/20 rounded-full px-6 py-3 font-semibold transition-all duration-300"
                   >
-                    <Trash2 className="w-4 h-4 mr-2" />
-                    Delete Playlist
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+                    <Plus className="w-5 h-5 mr-2" />
+                    Add Songs
+                  </Button>
+                </div>
+              )}
             </div>
-          )}
+          </div>
         </div>
 
-        {/* Songs List */}
-        <Card className="karaoke-card">
-          <CardHeader>
-            <CardTitle className="text-white flex items-center gap-2">
-              <Music className="w-5 h-5" />
-              Songs ({videos.length})
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {videos.length === 0 ? (
-              <div className="text-center py-12">
-                <Music className="w-16 h-16 text-gray-600 mx-auto mb-4" />
-                <h3 className="text-lg font-semibold text-white mb-2">No songs yet</h3>
-                <p className="text-gray-400 mb-6">Add some songs to get your playlist started.</p>
-                <Button onClick={() => setShowAddSongs(true)} className="karaoke-btn-primary">
-                  <Plus className="w-4 h-4 mr-2" />
-                  Add Your First Song
-                </Button>
+
+        {/* Songs List Section */}
+        <div className="max-w-6xl mx-auto px-8 pb-8">
+          {videos.length === 0 ? (
+            <div className="text-center py-20">
+              <div className="relative">
+                <div className="w-32 h-32 bg-gradient-to-br from-gray-800 to-gray-700 rounded-3xl flex items-center justify-center mx-auto mb-8 shadow-2xl">
+                  <Music className="w-16 h-16 text-gray-500" />
+                </div>
+                <div className="absolute -top-3 -right-3 w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center animate-pulse">
+                  <Plus className="w-6 h-6 text-white" />
+                </div>
               </div>
-            ) : (
+
+              <h3 className="text-3xl font-bold text-white mb-4">Let's add some songs</h3>
+              <p className="text-gray-400 text-lg mb-8 max-w-md mx-auto">
+                Start building your playlist by adding your favorite karaoke songs.
+              </p>
+
+              <Button
+                onClick={() => setShowAddSongs(true)}
+                className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white px-8 py-4 rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105"
+              >
+                <Plus className="w-6 h-6 mr-2" />
+                Add Your First Song
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {/* Table Header */}
+              <div className="grid grid-cols-[auto_1fr_auto_auto] gap-4 px-6 py-3 text-sm font-semibold text-gray-400 border-b border-gray-800/50">
+                <div className="w-8">#</div>
+                <div>Title</div>
+                <div className="hidden md:block">Duration</div>
+                <div className="w-8"></div>
+              </div>
+
+              {/* Songs List */}
               <div className="space-y-2">
                 {videos.map((video, index) => (
                   <div
                     key={video.id}
-                    className="flex items-center gap-4 p-3 rounded-lg bg-gray-800/30 hover:bg-gray-700/30 transition-colors"
+                    className="group grid grid-cols-[auto_1fr_auto_auto] gap-4 px-6 py-3 rounded-xl hover:bg-white/5 transition-all duration-200 items-center"
                   >
-                    <div className="flex items-center gap-3 flex-1 min-w-0">
-                      <span className="text-gray-400 text-sm w-8">{index + 1}</span>
-                      <img
-                        src={video.thumbnail_url}
-                        alt={video.title}
-                        className="w-12 h-12 rounded object-cover flex-shrink-0"
-                      />
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium text-white truncate">{video.title}</p>
-                        <p className="text-gray-400 text-sm truncate">{video.artist}</p>
+                    {/* Track Number / Play Button */}
+                    <div className="w-8 flex items-center justify-center">
+                      <div className="group-hover:hidden text-gray-400 font-medium">
+                        {index + 1}
                       </div>
-                    </div>
-
-                    <div className="flex items-center gap-3">
-                      {video.is_premium && (
-                        <Badge variant="outline" className="border-pink-500/50 text-pink-400">
-                          <Crown className="w-3 h-3 mr-1" />
-                          Premium
-                        </Badge>
-                      )}
-                      <span className="text-gray-400 text-sm">{video.duration}</span>
                       <Button
                         size="sm"
                         variant="ghost"
-                        className="text-pink-400 hover:text-pink-300"
+                        className="hidden group-hover:flex w-8 h-8 p-0 text-green-400 hover:text-green-300 hover:bg-green-500/10 rounded-full"
                       >
                         <Play className="w-4 h-4" />
                       </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => removeVideoFromPlaylist(video.id)}
-                        className="text-gray-400 hover:text-red-400"
-                      >
-                        <X className="w-4 h-4" />
-                      </Button>
+                    </div>
+
+                    {/* Song Info */}
+                    <div className="flex items-center gap-4 min-w-0">
+                      <img
+                        src={video.thumbnail_url}
+                        alt={video.title}
+                        className="w-12 h-12 rounded-lg object-cover flex-shrink-0 shadow-lg"
+                      />
+                      <div className="min-w-0 flex-1">
+                        <h4 className="font-semibold text-white truncate group-hover:text-green-400 transition-colors">
+                          {video.title}
+                        </h4>
+                        <p className="text-gray-400 text-sm truncate">
+                          {video.artist}
+                          {video.is_premium && (
+                            <span className="ml-2 inline-flex items-center">
+                              <Crown className="w-3 h-3 text-yellow-400" />
+                            </span>
+                          )}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Duration */}
+                    <div className="hidden md:block text-gray-400 text-sm font-medium">
+                      {video.duration}
+                    </div>
+
+                    {/* Actions */}
+                    <div className="w-8 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="w-8 h-8 p-0 text-gray-400 hover:text-white hover:bg-white/10 rounded-full"
+                          >
+                            <MoreHorizontal className="w-4 h-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent className="bg-gray-800 border-gray-700">
+                          <DropdownMenuItem className="text-white hover:bg-gray-700">
+                            <Play className="w-4 h-4 mr-2" />
+                            Play
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => removeVideoFromPlaylist(video.id)}
+                            className="text-red-400 hover:bg-red-500/10 hover:text-red-300"
+                          >
+                            <X className="w-4 h-4 mr-2" />
+                            Remove from playlist
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
                   </div>
                 ))}
               </div>
-            )}
-          </CardContent>
-        </Card>
+            </div>
+          )}
+        </div>
 
-        {/* Add Songs Dialog */}
+        {/* Modern Add Songs Modal */}
         <Dialog open={showAddSongs} onOpenChange={setShowAddSongs}>
-          <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>Add Songs to Playlist</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4">
+          <DialogContent className="sm:max-w-2xl max-h-[85vh] bg-gradient-to-br from-gray-900 to-gray-800 border-gray-700 shadow-2xl overflow-hidden">
+            <DialogHeader className="space-y-4 p-6 border-b border-gray-700/50">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl flex items-center justify-center">
+                  <Plus className="w-5 h-5 text-white" />
+                </div>
+                <DialogTitle className="text-2xl font-bold text-white">Add Songs to Playlist</DialogTitle>
+              </div>
+
+              {/* Search Input */}
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                 <Input
                   placeholder="Search for songs to add..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10"
+                  className="pl-12 pr-4 py-4 bg-gray-800/50 border-gray-600 text-white placeholder-gray-400 rounded-xl focus:border-purple-500 focus:ring-1 focus:ring-purple-500/50 text-lg"
                 />
                 {searching && (
-                  <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-pink-500"></div>
+                  <div className="absolute right-4 top-1/2 -translate-y-1/2">
+                    <div className="w-6 h-6 border-2 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
                   </div>
                 )}
               </div>
+            </DialogHeader>
 
-              {searchResults.length > 0 && (
-                <div className="space-y-2 max-h-96 overflow-y-auto">
+            <div className="flex-1 overflow-y-auto p-6">
+              {searchResults.length > 0 ? (
+                <div className="space-y-3">
                   {searchResults.map((video) => (
                     <div
                       key={video.id}
-                      className="flex items-center gap-3 p-3 rounded-lg border hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer"
+                      className="flex items-center gap-4 p-4 rounded-xl bg-gray-800/30 hover:bg-gray-700/50 border border-gray-700/30 hover:border-purple-500/50 transition-all duration-200 cursor-pointer group"
                       onClick={() => addVideoToPlaylist(video)}
                     >
                       <img
                         src={video.thumbnail_url}
                         alt={video.title}
-                        className="w-10 h-10 rounded object-cover"
+                        className="w-14 h-14 rounded-lg object-cover flex-shrink-0 shadow-lg"
                       />
                       <div className="flex-1 min-w-0">
-                        <p className="font-medium truncate">{video.title}</p>
-                        <p className="text-sm text-gray-500 truncate">{video.artist}</p>
+                        <h4 className="font-semibold text-white truncate group-hover:text-purple-300 transition-colors">
+                          {video.title}
+                        </h4>
+                        <p className="text-gray-400 text-sm truncate">
+                          {video.artist}
+                        </p>
+                        <div className="flex items-center gap-2 mt-1">
+                          {video.is_premium && (
+                            <Badge variant="outline" className="border-yellow-500/50 text-yellow-400 text-xs">
+                              <Crown className="w-3 h-3 mr-1" />
+                              Premium
+                            </Badge>
+                          )}
+                          <span className="text-gray-500 text-xs">{video.duration}</span>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        {video.is_premium && (
-                          <Badge variant="outline" className="border-pink-500/50 text-pink-400">
-                            <Crown className="w-3 h-3 mr-1" />
-                            Premium
-                          </Badge>
-                        )}
-                        <span className="text-sm text-gray-500">{video.duration}</span>
+                      <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                        <Plus className="w-6 h-6 text-purple-400" />
                       </div>
                     </div>
                   ))}
                 </div>
-              )}
-
-              {searchQuery && searchResults.length === 0 && !searching && (
-                <div className="text-center py-8">
-                  <p className="text-gray-500">No songs found matching "{searchQuery}"</p>
+              ) : searchQuery && !searching ? (
+                <div className="text-center py-12">
+                  <div className="w-16 h-16 bg-gray-800 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                    <Search className="w-8 h-8 text-gray-500" />
+                  </div>
+                  <h3 className="text-lg font-semibold text-white mb-2">No songs found</h3>
+                  <p className="text-gray-400">
+                    Try searching for a different song or artist.
+                  </p>
                 </div>
-              )}
+              ) : !searchQuery ? (
+                <div className="text-center py-12">
+                  <div className="w-16 h-16 bg-gradient-to-br from-purple-500/20 to-pink-500/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                    <Music className="w-8 h-8 text-purple-400" />
+                  </div>
+                  <h3 className="text-lg font-semibold text-white mb-2">Search for songs</h3>
+                  <p className="text-gray-400">
+                    Start typing to find karaoke songs to add to your playlist.
+                  </p>
+                </div>
+              ) : null}
             </div>
           </DialogContent>
         </Dialog>
