@@ -225,20 +225,60 @@ export default function KaraokePlayerPanel({
   }, [propDisplayVideo, onDisplayVideoChange]);
 
   // Send control command to display window
-  const sendDisplayCommand = async (action: string, data?: any) => {
-    if (propDisplayWindow && !propDisplayWindow.closed) {
-      setIsCommandLoading(true);
-      try {
-        propDisplayWindow.postMessage({
-          type: 'VIDEO_CONTROL',
-          data: { action, ...data }
-        }, window.location.origin);
+  const sendDisplayCommand = async (action: string, data?: any, retryCount = 0) => {
+    console.log('Sending display command:', action, data, 'Window:', propDisplayWindow, 'Closed:', propDisplayWindow?.closed, 'Retry:', retryCount);
 
-        // Small delay to show loading state
-        await new Promise(resolve => setTimeout(resolve, 200));
-      } finally {
-        setIsCommandLoading(false);
+    if (!propDisplayWindow || propDisplayWindow.closed) {
+      console.warn('Cannot send command - display window not available or closed');
+      return;
+    }
+
+    setIsCommandLoading(true);
+    try {
+      // Send the command directly - the window should be ready
+      propDisplayWindow.postMessage({
+        type: 'VIDEO_CONTROL',
+        data: { action, ...data }
+      }, window.location.origin);
+      console.log('Command message sent to display window');
+
+      // Wait for response or timeout
+      await new Promise((resolve, reject) => {
+        const timeout = setTimeout(() => {
+          console.warn('Command timeout - window may not be ready');
+          reject(new Error('timeout'));
+        }, 1000);
+
+        // Listen for a brief moment to see if we get any response
+        const checkReady = (event: MessageEvent) => {
+          if (event.source === propDisplayWindow && event.data?.type === 'VIDEO_STATUS') {
+            clearTimeout(timeout);
+            window.removeEventListener('message', checkReady);
+            resolve(void 0);
+          }
+        };
+
+        window.addEventListener('message', checkReady);
+
+        // If this is not the first retry, don't wait for response
+        if (retryCount > 0) {
+          clearTimeout(timeout);
+          resolve(void 0);
+        }
+      });
+
+      // Small delay to show loading state
+      await new Promise(resolve => setTimeout(resolve, 200));
+    } catch (error) {
+      console.error('Error sending command to display window:', error);
+      // Retry once if it timed out
+      if (retryCount === 0) {
+        console.log('Retrying command...');
+        await new Promise(resolve => setTimeout(resolve, 500));
+        return sendDisplayCommand(action, data, 1);
       }
+    } finally {
+      setIsCommandLoading(false);
     }
   };
 

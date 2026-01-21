@@ -27,41 +27,138 @@ export default function VideoDisplayPage() {
   // Listen for control messages from admin window
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
+      console.log('Video display received message:', event.data, 'from origin:', event.origin);
+
       // Only accept messages from the same origin for security
-      if (event.origin !== window.location.origin) return;
+      if (event.origin !== window.location.origin) {
+        console.warn('Rejected message from different origin:', event.origin);
+        return;
+      }
 
       const { type, data } = event.data;
 
       if (type === 'VIDEO_CONTROL') {
+        console.log('Processing VIDEO_CONTROL command:', data);
         const control = (window as any).youtubePlayerControl;
-        if (!control) return;
+        console.log('YouTube player control available:', !!control);
+
+        if (!control) {
+          console.warn('YouTube player control not available yet');
+          return;
+        }
 
         switch (data.action) {
+          case 'ping':
+            console.log('Received ping from admin window');
+            // Send back pong to confirm connection
+            event.source?.postMessage({
+              type: 'VIDEO_STATUS',
+              data: { pong: true, ready: !!(window as any).youtubePlayerControl }
+            }, { targetOrigin: event.origin });
+            break;
           case 'play':
+            console.log('Executing play command');
             control.play();
+            // Send status update back
+            setTimeout(() => {
+              const currentTime = control.getCurrentTime();
+              const duration = control.getDuration();
+              event.source?.postMessage({
+                type: 'VIDEO_STATUS',
+                data: {
+                  isPlaying: true,
+                  currentTime,
+                  duration,
+                  volume: volume
+                }
+              }, { targetOrigin: event.origin });
+            }, 100);
             break;
           case 'pause':
+            console.log('Executing pause command');
             control.pause();
+            // Send status update back
+            setTimeout(() => {
+              const currentTime = control.getCurrentTime();
+              const duration = control.getDuration();
+              event.source?.postMessage({
+                type: 'VIDEO_STATUS',
+                data: {
+                  isPlaying: false,
+                  currentTime,
+                  duration,
+                  volume: volume
+                }
+              }, { targetOrigin: event.origin });
+            }, 100);
             break;
           case 'stop':
+            console.log('Executing stop command');
             control.stop();
+            // Send status update back
+            event.source?.postMessage({
+              type: 'VIDEO_STATUS',
+              data: {
+                isPlaying: false,
+                currentTime: 0,
+                duration: control.getDuration(),
+                volume: volume
+              }
+            }, { targetOrigin: event.origin });
             break;
           case 'seek':
             if (data.seconds !== undefined) {
+              console.log('Executing seek command to', data.seconds, 'seconds');
               control.seekTo(data.seconds);
+              // Send status update back
+              setTimeout(() => {
+                event.source?.postMessage({
+                  type: 'VIDEO_STATUS',
+                  data: {
+                    isPlaying: control.getPlayerState() === 1, // Playing
+                    currentTime: data.seconds,
+                    duration: control.getDuration(),
+                    volume: volume
+                  }
+                }, { targetOrigin: event.origin });
+              }, 100);
             }
             break;
           case 'volume':
             if (data.volume !== undefined) {
+              console.log('Executing volume command to', data.volume);
               setVolume(data.volume);
               control.setVolume(data.volume);
+              // Send status update back
+              event.source?.postMessage({
+                type: 'VIDEO_STATUS',
+                data: {
+                  volume: data.volume
+                }
+              }, { targetOrigin: event.origin });
             }
             break;
           case 'mute':
+            console.log('Executing mute command');
             control.mute();
+            // Send status update back
+            event.source?.postMessage({
+              type: 'VIDEO_STATUS',
+              data: {
+                volume: 0
+              }
+            }, { targetOrigin: event.origin });
             break;
           case 'unmute':
+            console.log('Executing unmute command');
             control.unMute();
+            // Send status update back
+            event.source?.postMessage({
+              type: 'VIDEO_STATUS',
+              data: {
+                volume: volume
+              }
+            }, { targetOrigin: event.origin });
             break;
           case 'getStatus':
             // Send back current status

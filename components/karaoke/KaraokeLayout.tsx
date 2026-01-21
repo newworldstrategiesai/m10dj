@@ -52,6 +52,7 @@ const KaraokeLayout = forwardRef<KaraokeLayoutRef, KaraokeLayoutProps>(({
   // Expose methods to parent components
   useImperativeHandle(ref, () => ({
     registerDisplayWindow: (window: Window, video: { videoId: string; title: string; artist: string }) => {
+      console.log('Registering display window:', window, 'Video:', video);
       setDisplayWindow(window);
       setDisplayVideo({
         videoId: video.videoId,
@@ -59,6 +60,7 @@ const KaraokeLayout = forwardRef<KaraokeLayoutRef, KaraokeLayoutProps>(({
         artist: video.artist,
         thumbnailUrl: `https://img.youtube.com/vi/${video.videoId}/default.jpg`
       });
+      console.log('Display window registered successfully');
     }
   }));
 

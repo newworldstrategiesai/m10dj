@@ -1468,7 +1468,9 @@ export default function KaraokeAdminPage() {
                                     variant="outline"
                                     onClick={(e) => {
                                       e.stopPropagation();
-                                      const displayWindow = window.open(`/karaoke/video-display?videoId=${videoData.youtube_video_id}&title=${encodeURIComponent(signup.song_title)}&artist=${encodeURIComponent(signup.song_artist || '')}`, 'karaokeVideoDisplay', 'width=1280,height=720,scrollbars=no,resizable=yes,status=no,toolbar=no,menubar=no,location=no,directories=no');
+                                      // Use unique window name based on video ID to avoid conflicts
+                                      const windowName = `karaokeVideoDisplay_${videoData.youtube_video_id}`;
+                                      const displayWindow = window.open(`/karaoke/video-display?videoId=${videoData.youtube_video_id}&title=${encodeURIComponent(signup.song_title)}&artist=${encodeURIComponent(signup.song_artist || '')}`, windowName, 'width=1280,height=720,scrollbars=no,resizable=yes,status=no,toolbar=no,menubar=no,location=no,directories=no');
                                       if (displayWindow && karaokeLayoutRef.current) {
                                         karaokeLayoutRef.current.registerDisplayWindow(displayWindow, {
                                           videoId: videoData.youtube_video_id,
