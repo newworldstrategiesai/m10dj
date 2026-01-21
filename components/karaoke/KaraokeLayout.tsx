@@ -14,11 +14,16 @@ interface KaraokeLayoutProps {
   currentPage?: 'discover' | 'playlists' | 'quizzes' | 'library' | 'favorites' | 'history' | 'my-songs';
   user?: any;
   subscriptionTier?: string;
+  signups?: any[];
+  onSignupStatusChange?: (signupId: string, status: string) => void;
 }
 
 export interface KaraokeLayoutRef {
   registerDisplayWindow: (window: Window, video: { videoId: string; title: string; artist: string }) => void;
   changeDisplayVideo: (video: { videoId: string; title: string; artist: string }) => void;
+  addSignupToQueue: (signup: any) => void;
+  startPlayingSignup: (signup: any) => void;
+  clearPlayerQueue: () => void;
 }
 
 const KaraokeLayout = forwardRef<KaraokeLayoutRef, KaraokeLayoutProps>(({
@@ -27,7 +32,9 @@ const KaraokeLayout = forwardRef<KaraokeLayoutRef, KaraokeLayoutProps>(({
   showBackButton = false,
   currentPage = 'discover',
   user: propUser,
-  subscriptionTier: propSubscriptionTier = 'free'
+  subscriptionTier: propSubscriptionTier = 'free',
+  signups = [],
+  onSignupStatusChange
 }: KaraokeLayoutProps, ref) => {
   const router = useRouter();
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -89,6 +96,29 @@ const KaraokeLayout = forwardRef<KaraokeLayoutRef, KaraokeLayoutProps>(({
         artist: video.artist,
         thumbnailUrl: `https://img.youtube.com/vi/${video.videoId}/default.jpg`
       });
+    },
+    addSignupToQueue: (signup: any) => {
+      // This will be handled by the KaraokePlayerPanel
+      console.log('Adding signup to player queue:', signup);
+    },
+    startPlayingSignup: (signup: any) => {
+      // Start playing this signup immediately
+      if (signup.video_data && displayWindow && !displayWindow.closed) {
+        console.log('Starting to play signup:', signup);
+        const videoData = {
+          videoId: signup.video_data.youtube_video_id,
+          title: signup.song_title,
+          artist: signup.song_artist || ''
+        };
+        displayWindow.postMessage({
+          type: 'VIDEO_CONTROL',
+          data: { action: 'changeVideo', ...videoData }
+        }, window.location.origin);
+      }
+    },
+    clearPlayerQueue: () => {
+      // This will be handled by the KaraokePlayerPanel
+      console.log('Clearing player queue');
     }
   }));
 
@@ -160,6 +190,8 @@ const KaraokeLayout = forwardRef<KaraokeLayoutRef, KaraokeLayoutProps>(({
             displayVideo={displayVideo}
             onDisplayWindowChange={setDisplayWindow}
             onDisplayVideoChange={setDisplayVideo}
+            signups={signups}
+            onSignupStatusChange={onSignupStatusChange}
           />
         )}
       </div>

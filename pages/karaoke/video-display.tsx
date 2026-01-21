@@ -2,6 +2,10 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
+import Head from 'next/head';
+import { X, Maximize, Minimize, Volume2, VolumeX, RotateCcw } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import YouTubePlayer from '@/components/karaoke/YouTubePlayer';
 
 // Force server-side rendering since this page requires query parameters
 export async function getServerSideProps() {
@@ -9,10 +13,6 @@ export async function getServerSideProps() {
     props: {}, // Will be passed to the page component as props
   };
 }
-import Head from 'next/head';
-import { X, Maximize, Minimize, Volume2, VolumeX, RotateCcw } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import YouTubePlayer from '@/components/karaoke/YouTubePlayer';
 
 export default function VideoDisplayPage() {
   const router = useRouter();

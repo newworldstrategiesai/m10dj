@@ -36,6 +36,8 @@ interface KaraokePlayerPanelProps {
   } | null;
   onDisplayWindowChange?: (window: Window | null) => void;
   onDisplayVideoChange?: (video: any) => void;
+  signups?: any[]; // Current signups from admin interface
+  onSignupStatusChange?: (signupId: string, status: string) => void; // Callback to update signup status
 }
 
 interface QueueItem {
@@ -45,6 +47,7 @@ interface QueueItem {
   duration: string;
   thumbnailUrl: string;
   isPremium?: boolean;
+  signupData?: any; // Reference to original signup data
 }
 
 export default function KaraokePlayerPanel({
@@ -53,7 +56,9 @@ export default function KaraokePlayerPanel({
   displayWindow: propDisplayWindow,
   displayVideo: propDisplayVideo,
   onDisplayWindowChange,
-  onDisplayVideoChange
+  onDisplayVideoChange,
+  signups = [],
+  onSignupStatusChange
 }: KaraokePlayerPanelProps) {
   const { toast } = useToast();
   const [logoError, setLogoError] = useState(false);
@@ -63,7 +68,6 @@ export default function KaraokePlayerPanel({
   const [volume, setVolume] = useState(70);
   const [isMuted, setIsMuted] = useState(false);
   const [currentSong, setCurrentSong] = useState<QueueItem | null>(null);
-  const [queue, setQueue] = useState<QueueItem[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [showSongBrowser, setShowSongBrowser] = useState(false);
 
@@ -89,6 +93,23 @@ export default function KaraokePlayerPanel({
   // Loading states
   const [isCommandLoading, setIsCommandLoading] = useState(false);
   const [thumbnailLoading, setThumbnailLoading] = useState(true);
+
+  // Derive queue from signups that have videos and are queued/next
+  const queue = signups
+    .filter(signup => signup.video_data && ['queued', 'next'].includes(signup.status))
+    .sort((a, b) => (a.priority_order || 0) - (b.priority_order || 0))
+    .map(signup => ({
+      id: signup.id,
+      title: signup.song_title,
+      artist: signup.song_artist || '',
+      duration: signup.video_data?.youtube_video_duration || '0:00',
+      thumbnailUrl: `https://img.youtube.com/vi/${signup.video_data?.youtube_video_id}/default.jpg`,
+      isPremium: signup.video_data?.is_premium || false,
+      signupData: signup // Keep reference to original signup
+    }));
+
+  // Current playing signup (if any)
+  const currentSignup = signups.find(signup => signup.status === 'singing');
 
   // Touch/swipe handling
   const [touchStart, setTouchStart] = useState<number | null>(null);
@@ -141,11 +162,20 @@ export default function KaraokePlayerPanel({
   };
 
   const clearQueue = () => {
-    setQueue([]);
+    // Clear queue by updating all queued signups to cancelled status
+    queue.forEach(item => {
+      if (item.signupData && onSignupStatusChange) {
+        onSignupStatusChange(item.signupData.id, 'cancelled');
+      }
+    });
   };
 
   const removeFromQueue = (songId: string) => {
-    setQueue(queue.filter(song => song.id !== songId));
+    // Remove from queue by updating signup status
+    const item = queue.find(item => item.id === songId);
+    if (item?.signupData && onSignupStatusChange) {
+      onSignupStatusChange(item.signupData.id, 'cancelled');
+    }
   };
 
   // Browse/search functionality
@@ -180,19 +210,12 @@ export default function KaraokePlayerPanel({
   };
 
   const addSongToQueue = (song: any) => {
-    const queueItem: QueueItem = {
-      id: song.id,
-      title: song.song_title,
-      artist: song.song_artist,
-      duration: song.youtube_video_duration || '0:00',
-      thumbnailUrl: `https://img.youtube.com/vi/${song.youtube_video_id}/default.jpg`,
-      isPremium: song.is_premium || false
-    };
-
-    setQueue(prev => [...prev, queueItem]);
+    // Since we're now managing signups through the admin interface,
+    // we can't directly add songs to queue from the browse view
+    // This would require creating a new signup or linking to existing one
     toast({
-      title: 'Added to Queue',
-      description: `"${song.song_title}" by ${song.song_artist}`,
+      title: 'Browse Mode',
+      description: 'Use the admin interface to add signups to the queue',
     });
   };
 
@@ -238,19 +261,24 @@ export default function KaraokePlayerPanel({
       return;
     }
 
-    const newQueue = [...queue];
-    const [removed] = newQueue.splice(draggedIndex, 1);
-    newQueue.splice(dropIndex, 0, removed);
+    // Calculate new priority order for the dragged item
+    const draggedSignup = draggedItem.signupData;
+    if (draggedSignup && onSignupStatusChange) {
+      // For simplicity, we'll just update the priority order
+      // In a real implementation, you might want more sophisticated reordering
+      const basePriority = draggedSignup.priority_order || 0;
+      const newPriority = dropIndex < draggedIndex ? basePriority - 100 : basePriority + 100;
 
-    setQueue(newQueue);
+      // This would need to be implemented in the admin interface
+      // For now, just show a message
+      toast({
+        title: 'Queue reordering',
+        description: 'Use the admin interface to reorder signups',
+      });
+    }
+
     setDraggedItem(null);
     setDragOverIndex(null);
-
-    // Show success feedback
-    toast({
-      title: 'Queue reordered',
-      description: `"${removed.title}" moved to position ${dropIndex + 1}`,
-    });
   };
 
   const handleDragEnd = () => {
@@ -406,6 +434,27 @@ export default function KaraokePlayerPanel({
     const interval = setInterval(checkDisplayWindow, 1000);
     return () => clearInterval(interval);
   }, [propDisplayWindow, onDisplayWindowChange]);
+
+  // Auto-play signup when status changes to singing
+  useEffect(() => {
+    if (currentSignup && currentSignup.video_data && propDisplayWindow && !propDisplayWindow.closed) {
+      console.log('Auto-playing signup:', currentSignup);
+      const videoData = {
+        videoId: currentSignup.video_data.youtube_video_id,
+        title: currentSignup.song_title,
+        artist: currentSignup.song_artist || ''
+      };
+
+      // Update display video
+      onDisplayVideoChange?.(videoData);
+
+      // Send change video command to display window
+      propDisplayWindow.postMessage({
+        type: 'VIDEO_CONTROL',
+        data: { action: 'changeVideo', ...videoData }
+      }, window.location.origin);
+    }
+  }, [currentSignup, propDisplayWindow, onDisplayVideoChange]);
 
   // Touch gesture handling for mobile
   const handleTouchStart = (e: React.TouchEvent) => {
@@ -642,8 +691,15 @@ export default function KaraokePlayerPanel({
                   {propDisplayVideo.title}
                 </h4>
                 <p className="text-purple-300 font-medium text-sm mt-1">
-                  {propDisplayVideo.artist}
+                  {currentSignup ? currentSignup.singer_name : propDisplayVideo.artist}
                 </p>
+                {currentSignup && (
+                  <div className="mt-2 text-xs text-gray-400">
+                    <span className="bg-green-500/20 text-green-400 px-2 py-1 rounded-full">
+                      Currently Singing
+                    </span>
+                  </div>
+                )}
               </div>
 
               {/* Rich Metadata Display */}
@@ -1265,7 +1321,7 @@ export default function KaraokePlayerPanel({
                         <Music className="w-4 h-4 text-white/50" />
                       </div>
 
-                      {/* Song Info */}
+                      {/* Signup Info */}
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
                           <h4 className="font-medium text-white text-sm truncate">{song.title}</h4>
@@ -1273,7 +1329,9 @@ export default function KaraokePlayerPanel({
                             <Lock className="w-3 h-3 text-gray-400" />
                           )}
                         </div>
-                        <p className="text-gray-400 text-xs truncate">{song.artist}</p>
+                        <p className="text-gray-400 text-xs truncate">
+                          {song.signupData ? song.signupData.singer_name : song.artist}
+                        </p>
                         <p className="text-gray-500 text-xs">{song.duration}</p>
                       </div>
 
@@ -1376,16 +1434,12 @@ export default function KaraokePlayerPanel({
         isOpen={showSongBrowser}
         onClose={() => setShowSongBrowser(false)}
         onAddToQueue={(video) => {
-          // Add to queue logic here
-          const newItem: QueueItem = {
-            id: video.id,
-            title: video.title,
-            artist: video.artist,
-            duration: video.duration,
-            thumbnailUrl: video.thumbnail_url,
-            isPremium: video.is_premium
-          };
-          setQueue(prev => [...prev, newItem]);
+          // Since we're now managing signups through the admin interface,
+          // we can't directly add videos to queue from the modal
+          toast({
+            title: 'Modal Mode',
+            description: 'Use the inline browse view to add songs',
+          });
         }}
         mode="queue"
       />

@@ -615,6 +615,14 @@ export default function KaraokeAdminPage() {
         throw new Error(data.error || 'Failed to update status');
       }
 
+      // If status changed to 'singing', start playing the video
+      if (newStatus === 'singing') {
+        const updatedSignup = signups.find(s => s.id === signupId);
+        if (updatedSignup && updatedSignup.video_data && karaokeLayoutRef.current) {
+          karaokeLayoutRef.current.startPlayingSignup(updatedSignup);
+        }
+      }
+
       toast({
         title: 'Success',
         description: `Status updated to ${newStatus}`,
@@ -924,6 +932,8 @@ export default function KaraokeAdminPage() {
       currentPage="discover"
       user={user}
       subscriptionTier={subscriptionTier}
+      signups={signups}
+      onSignupStatusChange={(signupId: string, status: string) => updateStatus(signupId, status as any)}
     >
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="grid w-full grid-cols-4 mb-6 bg-gray-100 dark:bg-gray-800">
