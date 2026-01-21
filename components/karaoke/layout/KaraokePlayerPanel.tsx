@@ -20,7 +20,8 @@ import {
   Users,
   Lock,
   Crown,
-  Plus
+  Plus,
+  Monitor
 } from 'lucide-react';
 import { createClient } from '@/utils/supabase/client';
 
@@ -551,12 +552,66 @@ export default function KaraokePlayerPanel({
           <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent animate-pulse" />
         </div>
 
-        {/* Connection Status Indicator */}
-        <div className="absolute top-3 left-3 flex items-center gap-2">
-          <div className={`w-2 h-2 rounded-full ${propDisplayWindow && !propDisplayWindow.closed ? 'bg-green-400 animate-pulse' : 'bg-red-400'}`} />
-          <span className="text-xs text-white/80 font-medium">
-            {propDisplayWindow && !propDisplayWindow.closed ? 'Connected' : 'Disconnected'}
-          </span>
+        {/* Connection Status and Display Controls */}
+        <div className="absolute top-3 left-3 right-16 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className={`w-2 h-2 rounded-full ${propDisplayWindow && !propDisplayWindow.closed ? 'bg-green-400 animate-pulse' : 'bg-red-400'}`} />
+            <span className="text-xs text-white/80 font-medium">
+              {propDisplayWindow && !propDisplayWindow.closed ? 'Connected' : 'Disconnected'}
+            </span>
+          </div>
+
+          {/* Open Display Window Button */}
+          <button
+            onClick={() => {
+              // Open display window - use the same logic as the admin page
+              const windowName = 'karaokeVideoDisplay';
+              const existingWindow = window.open('', windowName);
+
+              if (existingWindow && !existingWindow.closed) {
+                // Window already exists, just focus it
+                existingWindow.focus();
+                // Request status update to sync with current state
+                setTimeout(() => {
+                  if (existingWindow) {
+                    const targetOrigin = existingWindow.location?.origin || '*';
+                    existingWindow.postMessage({
+                      type: 'VIDEO_CONTROL',
+                      data: { action: 'getStatus' }
+                    }, targetOrigin);
+                  }
+                }, 500);
+              } else {
+                // Open new display window with default content
+                const displayWindow = window.open('/karaoke/video-display', windowName, 'width=1280,height=720,scrollbars=no,resizable=yes,status=no,toolbar=no,menubar=no,location=no,directories=no');
+                if (displayWindow) {
+                  // Register the window
+                  onDisplayWindowChange?.(displayWindow);
+
+                  // If there's a current signup, load its video
+                  if (currentSignup && currentSignup.video_data) {
+                    setTimeout(() => {
+                      const targetOrigin = displayWindow.location?.origin || '*';
+                      displayWindow.postMessage({
+                        type: 'VIDEO_CONTROL',
+                        data: {
+                          action: 'changeVideo',
+                          videoId: currentSignup.video_data.youtube_video_id,
+                          title: currentSignup.song_title,
+                          artist: currentSignup.song_artist || ''
+                        }
+                      }, targetOrigin);
+                    }, 1000);
+                  }
+                }
+              }
+            }}
+            className="px-3 py-1 bg-white/20 hover:bg-white/30 text-white text-xs font-medium rounded-full transition-all duration-200 flex items-center gap-1"
+            title="Open Display Window"
+          >
+            <Monitor className="w-3 h-3" />
+            Display
+          </button>
         </div>
 
         {/* Close Button */}
