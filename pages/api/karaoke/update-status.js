@@ -280,4 +280,4 @@ async function handler(req, res) {
   }
 }
 
-export default withSecurity(handler, 'adminUpdate', { requireOrgId: true });
+export default withSecurity(handler, 'adminUpdate', { requireOrgId: false });
