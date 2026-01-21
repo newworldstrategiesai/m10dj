@@ -58,8 +58,8 @@ import YouTubePlayer from '@/components/karaoke/YouTubePlayer';
 
 export default function KaraokeAdminPage() {
   const router = useRouter();
-  const supabase = createClient();
   const { toast } = useToast();
+  const { user, organization, subscriptionTier, isLoading: authLoading, isAuthenticated, supabase } = useKaraokeAuth();
 
   const [signups, setSignups] = useState<KaraokeSignup[]>([]);
   const [loading, setLoading] = useState(true);
@@ -71,8 +71,6 @@ export default function KaraokeAdminPage() {
   const [showSettings, setShowSettings] = useState(false);
   const [settingsTab, setSettingsTab] = useState('general');
   const [showQRGenerator, setShowQRGenerator] = useState(false);
-  const [organization, setOrganization] = useState<any>(null);
-  const [subscriptionTier, setSubscriptionTier] = useState<string>('free');
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [availableEvents, setAvailableEvents] = useState<string[]>([]);
   const [settings, setSettings] = useState<any>(null);
@@ -229,19 +227,13 @@ export default function KaraokeAdminPage() {
     );
   };
 
-  // Load organization
+  // Load data when organization is available
   useEffect(() => {
-    async function loadOrganization() {
-      const org = await getCurrentOrganization(supabase);
-      setOrganization(org);
-      setSubscriptionTier(org?.subscription_tier || 'free');
-      if (org) {
-        loadSettings(org.id);
-        loadSignups(org.id);
-      }
+    if (organization && !authLoading) {
+      loadSettings(organization.id);
+      loadSignups(organization.id);
     }
-    loadOrganization();
-  }, []);
+  }, [organization, authLoading]);
 
   // Auto-refresh
   useEffect(() => {
@@ -395,8 +387,7 @@ export default function KaraokeAdminPage() {
         throw orgError;
       }
 
-      // Update organization state
-      setOrganization({ ...organization, ...orgUpdateData });
+      // Organization state is managed by useKaraokeAuth hook
 
       // Log settings change for audit
       const newSettings = {
