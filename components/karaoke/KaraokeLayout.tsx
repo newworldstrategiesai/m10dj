@@ -18,6 +18,7 @@ interface KaraokeLayoutProps {
 
 export interface KaraokeLayoutRef {
   registerDisplayWindow: (window: Window, video: { videoId: string; title: string; artist: string }) => void;
+  changeDisplayVideo: (video: { videoId: string; title: string; artist: string }) => void;
 }
 
 const KaraokeLayout = forwardRef<KaraokeLayoutRef, KaraokeLayoutProps>(({
@@ -53,6 +54,21 @@ const KaraokeLayout = forwardRef<KaraokeLayoutRef, KaraokeLayoutProps>(({
   useImperativeHandle(ref, () => ({
     registerDisplayWindow: (window: Window, video: { videoId: string; title: string; artist: string }) => {
       setDisplayWindow(window);
+      setDisplayVideo({
+        videoId: video.videoId,
+        title: video.title,
+        artist: video.artist,
+        thumbnailUrl: `https://img.youtube.com/vi/${video.videoId}/default.jpg`
+      });
+    },
+    changeDisplayVideo: (video: { videoId: string; title: string; artist: string }) => {
+      // If window exists, send change command; otherwise just update local state
+      if (displayWindow && !displayWindow.closed) {
+        displayWindow.postMessage({
+          type: 'VIDEO_CONTROL',
+          data: { action: 'changeVideo', ...video }
+        }, window.location.origin);
+      }
       setDisplayVideo({
         videoId: video.videoId,
         title: video.title,

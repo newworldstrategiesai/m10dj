@@ -112,6 +112,7 @@ export default function YouTubePlayer({
         setVolume: (volume: number) => playerRef.current?.setVolume(volume),
         mute: () => playerRef.current?.mute(),
         unMute: () => playerRef.current?.unMute(),
+        loadVideoById: (videoId: string) => playerRef.current?.loadVideoById(videoId),
         getCurrentTime: () => playerRef.current?.getCurrentTime(),
         getDuration: () => playerRef.current?.getDuration(),
         getPlayerState: () => playerRef.current?.getPlayerState()

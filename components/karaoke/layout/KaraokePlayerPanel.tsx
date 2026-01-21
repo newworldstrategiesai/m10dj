@@ -280,6 +280,15 @@ export default function KaraokePlayerPanel({
     sendDisplayCommand('getStatus');
   };
 
+  // Change video in display window
+  const changeDisplayVideo = (video: { videoId: string; title: string; artist: string }) => {
+    if (propDisplayWindow && !propDisplayWindow.closed) {
+      sendDisplayCommand('changeVideo', video);
+      // Update local state immediately for UI responsiveness
+      onDisplayVideoChange?.(video);
+    }
+  };
+
   // Progress bar interaction functions
   const handleProgressHover = (event: React.MouseEvent<HTMLDivElement>) => {
     if (!progressBarRef.current || !displayStatus?.duration) return;

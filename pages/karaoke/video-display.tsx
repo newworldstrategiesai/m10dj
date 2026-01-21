@@ -9,7 +9,13 @@ import YouTubePlayer from '@/components/karaoke/YouTubePlayer';
 
 export default function VideoDisplayPage() {
   const router = useRouter();
-  const { videoId, title, artist } = router.query;
+  const { videoId: initialVideoId, title: initialTitle, artist: initialArtist } = router.query;
+
+  const [currentVideo, setCurrentVideo] = useState({
+    videoId: initialVideoId as string,
+    title: initialTitle as string,
+    artist: initialArtist as string
+  });
 
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [volume, setVolume] = useState(50);
@@ -144,6 +150,33 @@ export default function VideoDisplayPage() {
               }
             }, { targetOrigin: event.origin });
             break;
+          case 'changeVideo':
+            if (data.videoId && data.title) {
+              console.log('Changing video to:', data);
+              setCurrentVideo({
+                videoId: data.videoId,
+                title: data.title,
+                artist: data.artist || ''
+              });
+
+              // Change the video in the YouTube player
+              const control = (window as any).youtubePlayerControl;
+              if (control && control.loadVideoById) {
+                control.loadVideoById(data.videoId);
+              }
+
+              // Send confirmation back
+              event.source?.postMessage({
+                type: 'VIDEO_STATUS',
+                data: {
+                  videoChanged: true,
+                  videoId: data.videoId,
+                  title: data.title,
+                  artist: data.artist || ''
+                }
+              }, { targetOrigin: event.origin });
+            }
+            break;
           case 'getStatus':
             // Send back current status
             const currentTime = control.getCurrentTime();
@@ -157,9 +190,9 @@ export default function VideoDisplayPage() {
                 duration,
                 playerState,
                 volume,
-                videoId,
-                title,
-                artist
+                videoId: currentVideo.videoId,
+                title: currentVideo.title,
+                artist: currentVideo.artist
               }
             }, { targetOrigin: event.origin });
             break;
@@ -169,7 +202,7 @@ export default function VideoDisplayPage() {
 
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
-  }, [videoId, title, artist, volume]);
+  }, [currentVideo.videoId, currentVideo.title, currentVideo.artist, volume]);
 
   // Toggle fullscreen
   const toggleFullscreen = () => {
@@ -190,7 +223,7 @@ export default function VideoDisplayPage() {
     window.location.reload();
   };
 
-  if (!videoId) {
+  if (!currentVideo.videoId) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
         <div className="text-white text-center">
@@ -206,7 +239,7 @@ export default function VideoDisplayPage() {
   return (
     <>
       <Head>
-        <title>{title ? `${title}${artist ? ` - ${artist}` : ''}` : 'Karaoke Video Display'}</title>
+        <title>{currentVideo.title ? `${currentVideo.title}${currentVideo.artist ? ` - ${currentVideo.artist}` : ''}` : 'Karaoke Video Display'}</title>
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <style>{`
           /* Hide scrollbars and make it clean for display */
@@ -238,7 +271,7 @@ export default function VideoDisplayPage() {
         {/* Video Player */}
         <div className="w-full h-full">
           <YouTubePlayer
-            videoId={videoId as string}
+            videoId={currentVideo.videoId}
             isPlaying={true}
             showControls={false} // Hide YouTube controls for clean display
             autoPlay={true}
@@ -254,11 +287,11 @@ export default function VideoDisplayPage() {
           {/* Left side - Song info */}
           <div className="flex-1 min-w-0">
             <h1 className="text-white text-lg font-bold truncate">
-              {title as string}
+              {currentVideo.title}
             </h1>
-            {artist && (
+            {currentVideo.artist && (
               <p className="text-gray-300 text-sm truncate">
-                by {artist as string}
+                by {currentVideo.artist}
               </p>
             )}
           </div>
