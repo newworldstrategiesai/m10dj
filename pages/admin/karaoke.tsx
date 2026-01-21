@@ -754,6 +754,20 @@ export default function KaraokeAdminPage() {
     }
   };
 
+  // Show loading state while authentication is being checked
+  if (authLoading) {
+    return (
+      <KaraokeLayout title="Discover" currentPage="discover">
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center">
+            <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-purple-500" />
+            <p className="text-gray-600 dark:text-gray-400">Loading karaoke system...</p>
+          </div>
+        </div>
+      </KaraokeLayout>
+    );
+  }
+
   return (
     <KaraokeLayout title="Discover" currentPage="discover">
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
