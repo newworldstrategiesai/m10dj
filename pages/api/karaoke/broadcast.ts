@@ -4,7 +4,7 @@
  */
 
 import { NextApiRequest, NextApiResponse } from 'next';
-import { broadcastQueueUpdate } from './realtime/[...params]';
+import { broadcastQueueUpdate } from './realtime/[...params].js';
 import { withSecurity } from '@/utils/rate-limiting';
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {

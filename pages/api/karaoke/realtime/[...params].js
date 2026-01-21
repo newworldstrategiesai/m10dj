@@ -1,11 +1,72 @@
 import { createClient } from '@supabase/supabase-js';
 import { withSecurity } from '@/utils/rate-limiting';
 
+// Store active connections by event/organization
+const activeConnections = new Map();
+
+/**
+ * Send update to all clients for an event
+ */
+function broadcastQueueUpdate(eventCode, organizationId, data) {
+  const key = `${organizationId}:${eventCode}`;
+  const connections = activeConnections.get(key);
+
+  if (!connections) return;
+
+  const message = {
+    type: 'queue_update',
+    timestamp: new Date().toISOString(),
+    data
+  };
+
+  for (const res of Array.from(connections)) {
+    try {
+      res.write(`data: ${JSON.stringify(message)}\n\n`);
+    } catch (error) {
+      // Connection might be closed, will be cleaned up later
+      console.log('Failed to send update to client:', error.message);
+    }
+  }
+}
+
 /**
  * Server-Sent Events (SSE) endpoint for real-time karaoke queue updates
  * GET /api/karaoke/realtime/[organizationId]/[eventCode]
+ *
+ * POST /api/karaoke/realtime/broadcast
+ * Internal endpoint to broadcast queue updates
  */
 async function handler(req, res) {
+  // Handle POST requests for broadcasting
+  if (req.method === 'POST') {
+    const { eventCode, organizationId, updateType, data } = req.body;
+
+    if (!eventCode || !organizationId || !updateType) {
+      return res.status(400).json({
+        error: 'Missing required fields',
+        required: ['eventCode', 'organizationId', 'updateType']
+      });
+    }
+
+    try {
+      broadcastQueueUpdate(eventCode, organizationId, {
+        updateType,
+        ...data,
+        timestamp: new Date().toISOString()
+      });
+
+      const key = `${organizationId}:${eventCode}`;
+      res.status(200).json({
+        success: true,
+        connections: activeConnections.get(key)?.size || 0
+      });
+    } catch (error) {
+      console.error('Broadcast error:', error);
+      res.status(500).json({ error: 'Broadcast failed', message: error.message });
+    }
+    return;
+  }
+
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
@@ -38,6 +99,13 @@ async function handler(req, res) {
       timestamp: new Date().toISOString(),
       data: { organizationId, eventCode }
     })}\n\n`);
+
+    // Add to active connections
+    const key = `${organizationId}:${eventCode || 'all'}`;
+    if (!activeConnections.has(key)) {
+      activeConnections.set(key, new Set());
+    }
+    activeConnections.get(key).add(res);
 
     // Create Supabase client
     const supabase = createClient(
@@ -222,6 +290,17 @@ async function handler(req, res) {
       console.log('SSE: Cleaning up connection');
       clearInterval(heartbeat);
       supabase.removeChannel(channel);
+
+      // Remove from active connections
+      const key = `${organizationId}:${eventCode || 'all'}`;
+      const connections = activeConnections.get(key);
+      if (connections) {
+        connections.delete(res);
+        if (connections.size === 0) {
+          activeConnections.delete(key);
+        }
+      }
+
       if (!res.headersSent) {
         res.end();
       }
@@ -247,5 +326,8 @@ async function handler(req, res) {
     }
   }
 }
+
+// Export broadcast function for use by other API endpoints
+export { broadcastQueueUpdate };
 
 export default withSecurity(handler, 'sse', { requireOrgId: true });

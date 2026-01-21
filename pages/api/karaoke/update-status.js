@@ -2,7 +2,7 @@ import { createClient } from '@supabase/supabase-js';
 import { sendNextUpNotification, sendCurrentlySingingNotification } from '@/utils/karaoke-notifications';
 import { withSecurity } from '@/utils/rate-limiting';
 import { karaokeQueueManager } from '@/utils/karaoke-atomic-operations';
-import { broadcastQueueUpdate } from './realtime/[...params]';
+import { broadcastQueueUpdate } from './realtime/[...params].js';
 import { invalidateCache } from '@/utils/karaoke-cache';
 
 /**
