@@ -463,9 +463,6 @@ export async function validateYouTubeVideo(videoId: string): Promise<YouTubeVide
   }
 }
 
-// Alias for backward compatibility
-export const validateVideo = validateYouTubeVideo;
-
 export function getYouTubeAPI(): YouTubeAPI {
   if (!youtubeAPI) {
     youtubeAPI = new YouTubeAPI();

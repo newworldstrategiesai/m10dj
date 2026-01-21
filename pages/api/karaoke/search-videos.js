@@ -1,6 +1,6 @@
 import { createServerSupabaseClient } from '@supabase/auth-helpers-nextjs';
 import { createClient } from '@supabase/supabase-js';
-import { searchKaraokeVideos, validateVideo } from '@/utils/youtube-api';
+import { searchKaraokeVideos, validateYouTubeVideo } from '@/utils/youtube-api';
 import { withSecurity } from '@/utils/rate-limiting';
 
 /**

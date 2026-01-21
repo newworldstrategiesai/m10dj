@@ -1,6 +1,6 @@
 import { createServerSupabaseClient } from '@supabase/auth-helpers-nextjs';
 import { createClient } from '@supabase/supabase-js';
-import { validateVideo } from '@/utils/youtube-api';
+import { validateYouTubeVideo } from '@/utils/youtube-api';
 import { withSecurity } from '@/utils/rate-limiting';
 
 /**
@@ -72,7 +72,7 @@ export default async function handler(req, res) {
     }
 
     // Validate video with YouTube API
-    const videoData = await validateVideo(targetVideoId);
+    const videoData = await validateYouTubeVideo(targetVideoId);
 
     if (!videoData) {
       // Video is broken/unavailable
