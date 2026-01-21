@@ -75,16 +75,14 @@ export default function SongAutocomplete({
     setLoading(true);
     timeoutRef.current = setTimeout(async () => {
       try {
-        const response = await fetch('/api/karaoke/search-songs', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            query: value.trim(),
-            organizationId: organizationId || null,
-            limit: 10
-          }),
+        const params = new URLSearchParams({
+          q: value.trim(),
+          ...(organizationId && { organizationId }),
+          limit: '10'
+        });
+
+        const response = await fetch(`/api/karaoke/search-songs?${params}`, {
+          method: 'GET',
         });
 
         if (response.ok) {

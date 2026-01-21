@@ -233,11 +233,11 @@ export default function KaraokePlaylistsPage() {
 
   return (
     <KaraokeLayout title="Playlists" currentPage="playlists">
-      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900/10 to-gray-900">
+      <div className="min-h-screen bg-gray-900">
         {/* Hero Header Section */}
-        <div className="relative overflow-hidden">
+        <div className="relative overflow-hidden bg-gray-800">
           {/* Background Gradient */}
-          <div className="absolute inset-0 bg-gradient-to-r from-purple-600/20 via-pink-600/10 to-blue-600/20 animate-pulse"></div>
+          <div className="absolute inset-0 bg-gradient-to-r from-purple-600/30 via-pink-600/20 to-blue-600/30"></div>
 
           {/* Floating Elements */}
           <div className="absolute top-10 right-10 w-32 h-32 bg-purple-500/10 rounded-full blur-xl animate-pulse"></div>
@@ -300,7 +300,7 @@ export default function KaraokePlaylistsPage() {
                           value={newPlaylistName}
                           onChange={(e) => setNewPlaylistName(e.target.value)}
                           placeholder="e.g., Wedding Reception Hits, 80s Karaoke Night..."
-                          className="bg-gray-800/50 border-gray-600 text-white placeholder-gray-400 focus:border-purple-500 transition-colors"
+                          className="bg-gray-800 border-gray-600 text-white placeholder-gray-400 focus:border-purple-500 transition-colors"
                         />
                       </div>
 
@@ -310,11 +310,11 @@ export default function KaraokePlaylistsPage() {
                           value={newPlaylistDescription}
                           onChange={(e) => setNewPlaylistDescription(e.target.value)}
                           placeholder="What's this playlist about?"
-                          className="bg-gray-800/50 border-gray-600 text-white placeholder-gray-400 focus:border-purple-500 transition-colors"
+                          className="bg-gray-800 border-gray-600 text-white placeholder-gray-400 focus:border-purple-500 transition-colors"
                         />
                       </div>
 
-                      <div className="flex items-center justify-between p-4 bg-gray-800/30 rounded-xl border border-gray-700/50">
+                      <div className="flex items-center justify-between p-4 bg-gray-800 rounded-xl border border-gray-700">
                         <div className="flex items-center gap-3">
                           <Users className="w-5 h-5 text-gray-400" />
                           <div>
@@ -375,20 +375,20 @@ export default function KaraokePlaylistsPage() {
                   placeholder="Search your playlists..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-12 pr-4 py-3 bg-gray-800/50 border-gray-700 text-white placeholder-gray-400 rounded-xl focus:border-purple-500 focus:ring-1 focus:ring-purple-500/50 transition-all"
+                  className="pl-12 pr-4 py-3 bg-gray-800 border-gray-700 text-white placeholder-gray-400 rounded-xl focus:border-purple-500 focus:ring-1 focus:ring-purple-500/50 transition-all"
                 />
               </div>
 
               {/* Controls */}
               <div className="flex items-center gap-3">
                 {/* View Mode Toggle */}
-                <div className="flex items-center bg-gray-800/50 rounded-xl p-1 border border-gray-700/50">
+                <div className="flex items-center bg-gray-800 rounded-xl p-1 border border-gray-700">
                   <button
                     onClick={() => setViewMode('grid')}
                     className={`p-2 rounded-lg transition-all duration-200 ${
                       viewMode === 'grid'
                         ? 'bg-purple-600 text-white shadow-lg'
-                        : 'text-gray-400 hover:text-white hover:bg-gray-700/50'
+                        : 'text-gray-400 hover:text-white hover:bg-gray-700'
                     }`}
                   >
                     <Grid className="w-4 h-4" />
@@ -398,7 +398,7 @@ export default function KaraokePlaylistsPage() {
                     className={`p-2 rounded-lg transition-all duration-200 ${
                       viewMode === 'list'
                         ? 'bg-purple-600 text-white shadow-lg'
-                        : 'text-gray-400 hover:text-white hover:bg-gray-700/50'
+                        : 'text-gray-400 hover:text-white hover:bg-gray-700'
                     }`}
                   >
                     <List className="w-4 h-4" />
@@ -409,7 +409,7 @@ export default function KaraokePlaylistsPage() {
                 <select
                   value={sortBy}
                   onChange={(e) => setSortBy(e.target.value as any)}
-                  className="bg-gray-800/50 border border-gray-700 text-white rounded-xl px-4 py-2 text-sm focus:border-purple-500 focus:ring-1 focus:ring-purple-500/50"
+                  className="bg-gray-800 border border-gray-700 text-white rounded-xl px-4 py-2 text-sm focus:border-purple-500 focus:ring-1 focus:ring-purple-500/50"
                 >
                   <option value="recent">Recently Created</option>
                   <option value="name">Name (A-Z)</option>
@@ -422,8 +422,8 @@ export default function KaraokePlaylistsPage() {
                   className={`p-2 rounded-xl transition-all duration-200 ${
                     showFilters || filterBy !== 'all'
                       ? 'bg-purple-600 text-white'
-                      : 'bg-gray-800/50 text-gray-400 hover:text-white hover:bg-gray-700/50'
-                  } border border-gray-700/50`}
+                      : 'bg-gray-800 text-gray-400 hover:text-white hover:bg-gray-700'
+                  } border border-gray-700`}
                 >
                   <Filter className="w-4 h-4" />
                 </button>
@@ -443,8 +443,8 @@ export default function KaraokePlaylistsPage() {
                     onClick={() => setFilterBy(filter.value as any)}
                     className={`px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 ${
                       filterBy === filter.value
-                        ? 'bg-purple-600 text-white shadow-lg'
-                        : 'bg-gray-800/50 text-gray-400 hover:text-white hover:bg-gray-700/50 border border-gray-700/50'
+                      ? 'bg-purple-600 text-white shadow-lg'
+                      : 'bg-gray-800 text-gray-400 hover:text-white hover:bg-gray-700 border border-gray-700'
                     }`}
                   >
                     {filter.label}
@@ -497,7 +497,7 @@ export default function KaraokePlaylistsPage() {
               {filteredAndSortedPlaylists.map((playlist) => (
                 <div
                   key={playlist.id}
-                  className={`group relative overflow-hidden rounded-2xl bg-gradient-to-br from-gray-800/50 to-gray-900/50 backdrop-blur-sm border border-gray-700/50 hover:border-purple-500/50 transition-all duration-300 hover:shadow-2xl hover:shadow-purple-500/10 transform hover:scale-[1.02] ${
+                  className={`group relative overflow-hidden rounded-2xl bg-gray-800 border border-gray-700 hover:border-purple-500 transition-all duration-300 hover:shadow-2xl hover:shadow-purple-500/10 transform hover:scale-[1.02] ${
                     viewMode === 'list' ? 'flex items-center gap-4 p-4' : 'p-0'
                   }`}
                   onMouseEnter={() => setHoveredPlaylist(playlist.id)}
@@ -571,7 +571,7 @@ export default function KaraokePlaylistsPage() {
 
                       {/* Actions Menu */}
                       <div className="relative">
-                        <button className="p-2 rounded-lg hover:bg-gray-700/50 text-gray-400 hover:text-white transition-colors opacity-0 group-hover:opacity-100">
+                        <button className="p-2 rounded-lg hover:bg-gray-700 text-gray-400 hover:text-white transition-colors opacity-0 group-hover:opacity-100">
                           <MoreHorizontal className="w-4 h-4" />
                         </button>
                       </div>

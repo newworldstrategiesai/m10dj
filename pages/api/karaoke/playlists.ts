@@ -53,6 +53,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return await removeVideoFromPlaylist(req, res, supabase, organizationId, user.id);
     } else if (action === 'update') {
       return await updatePlaylist(req, res, supabase, organizationId, user.id);
+    } else if (action === 'change-video') {
+      return await changePlaylistVideo(req, res, supabase, organizationId, user.id);
+    } else if (action === 'unlink-video') {
+      return await unlinkPlaylistVideo(req, res, supabase, organizationId, user.id);
     }
 
     // Default: get playlists
@@ -281,5 +285,106 @@ async function updatePlaylist(req: NextApiRequest, res: NextApiResponse, supabas
   } catch (error) {
     console.error('Update playlist error:', error);
     return res.status(500).json({ error: 'Failed to update playlist' });
+  }
+}
+
+async function changePlaylistVideo(req: NextApiRequest, res: NextApiResponse, supabase: any, organizationId: string, userId: string) {
+  try {
+    const { playlistId, songId, newVideoId } = req.body;
+
+    if (!playlistId || !songId || !newVideoId) {
+      return res.status(400).json({ error: 'Playlist ID, Song ID, and New Video ID are required' });
+    }
+
+    // Get current playlist
+    const { data: playlist, error: fetchError } = await supabase
+      .from('user_playlists')
+      .select('video_ids')
+      .eq('organization_id', organizationId)
+      .eq('user_id', userId)
+      .eq('id', playlistId)
+      .single();
+
+    if (fetchError) throw fetchError;
+
+    // Find the position of the song in the playlist
+    const songIndex = playlist.video_ids.indexOf(songId);
+    if (songIndex === -1) {
+      return res.status(404).json({ error: 'Song not found in playlist' });
+    }
+
+    // Replace the video ID at that position
+    const updatedVideoIds = [...playlist.video_ids];
+    updatedVideoIds[songIndex] = newVideoId;
+
+    // Update playlist
+    const { data: updatedPlaylist, error: updateError } = await supabase
+      .from('user_playlists')
+      .update({
+        video_ids: updatedVideoIds,
+        updated_at: new Date().toISOString()
+      })
+      .eq('organization_id', organizationId)
+      .eq('user_id', userId)
+      .eq('id', playlistId)
+      .select()
+      .single();
+
+    if (updateError) throw updateError;
+
+    return res.status(200).json({
+      success: true,
+      playlist: updatedPlaylist
+    });
+  } catch (error) {
+    console.error('Change playlist video error:', error);
+    return res.status(500).json({ error: 'Failed to change playlist video' });
+  }
+}
+
+async function unlinkPlaylistVideo(req: NextApiRequest, res: NextApiResponse, supabase: any, organizationId: string, userId: string) {
+  try {
+    const { playlistId, songId } = req.body;
+
+    if (!playlistId || !songId) {
+      return res.status(400).json({ error: 'Playlist ID and Song ID are required' });
+    }
+
+    // Get current playlist
+    const { data: playlist, error: fetchError } = await supabase
+      .from('user_playlists')
+      .select('video_ids')
+      .eq('organization_id', organizationId)
+      .eq('user_id', userId)
+      .eq('id', playlistId)
+      .single();
+
+    if (fetchError) throw fetchError;
+
+    // Find and remove the song from the playlist
+    const updatedVideoIds = (playlist.video_ids || []).filter((id: string) => id !== songId);
+
+    // Update playlist
+    const { data: updatedPlaylist, error: updateError } = await supabase
+      .from('user_playlists')
+      .update({
+        video_ids: updatedVideoIds,
+        updated_at: new Date().toISOString()
+      })
+      .eq('organization_id', organizationId)
+      .eq('user_id', userId)
+      .eq('id', playlistId)
+      .select()
+      .single();
+
+    if (updateError) throw updateError;
+
+    return res.status(200).json({
+      success: true,
+      playlist: updatedPlaylist
+    });
+  } catch (error) {
+    console.error('Unlink playlist video error:', error);
+    return res.status(500).json({ error: 'Failed to unlink playlist video' });
   }
 }

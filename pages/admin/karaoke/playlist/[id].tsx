@@ -54,6 +54,21 @@ interface Video {
   thumbnail_url: string;
   duration: string;
   is_premium?: boolean;
+  video_id?: string; // The actual karaoke_song_videos ID
+}
+
+interface VideoSuggestion {
+  id: string;
+  song_title: string;
+  song_artist?: string;
+  youtube_video_id: string;
+  youtube_video_title: string;
+  youtube_channel_name?: string;
+  youtube_video_duration: string;
+  is_premium?: boolean;
+  karaokeScore?: number;
+  relevanceScore?: number;
+  thumbnail_url: string;
 }
 
 export default function PlaylistDetailPage() {
@@ -78,6 +93,11 @@ export default function PlaylistDetailPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<Video[]>([]);
   const [searching, setSearching] = useState(false);
+
+  // Video suggestions state
+  const [videoSuggestions, setVideoSuggestions] = useState<{[songId: string]: VideoSuggestion[]}>({});
+  const [loadingSuggestions, setLoadingSuggestions] = useState<{[songId: string]: boolean}>({});
+  const [showVideoSelector, setShowVideoSelector] = useState<string | null>(null);
 
   const isPremium = subscriptionTier !== 'free';
 
@@ -341,10 +361,149 @@ export default function PlaylistDetailPage() {
     }
   };
 
+  // Fetch video suggestions for a song
+  const fetchVideoSuggestions = async (songTitle: string, songArtist?: string, songId: string) => {
+    if (!organization) return;
+
+    setLoadingSuggestions(prev => ({ ...prev, [songId]: true }));
+
+    try {
+      const response = await fetch('/api/karaoke/search-songs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          query: `${songTitle}${songArtist ? ` ${songArtist}` : ''}`.trim(),
+          organizationId: organization.id,
+          limit: 10
+        })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const suggestions = (data.songs || []).map((song: any) => ({
+          id: song.id,
+          song_title: song.song_title,
+          song_artist: song.song_artist,
+          youtube_video_id: song.youtube_video_id,
+          youtube_video_title: song.youtube_video_title,
+          youtube_channel_name: song.youtube_channel_name,
+          youtube_video_duration: song.youtube_video_duration,
+          is_premium: song.is_premium,
+          karaokeScore: song.karaoke_score || 0,
+          relevanceScore: song.relevance_score || 0,
+          thumbnail_url: `https://img.youtube.com/vi/${song.youtube_video_id}/default.jpg`
+        }));
+
+        setVideoSuggestions(prev => ({ ...prev, [songId]: suggestions }));
+      }
+    } catch (error) {
+      console.error('Error fetching video suggestions:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to fetch video suggestions',
+        variant: 'destructive'
+      });
+    } finally {
+      setLoadingSuggestions(prev => ({ ...prev, [songId]: false }));
+    }
+  };
+
+  // Change the selected video for a playlist song
+  const changePlaylistVideo = async (songId: string, newVideoId: string) => {
+    if (!playlist || !organization) return;
+
+    try {
+      const response = await fetch('/api/karaoke/playlists', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          organizationId: organization.id,
+          action: 'change-video',
+          playlistId: playlist.id,
+          songId,
+          newVideoId
+        })
+      });
+
+      if (!response.ok) throw new Error('Failed to change video');
+
+      // Update the videos array with the new video data
+      const newVideoData = videoSuggestions[songId]?.find(v => v.id === newVideoId);
+      if (newVideoData) {
+        setVideos(prev => prev.map(video =>
+          video.id === songId ? {
+            ...video,
+            video_id: newVideoId,
+            thumbnail_url: newVideoData.thumbnail_url,
+            duration: newVideoData.youtube_video_duration ? `${Math.floor(newVideoData.youtube_video_duration / 60)}:${(newVideoData.youtube_video_duration % 60).toString().padStart(2, '0')}` : video.duration,
+            is_premium: newVideoData.is_premium
+          } : video
+        ));
+
+        toast({
+          title: 'Success',
+          description: 'Video changed successfully'
+        });
+      }
+
+      setShowVideoSelector(null);
+    } catch (error: any) {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to change video',
+        variant: 'destructive'
+      });
+    }
+  };
+
+  // Unlink video from playlist song (set to default)
+  const unlinkPlaylistVideo = async (songId: string) => {
+    if (!playlist || !organization) return;
+
+    try {
+      const response = await fetch('/api/karaoke/playlists', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          organizationId: organization.id,
+          action: 'unlink-video',
+          playlistId: playlist.id,
+          songId
+        })
+      });
+
+      if (!response.ok) throw new Error('Failed to unlink video');
+
+      // Reset the video to default (no specific video linked)
+      setVideos(prev => prev.map(video =>
+        video.id === songId ? {
+          ...video,
+          video_id: undefined,
+          thumbnail_url: '/api/placeholder/120/67',
+          duration: '0:00',
+          is_premium: false
+        } : video
+      ));
+
+      toast({
+        title: 'Success',
+        description: 'Video unlinked successfully'
+      });
+
+      setShowVideoSelector(null);
+    } catch (error: any) {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to unlink video',
+        variant: 'destructive'
+      });
+    }
+  };
+
   if (authLoading || loading) {
     return (
       <KaraokeLayout title="Loading..." showBackButton currentPage="playlists">
-        <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900/20 to-gray-900">
+        <div className="min-h-screen bg-gray-900">
           <div className="flex items-center justify-center h-64">
             <div className="text-center">
               <div className="relative">
@@ -364,7 +523,7 @@ export default function PlaylistDetailPage() {
   if (!playlist) {
     return (
       <KaraokeLayout title="Playlist Not Found" showBackButton currentPage="playlists">
-        <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900/20 to-gray-900">
+        <div className="min-h-screen bg-gray-900">
           <div className="text-center py-20">
             <div className="relative">
               <div className="w-24 h-24 bg-gradient-to-br from-gray-800 to-gray-700 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-2xl">
@@ -393,7 +552,7 @@ export default function PlaylistDetailPage() {
 
   return (
     <KaraokeLayout title={playlist.name} showBackButton currentPage="playlists">
-      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900/10 to-gray-900">
+      <div className="min-h-screen bg-gray-900">
         {/* Spotify-Style Hero Section */}
         <div className="relative overflow-hidden">
           {/* Dynamic Background Gradient */}
@@ -441,7 +600,7 @@ export default function PlaylistDetailPage() {
                           onChange={(e) => setEditDescription(e.target.value)}
                           placeholder="Add an optional description"
                           rows={2}
-                          className="bg-gray-800/50 border-gray-600 text-white placeholder-gray-400 rounded-xl resize-none focus:border-purple-500 transition-colors"
+                          className="bg-gray-800 border-gray-600 text-white placeholder-gray-400 rounded-xl resize-none focus:border-purple-500 transition-colors"
                         />
                       </div>
                       <div className="flex items-center gap-4">
@@ -681,11 +840,25 @@ export default function PlaylistDetailPage() {
                             <MoreHorizontal className="w-4 h-4" />
                           </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent className="bg-gray-800 border-gray-700">
+                        <DropdownMenuContent className="bg-gray-800 border-gray-700 min-w-[200px]">
                           <DropdownMenuItem className="text-white hover:bg-gray-700">
                             <Play className="w-4 h-4 mr-2" />
                             Play
                           </DropdownMenuItem>
+
+                          <DropdownMenuItem
+                            onClick={() => {
+                              setShowVideoSelector(video.id);
+                              if (!videoSuggestions[video.id] && !loadingSuggestions[video.id]) {
+                                fetchVideoSuggestions(video.title, video.artist, video.id);
+                              }
+                            }}
+                            className="text-blue-400 hover:bg-blue-500/10 hover:text-blue-300"
+                          >
+                            <Shuffle className="w-4 h-4 mr-2" />
+                            Change Video
+                          </DropdownMenuItem>
+
                           <DropdownMenuItem
                             onClick={() => removeVideoFromPlaylist(video.id)}
                             className="text-red-400 hover:bg-red-500/10 hover:text-red-300"
@@ -721,7 +894,7 @@ export default function PlaylistDetailPage() {
                   placeholder="Search for songs to add..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-12 pr-4 py-4 bg-gray-800/50 border-gray-600 text-white placeholder-gray-400 rounded-xl focus:border-purple-500 focus:ring-1 focus:ring-purple-500/50 text-lg"
+                  className="pl-12 pr-4 py-4 bg-gray-800 border-gray-600 text-white placeholder-gray-400 rounded-xl focus:border-purple-500 focus:ring-1 focus:ring-purple-500/50 text-lg"
                 />
                 {searching && (
                   <div className="absolute right-4 top-1/2 -translate-y-1/2">
@@ -737,7 +910,7 @@ export default function PlaylistDetailPage() {
                   {searchResults.map((video) => (
                     <div
                       key={video.id}
-                      className="flex items-center gap-4 p-4 rounded-xl bg-gray-800/30 hover:bg-gray-700/50 border border-gray-700/30 hover:border-purple-500/50 transition-all duration-200 cursor-pointer group"
+                      className="flex items-center gap-4 p-4 rounded-xl bg-gray-800 hover:bg-gray-700 border border-gray-700 hover:border-purple-500 transition-all duration-200 cursor-pointer group"
                       onClick={() => addVideoToPlaylist(video)}
                     >
                       <img
@@ -786,6 +959,117 @@ export default function PlaylistDetailPage() {
                   <h3 className="text-lg font-semibold text-white mb-2">Search for songs</h3>
                   <p className="text-gray-400">
                     Start typing to find karaoke songs to add to your playlist.
+                  </p>
+                </div>
+              ) : null}
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Video Selector Modal */}
+        <Dialog open={showVideoSelector !== null} onOpenChange={() => setShowVideoSelector(null)}>
+          <DialogContent className="sm:max-w-2xl max-h-[85vh] bg-gradient-to-br from-gray-900 to-gray-800 border-gray-700 shadow-2xl overflow-hidden">
+            <DialogHeader className="space-y-4 p-6 border-b border-gray-700/50">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-500 rounded-xl flex items-center justify-center">
+                  <Shuffle className="w-5 h-5 text-white" />
+                </div>
+                <DialogTitle className="text-2xl font-bold text-white">
+                  Choose Video for "{videos.find(v => v.id === showVideoSelector)?.title}"
+                </DialogTitle>
+              </div>
+            </DialogHeader>
+
+            <div className="flex-1 overflow-y-auto p-6">
+              {showVideoSelector && loadingSuggestions[showVideoSelector] ? (
+                <div className="text-center py-12">
+                  <div className="w-16 h-16 border-4 border-blue-500/20 border-t-blue-500 rounded-full animate-spin mx-auto mb-4"></div>
+                  <h3 className="text-lg font-semibold text-white mb-2">Finding videos...</h3>
+                  <p className="text-gray-400">
+                    Searching for karaoke videos for this song.
+                  </p>
+                </div>
+              ) : showVideoSelector && videoSuggestions[showVideoSelector]?.length > 0 ? (
+                <div className="space-y-4">
+                  {/* Current Video Option */}
+                  <div className="mb-6">
+                    <h4 className="text-sm font-semibold text-gray-400 mb-3 uppercase tracking-wider">Current Video</h4>
+                    <div className="flex items-center gap-4 p-4 rounded-xl bg-green-500/10 border-2 border-green-500/30">
+                      <div className="w-3 h-3 bg-green-500 rounded-full flex-shrink-0"></div>
+                      <img
+                        src={videos.find(v => v.id === showVideoSelector)?.thumbnail_url}
+                        alt="Current video"
+                        className="w-16 h-12 rounded-lg object-cover flex-shrink-0"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold text-white truncate">Currently Selected</p>
+                        <p className="text-gray-400 text-sm">This is the video linked to this song</p>
+                      </div>
+                      <Button
+                        onClick={() => unlinkPlaylistVideo(showVideoSelector)}
+                        variant="outline"
+                        size="sm"
+                        className="border-gray-600 text-gray-300 hover:bg-gray-800"
+                      >
+                        Unlink
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* Alternative Video Options */}
+                  <div>
+                    <h4 className="text-sm font-semibold text-gray-400 mb-3 uppercase tracking-wider">Alternative Videos</h4>
+                    <div className="space-y-3">
+                      {videoSuggestions[showVideoSelector].map((suggestion) => (
+                        <div
+                          key={suggestion.id}
+                          className="flex items-center gap-4 p-4 rounded-xl bg-gray-800 hover:bg-gray-700 border border-gray-700 hover:border-purple-500 transition-all duration-200 cursor-pointer group"
+                          onClick={() => changePlaylistVideo(showVideoSelector, suggestion.id)}
+                        >
+                          <img
+                            src={suggestion.thumbnail_url}
+                            alt={suggestion.youtube_video_title}
+                            className="w-16 h-12 rounded-lg object-cover flex-shrink-0 shadow-lg"
+                          />
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1">
+                              <p className="font-semibold text-white truncate group-hover:text-purple-300 transition-colors">
+                                {suggestion.youtube_video_title}
+                              </p>
+                              {suggestion.is_premium && (
+                                <Crown className="w-3 h-3 text-yellow-400 flex-shrink-0" />
+                              )}
+                            </div>
+                            <p className="text-gray-400 text-sm truncate">
+                              {suggestion.youtube_channel_name || 'Unknown Channel'}
+                            </p>
+                            <div className="flex items-center gap-4 mt-1">
+                              <span className="text-xs text-gray-500">
+                                {suggestion.youtube_video_duration ? `${Math.floor(suggestion.youtube_video_duration / 60)}:${(suggestion.youtube_video_duration % 60).toString().padStart(2, '0')}` : 'Unknown'}
+                              </span>
+                              {suggestion.karaokeScore && (
+                                <span className="text-xs text-green-400 bg-green-500/20 px-2 py-1 rounded">
+                                  Score: {Math.round(suggestion.karaokeScore)}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                            <Play className="w-5 h-5 text-purple-400" />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              ) : showVideoSelector ? (
+                <div className="text-center py-12">
+                  <div className="w-16 h-16 bg-gray-800 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                    <Shuffle className="w-8 h-8 text-gray-500" />
+                  </div>
+                  <h3 className="text-lg font-semibold text-white mb-2">No alternative videos found</h3>
+                  <p className="text-gray-400">
+                    Try searching for this song in the add songs modal to find more options.
                   </p>
                 </div>
               ) : null}
