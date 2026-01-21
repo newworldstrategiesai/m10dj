@@ -1,5 +1,6 @@
 'use client';
 
+import dynamic from 'next/dynamic';
 import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -22,7 +23,6 @@ import {
   Plus
 } from 'lucide-react';
 import { createClient } from '@/utils/supabase/client';
-import SongBrowser from '@/components/karaoke/SongBrowser';
 
 interface KaraokePlayerPanelProps {
   onClose: () => void;
@@ -69,7 +69,6 @@ export default function KaraokePlayerPanel({
   const [isMuted, setIsMuted] = useState(false);
   const [currentSong, setCurrentSong] = useState<QueueItem | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [showSongBrowser, setShowSongBrowser] = useState(false);
 
   // New state for sidebar view toggle
   const [sidebarView, setSidebarView] = useState<'queue' | 'browse'>('queue');
@@ -1428,21 +1427,6 @@ export default function KaraokePlayerPanel({
         )}
         </div>
       </div>
-
-      {/* Song Browser Dialog */}
-      <SongBrowser
-        isOpen={showSongBrowser}
-        onClose={() => setShowSongBrowser(false)}
-        onAddToQueue={(video) => {
-          // Since we're now managing signups through the admin interface,
-          // we can't directly add videos to queue from the modal
-          toast({
-            title: 'Modal Mode',
-            description: 'Use the inline browse view to add songs',
-          });
-        }}
-        mode="queue"
-      />
     </aside>
   );
 }

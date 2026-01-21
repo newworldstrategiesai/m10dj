@@ -3,10 +3,10 @@ import { Database } from '@/types_db';
 
 // Singleton instance to prevent multiple GoTrueClient instances
 // Use global to ensure persistence across module reloads/hot reloads
-const SUPABASE_CLIENT_KEY = '__supabase_client_singleton__';
+const SUPABASE_CLIENT_KEY = Symbol.for('__supabase_client_singleton__');
 
 declare global {
-  var __supabase_client_singleton__: ReturnType<typeof createBrowserClient<Database>> | undefined;
+  var [SUPABASE_CLIENT_KEY]: ReturnType<typeof createBrowserClient<Database>> | undefined;
 }
 
 // Define a function to create a Supabase client for client-side operations
@@ -17,16 +17,8 @@ export const createClient = () => {
     return globalThis[SUPABASE_CLIENT_KEY];
   }
 
-  // Check module-level variable for same-module calls
-  let clientInstance: ReturnType<typeof createBrowserClient<Database>> | null = null;
-
-  // Return existing instance if available
-  if (clientInstance) {
-    return clientInstance;
-  }
-
   // Create new instance only if it doesn't exist
-  clientInstance = createBrowserClient<Database>(
+  const clientInstance = createBrowserClient<Database>(
     // Pass Supabase URL and anonymous key from the environment to the client
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!

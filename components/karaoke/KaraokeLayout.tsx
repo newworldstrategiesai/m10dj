@@ -70,12 +70,13 @@ const KaraokeLayout = forwardRef<KaraokeLayoutRef, KaraokeLayoutProps>(({
 
       // Request initial status update from the display window
       setTimeout(() => {
-        if (window && !window.closed) {
+        if (displayWindow && !displayWindow.closed) {
           try {
-            window.postMessage({
+            const targetOrigin = displayWindow.location?.origin || '*';
+            displayWindow.postMessage({
               type: 'VIDEO_CONTROL',
               data: { action: 'getStatus' }
-            }, window.location.origin);
+            }, targetOrigin);
           } catch (error) {
             console.warn('Error requesting initial status:', error);
           }
@@ -85,10 +86,11 @@ const KaraokeLayout = forwardRef<KaraokeLayoutRef, KaraokeLayoutProps>(({
     changeDisplayVideo: (video: { videoId: string; title: string; artist: string }) => {
       // If window exists, send change command; otherwise just update local state
       if (displayWindow && !displayWindow.closed) {
+        const targetOrigin = displayWindow.location?.origin || '*';
         displayWindow.postMessage({
           type: 'VIDEO_CONTROL',
           data: { action: 'changeVideo', ...video }
-        }, window.location.origin);
+        }, targetOrigin);
       }
       setDisplayVideo({
         videoId: video.videoId,
