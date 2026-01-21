@@ -405,7 +405,7 @@ export default function KaraokePlayerPanel({
 
   // Send control command to display window via multiple channels
   const sendDisplayCommand = async (action: string, data?: any) => {
-    console.log('🎮 Sending command:', action, 'to window:', propDisplayWindow, 'closed:', propDisplayWindow?.closed);
+    console.log('🎮 Sending command:', action, 'to window:', propDisplayWindow, 'closed:', propDisplayWindow?.closed, 'window exists:', !!propDisplayWindow);
 
     setIsCommandLoading(true);
 
@@ -535,7 +535,12 @@ export default function KaraokePlayerPanel({
     // Change the video in the display window
     changeDisplayVideo(video);
 
-    // Update the signup status to 'singing' to start playing
+    // Start playing the video immediately
+    setTimeout(() => {
+      sendDisplayCommand('play');
+    }, 500); // Small delay to let video load
+
+    // Update the signup status to 'singing'
     if (onSignupStatusChange) {
       onSignupStatusChange(queueItem.signupData.id, 'singing');
     }
