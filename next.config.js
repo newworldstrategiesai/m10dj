@@ -1,7 +1,9 @@
 /** @type {import('next').NextConfig} */
 module.exports = {
-  reactStrictMode: false, // Temporarily disabled to prevent DOM manipulation conflicts
+  reactStrictMode: false, // Disabled to prevent double renders and fast refresh issues
+  // Disable file system watching for node_modules to reduce reload triggers
   experimental: {
+    esmExternals: false,
     serverActions: true,
     serverComponentsExternalPackages: ['@supabase/supabase-js'],
   },

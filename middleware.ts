@@ -9,6 +9,10 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
+// Simple in-memory cache to reduce database calls during development
+const orgCache = new Map<string, any>();
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
 /**
  * Helper function to get organization by slug with normalized matching
  * Supports flexible matching: "ben-spins" and "benspins" will match the same organization
@@ -19,13 +23,20 @@ async function getOrganizationBySlugNormalized(slug: string, filters?: {
   performer_slug?: string;
   is_active?: boolean;
 }) {
+  const cacheKey = `${slug}-${JSON.stringify(filters)}`;
+  const cached = orgCache.get(cacheKey);
+
+  if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+    return cached.data;
+  }
+
   try {
     // First try exact match (for performance)
     let query = supabase
       .from('organizations')
       .select('*')
       .eq('slug', slug);
-    
+
     if (filters?.organization_type) {
       query = query.eq('organization_type', filters.organization_type);
     }
@@ -38,38 +49,45 @@ async function getOrganizationBySlugNormalized(slug: string, filters?: {
     if (filters?.is_active !== undefined) {
       query = query.eq('is_active', filters.is_active);
     }
-    
+
     const { data: exactOrg, error: exactError } = await query.maybeSingle();
-    
+
     if (!exactError && exactOrg) {
+      orgCache.set(cacheKey, { data: exactOrg, timestamp: Date.now() });
       return exactOrg;
     }
-    
+
     // If exact match fails, try normalized match using RPC function
     const { data: normalizedOrgs, error: rpcError } = await supabase
       .rpc('get_organization_by_normalized_slug', { input_slug: slug });
-    
+
     if (rpcError || !normalizedOrgs || normalizedOrgs.length === 0) {
+      orgCache.set(cacheKey, { data: null, timestamp: Date.now() });
       return null;
     }
-    
+
     // Apply filters to normalized results if provided
     let result = normalizedOrgs[0];
     if (filters) {
       if (filters.organization_type && result.organization_type !== filters.organization_type) {
+        orgCache.set(cacheKey, { data: null, timestamp: Date.now() });
         return null;
       }
       if (filters.parent_organization_id && result.parent_organization_id !== filters.parent_organization_id) {
+        orgCache.set(cacheKey, { data: null, timestamp: Date.now() });
         return null;
       }
       if (filters.performer_slug && result.performer_slug !== filters.performer_slug) {
+        orgCache.set(cacheKey, { data: null, timestamp: Date.now() });
         return null;
       }
       if (filters.is_active !== undefined && result.is_active !== filters.is_active) {
+        orgCache.set(cacheKey, { data: null, timestamp: Date.now() });
         return null;
       }
     }
-    
+
+    orgCache.set(cacheKey, { data: result, timestamp: Date.now() });
     return result;
   } catch (error) {
     console.error('Error getting organization by normalized slug:', error);

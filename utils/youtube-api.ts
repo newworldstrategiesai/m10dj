@@ -15,12 +15,14 @@ export interface YouTubeVideo {
   likeCount?: number;
   thumbnailUrl: string;
   tags?: string[];
+  embeddable?: boolean;
 }
 
 export interface VideoSearchResult extends YouTubeVideo {
   relevanceScore: number;
   karaokeScore: number;
   confidenceScore: number;
+  embeddable: boolean;
 }
 
 export interface YouTubeAPIConfig {
@@ -139,7 +141,8 @@ export class YouTubeAPI {
           likeCount: details?.likeCount || 0,
           thumbnailUrl: item.snippet.thumbnails?.medium?.url ||
                        item.snippet.thumbnails?.default?.url || '',
-          tags: details?.tags || []
+          tags: details?.tags || [],
+          embeddable: details?.embeddable ?? true // Default to true for backward compatibility
         };
       });
     } catch (error) {
@@ -158,13 +161,14 @@ export class YouTubeAPI {
     viewCount: number;
     likeCount: number;
     tags: string[];
+    embeddable: boolean;
   }>> {
     if (videoIds.length === 0) return [];
 
     const url = new URL(`${this.config.baseUrl}/videos`);
     url.searchParams.set('key', this.config.apiKey);
     url.searchParams.set('id', videoIds.join(','));
-    url.searchParams.set('part', 'contentDetails,statistics,snippet');
+    url.searchParams.set('part', 'contentDetails,statistics,snippet,status');
 
     try {
       const response = await fetch(url.toString());
@@ -184,7 +188,8 @@ export class YouTubeAPI {
         duration: item.contentDetails?.duration || 'PT0S',
         viewCount: parseInt(item.statistics?.viewCount || '0'),
         likeCount: parseInt(item.statistics?.likeCount || '0'),
-        tags: item.snippet?.tags || []
+        tags: item.snippet?.tags || [],
+        embeddable: item.status?.embeddable !== false // Default to true if not specified
       }));
     } catch (error) {
       console.error('YouTube video details error:', error);
@@ -301,6 +306,13 @@ export function calculateKaraokeScore(video: YouTubeVideo, songTitle: string, so
   // Copyright claims or restrictions (penalty)
   if (title.includes('private') || title.includes('unavailable')) score -= 30;
 
+  // Embeddability bonus (+40 points - very important for usability!)
+  if (video.embeddable !== false) {
+    score += 40; // Massive boost for embeddable videos
+  } else {
+    score -= 50; // Heavy penalty for non-embeddable videos
+  }
+
   return Math.max(0, Math.min(100, score));
 }
 
@@ -360,7 +372,8 @@ export async function searchKaraokeVideos(
         ...video,
         relevanceScore: calculateRelevanceScore(video, songTitle, songArtist),
         karaokeScore: calculateKaraokeScore(video, songTitle, songArtist),
-        confidenceScore: 0.8 // High confidence for structured search
+        confidenceScore: 0.8, // High confidence for structured search
+        embeddable: video.embeddable ?? true
       }));
 
       allResults.push(...scoredResults);

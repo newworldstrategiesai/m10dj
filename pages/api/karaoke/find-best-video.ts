@@ -63,29 +63,40 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
     }
 
-    // Find the best video (prioritize Karafun, then highest quality)
+    // Find the best video (prioritize embeddable, then Karafun, then highest quality)
     let bestVideo = null;
 
-    if (prioritizeKarafun) {
-      // First try to find a Karafun video
-      const karafunVideos = videos.filter(video => {
-        const karafunTerms = (process.env.KARAFUN_CHANNEL_IDS || 'karafun').split(',');
-        return karafunTerms.some(term =>
-          video.channelTitle?.toLowerCase().includes(term.toLowerCase()) ||
-          video.channelId?.toLowerCase().includes(term.toLowerCase())
-        );
-      });
+    // First priority: embeddable videos
+    const embeddableVideos = videos.filter(video => video.embeddable !== false);
 
-      if (karafunVideos.length > 0) {
-        // Get the highest quality Karafun video
-        bestVideo = karafunVideos.reduce((best, current) =>
+    if (embeddableVideos.length > 0) {
+      if (prioritizeKarafun) {
+        // Within embeddable videos, try to find a Karafun video
+        const embeddableKarafunVideos = embeddableVideos.filter(video => {
+          const karafunTerms = (process.env.KARAFUN_CHANNEL_IDS || 'karafun').split(',');
+          return karafunTerms.some(term =>
+            video.channelTitle?.toLowerCase().includes(term.toLowerCase()) ||
+            video.channelId?.toLowerCase().includes(term.toLowerCase())
+          );
+        });
+
+        if (embeddableKarafunVideos.length > 0) {
+          // Get the highest quality embeddable Karafun video
+          bestVideo = embeddableKarafunVideos.reduce((best, current) =>
+            (current.karaokeScore || 0) > (best.karaokeScore || 0) ? current : best
+          );
+        }
+      }
+
+      // If no embeddable Karafun video found, get the highest quality embeddable video
+      if (!bestVideo) {
+        bestVideo = embeddableVideos.reduce((best, current) =>
           (current.karaokeScore || 0) > (best.karaokeScore || 0) ? current : best
         );
       }
-    }
-
-    // If no Karafun video found, get the highest quality video
-    if (!bestVideo) {
+    } else {
+      // Fallback: if no embeddable videos found, use the highest scoring video anyway
+      // (though this should be rare due to the scoring penalties)
       bestVideo = videos.reduce((best, current) =>
         (current.karaokeScore || 0) > (best.karaokeScore || 0) ? current : best
       );

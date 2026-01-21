@@ -82,7 +82,6 @@ export default function KaraokeAdminPage() {
   const [eventCodeFilter, setEventCodeFilter] = useState<string>('');
   const [selectedSignup, setSelectedSignup] = useState<KaraokeSignup | null>(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
-  const [modalContentStable, setModalContentStable] = useState(false);
   const isMountedRef = useRef(true);
 
   // Cleanup on unmount
@@ -92,19 +91,6 @@ export default function KaraokeAdminPage() {
     };
   }, []);
 
-  // Stabilize modal content rendering
-  useEffect(() => {
-    if (showDetailModal && selectedSignup) {
-      console.log('Modal opening for signup:', selectedSignup.id);
-      if (isMountedRef.current) {
-        console.log('Modal content stabilized for signup:', selectedSignup.id);
-        setModalContentStable(true);
-      }
-    } else {
-      console.log('Modal closing or no selected signup');
-      setModalContentStable(false);
-    }
-  }, [showDetailModal, selectedSignup]);
   const [showSettings, setShowSettings] = useState(false);
   const [settingsTab, setSettingsTab] = useState('general');
   const [showQRGenerator, setShowQRGenerator] = useState(false);
@@ -1254,8 +1240,12 @@ export default function KaraokeAdminPage() {
                       key={signup.id}
                       className="group p-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors cursor-pointer"
                       onClick={() => {
-                        setSelectedSignup(signup);
-                        setShowDetailModal(true);
+                        console.log('Opening modal for signup:', signup.id);
+                        // Prevent rapid modal opening if already opening
+                        if (isMountedRef.current) {
+                          setSelectedSignup(signup);
+                          setShowDetailModal(true);
+                        }
                       }}
                     >
                       <div className="flex items-start justify-between gap-4">
@@ -1500,7 +1490,6 @@ export default function KaraokeAdminPage() {
                                 if (isMountedRef.current) {
                                   setSelectedSignup(signup);
                                   setShowDetailModal(true);
-                                  setModalContentStable(false); // Reset stability
                                 }
                               }}>
                                 <Eye className="w-4 h-4 mr-2" />
@@ -1549,13 +1538,12 @@ export default function KaraokeAdminPage() {
               <DialogHeader>
                 <DialogTitle>Signup Details</DialogTitle>
               </DialogHeader>
-              {selectedSignup ? (
-                modalContentStable ? (
-                  <div
-                    key={`modal-content-${selectedSignup.id}`}
-                    className="space-y-4"
-                    style={{ minHeight: '200px' }} // Prevent layout shifts
-                  >
+              {selectedSignup && (
+                <div
+                  key={`modal-content-${selectedSignup.id}`}
+                  className="space-y-4"
+                  style={{ minHeight: '200px' }} // Prevent layout shifts
+                >
                   <div>
                     <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Singer/Group</label>
                     <p className="text-lg font-semibold text-gray-900 dark:text-white">
@@ -1950,15 +1938,7 @@ export default function KaraokeAdminPage() {
                     </Button>
                   </div>
                 </div>
-                ) : (
-                  <div className="flex items-center justify-center py-8">
-                    <div className="animate-pulse flex items-center gap-3">
-                      <div className="w-6 h-6 bg-gray-300 dark:bg-gray-700 rounded-full"></div>
-                      <div className="text-gray-500 dark:text-gray-400">Loading signup details...</div>
-                    </div>
-                  </div>
-                )
-              ) : null}
+              )}
             </DialogContent>
           </Dialog>
 
