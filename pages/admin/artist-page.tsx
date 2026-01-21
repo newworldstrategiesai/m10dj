@@ -3,7 +3,8 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import AdminPageLayout from '@/components/layouts/AdminPageLayout';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { createClient } from '@/utils/supabase/client';
+import { isRateLimited, setRateLimited } from '@/utils/supabase/rate-limiter';
 import { 
   Save, 
   Loader2, 
@@ -38,7 +39,7 @@ interface ArtistLink {
 
 export default function ArtistPageSettings() {
   const router = useRouter();
-  const supabase = createClientComponentClient();
+  const supabase = createClient();
   const [user, setUser] = useState<any>(null);
   const [organization, setOrganization] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -74,9 +75,20 @@ export default function ArtistPageSettings() {
   }, [user]);
 
   const checkUser = async () => {
+    // Check rate limiter
+    if (isRateLimited()) {
+      console.log('⏳ Skipping artist page auth check - rate limited');
+      return;
+    }
+
     try {
       const { data: { user }, error } = await supabase.auth.getUser();
-      
+
+      if (error?.message?.includes('rate limit') || error?.status === 429) {
+        setRateLimited();
+        return;
+      }
+
       if (error || !user) {
         router.push('/signin');
         return;

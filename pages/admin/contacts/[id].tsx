@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useRouter } from 'next/router';
 import { ArrowLeft, Save, Phone, Mail, Calendar, MapPin, Music, DollarSign, User, MessageSquare, Edit3, Trash2, CheckCircle, Loader2, FileText, Copy, Clock, Sparkles, Link2, Unlink, ShieldX, AlertTriangle } from 'lucide-react';
 import { createClient } from '@/utils/supabase/client';
+import { isRateLimited, setRateLimited } from '@/utils/supabase/rate-limiter';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -308,8 +309,19 @@ export default function ContactDetailPage() {
   }, []);
 
   const checkUser = async () => {
+    // Check rate limiter
+    if (isRateLimited()) {
+      console.log('⏳ Skipping contacts auth check - rate limited');
+      return;
+    }
+
     try {
       const { data: { user }, error: userError } = await supabase.auth.getUser();
+
+      if (userError?.message?.includes('rate limit') || userError?.status === 429) {
+        setRateLimited();
+        return;
+      }
 
       // Handle AbortError gracefully (component unmounted or request cancelled)
       if (userError?.name === 'AbortError') {

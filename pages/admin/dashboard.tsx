@@ -8,7 +8,8 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { createClient } from '@/utils/supabase/client';
+import { isRateLimited, setRateLimited } from '@/utils/supabase/rate-limiter';
 import { 
   Users, 
   Mail, 
@@ -90,7 +91,7 @@ interface RecentPayment {
 
 export default function AdminDashboard() {
   const router = useRouter();
-  const supabase = createClientComponentClient();
+  const supabase = createClient();
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -112,8 +113,21 @@ export default function AdminDashboard() {
   const checkAuth = async () => {
     if (authChecked) return; // Prevent multiple auth checks
 
+    // Check global rate limiter
+    if (isRateLimited()) {
+      console.log('⏳ Skipping dashboard auth check - rate limited');
+      setAuthChecked(true);
+      return;
+    }
+
     try {
       const { data: { user }, error } = await supabase.auth.getUser();
+
+      if (error?.message?.includes('rate limit') || error?.status === 429) {
+        setRateLimited();
+        setAuthChecked(true);
+        return;
+      }
 
       if (error || !user) {
         router.push('/signin?redirect=/admin/dashboard');
@@ -198,8 +212,18 @@ export default function AdminDashboard() {
 
   const fetchStats = async () => {
     try {
+      // Check rate limiter before auth call
+      if (isRateLimited()) {
+        console.log('⏳ Skipping stats auth check - rate limited');
+        return;
+      }
+
       // CRITICAL: Get organization_id first to filter all queries
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { user }, error } = await supabase.auth.getUser();
+      if (error?.message?.includes('rate limit') || error?.status === 429) {
+        setRateLimited();
+        return;
+      }
       if (!user) return;
 
       const adminEmails = [
@@ -313,8 +337,18 @@ export default function AdminDashboard() {
 
   const fetchUpcomingEvents = async () => {
     try {
+      // Check rate limiter before auth call
+      if (isRateLimited()) {
+        console.log('⏳ Skipping events auth check - rate limited');
+        return;
+      }
+
       // CRITICAL: Get organization_id to filter events
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { user }, error } = await supabase.auth.getUser();
+      if (error?.message?.includes('rate limit') || error?.status === 429) {
+        setRateLimited();
+        return;
+      }
       if (!user) return;
 
       const adminEmails = [
@@ -360,8 +394,18 @@ export default function AdminDashboard() {
 
   const fetchRecentContacts = async () => {
     try {
+      // Check rate limiter before auth call
+      if (isRateLimited()) {
+        console.log('⏳ Skipping contacts auth check - rate limited');
+        return;
+      }
+
       // CRITICAL: Get organization_id to filter contacts
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { user }, error } = await supabase.auth.getUser();
+      if (error?.message?.includes('rate limit') || error?.status === 429) {
+        setRateLimited();
+        return;
+      }
       if (!user) return;
 
       const adminEmails = [
