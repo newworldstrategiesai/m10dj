@@ -2,6 +2,13 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
+
+// Force server-side rendering since this page requires query parameters
+export async function getServerSideProps() {
+  return {
+    props: {}, // Will be passed to the page component as props
+  };
+}
 import Head from 'next/head';
 import { X, Maximize, Minimize, Volume2, VolumeX, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
