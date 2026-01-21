@@ -392,6 +392,31 @@ export default function KaraokePlayerPanel({
     }
   };
 
+  // Play a queue item in the display window
+  const playQueueItem = (queueItem: QueueItem) => {
+    if (!queueItem.signupData || !queueItem.signupData.video_data) {
+      console.warn('Queue item missing video data:', queueItem);
+      return;
+    }
+
+    const videoData = queueItem.signupData.video_data;
+    const video = {
+      videoId: videoData.youtube_video_id,
+      title: queueItem.title,
+      artist: queueItem.artist
+    };
+
+    // Change the video in the display window
+    changeDisplayVideo(video);
+
+    // Update the signup status to 'singing' to start playing
+    if (onSignupStatusChange) {
+      onSignupStatusChange(queueItem.signupData.id, 'singing');
+    }
+
+    console.log('Playing queue item:', queueItem.title);
+  };
+
   // Progress bar interaction functions
   const handleProgressHover = (event: React.MouseEvent<HTMLDivElement>) => {
     if (!progressBarRef.current || !displayStatus?.duration) return;
@@ -1392,12 +1417,7 @@ export default function KaraokePlayerPanel({
                       {/* Actions */}
                       <div className="flex items-center gap-2">
                         <button
-                          onClick={() => {
-                            // Open video in new window if we have video data
-                            // For now, this is a placeholder - in real implementation
-                            // we'd need video data associated with queue items
-                            console.log('Play video for:', song.title);
-                          }}
+                          onClick={() => playQueueItem(song)}
                           className="text-pink-400 hover:text-pink-300 transition-colors"
                           title="Play Video"
                         >
