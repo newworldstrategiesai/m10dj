@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -17,10 +17,10 @@ import {
   Heart,
   Loader2
 } from 'lucide-react';
+import { createClient } from '@/utils/supabase/client';
 
 interface DiscoverPageProps {
   isPremium: boolean;
-  supabase: any;
 }
 
 interface Playlist {
@@ -46,12 +46,19 @@ interface Quiz {
   playerCount?: number;
 }
 
-export default function DiscoverPage({ isPremium, supabase }: DiscoverPageProps) {
+export default function DiscoverPage({ isPremium }: DiscoverPageProps) {
   const [hoveredPlaylist, setHoveredPlaylist] = useState<string | null>(null);
   const [hoveredQuiz, setHoveredQuiz] = useState<string | null>(null);
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Create stable supabase client reference
+  const supabaseRef = useRef<any>(null);
+  if (!supabaseRef.current) {
+    supabaseRef.current = createClient();
+  }
+  const supabase = supabaseRef.current;
 
   const loadPlaylists = useCallback(async () => {
     try {
@@ -105,7 +112,7 @@ export default function DiscoverPage({ isPremium, supabase }: DiscoverPageProps)
     } finally {
       setLoading(false);
     }
-  }, [supabase]);
+  }, []); // supabase is stable via useRef
 
   useEffect(() => {
     loadPlaylists();

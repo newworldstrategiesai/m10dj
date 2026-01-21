@@ -828,12 +828,7 @@ export default function KaraokeAdminPage() {
         </TabsList>
 
         <TabsContent value="discover" className="space-y-6">
-          {/* Temporarily disabled to fix infinite rendering */}
-          <div className="text-center py-12">
-            <p className="text-gray-600 dark:text-gray-400">Discover page temporarily disabled</p>
-            <p className="text-sm text-gray-500 mt-2">Fixing infinite rendering issue</p>
-          </div>
-          {/* <DiscoverPage isPremium={subscriptionTier !== 'free'} supabase={supabase} /> */}
+          <DiscoverPage isPremium={subscriptionTier !== 'free'} />
         </TabsContent>
 
         <TabsContent value="queue" className="space-y-6">
