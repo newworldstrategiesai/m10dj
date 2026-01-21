@@ -60,6 +60,7 @@ const KaraokeLayout = forwardRef<KaraokeLayoutRef, KaraokeLayoutProps>(({
   // Expose methods to parent components
   useImperativeHandle(ref, () => ({
     registerDisplayWindow: (window: Window, video: { videoId: string; title: string; artist: string }) => {
+      console.log('🎬 Registering display window:', window);
       setDisplayWindow(window);
       setDisplayVideo({
         videoId: video.videoId,
@@ -70,15 +71,16 @@ const KaraokeLayout = forwardRef<KaraokeLayoutRef, KaraokeLayoutProps>(({
 
       // Request initial status update from the display window
       setTimeout(() => {
-        if (displayWindow && !displayWindow.closed) {
+        if (window && !window.closed) {
           try {
+            console.log('📡 Requesting initial status from display window');
             // Use * as fallback since same-origin should work for our use case
-            displayWindow.postMessage({
+            window.postMessage({
               type: 'VIDEO_CONTROL',
               data: { action: 'getStatus' }
             }, '*');
           } catch (error) {
-            console.warn('Error requesting initial status:', error);
+            console.warn('❌ Error requesting initial status:', error);
           }
         }
       }, 2000); // Wait for video to load

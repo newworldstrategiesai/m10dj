@@ -294,11 +294,17 @@ export default function KaraokePlayerPanel({
   // Listen for status updates from display window
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
-      if (event.origin !== window.location.origin) return;
+      console.log('🎧 Player panel received message:', event.data, 'from origin:', event.origin, 'source:', event.source);
+
+      if (event.origin !== window.location.origin) {
+        console.log('🚫 Player panel rejected message from different origin:', event.origin);
+        return;
+      }
 
       const { type, data } = event.data;
 
       if (type === 'VIDEO_STATUS') {
+        console.log('📊 Player panel processing VIDEO_STATUS:', data, 'broadcast:', data.broadcast);
         setDisplayStatus({
           isPlaying: data.playerState === 1, // YT.PlayerState.PLAYING
           currentTime: data.currentTime || 0,
@@ -328,6 +334,11 @@ export default function KaraokePlayerPanel({
 
     if (!propDisplayWindow || propDisplayWindow.closed) {
       console.warn('❌ Cannot send command - display window not available or closed');
+      console.warn('❌ Window details:', {
+        exists: !!propDisplayWindow,
+        closed: propDisplayWindow?.closed,
+        location: propDisplayWindow?.location?.href
+      });
       return;
     }
 
@@ -340,7 +351,17 @@ export default function KaraokePlayerPanel({
         timestamp: Date.now()
       };
       propDisplayWindow.postMessage(message, window.location.origin);
-      console.log('📤 Sent message:', message);
+      console.log('📤 Sent message to display window:', message);
+
+      // Also try sending with '*' as fallback
+      setTimeout(() => {
+        try {
+          propDisplayWindow.postMessage(message, '*');
+          console.log('📤 Also sent message with * origin:', message);
+        } catch (error) {
+          console.warn('❌ Error sending with * origin:', error);
+        }
+      }, 100);
 
       // Small delay to show loading state
       await new Promise(resolve => setTimeout(resolve, 200));

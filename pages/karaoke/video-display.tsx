@@ -51,11 +51,12 @@ export default function VideoDisplayPage() {
   // Listen for control messages from admin window
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
-      console.log('📨 Display window received message:', event.data, 'from:', event.origin);
+      console.log('📨 Display window received message:', event.data, 'from:', event.origin, 'source:', event.source);
 
       // Only accept messages from the same origin for security
-      if (event.origin !== window.location.origin) {
-        console.log('🚫 Rejected message from different origin:', event.origin);
+      // Temporarily allow all origins for debugging
+      if (event.origin !== window.location.origin && event.origin !== 'null') {
+        console.log('🚫 Rejected message from different origin:', event.origin, 'expected:', window.location.origin);
         return;
       }
 
@@ -64,7 +65,7 @@ export default function VideoDisplayPage() {
       if (type === 'VIDEO_CONTROL') {
         console.log('🎬 Processing command:', data.action, data);
         const control = (window as any).youtubePlayerControl;
-        console.log('🎮 YouTube control available:', !!control);
+        console.log('🎮 YouTube control available:', !!control, 'window.opener:', !!window.opener);
 
         if (!control) {
           console.warn('⚠️ YouTube player control not available yet');
@@ -343,25 +344,57 @@ export default function VideoDisplayPage() {
 
     const sendStatusUpdate = () => {
       const control = (window as any).youtubePlayerControl;
-      if (control && window.opener && currentVideo) {
+      if (control && currentVideo) {
         try {
           const currentTime = control.getCurrentTime();
           const duration = control.getDuration();
           const playerState = control.getPlayerState();
 
-          window.opener.postMessage({
-            type: 'VIDEO_STATUS',
-            data: {
-              isPlaying: playerState === 1, // YT.PlayerState.PLAYING
-              currentTime: currentTime || 0,
-              duration: duration || 0,
-              volume: volume,
-              videoId: currentVideo.videoId,
-              title: currentVideo.title,
-              artist: currentVideo.artist,
-              playerState: playerState
+          const statusData = {
+            isPlaying: playerState === 1, // YT.PlayerState.PLAYING
+            currentTime: currentTime || 0,
+            duration: duration || 0,
+            volume: volume,
+            videoId: currentVideo.videoId,
+            title: currentVideo.title,
+            artist: currentVideo.artist,
+            playerState: playerState
+          };
+
+          console.log('📡 Sending status update:', statusData);
+
+          // Send to window.opener if it exists
+          if (window.opener) {
+            console.log('📡 Sending to opener');
+            window.opener.postMessage({
+              type: 'VIDEO_STATUS',
+              data: statusData
+            }, window.location.origin);
+          }
+
+          // Also try sending to parent window if different
+          if (window.parent && window.parent !== window.opener && window.parent !== window) {
+            console.log('📡 Also sending to parent');
+            window.parent.postMessage({
+              type: 'VIDEO_STATUS',
+              data: statusData
+            }, window.location.origin);
+          }
+
+          // Broadcast to all windows (fallback)
+          try {
+            // This is a bit hacky but might work for debugging
+            if (typeof window !== 'undefined' && window.top && window.top !== window) {
+              console.log('📡 Broadcasting to top window');
+              window.top.postMessage({
+                type: 'VIDEO_STATUS',
+                data: { ...statusData, broadcast: true }
+              }, window.location.origin);
             }
-          }, window.location.origin);
+          } catch (error) {
+            // Ignore broadcast errors
+          }
+
         } catch (error) {
           // Silently handle errors - window might be closed or player not ready
           console.warn('⚠️ Error sending periodic status update:', error);
