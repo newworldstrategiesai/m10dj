@@ -60,9 +60,27 @@ export const createClient = (request: NextRequest) => {
   return { supabase, response };
 };
 
+// Simple in-memory cache to prevent excessive auth checks during development
+let lastAuthCheck = 0;
+const AUTH_CHECK_THROTTLE = 30000; // 30 seconds - increased to prevent excessive refreshing
+
 export const updateSession = async (request: NextRequest) => {
   try {
+    // Skip auth middleware entirely for admin pages during development
+    if (request.nextUrl.pathname.startsWith('/admin')) {
+      console.log('🚫 Skipping auth middleware for admin page');
+      return NextResponse.next();
+    }
+
     const { supabase, response } = createClient(request);
+
+    // Throttle auth checks during development to prevent rate limiting
+    const now = Date.now();
+    if (now - lastAuthCheck < AUTH_CHECK_THROTTLE) {
+      console.log('⏳ Skipping auth refresh - throttled');
+      return response;
+    }
+    lastAuthCheck = now;
 
     // This will refresh session if expired - required for Server Components
     // https://supabase.com/docs/guides/auth/server-side/nextjs

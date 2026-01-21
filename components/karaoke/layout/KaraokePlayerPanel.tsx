@@ -353,12 +353,51 @@ export default function KaraokePlayerPanel({
     };
   }, [propDisplayVideo, onDisplayVideoChange, mounted]);
 
-  // Send control command to display window - SIMPLE APPROACH
+  // Send control command to display window - WITH FALLBACK
   const sendDisplayCommand = async (action: string, data?: any) => {
-    console.log('🎮 SIMPLE: Sending command:', action, 'to window:', propDisplayWindow);
+    console.log('🎮 Sending command:', action, 'to window:', propDisplayWindow);
 
-    if (!propDisplayWindow || propDisplayWindow.closed) {
-      console.warn('❌ No display window available');
+    let targetWindow = propDisplayWindow;
+
+    // If no window reference, try to find any open karaoke display windows
+    if (!targetWindow || targetWindow.closed) {
+      console.log('🔍 Looking for open karaoke display windows...');
+
+      // Try to find any window with karaoke display in the URL
+      for (let i = 0; i < 10; i++) {
+        try {
+          const testWindow = window.open('', `karaokeVideoDisplay_${i}`);
+          if (testWindow && !testWindow.closed &&
+              testWindow.location.href.includes('video-display')) {
+            console.log('🎯 Found existing display window:', i);
+            targetWindow = testWindow;
+            // Update the prop to maintain the reference
+            onDisplayWindowChange?.(testWindow);
+            break;
+          }
+        } catch (e) {
+          // Cross-origin access might fail, ignore
+        }
+      }
+
+      // If still no window found, try the general karaokeVideoDisplay name
+      if (!targetWindow || targetWindow.closed) {
+        try {
+          const generalWindow = window.open('', 'karaokeVideoDisplay');
+          if (generalWindow && !generalWindow.closed &&
+              generalWindow.location.href.includes('video-display')) {
+            console.log('🎯 Found general display window');
+            targetWindow = generalWindow;
+            onDisplayWindowChange?.(generalWindow);
+          }
+        } catch (e) {
+          // Ignore cross-origin errors
+        }
+      }
+    }
+
+    if (!targetWindow || targetWindow.closed) {
+      console.warn('❌ No display window available - cannot send command');
       return;
     }
 
@@ -372,9 +411,9 @@ export default function KaraokePlayerPanel({
     };
 
     try {
-      // ONLY use direct postMessage - simplest approach
+      // Send via postMessage
       console.log('📤 Sending to display window:', message);
-      propDisplayWindow.postMessage(message, window.location.origin);
+      targetWindow.postMessage(message, window.location.origin);
 
       // Small delay for visual feedback
       await new Promise(resolve => setTimeout(resolve, 200));
