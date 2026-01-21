@@ -13,6 +13,7 @@ import {
   ArrowUp,
   ArrowDown,
   CheckCircle2,
+  CheckCircle,
   Clock,
   Play,
   Pause,
@@ -78,6 +79,102 @@ export default function KaraokeAdminPage() {
   const [activeTab, setActiveTab] = useState('discover');
   const [showVideoSearchForSignup, setShowVideoSearchForSignup] = useState(false);
   const [videoSearchSignup, setVideoSearchSignup] = useState<KaraokeSignup | null>(null);
+  const [signupVideoSuggestions, setSignupVideoSuggestions] = useState<{[key: string]: any}>({});
+  const [loadingVideoSuggestions, setLoadingVideoSuggestions] = useState<{[key: string]: boolean}>({});
+
+  // Search for video suggestions for a signup
+  const searchVideoSuggestionsForSignup = async (signup: KaraokeSignup) => {
+    if (!signup.song_title || signup.video_data) return;
+
+    setLoadingVideoSuggestions(prev => ({ ...prev, [signup.id]: true }));
+
+    try {
+      const response = await fetch('/api/karaoke/find-best-video', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          songTitle: signup.song_title,
+          songArtist: signup.song_artist,
+          organizationId: organization?.id,
+          prioritizeKarafun: true
+        })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.bestVideo) {
+          setSignupVideoSuggestions(prev => ({
+            ...prev,
+            [signup.id]: data.bestVideo
+          }));
+        }
+      } else {
+        console.warn('Failed to find video suggestions:', response.statusText);
+      }
+    } catch (error) {
+      console.error('Error searching for video suggestions:', error);
+    } finally {
+      setLoadingVideoSuggestions(prev => ({ ...prev, [signup.id]: false }));
+    }
+  };
+
+  // Link suggested video to signup
+  const linkSuggestedVideoToSignup = async (signupId: string, videoData: any) => {
+    try {
+      const response = await fetch('/api/karaoke/link-signup-video', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          signupId,
+          videoId: videoData.existingLink?.id || null, // Use existing video ID if available
+          videoData: videoData, // Pass full video data for linking
+          organizationId: organization?.id
+        })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+
+        // Update the signup in local state
+        setSignups(prev => prev.map(signup =>
+          signup.id === signupId
+            ? { ...signup, video_id: data.video.id, video_data: data.video }
+            : signup
+        ));
+
+        // Update selected signup if it's the current one
+        if (selectedSignup && selectedSignup.id === signupId) {
+          setSelectedSignup(prev => prev ? {
+            ...prev,
+            video_id: data.video.id,
+            video_data: data.video
+          } : null);
+        }
+
+        // Clear the suggestion
+        setSignupVideoSuggestions(prev => {
+          const newSuggestions = { ...prev };
+          delete newSuggestions[signupId];
+          return newSuggestions;
+        });
+
+        toast({
+          title: 'Video Linked Successfully',
+          description: `Karaoke video linked to signup`,
+        });
+      } else {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to link video');
+      }
+    } catch (error: any) {
+      console.error('Error linking video to signup:', error);
+      toast({
+        title: 'Linking Failed',
+        description: error.message || 'Failed to link video to signup',
+        variant: 'destructive'
+      });
+    }
+  };
 
   // Page customization settings
   const [pageSettings, setPageSettings] = useState({
@@ -1354,6 +1451,13 @@ export default function KaraokeAdminPage() {
             )}
           </div>
 
+          {/* Auto-search for video suggestions when signup is viewed */}
+          {useEffect(() => {
+            if (selectedSignup && selectedSignup.song_title && !selectedSignup.video_data && showDetailModal) {
+              searchVideoSuggestionsForSignup(selectedSignup);
+            }
+          }, [selectedSignup, showDetailModal])}
+
           {/* Detail Modal - Reused pattern from crowd-requests */}
           <Dialog open={showDetailModal} onOpenChange={(open) => {
             setShowDetailModal(open);
@@ -1403,56 +1507,129 @@ export default function KaraokeAdminPage() {
                       <label className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-3 block">
                         Karaoke Videos
                       </label>
-                      <div className="p-4 bg-gradient-to-r from-pink-50 to-purple-50 dark:from-pink-900/20 dark:to-purple-900/20 rounded-lg border border-pink-200 dark:border-pink-800">
-                        <div className="flex items-center justify-between mb-3">
-                          <div className="flex items-center gap-2">
-                            <Music className="w-4 h-4 text-pink-600" />
-                            <span className="text-sm font-medium text-gray-900 dark:text-white">
-                              Find Karaoke Videos
-                            </span>
-                          </div>
-                          <Button
-                            size="sm"
-                            onClick={() => {
-                              // Open video search modal for this song
-                              setShowVideoSearchForSignup(true);
-                              setVideoSearchSignup(selectedSignup);
-                            }}
-                            className="bg-pink-600 hover:bg-pink-700 text-white"
-                          >
-                            <Search className="w-4 h-4 mr-1" />
-                            Search YouTube
-                          </Button>
-                        </div>
-                        <p className="text-xs text-gray-600 dark:text-gray-400 mb-3">
-                          Search for karaoke videos on YouTube. Karafun videos are prioritized.
-                        </p>
 
-                        {/* Show current video if linked */}
-                        {selectedSignup.video_data && (
-                          <div className="flex items-center gap-3 p-3 bg-white dark:bg-gray-800 rounded border">
+                      {/* Show current video if already linked */}
+                      {selectedSignup.video_data ? (
+                        <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
+                          <div className="flex items-center gap-3">
                             <img
                               src={`https://img.youtube.com/vi/${selectedSignup.video_data.youtube_video_id}/default.jpg`}
                               alt="Current video"
-                              className="w-12 h-9 rounded object-cover"
+                              className="w-16 h-12 rounded object-cover border-2 border-green-300"
                             />
                             <div className="flex-1">
-                              <p className="text-sm font-medium text-gray-900 dark:text-white">
-                                Current: {selectedSignup.video_data.youtube_video_title || 'Linked Video'}
-                              </p>
-                              <p className="text-xs text-gray-500">
-                                {selectedSignup.video_data.youtube_channel_name} • {selectedSignup.video_data.video_quality_score}/100
+                              <div className="flex items-center gap-2 mb-1">
+                                <h4 className="font-semibold text-gray-900 dark:text-white">
+                                  {selectedSignup.video_data.youtube_video_title || 'Linked Video'}
+                                </h4>
+                                {isKarafunVideo(selectedSignup.video_data.youtube_channel_name, selectedSignup.video_data.youtube_channel_id) && (
+                                  <Badge className="bg-purple-500 text-white text-xs">
+                                    <Music className="w-3 h-3 mr-1" />
+                                    Karafun
+                                  </Badge>
+                                )}
+                              </div>
+                              <p className="text-sm text-gray-600 dark:text-gray-400">
+                                {selectedSignup.video_data.youtube_channel_name} • Quality: {selectedSignup.video_data.video_quality_score}/100
                               </p>
                             </div>
-                            {isKarafunVideo(selectedSignup.video_data.youtube_channel_name, selectedSignup.video_data.youtube_channel_id) && (
-                              <Badge className="bg-purple-500 text-white text-xs">
-                                <Music className="w-3 h-3 mr-1" />
-                                Karafun
-                              </Badge>
-                            )}
                           </div>
-                        )}
-                      </div>
+                        </div>
+                      ) : (
+                        /* Show suggested video or search option */
+                        <div className="space-y-3">
+                          {/* Automatic video suggestion */}
+                          {loadingVideoSuggestions[selectedSignup.id] ? (
+                            <div className="p-4 bg-gray-50 dark:bg-gray-900/20 rounded-lg border border-gray-200 dark:border-gray-800">
+                              <div className="animate-pulse flex items-center gap-4">
+                                <div className="w-16 h-12 bg-gray-300 dark:bg-gray-700 rounded"></div>
+                                <div className="flex-1 space-y-2">
+                                  <div className="h-4 bg-gray-300 dark:bg-gray-700 rounded w-3/4"></div>
+                                  <div className="h-3 bg-gray-300 dark:bg-gray-700 rounded w-1/2"></div>
+                                </div>
+                              </div>
+                              <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                                Finding the best karaoke video...
+                              </p>
+                            </div>
+                          ) : signupVideoSuggestions[selectedSignup.id] ? (
+                            <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                              <div className="flex items-start gap-4">
+                                {/* Video Thumbnail */}
+                                <img
+                                  src={`https://img.youtube.com/vi/${signupVideoSuggestions[selectedSignup.id].id}/mqdefault.jpg`}
+                                  alt="Suggested karaoke video"
+                                  className="w-24 h-18 rounded-lg object-cover border-2 border-blue-300"
+                                />
+
+                                {/* Video Details */}
+                                <div className="flex-1">
+                                  <div className="flex items-center gap-2 mb-1">
+                                    <h4 className="font-semibold text-gray-900 dark:text-white text-sm">
+                                      {signupVideoSuggestions[selectedSignup.id].title}
+                                    </h4>
+                                    {isKarafunVideo(
+                                      signupVideoSuggestions[selectedSignup.id].channelTitle,
+                                      signupVideoSuggestions[selectedSignup.id].channelId
+                                    ) && (
+                                      <Badge className="bg-purple-500 text-white text-xs">
+                                        <Music className="w-3 h-3 mr-1" />
+                                        Karafun
+                                      </Badge>
+                                    )}
+                                  </div>
+
+                                  <p className="text-xs text-gray-600 dark:text-gray-400 mb-2">
+                                    {signupVideoSuggestions[selectedSignup.id].channelTitle} •
+                                    {signupVideoSuggestions[selectedSignup.id].viewCount?.toLocaleString()} views
+                                  </p>
+
+                                  <div className="flex items-center gap-3">
+                                    <Badge variant="outline" className="text-xs">
+                                      Quality: {signupVideoSuggestions[selectedSignup.id].karaokeScore}/100
+                                    </Badge>
+
+                                    <Button
+                                      size="sm"
+                                      onClick={() => linkSuggestedVideoToSignup(selectedSignup.id, signupVideoSuggestions[selectedSignup.id])}
+                                      className="bg-blue-600 hover:bg-blue-700 text-white"
+                                    >
+                                      <CheckCircle2 className="w-4 h-4 mr-1" />
+                                      Use This Video
+                                    </Button>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          ) : (
+                            /* Manual search option */
+                            <div className="p-4 bg-gradient-to-r from-pink-50 to-purple-50 dark:from-pink-900/20 dark:to-purple-900/20 rounded-lg border border-pink-200 dark:border-pink-800">
+                              <div className="flex items-center justify-between mb-3">
+                                <div className="flex items-center gap-2">
+                                  <Music className="w-4 h-4 text-pink-600" />
+                                  <span className="text-sm font-medium text-gray-900 dark:text-white">
+                                    No automatic video found
+                                  </span>
+                                </div>
+                                <Button
+                                  size="sm"
+                                  onClick={() => {
+                                    setShowVideoSearchForSignup(true);
+                                    setVideoSearchSignup(selectedSignup);
+                                  }}
+                                  className="bg-pink-600 hover:bg-pink-700 text-white"
+                                >
+                                  <Search className="w-4 h-4 mr-1" />
+                                  Search YouTube
+                                </Button>
+                              </div>
+                              <p className="text-xs text-gray-600 dark:text-gray-400">
+                                Search manually for karaoke videos on YouTube. Karafun videos are prioritized.
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
                   )}
 

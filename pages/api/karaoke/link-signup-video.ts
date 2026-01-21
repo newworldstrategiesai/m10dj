@@ -19,10 +19,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(401).json({ error: 'Unauthorized' });
     }
 
-    const { signupId, videoId, organizationId } = req.body;
+    const { signupId, videoId, videoData, organizationId } = req.body;
 
-    if (!signupId || !videoId || !organizationId) {
-      return res.status(400).json({ error: 'Signup ID, Video ID, and Organization ID are required' });
+    if (!signupId || !organizationId) {
+      return res.status(400).json({ error: 'Signup ID and organization ID are required' });
+    }
+
+    if (!videoId && !videoData) {
+      return res.status(400).json({ error: 'Either Video ID or Video Data must be provided' });
     }
 
     // Verify organization access
@@ -37,16 +41,58 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(403).json({ error: 'Access denied to organization' });
     }
 
-    // Get the video data
-    const { data: video, error: videoError } = await supabase
-      .from('karaoke_song_videos')
-      .select('*')
-      .eq('id', videoId)
-      .eq('organization_id', organizationId)
-      .single();
+    let video = null;
 
-    if (videoError || !video) {
-      return res.status(404).json({ error: 'Video not found' });
+    // If we have a videoId, try to get existing video
+    if (videoId) {
+      const { data: existingVideo, error: videoError } = await supabase
+        .from('karaoke_song_videos')
+        .select('*')
+        .eq('id', videoId)
+        .eq('organization_id', organizationId)
+        .single();
+
+      if (!videoError && existingVideo) {
+        video = existingVideo;
+      }
+    }
+
+    // If no existing video found and we have videoData, create a new video record
+    if (!video && videoData) {
+      try {
+        // Create video record in karaoke_song_videos table
+        const { data: newVideo, error: createError } = await supabase
+          .from('karaoke_song_videos')
+          .insert({
+            organization_id: organizationId,
+            song_title: '', // We don't have song info here
+            song_artist: '',
+            youtube_video_id: videoData.id,
+            youtube_video_title: videoData.title,
+            youtube_channel_name: videoData.channelTitle,
+            youtube_channel_id: videoData.channelId,
+            video_quality_score: videoData.karaokeScore || 50,
+            confidence_score: videoData.confidenceScore || 0.8,
+            source: 'signup-link',
+            created_by: user.id
+          })
+          .select()
+          .single();
+
+        if (!createError && newVideo) {
+          video = newVideo;
+        } else {
+          console.error('Failed to create video record:', createError);
+          return res.status(500).json({ error: 'Failed to create video record' });
+        }
+      } catch (createError) {
+        console.error('Error creating video record:', createError);
+        return res.status(500).json({ error: 'Failed to create video record' });
+      }
+    }
+
+    if (!video) {
+      return res.status(404).json({ error: 'Video could not be created or found' });
     }
 
     // Update the signup with video information
