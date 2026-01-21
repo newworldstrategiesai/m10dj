@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/router';
 import { createClient } from '@/utils/supabase/client';
 import { getCurrentOrganization } from '@/utils/organization-context';
@@ -12,6 +12,10 @@ export function useKaraokeAuth() {
 
   const { toast } = useToast();
 
+  // Simple rate limiting for development
+  const lastAuthCheck = useRef<number>(0);
+  const AUTH_CHECK_THROTTLE = 5000; // 5 seconds
+
   const [user, setUser] = useState<any>(null);
   const [organization, setOrganization] = useState<any>(null);
   const [subscriptionTier, setSubscriptionTier] = useState<string>('free');
@@ -19,12 +23,32 @@ export function useKaraokeAuth() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   useEffect(() => {
+    let isMounted = true; // Prevent state updates if component unmounts
+
     async function checkAuth() {
+      // Rate limiting check
+      const now = Date.now();
+      if (now - lastAuthCheck.current < AUTH_CHECK_THROTTLE) {
+        console.log('Auth check throttled, skipping');
+        setIsLoading(false);
+        return;
+      }
+      lastAuthCheck.current = now;
+
       try {
         // Check if user is authenticated
         const { data: { user }, error: authError } = await supabase.auth.getUser();
 
+        // If component unmounted, don't update state
+        if (!isMounted) return;
+
         if (authError) {
+          // Handle rate limiting gracefully - don't redirect, just set loading to false
+          if (authError.message?.includes('rate limit') || authError.status === 429) {
+            console.warn('Auth rate limited, skipping check');
+            setIsLoading(false);
+            return;
+          }
           console.error('Auth error:', authError);
           redirectToLogin();
           return;
@@ -38,8 +62,22 @@ export function useKaraokeAuth() {
 
         setUser(user);
 
-        // Check organization access
-        const org = await getCurrentOrganization(supabase);
+        // Check organization access with error handling for rate limits
+        let org;
+        try {
+          org = await getCurrentOrganization(supabase);
+        } catch (orgError: any) {
+          if (!isMounted) return;
+          console.warn('Organization lookup failed:', orgError);
+          // If rate limited, don't redirect - just set loading to false
+          if (orgError?.status === 429 || orgError?.message?.includes('rate limit')) {
+            setIsLoading(false);
+            return;
+          }
+          throw orgError; // Re-throw other errors
+        }
+
+        if (!isMounted) return;
 
         if (!org) {
           console.log('No organization access, redirecting to dashboard');
@@ -56,7 +94,16 @@ export function useKaraokeAuth() {
         setSubscriptionTier(org.subscription_tier || 'free');
         setIsAuthenticated(true);
 
-      } catch (error) {
+      } catch (error: any) {
+        if (!isMounted) return;
+
+        // Handle rate limiting gracefully
+        if (error?.status === 429 || error?.message?.includes('rate limit')) {
+          console.warn('Auth rate limited, will retry later');
+          setIsLoading(false);
+          return;
+        }
+
         console.error('Authentication check failed:', error);
         toast({
           title: 'Authentication Error',
@@ -65,7 +112,9 @@ export function useKaraokeAuth() {
         });
         redirectToLogin();
       } finally {
-        setIsLoading(false);
+        if (isMounted) {
+          setIsLoading(false);
+        }
       }
     }
 
@@ -80,7 +129,12 @@ export function useKaraokeAuth() {
     }
 
     checkAuth();
-  }, [supabase, router, toast]);
+
+    // Cleanup function
+    return () => {
+      isMounted = false;
+    };
+  }, []); // Remove all dependencies to prevent re-runs
 
   return {
     user,
