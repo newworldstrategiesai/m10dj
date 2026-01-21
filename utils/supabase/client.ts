@@ -3,10 +3,10 @@ import { Database } from '@/types_db';
 
 // Singleton instance to prevent multiple GoTrueClient instances
 // Use global to ensure persistence across module reloads/hot reloads
-const SUPABASE_CLIENT_KEY = Symbol.for('__supabase_client_singleton__');
+const SUPABASE_CLIENT_KEY = '__supabase_client_singleton_v2__';
 
 declare global {
-  var [SUPABASE_CLIENT_KEY]: ReturnType<typeof createBrowserClient<Database>> | undefined;
+  var __supabase_client_singleton_v2__: ReturnType<typeof createBrowserClient<Database>> | undefined;
 }
 
 // Define a function to create a Supabase client for client-side operations
