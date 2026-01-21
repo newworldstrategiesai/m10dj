@@ -55,6 +55,7 @@ import { getCurrentOrganization } from '@/utils/organization-context';
 import { DecoratedQRCode } from '@/components/ui/DecoratedQRCode';
 import { logSettingsChange, getClientInfo } from '@/utils/karaoke-audit';
 import YouTubePlayer from '@/components/karaoke/YouTubePlayer';
+import { useKaraokeAuth } from '@/hooks/useKaraokeAuth';
 
 export default function KaraokeAdminPage() {
   const router = useRouter();
