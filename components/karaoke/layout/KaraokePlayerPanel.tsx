@@ -17,8 +17,11 @@ import {
   Music,
   Clock,
   Users,
-  Lock
+  Lock,
+  Crown,
+  Plus
 } from 'lucide-react';
+import { createClient } from '@/utils/supabase/client';
 import SongBrowser from '@/components/karaoke/SongBrowser';
 
 interface KaraokePlayerPanelProps {
@@ -63,6 +66,12 @@ export default function KaraokePlayerPanel({
   const [queue, setQueue] = useState<QueueItem[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [showSongBrowser, setShowSongBrowser] = useState(false);
+
+  // New state for sidebar view toggle
+  const [sidebarView, setSidebarView] = useState<'queue' | 'browse'>('queue');
+  const [browseSearchQuery, setBrowseSearchQuery] = useState('');
+  const [browseResults, setBrowseResults] = useState<any[]>([]);
+  const [browseLoading, setBrowseLoading] = useState(false);
 
   // Use props for display window tracking
   const [displayStatus, setDisplayStatus] = useState<{
@@ -138,6 +147,67 @@ export default function KaraokePlayerPanel({
   const removeFromQueue = (songId: string) => {
     setQueue(queue.filter(song => song.id !== songId));
   };
+
+  // Browse/search functionality
+  const searchSongs = async (query: string) => {
+    if (!query.trim()) {
+      setBrowseResults([]);
+      return;
+    }
+
+    setBrowseLoading(true);
+    try {
+      const supabase = (window as any).supabaseClient || createClient();
+      const { data, error } = await supabase
+        .from('karaoke_song_videos')
+        .select('*')
+        .or(`song_title.ilike.%${query}%,song_artist.ilike.%${query}%`)
+        .limit(20);
+
+      if (error) throw error;
+
+      setBrowseResults(data || []);
+    } catch (error) {
+      console.error('Error searching songs:', error);
+      toast({
+        title: 'Search Error',
+        description: 'Failed to search songs. Please try again.',
+        variant: 'destructive'
+      });
+    } finally {
+      setBrowseLoading(false);
+    }
+  };
+
+  const addSongToQueue = (song: any) => {
+    const queueItem: QueueItem = {
+      id: song.id,
+      title: song.song_title,
+      artist: song.song_artist,
+      duration: song.youtube_video_duration || '0:00',
+      thumbnailUrl: `https://img.youtube.com/vi/${song.youtube_video_id}/default.jpg`,
+      isPremium: song.is_premium || false
+    };
+
+    setQueue(prev => [...prev, queueItem]);
+    toast({
+      title: 'Added to Queue',
+      description: `"${song.song_title}" by ${song.song_artist}`,
+    });
+  };
+
+  // Debounced search
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (browseSearchQuery) {
+        searchSongs(browseSearchQuery);
+      } else {
+        setBrowseResults([]);
+      }
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [browseSearchQuery]);
 
   // Drag and drop handlers
   const handleDragStart = (e: React.DragEvent, item: QueueItem) => {
@@ -1067,65 +1137,98 @@ export default function KaraokePlayerPanel({
         )}
       </div>
 
-      {/* Queue Section */}
+      {/* Queue/Browse Section */}
       <div className="flex-1 flex flex-col">
         <div className="p-4 border-b border-gray-800/50">
           <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider">
-              Queue
-            </h3>
             <div className="flex items-center gap-2">
-              <span className="text-xs text-gray-500">
-                {queue.length} song{queue.length !== 1 ? 's' : ''} - {formatTime(totalQueueTime)}
-              </span>
-              {queue.length > 0 && (
-                <button
-                  onClick={clearQueue}
-                  className="text-xs text-gray-500 hover:text-gray-400 transition-colors"
-                >
-                  Clear
-                </button>
+              <button
+                onClick={() => setSidebarView('queue')}
+                className={`text-sm font-semibold uppercase tracking-wider transition-colors ${
+                  sidebarView === 'queue'
+                    ? 'text-white'
+                    : 'text-gray-400 hover:text-gray-300'
+                }`}
+              >
+                Queue
+              </button>
+              <span className="text-gray-600">|</span>
+              <button
+                onClick={() => setSidebarView('browse')}
+                className={`text-sm font-semibold uppercase tracking-wider transition-colors ${
+                  sidebarView === 'browse'
+                    ? 'text-white'
+                    : 'text-gray-400 hover:text-gray-300'
+                }`}
+              >
+                Browse
+              </button>
+            </div>
+            <div className="flex items-center gap-2">
+              {sidebarView === 'queue' ? (
+                <>
+                  <span className="text-xs text-gray-500">
+                    {queue.length} song{queue.length !== 1 ? 's' : ''} - {formatTime(totalQueueTime)}
+                  </span>
+                  {queue.length > 0 && (
+                    <button
+                      onClick={clearQueue}
+                      className="text-xs text-gray-500 hover:text-gray-400 transition-colors"
+                    >
+                      Clear
+                    </button>
+                  )}
+                </>
+              ) : (
+                <span className="text-xs text-gray-500">
+                  Find songs to add
+                </span>
               )}
             </div>
           </div>
 
-          {/* Queue Search */}
+          {/* Search Input */}
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             <Input
-              placeholder="Search queue..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder={sidebarView === 'queue' ? "Search queue..." : "Search songs..."}
+              value={sidebarView === 'queue' ? searchQuery : browseSearchQuery}
+              onChange={(e) => sidebarView === 'queue'
+                ? setSearchQuery(e.target.value)
+                : setBrowseSearchQuery(e.target.value)
+              }
               className="pl-10 bg-gray-800/50 border-gray-700 text-white placeholder-gray-400"
             />
           </div>
         </div>
 
-        {/* Queue Items */}
+        {/* Queue/Browse Items */}
         <div className="flex-1 overflow-y-auto">
-          {queue.length === 0 ? (
-            <div className="p-8 text-center">
-              <Music className="w-12 h-12 text-gray-600 mx-auto mb-4" />
-              <h4 className="text-gray-400 font-medium mb-2">Your queue is empty</h4>
-              <p className="text-sm text-gray-500 mb-4">
-                Add songs or take quizzes to keep singing.
-              </p>
-              <Button
-                size="sm"
-                className="karaoke-btn-primary"
-                onClick={() => setShowSongBrowser(true)}
-              >
-                Browse Songs
-              </Button>
-            </div>
-          ) : (
-            <div className="divide-y divide-gray-800/50">
-              {queue
-                .filter(song =>
-                  song.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                  song.artist.toLowerCase().includes(searchQuery.toLowerCase())
-                )
-                .map((song, index) => (
+          {sidebarView === 'queue' ? (
+            // Queue View
+            queue.length === 0 ? (
+              <div className="p-8 text-center">
+                <Music className="w-12 h-12 text-gray-600 mx-auto mb-4" />
+                <h4 className="text-gray-400 font-medium mb-2">Your queue is empty</h4>
+                <p className="text-sm text-gray-500 mb-4">
+                  Switch to Browse to add songs.
+                </p>
+                <Button
+                  size="sm"
+                  className="karaoke-btn-primary"
+                  onClick={() => setSidebarView('browse')}
+                >
+                  Browse Songs
+                </Button>
+              </div>
+            ) : (
+              <div className="divide-y divide-gray-800/50">
+                {queue
+                  .filter(song =>
+                    song.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                    song.artist.toLowerCase().includes(searchQuery.toLowerCase())
+                  )
+                  .map((song, index) => (
                   <div
                     key={song.id}
                     draggable
@@ -1174,9 +1277,8 @@ export default function KaraokePlayerPanel({
                         <p className="text-gray-500 text-xs">{song.duration}</p>
                       </div>
 
-                      {/* Duration and Actions */}
+                      {/* Actions */}
                       <div className="flex items-center gap-2">
-                        <span className="text-gray-500 text-xs">{song.duration}</span>
                         <button
                           onClick={() => {
                             // Open video in new window if we have video data
@@ -1201,7 +1303,71 @@ export default function KaraokePlayerPanel({
                   </div>
                 ))}
             </div>
-          )}
+          )
+        ) : (
+          // Browse View
+          browseLoading ? (
+            <div className="p-8 text-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-500 mx-auto mb-4"></div>
+              <p className="text-gray-400 text-sm">Searching songs...</p>
+            </div>
+          ) : browseSearchQuery && browseResults.length === 0 ? (
+            <div className="p-8 text-center">
+              <Search className="w-12 h-12 text-gray-600 mx-auto mb-4" />
+              <h4 className="text-gray-400 font-medium mb-2">No songs found</h4>
+              <p className="text-sm text-gray-500">
+                Try a different search term.
+              </p>
+            </div>
+          ) : browseResults.length > 0 ? (
+            <div className="divide-y divide-gray-800/50">
+              {browseResults.map((song) => (
+                <div
+                  key={song.id}
+                  className="p-3 hover:bg-gray-800/30 transition-colors cursor-pointer"
+                  onClick={() => addSongToQueue(song)}
+                >
+                  <div className="flex items-center gap-3">
+                    {/* Thumbnail */}
+                    <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-pink-500 rounded flex items-center justify-center flex-shrink-0">
+                      <Music className="w-4 h-4 text-white/50" />
+                    </div>
+
+                    {/* Song Info */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <h4 className="font-medium text-white text-sm truncate">{song.song_title}</h4>
+                        {song.is_premium && !isPremium && (
+                          <Crown className="w-3 h-3 text-yellow-400" />
+                        )}
+                      </div>
+                      <p className="text-gray-400 text-xs truncate">{song.song_artist}</p>
+                      {song.youtube_video_duration && (
+                        <p className="text-gray-500 text-xs">{song.youtube_video_duration}</p>
+                      )}
+                    </div>
+
+                    {/* Add Button */}
+                    <button
+                      className="p-2 rounded-full bg-purple-500/20 hover:bg-purple-500/40 text-purple-400 hover:text-purple-300 transition-colors"
+                      title="Add to Queue"
+                    >
+                      <Plus className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="p-8 text-center">
+              <Search className="w-12 h-12 text-gray-600 mx-auto mb-4" />
+              <h4 className="text-gray-400 font-medium mb-2">Search for songs</h4>
+              <p className="text-sm text-gray-500">
+                Start typing above to find karaoke songs to add to your queue.
+              </p>
+            </div>
+          )
+        )}
         </div>
       </div>
 
