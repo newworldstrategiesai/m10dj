@@ -67,6 +67,14 @@ export default function KaraokeAdminPage() {
   // Create a stable supabase client reference to prevent infinite re-renders
   const supabase = useMemo(() => createClient(), []);
 
+  // Debug logging
+  console.log('KaraokeAdminPage: Auth state:', {
+    authLoading,
+    isAuthenticated,
+    hasUser: !!user,
+    hasOrganization: !!organization
+  });
+
   const [signups, setSignups] = useState<KaraokeSignup[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');

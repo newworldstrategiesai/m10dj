@@ -61,38 +61,32 @@ export default function DiscoverPage({ isPremium }: DiscoverPageProps) {
   const supabase = supabaseRef.current;
 
   useEffect(() => {
+    let isMounted = true;
+
     const loadPlaylists = async () => {
+      console.log('DiscoverPage: Starting to load playlists...');
       try {
+        if (!isMounted) return;
+
         setLoading(true);
         setError(null);
 
-        // Get current organization
-        const { data: { user }, error: userError } = await supabase.auth.getUser();
-        if (userError) throw new Error(`Authentication error: ${userError.message}`);
-        if (!user) throw new Error('Not authenticated - please sign in');
-
-        const { data: userOrgs, error: orgError } = await supabase
-          .from('organization_members')
-          .select('organization_id')
-          .eq('user_id', user.id)
-          .limit(1);
-
-        if (orgError) throw new Error(`Organization access error: ${orgError.message}`);
-        if (!userOrgs?.length) throw new Error('No organization access - please contact administrator');
-
-        const organizationId = (userOrgs[0] as any).organization_id;
-
-        // Load playlists
+        // Load playlists - assume authentication is handled by parent
         const { data: playlistData, error: playlistError } = await supabase
           .from('user_playlists')
           .select('*')
-          .eq('organization_id', organizationId)
           .eq('is_public', true)
           .order('created_at', { ascending: false });
 
+        console.log('DiscoverPage: Playlist query result:', { data: playlistData, error: playlistError });
+
         if (playlistError) {
-          console.error('Error loading playlists:', playlistError);
-          throw new Error(`Failed to load playlists: ${playlistError.message}`);
+          console.error('DiscoverPage: Error loading playlists:', playlistError);
+          if (isMounted) {
+            setError(`Failed to load playlists: ${playlistError.message}`);
+            setLoading(false);
+          }
+          return;
         }
 
         // Calculate song count for each playlist
@@ -104,16 +98,26 @@ export default function DiscoverPage({ isPremium }: DiscoverPageProps) {
           };
         });
 
-        setPlaylists(playlistsWithCount);
+        console.log('DiscoverPage: Processed playlists:', playlistsWithCount);
+
+        if (isMounted) {
+          setPlaylists(playlistsWithCount);
+          setLoading(false);
+        }
       } catch (err) {
-        console.error('Error loading playlists:', err);
-        setError(err instanceof Error ? err.message : 'Failed to load playlists');
-      } finally {
-        setLoading(false);
+        console.error('DiscoverPage: Exception loading playlists:', err);
+        if (isMounted) {
+          setError(err instanceof Error ? err.message : 'Failed to load playlists');
+          setLoading(false);
+        }
       }
     };
 
     loadPlaylists();
+
+    return () => {
+      isMounted = false;
+    };
   }, []); // Empty dependency array - only run once
 
   const quizzes: Quiz[] = [
