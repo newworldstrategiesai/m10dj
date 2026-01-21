@@ -344,7 +344,7 @@ export default function AdminDashboard() {
       }
 
       // CRITICAL: Get organization_id to filter events
-      const { data: { user }, error } = await supabase.auth.getUser();
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
       if (error?.message?.includes('rate limit') || error?.status === 429) {
         setRateLimited();
         return;
@@ -382,7 +382,7 @@ export default function AdminDashboard() {
         return;
       }
 
-      const { data, error } = await eventsQuery;
+      const { data, error: queryError } = await eventsQuery;
 
       if (!error && data) {
         setUpcomingEvents(data);
@@ -401,7 +401,7 @@ export default function AdminDashboard() {
       }
 
       // CRITICAL: Get organization_id to filter contacts
-      const { data: { user }, error } = await supabase.auth.getUser();
+      const { data: { user }, error: contactUserError } = await supabase.auth.getUser();
       if (error?.message?.includes('rate limit') || error?.status === 429) {
         setRateLimited();
         return;
@@ -432,12 +432,12 @@ export default function AdminDashboard() {
         return;
       }
 
-      const { data, error } = await contactsQuery;
+      const { data, error: contactsError } = await contactsQuery;
 
       if (!error && data) {
         // For each contact, try to find the source (form submission or crowd request)
         const contactsWithSource = await Promise.all(
-          data.map(async (contact) => {
+          data.map(async (contact: any) => {
             const contactWithSource: RecentContact = { ...contact };
 
             // Check for form submission match (by email/phone and similar creation time)

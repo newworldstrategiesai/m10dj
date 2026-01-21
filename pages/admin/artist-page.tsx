@@ -120,18 +120,18 @@ export default function ArtistPageSettings() {
       if (org) {
         setOrganization(org);
         setFormData({
-          artist_page_enabled: org.artist_page_enabled || false,
-          artist_page_headline: org.artist_page_headline || '',
-          artist_page_bio: org.artist_page_bio || '',
-          artist_page_profile_image_url: org.artist_page_profile_image_url || '',
-          artist_page_cover_image_url: org.artist_page_cover_image_url || '',
-          artist_page_gallery_images: org.artist_page_gallery_images || [],
-          artist_page_video_urls: org.artist_page_video_urls || [],
-          artist_page_links: (org.artist_page_links || []) as ArtistLink[],
-          artist_page_contact_email: org.artist_page_contact_email || '',
-          artist_page_contact_phone: org.artist_page_contact_phone || '',
-          artist_page_booking_url: org.artist_page_booking_url || '',
-          artist_page_custom_css: org.artist_page_custom_css || ''
+          artist_page_enabled: (org as any).artist_page_enabled || false,
+          artist_page_headline: (org as any).artist_page_headline || '',
+          artist_page_bio: (org as any).artist_page_bio || '',
+          artist_page_profile_image_url: (org as any).artist_page_profile_image_url || '',
+          artist_page_cover_image_url: (org as any).artist_page_cover_image_url || '',
+          artist_page_gallery_images: (org as any).artist_page_gallery_images || [],
+          artist_page_video_urls: (org as any).artist_page_video_urls || [],
+          artist_page_links: ((org as any).artist_page_links || []) as ArtistLink[],
+          artist_page_contact_email: (org as any).artist_page_contact_email || '',
+          artist_page_contact_phone: (org as any).artist_page_contact_phone || '',
+          artist_page_booking_url: (org as any).artist_page_booking_url || '',
+          artist_page_custom_css: (org as any).artist_page_custom_css || ''
         });
       }
     } catch (error) {
