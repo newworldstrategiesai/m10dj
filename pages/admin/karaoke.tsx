@@ -3,7 +3,6 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/router';
-import { createClient } from '@/utils/supabase/client';
 import {
   Mic,
   Users,
