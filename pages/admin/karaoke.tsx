@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useRouter } from 'next/router';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { createClient } from '@/utils/supabase/client';
 import {
   Mic,
   Users,
@@ -63,16 +63,9 @@ export default function KaraokeAdminPage() {
   // Simplified auth - just use the hook directly without additional state
   const { user, organization, subscriptionTier, isLoading: authLoading, isAuthenticated } = useKaraokeAuth();
 
-  // Create Supabase client
-  const supabase = createClientComponentClient();
+  // Create Supabase client (singleton to prevent multiple instances)
+  const supabase = createClient();
 
-  // Debug logging
-  console.log('KaraokeAdminPage: Auth state:', {
-    authLoading,
-    isAuthenticated,
-    hasUser: !!user,
-    hasOrganization: !!organization
-  });
 
   // State declarations (must come before useEffect that uses them)
   const [signups, setSignups] = useState<KaraokeSignup[]>([]);

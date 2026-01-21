@@ -40,14 +40,6 @@ export function useKaraokeAuth() {
 
         // Check organization access
         const org = await getCurrentOrganization(supabase);
-        console.log('useKaraokeAuth: getCurrentOrganization result:', {
-          orgFound: !!org,
-          orgId: org?.id,
-          orgName: org?.name,
-          isPlatformOwner: org?.is_platform_owner,
-          subscriptionTier: org?.subscription_tier,
-          subscriptionStatus: org?.subscription_status
-        });
 
         if (!org) {
           console.log('No organization access, redirecting to dashboard');
