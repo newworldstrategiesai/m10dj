@@ -146,20 +146,56 @@ export default function SongAutocomplete({
   const handleSelect = (suggestion: SongSuggestion) => {
     onChange(suggestion.title);
     if (onSelect) {
-      onSelect({
-        title: suggestion.title,
-        artist: suggestion.artist,
-        videoData: {
-          youtube_video_id: suggestion.id, // The ID is the video ID
-          youtube_video_title: suggestion.title,
-          youtube_channel_name: null,
-          youtube_channel_id: null,
-          album_art_url: suggestion.albumArt,
-          youtube_video_duration: null, // Could be added later
-          is_premium: false, // Default to free
-          karaoke_score: suggestion.popularity || 0
-        }
-      });
+      // Handle different sources differently
+      if (suggestion.source === 'database') {
+        // Database results have YouTube video IDs
+        onSelect({
+          title: suggestion.title,
+          artist: suggestion.artist,
+          videoData: {
+            youtube_video_id: suggestion.id, // Direct YouTube video ID from database
+            youtube_video_title: suggestion.title,
+            youtube_channel_name: null,
+            youtube_channel_id: null,
+            album_art_url: suggestion.albumArt,
+            youtube_video_duration: null,
+            is_premium: false,
+            karaoke_score: suggestion.popularity || 0
+          }
+        });
+      } else if (suggestion.source === 'itunes') {
+        // iTunes results - no YouTube video ID yet, will be resolved later
+        onSelect({
+          title: suggestion.title,
+          artist: suggestion.artist,
+          videoData: {
+            youtube_video_id: null, // Will be searched for later
+            youtube_video_title: suggestion.title,
+            youtube_channel_name: null,
+            youtube_channel_id: null,
+            album_art_url: suggestion.albumArt,
+            youtube_video_duration: null,
+            is_premium: false,
+            karaoke_score: suggestion.popularity || 0
+          }
+        });
+      } else {
+        // Other sources - treat as YouTube for now
+        onSelect({
+          title: suggestion.title,
+          artist: suggestion.artist,
+          videoData: {
+            youtube_video_id: suggestion.id,
+            youtube_video_title: suggestion.title,
+            youtube_channel_name: null,
+            youtube_channel_id: null,
+            album_art_url: suggestion.albumArt,
+            youtube_video_duration: null,
+            is_premium: false,
+            karaoke_score: suggestion.popularity || 0
+          }
+        });
+      }
     }
     setShowSuggestions(false);
     setSelectedIndex(-1);
