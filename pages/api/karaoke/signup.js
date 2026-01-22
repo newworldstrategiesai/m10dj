@@ -171,8 +171,30 @@ async function handler(req, res) {
   }
 
   try {
-    console.log('Karaoke signup API called with body:', req.body);
+    console.log('Karaoke signup API called');
+    console.log('Request method:', req.method);
+    console.log('Content-Type:', req.headers['content-type']);
+    console.log('Request body keys:', Object.keys(req.body || {}));
+    console.log('Organization ID in body:', req.body?.organization_id);
+    console.log('Event QR code in body:', req.body?.event_qr_code);
+
     const supabase = createClient();
+
+    // Test basic Supabase connection
+    console.log('Testing Supabase connection...');
+    const { data: testData, error: testError } = await supabase
+      .from('karaoke_signups')
+      .select('count', { count: 'exact', head: true });
+
+    if (testError) {
+      console.error('Supabase connection test failed:', testError);
+      return res.status(500).json({
+        error: 'Database connection failed',
+        details: testError.message
+      });
+    }
+
+    console.log('Supabase connection successful, count:', testData);
     
     const {
       event_qr_code,
