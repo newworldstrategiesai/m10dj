@@ -117,6 +117,14 @@ export default function KaraokePlayerPanel({
   // Current playing signup (if any)
   const currentSignup = signups.find(signup => signup.status === 'singing');
 
+  // Debug logging for current signup changes
+  useEffect(() => {
+    console.log('KaraokePlayerPanel - signups updated, currentSignup:', currentSignup);
+    if (currentSignup) {
+      console.log('Current singing signup:', currentSignup.singer_name, currentSignup.song_title, currentSignup.status);
+    }
+  }, [signups, currentSignup]);
+
   // Touch/swipe handling
   const [touchStart, setTouchStart] = useState<number | null>(null);
   const [touchEnd, setTouchEnd] = useState<number | null>(null);
@@ -565,6 +573,14 @@ export default function KaraokePlayerPanel({
 
   // Auto-play signup when status changes to singing
   useEffect(() => {
+    console.log('Auto-play useEffect triggered. Conditions:', {
+      hasCurrentSignup: !!currentSignup,
+      hasVideoData: !!(currentSignup?.video_data),
+      hasDisplayWindow: !!propDisplayWindow,
+      displayWindowClosed: propDisplayWindow?.closed,
+      canAutoPlay: !!(currentSignup && currentSignup.video_data && propDisplayWindow && !propDisplayWindow.closed)
+    });
+
     if (currentSignup && currentSignup.video_data && propDisplayWindow && !propDisplayWindow.closed) {
       console.log('Auto-playing signup:', currentSignup);
       const videoData = {

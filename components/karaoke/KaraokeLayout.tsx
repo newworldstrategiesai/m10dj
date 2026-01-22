@@ -106,17 +106,26 @@ const KaraokeLayout = forwardRef<KaraokeLayoutRef, KaraokeLayoutProps>(({
     },
     startPlayingSignup: (signup: any) => {
       // Start playing this signup immediately
-      if (signup.video_data && displayWindow && !displayWindow.closed) {
+      if (signup.video_data) {
         console.log('Starting to play signup:', signup);
         const videoData = {
           videoId: signup.video_data.youtube_video_id,
           title: signup.song_title,
-          artist: signup.song_artist || ''
+          artist: signup.song_artist || '',
+          thumbnailUrl: `https://img.youtube.com/vi/${signup.video_data.youtube_video_id}/default.jpg`,
+          signupData: signup // Include signup data for mini player
         };
-        displayWindow.postMessage({
-          type: 'VIDEO_CONTROL',
-          data: { action: 'changeVideo', ...videoData }
-        }, window.location.origin);
+
+        // Update the display video state for the mini player
+        setDisplayVideo(videoData);
+
+        // Send change video command to display window if available
+        if (displayWindow && !displayWindow.closed) {
+          displayWindow.postMessage({
+            type: 'VIDEO_CONTROL',
+            data: { action: 'changeVideo', ...videoData }
+          }, window.location.origin);
+        }
       }
     },
     clearPlayerQueue: () => {
