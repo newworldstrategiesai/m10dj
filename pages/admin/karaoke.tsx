@@ -3043,7 +3043,10 @@ export default function KaraokeAdminPage() {
 
                   <TabsContent value="videos" className="mt-6">
                     {organization && (
-                      <VideoManager organizationId={organization.id} />
+                      <VideoManager
+                        organizationId={organization.id}
+                        onDisplayVideoChange={(video) => karaokeLayoutRef.current?.changeDisplayVideo(video)}
+                      />
                     )}
                   </TabsContent>
                 </Tabs>
@@ -3056,7 +3059,10 @@ export default function KaraokeAdminPage() {
 
         <TabsContent value="videos" className="space-y-6">
           {organization && (
-            <VideoManager organizationId={organization.id} />
+            <VideoManager
+              organizationId={organization.id}
+              onDisplayVideoChange={(video) => karaokeLayoutRef.current?.changeDisplayVideo(video)}
+            />
           )}
         </TabsContent>
 
@@ -3089,6 +3095,7 @@ export default function KaraokeAdminPage() {
               preSearchQuery={`${videoSearchSignup.song_title}${videoSearchSignup.song_artist ? ` ${videoSearchSignup.song_artist}` : ''}`}
               mode="signup-link"
               signupToLink={videoSearchSignup}
+              onDisplayVideoChange={(video) => karaokeLayoutRef.current?.changeDisplayVideo(video)}
               onVideoLinked={(signupId, videoData) => {
                 // Update the signup in the local state
                 setSignups(prev => prev.map(signup =>

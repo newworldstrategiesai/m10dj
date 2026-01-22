@@ -90,6 +90,9 @@ interface VideoManagerProps {
   signupToLink?: any;
   onVideoLinked?: (signupId: string, videoData: any) => void;
   onClose?: () => void;
+  // Callbacks for updating the mini player when videos are played
+  onDisplayVideoChange?: (video: { videoId: string; title: string; artist: string; thumbnailUrl: string }) => void;
+  displayWindow?: Window | null;
 }
 
 interface VideoLibraryItem {
@@ -131,7 +134,9 @@ export default function VideoManager({
   mode = 'normal',
   signupToLink,
   onVideoLinked,
-  onClose
+  onClose,
+  onDisplayVideoChange,
+  displayWindow
 }: VideoManagerProps) {
   const { toast } = useToast();
 
@@ -595,19 +600,44 @@ export default function VideoManager({
 
   // Open video in a display-optimized window
   const openVideoInDisplayWindow = (videoId: string, songTitle: string, songArtist?: string) => {
-    const videoUrl = getYouTubeEmbedUrl(videoId);
     const displayUrl = `/karaoke/video-display?videoId=${encodeURIComponent(videoId)}&title=${encodeURIComponent(songTitle)}&artist=${encodeURIComponent(songArtist || '')}`;
 
-    // Open in a new window optimized for secondary display
-    const newWindow = window.open(
-      displayUrl,
-      'karaokeVideoDisplay',
-      'width=1280,height=720,scrollbars=no,resizable=yes,status=no,toolbar=no,menubar=no,location=no,directories=no'
-    );
+    // Update the mini player display
+    if (onDisplayVideoChange) {
+      onDisplayVideoChange({
+        videoId,
+        title: songTitle,
+        artist: songArtist || '',
+        thumbnailUrl: `https://img.youtube.com/vi/${videoId}/default.jpg`
+      });
+    }
 
-    // Focus the new window
-    if (newWindow) {
-      newWindow.focus();
+    // Check if display window is already open
+    if (displayWindow && !displayWindow.closed) {
+      // Send change video command to existing window
+      displayWindow.postMessage({
+        type: 'VIDEO_CONTROL',
+        data: {
+          action: 'changeVideo',
+          videoId,
+          title: songTitle,
+          artist: songArtist || ''
+        }
+      }, window.location.origin);
+
+      displayWindow.focus();
+    } else {
+      // Open in a new window optimized for secondary display
+      const newWindow = window.open(
+        displayUrl,
+        'karaokeVideoDisplay',
+        'width=1280,height=720,scrollbars=no,resizable=yes,status=no,toolbar=no,menubar=no,location=no,directories=no'
+      );
+
+      // Focus the new window
+      if (newWindow) {
+        newWindow.focus();
+      }
     }
   };
 
