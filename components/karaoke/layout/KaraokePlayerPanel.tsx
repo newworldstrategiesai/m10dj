@@ -96,6 +96,9 @@ export default function KaraokePlayerPanel({
   const [progressHoverPosition, setProgressHoverPosition] = useState<number | null>(null);
   const progressBarRef = useRef<HTMLDivElement>(null);
 
+  // Track last auto-played signup to prevent duplicate auto-plays
+  const lastAutoPlayedSignupId = useRef<string | null>(null);
+
   // Loading states
   const [isCommandLoading, setIsCommandLoading] = useState(false);
   const [thumbnailLoading, setThumbnailLoading] = useState(true);
@@ -117,11 +120,13 @@ export default function KaraokePlayerPanel({
   // Current playing signup (if any)
   const currentSignup = signups.find(signup => signup.status === 'singing');
 
-  // Debug logging for current signup changes
+  // Debug logging for current signup changes - only in development
   useEffect(() => {
-    console.log('KaraokePlayerPanel - signups updated, currentSignup:', currentSignup);
-    if (currentSignup) {
-      console.log('Current singing signup:', currentSignup.singer_name, currentSignup.song_title, currentSignup.status);
+    if (process.env.NODE_ENV === 'development') {
+      console.log('KaraokePlayerPanel - signups updated, currentSignup:', currentSignup);
+      if (currentSignup) {
+        console.log('Current singing signup:', currentSignup.singer_name, currentSignup.song_title, currentSignup.status);
+      }
     }
   }, [signups, currentSignup]);
 
@@ -133,6 +138,14 @@ export default function KaraokePlayerPanel({
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  // Prevent hydration errors by only enabling browser-dependent features after mount
+  useEffect(() => {
+    if (!mounted) return;
+
+    // Any browser-specific setup can go here
+    // This ensures we don't trigger state updates during SSR
+  }, [mounted]);
 
   // Drag and drop state
   const [draggedItem, setDraggedItem] = useState<QueueItem | null>(null);
@@ -573,32 +586,41 @@ export default function KaraokePlayerPanel({
 
   // Auto-play signup when status changes to singing
   useEffect(() => {
-    console.log('Auto-play useEffect triggered. Conditions:', {
-      hasCurrentSignup: !!currentSignup,
-      hasVideoData: !!(currentSignup?.video_data),
-      hasDisplayWindow: !!propDisplayWindow,
-      displayWindowClosed: propDisplayWindow?.closed,
-      canAutoPlay: !!(currentSignup && currentSignup.video_data && propDisplayWindow && !propDisplayWindow.closed)
-    });
+    // Only run after component has mounted to prevent hydration issues
+    if (!mounted) return;
 
-    if (currentSignup && currentSignup.video_data && propDisplayWindow && !propDisplayWindow.closed) {
-      console.log('Auto-playing signup:', currentSignup);
-      const videoData = {
-        videoId: currentSignup.video_data.youtube_video_id,
-        title: currentSignup.song_title,
-        artist: currentSignup.song_artist || ''
-      };
-
-      // Update display video
-      onDisplayVideoChange?.(videoData);
-
-      // Send change video command to display window
-      propDisplayWindow.postMessage({
-        type: 'VIDEO_CONTROL',
-        data: { action: 'changeVideo', ...videoData }
-      }, window.location.origin);
+    // Only proceed if we have a current signup with video data and display window
+    if (!currentSignup?.video_data || !propDisplayWindow || propDisplayWindow.closed) {
+      return;
     }
-  }, [currentSignup, propDisplayWindow, onDisplayVideoChange]);
+
+    // Prevent multiple executions for the same signup
+    if (currentSignup.id === lastAutoPlayedSignupId.current) {
+      return;
+    }
+
+    console.log('Auto-playing signup:', currentSignup);
+
+    const videoData = {
+      videoId: currentSignup.video_data.youtube_video_id,
+      title: currentSignup.song_title,
+      artist: currentSignup.song_artist || '',
+      thumbnailUrl: `https://img.youtube.com/vi/${currentSignup.video_data.youtube_video_id}/default.jpg`
+    };
+
+    // Update display video state
+    onDisplayVideoChange?.(videoData);
+
+    // Send change video command to display window
+    propDisplayWindow.postMessage({
+      type: 'VIDEO_CONTROL',
+      data: { action: 'changeVideo', ...videoData }
+    }, window.location.origin);
+
+    // Mark this signup as auto-played
+    lastAutoPlayedSignupId.current = currentSignup.id;
+
+  }, [currentSignup?.id, currentSignup?.video_data?.youtube_video_id, propDisplayWindow?.closed, mounted]);
 
   // Touch gesture handling for mobile
   const handleTouchStart = (e: React.TouchEvent) => {
