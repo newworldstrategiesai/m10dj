@@ -523,9 +523,20 @@ async function handler(req, res) {
 
   } catch (error) {
     console.error('Error in karaoke signup:', error);
+    console.error('Error stack:', error.stack);
+    console.error('Request body:', req.body);
+
+    // Return more detailed error for debugging
     return res.status(500).json({
       error: 'Internal server error',
-      message: error.message
+      message: error.message,
+      details: error.stack,
+      requestData: {
+        hasOrganizationId: !!req.body?.organization_id,
+        hasEventQrCode: !!req.body?.event_qr_code,
+        hasSingerName: !!req.body?.singer_name,
+        hasSongTitle: !!req.body?.song_title
+      }
     });
   }
 }

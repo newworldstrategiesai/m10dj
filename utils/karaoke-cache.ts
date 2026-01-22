@@ -76,10 +76,8 @@ export async function getCachedKaraokeSettings(organizationId: string): Promise<
 
   // Fetch from database
   try {
-    const supabase = (await import('@supabase/supabase-js')).createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    );
+    const { createClient } = await import('@/utils/supabase/server');
+    const supabase = createClient();
 
     const { data, error } = await supabase
       .from('karaoke_settings')
@@ -139,10 +137,8 @@ export async function getCachedQueueData(organizationId: string, eventCode?: str
 
   // Fetch fresh data
   try {
-    const supabase = (await import('@supabase/supabase-js')).createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    );
+    const { createClient } = await import('@/utils/supabase/server');
+    const supabase = createClient();
 
     const query = supabase
       .from('karaoke_signups')
@@ -229,10 +225,8 @@ export async function getCachedAnalytics(organizationId: string): Promise<any | 
   }
 
   try {
-    const supabase = (await import('@supabase/supabase-js')).createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    );
+    const { createClient } = await import('@/utils/supabase/server');
+    const supabase = createClient();
 
     // Get analytics data
     const { data, error } = await supabase
