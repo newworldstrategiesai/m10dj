@@ -246,11 +246,20 @@ export function withSecurity(
     }
 
     // Organization ID validation
-    if (options.requireOrgId && !req.query.organization_id) {
-      return res.status(400).json({
-        error: 'Missing organization_id',
-        message: 'Organization ID is required'
-      });
+    if (options.requireOrgId) {
+      let organizationId = req.query.organization_id;
+
+      // For POST/PUT/PATCH requests, check body as well
+      if (!organizationId && ['POST', 'PUT', 'PATCH'].includes(req.method || '')) {
+        organizationId = req.body?.organization_id;
+      }
+
+      if (!organizationId) {
+        return res.status(400).json({
+          error: 'Missing organization_id',
+          message: 'Organization ID is required'
+        });
+      }
     }
 
     // Add security headers
