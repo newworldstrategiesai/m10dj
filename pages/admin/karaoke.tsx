@@ -1491,15 +1491,30 @@ export default function KaraokeAdminPage() {
                                     onClick={(e) => {
                                       e.stopPropagation();
 
-                                      // For debugging, always open a new window to ensure clean communication
-                                      const uniqueWindowName = `karaokeVideoDisplay_${Date.now()}`;
-                                      const displayWindow = window.open(`/karaoke/video-display?videoId=${videoData.youtube_video_id}&title=${encodeURIComponent(signup.song_title)}&artist=${encodeURIComponent(signup.song_artist || '')}`, uniqueWindowName, 'width=1280,height=720,scrollbars=no,resizable=yes,status=no,toolbar=no,menubar=no,location=no,directories=no');
+                                      // Reuse the same window by using consistent window name
+                                      const windowName = 'karaokeVideoDisplay';
+                                      const displayWindow = window.open('/karaoke/video-display', windowName, 'width=1280,height=720,scrollbars=no,resizable=yes,status=no,toolbar=no,menubar=no,location=no,directories=no');
                                       if (displayWindow && karaokeLayoutRef.current) {
                                         karaokeLayoutRef.current.registerDisplayWindow(displayWindow, {
                                           videoId: videoData.youtube_video_id,
                                           title: signup.song_title,
                                           artist: signup.song_artist || ''
                                         });
+
+                                        // Send video change command to load the video
+                                        setTimeout(() => {
+                                          if (displayWindow && !displayWindow.closed) {
+                                            displayWindow.postMessage({
+                                              type: 'VIDEO_CONTROL',
+                                              data: {
+                                                action: 'changeVideo',
+                                                videoId: videoData.youtube_video_id,
+                                                title: signup.song_title,
+                                                artist: signup.song_artist || ''
+                                              }
+                                            }, window.location.origin);
+                                          }
+                                        }, 1000);
                                       }
                                     }}
                                     className="h-8 px-2 bg-green-50 hover:bg-green-100 border-green-200 text-green-700 hover:text-green-800"
@@ -2035,13 +2050,28 @@ export default function KaraokeAdminPage() {
                               size="sm"
                               variant="outline"
                               onClick={() => {
-                                const displayWindow = window.open(`/karaoke/video-display?videoId=${selectedSignup.video_data!.youtube_video_id}&title=${encodeURIComponent(selectedSignup.song_title)}&artist=${encodeURIComponent(selectedSignup.song_artist || '')}`, 'karaokeVideoDisplay', 'width=1280,height=720,scrollbars=no,resizable=yes,status=no,toolbar=no,menubar=no,location=no,directories=no');
+                                const displayWindow = window.open('/karaoke/video-display', 'karaokeVideoDisplay', 'width=1280,height=720,scrollbars=no,resizable=yes,status=no,toolbar=no,menubar=no,location=no,directories=no');
                                 if (displayWindow && karaokeLayoutRef.current) {
                                   karaokeLayoutRef.current.registerDisplayWindow(displayWindow, {
                                     videoId: selectedSignup.video_data!.youtube_video_id,
                                     title: selectedSignup.song_title,
                                     artist: selectedSignup.song_artist || ''
                                   });
+
+                                  // Send video change command to load the video
+                                  setTimeout(() => {
+                                    if (displayWindow && !displayWindow.closed) {
+                                      displayWindow.postMessage({
+                                        type: 'VIDEO_CONTROL',
+                                        data: {
+                                          action: 'changeVideo',
+                                          videoId: selectedSignup.video_data!.youtube_video_id,
+                                          title: selectedSignup.song_title,
+                                          artist: selectedSignup.song_artist || ''
+                                        }
+                                      }, window.location.origin);
+                                    }
+                                  }, 1000);
                                 }
                               }}
                               className="text-green-700 border-green-300 hover:bg-green-100"
@@ -2136,13 +2166,28 @@ export default function KaraokeAdminPage() {
                             variant="outline"
                             onClick={() => {
                               if (selectedSignup.video_data?.youtube_video_id) {
-                                const displayWindow = window.open(`/karaoke/video-display?videoId=${selectedSignup.video_data.youtube_video_id}&title=${encodeURIComponent(selectedSignup.song_title)}&artist=${encodeURIComponent(selectedSignup.song_artist || '')}`, 'karaokeVideoDisplay', 'width=1280,height=720,scrollbars=no,resizable=yes,status=no,toolbar=no,menubar=no,location=no,directories=no');
+                                const displayWindow = window.open('/karaoke/video-display', 'karaokeVideoDisplay', 'width=1280,height=720,scrollbars=no,resizable=yes,status=no,toolbar=no,menubar=no,location=no,directories=no');
                                 if (displayWindow && karaokeLayoutRef.current) {
                                   karaokeLayoutRef.current.registerDisplayWindow(displayWindow, {
                                     videoId: selectedSignup.video_data.youtube_video_id,
                                     title: selectedSignup.song_title,
                                     artist: selectedSignup.song_artist || ''
                                   });
+
+                                  // Send video change command to load the video
+                                  setTimeout(() => {
+                                    if (displayWindow && !displayWindow.closed) {
+                                      displayWindow.postMessage({
+                                        type: 'VIDEO_CONTROL',
+                                        data: {
+                                          action: 'changeVideo',
+                                          videoId: selectedSignup.video_data.youtube_video_id,
+                                          title: selectedSignup.song_title,
+                                          artist: selectedSignup.song_artist || ''
+                                        }
+                                      }, window.location.origin);
+                                    }
+                                  }, 1000);
                                 }
                               }
                             }}

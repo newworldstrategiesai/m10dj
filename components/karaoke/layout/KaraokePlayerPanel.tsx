@@ -480,13 +480,37 @@ export default function KaraokePlayerPanel({
       artist: queueItem.artist
     };
 
-    // Change the video in the display window
-    changeDisplayVideo(video);
+    // Ensure we have a display window
+    if (!propDisplayWindow || propDisplayWindow.closed) {
+      console.log('No display window available, opening new one');
+      // Open display window using the same logic as the button
+      const windowName = 'karaokeVideoDisplay';
+      const existingWindow = window.open('', windowName);
 
-    // Start playing the video immediately
-    setTimeout(() => {
-      sendDisplayCommand('play');
-    }, 500); // Small delay to let video load
+      if (existingWindow && !existingWindow.closed) {
+        // Window already exists, just focus it and update reference
+        existingWindow.focus();
+        onDisplayWindowChange?.(existingWindow);
+      } else {
+        // Open new display window (empty URL first, then load video via postMessage)
+        const displayWindow = window.open('/karaoke/video-display', windowName, 'width=1280,height=720,scrollbars=no,resizable=yes,status=no,toolbar=no,menubar=no,location=no,directories=no');
+        if (displayWindow) {
+          onDisplayWindowChange?.(displayWindow);
+        }
+      }
+
+      // Wait a bit for the window to load, then send the commands
+      setTimeout(() => {
+        if (propDisplayWindow && !propDisplayWindow.closed) {
+          sendDisplayCommand('changeVideo', video);
+          setTimeout(() => sendDisplayCommand('play'), 500);
+        }
+      }, 1000);
+    } else {
+      // Window exists, just change the video and play
+      sendDisplayCommand('changeVideo', video);
+      setTimeout(() => sendDisplayCommand('play'), 500);
+    }
 
     // Update the signup status to 'singing'
     if (onSignupStatusChange) {
