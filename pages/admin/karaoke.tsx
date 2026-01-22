@@ -2167,7 +2167,7 @@ export default function KaraokeAdminPage() {
                             onClick={() => {
                               if (selectedSignup.video_data?.youtube_video_id) {
                                 const displayWindow = window.open('/karaoke/video-display', 'karaokeVideoDisplay', 'width=1280,height=720,scrollbars=no,resizable=yes,status=no,toolbar=no,menubar=no,location=no,directories=no');
-                                if (displayWindow && karaokeLayoutRef.current) {
+                                if (displayWindow && karaokeLayoutRef.current && selectedSignup.video_data) {
                                   karaokeLayoutRef.current.registerDisplayWindow(displayWindow, {
                                     videoId: selectedSignup.video_data.youtube_video_id,
                                     title: selectedSignup.song_title,
@@ -2176,7 +2176,7 @@ export default function KaraokeAdminPage() {
 
                                   // Send video change command to load the video
                                   setTimeout(() => {
-                                    if (displayWindow && !displayWindow.closed) {
+                                    if (displayWindow && !displayWindow.closed && selectedSignup.video_data) {
                                       displayWindow.postMessage({
                                         type: 'VIDEO_CONTROL',
                                         data: {
