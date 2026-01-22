@@ -1,4 +1,4 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient } from '@/utils/supabase/server';
 import { generateRotationIdsForSignup } from '@/utils/karaoke-rotation';
 import { canSignupProceed } from '@/utils/karaoke-rotation';
 import { calculateQueuePosition } from '@/utils/karaoke-queue';
@@ -172,10 +172,7 @@ async function handler(req, res) {
 
   try {
     console.log('Karaoke signup API called with body:', req.body);
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-    );
+    const supabase = createClient();
     
     const {
       event_qr_code,

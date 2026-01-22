@@ -1,4 +1,4 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient } from '@/utils/supabase/server';
 
 /**
  * Search iTunes API for songs
@@ -64,10 +64,7 @@ export default async function handler(req, res) {
 
     const limitNum = Math.min(parseInt(limit) || 20, 50); // Max 50 results
 
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-    );
+    const supabase = createClient();
 
     // Search karaoke songs by title or artist
     const { data, error } = await supabase
