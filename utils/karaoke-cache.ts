@@ -3,7 +3,7 @@
  * Reduces database load and improves response times
  */
 
-import { KaraokeSignup, KaraokeSettings } from '@/types/karaoke';
+import { KaraokeSignup, KaraokeSettings, RotationFairnessMode, DisplayTheme } from '@/types/karaoke';
 
 // Simple in-memory cache with TTL
 class MemoryCache<T> {
@@ -90,28 +90,40 @@ export async function getCachedKaraokeSettings(organizationId: string): Promise<
       return null;
     }
 
-    // Use default settings if none exist
-    const settings = data || {
-      id: 'default',
-      organization_id: organizationId,
-      karaoke_enabled: true,
-      priority_pricing_enabled: true,
-      rotation_enabled: true,
-      priority_fee_cents: 1000,
-      free_signups_allowed: true,
-      max_singers_before_repeat: 3,
-      rotation_fairness_mode: 'strict',
-      display_show_queue_count: 5,
-      display_theme: 'default',
-      auto_advance: false,
-      allow_skips: true,
-      max_concurrent_singers: null,
-      phone_field_mode: 'required',
-      sms_notifications_enabled: true,
-      auto_refresh_interval_seconds: 30,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    };
+    // Use default settings if none exist or cast database result to proper types
+    let settings: KaraokeSettings;
+    if (data) {
+      // Cast database result to ensure proper typing
+      const dbData = data as any; // Type assertion for database result
+      settings = {
+        ...dbData,
+        rotation_fairness_mode: (dbData.rotation_fairness_mode as RotationFairnessMode) || 'strict',
+        display_theme: (dbData.display_theme as DisplayTheme) || 'default',
+        phone_field_mode: (dbData.phone_field_mode as 'required' | 'optional' | 'disabled') || 'required'
+      } as KaraokeSettings;
+    } else {
+      settings = {
+        id: 'default',
+        organization_id: organizationId,
+        karaoke_enabled: true,
+        priority_pricing_enabled: true,
+        rotation_enabled: true,
+        priority_fee_cents: 1000,
+        free_signups_allowed: true,
+        max_singers_before_repeat: 3,
+        rotation_fairness_mode: 'strict' as RotationFairnessMode,
+        display_show_queue_count: 5,
+        display_theme: 'default' as DisplayTheme,
+        auto_advance: false,
+        allow_skips: true,
+        max_concurrent_singers: null,
+        phone_field_mode: 'required' as 'required' | 'optional' | 'disabled',
+        sms_notifications_enabled: true,
+        auto_refresh_interval_seconds: 30,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
+    }
 
     // Cache the result
     settingsCache.set(cacheKey, settings);

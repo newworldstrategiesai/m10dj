@@ -100,28 +100,34 @@ export interface KaraokeSignup {
 export interface KaraokeSettings {
   id: string;
   organization_id: string;
-  
+
   // Feature flags
   karaoke_enabled: boolean;
   priority_pricing_enabled: boolean;
   rotation_enabled: boolean;
-  
+
   // Pricing
   priority_fee_cents: number;
   free_signups_allowed: boolean;
-  
+
   // Rotation settings
   max_singers_before_repeat: number;
   rotation_fairness_mode: RotationFairnessMode;
-  
+
   // Display settings
   display_show_queue_count: number;
   display_theme: DisplayTheme;
-  
+
   // Queue settings
   auto_advance: boolean;
   allow_skips: boolean;
-  
+
+  // Additional settings
+  max_concurrent_singers: number | null;
+  phone_field_mode: 'required' | 'optional' | 'disabled';
+  sms_notifications_enabled: boolean;
+  auto_refresh_interval_seconds: number;
+
   created_at: string;
   updated_at: string;
 }
