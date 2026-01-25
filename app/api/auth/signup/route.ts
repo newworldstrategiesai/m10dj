@@ -68,13 +68,35 @@ function detectProductContext(request: NextRequest): 'tipjar' | 'djdash' | 'm10d
 export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData();
-    
+
     const email = String(formData.get('email') || '').trim();
     const password = String(formData.get('password') || '').trim();
     const businessName = String(formData.get('businessName') || '').trim();
+    const referralCode = String(formData.get('ref') || '').trim();
 
     // Detect product context from request
     const productContext = detectProductContext(request);
+
+    // Handle affiliate referral tracking
+    let affiliateReferralId: string | null = null;
+    if (referralCode && productContext === 'tipjar') {
+      try {
+        // Import affiliate service dynamically to avoid circular imports
+        const { AffiliateService } = await import('@/utils/affiliate/affiliate-service');
+        const supabase = createClient();
+        const affiliateService = new AffiliateService(supabase);
+
+        // Convert the referral (this will create or update the referral record)
+        affiliateReferralId = await affiliateService.trackReferralClick(referralCode, {
+          ip: request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || undefined,
+          userAgent: request.headers.get('user-agent') || undefined,
+          referrer: request.headers.get('referer') || undefined
+        });
+      } catch (affiliateError) {
+        console.error('Error tracking affiliate referral:', affiliateError);
+        // Continue with signup even if affiliate tracking fails
+      }
+    }
     
     // Get product-specific base URL for callback
     const productBaseUrl = getProductBaseUrl(productContext);
@@ -167,6 +189,8 @@ export async function POST(request: NextRequest) {
             .eq('product_context', 'tipjar')
             .maybeSingle();
 
+          let organizationId: string | undefined;
+
           if (!unclaimedError && unclaimedOrg) {
             // Found unclaimed organization - claim it
             const { error: claimError } = await supabaseAdmin
@@ -176,7 +200,14 @@ export async function POST(request: NextRequest) {
                 is_claimed: true,
                 claimed_at: new Date().toISOString(),
                 claim_token: null,
-                claim_token_expires_at: null
+                claim_token_expires_at: null,
+                ...(affiliateReferralId && {
+                  referred_by_affiliate_id: affiliateReferralId,
+                  affiliate_attribution: {
+                    referral_id: affiliateReferralId,
+                    converted_at: new Date().toISOString()
+                  }
+                })
               })
               .eq('id', unclaimedOrg.id);
 
@@ -189,13 +220,93 @@ export async function POST(request: NextRequest) {
                 .eq('owner_id', data.user.id)
                 .neq('id', unclaimedOrg.id);
 
-              // Update the claimed org to be the user's primary org
-              // (This is already done by the claim update above)
+              organizationId = unclaimedOrg.id;
+            } else {
+              throw claimError;
+            }
+          } else {
+            // No unclaimed organization found - create new one
+            // The trigger will create an organization, but we need to link it to affiliate
+            // Wait a moment for the trigger to run, then update it
+            await new Promise(resolve => setTimeout(resolve, 100));
+
+            const { data: newOrg } = await supabaseAdmin
+              .from('organizations')
+              .select('id')
+              .eq('owner_id', data.user.id)
+              .eq('product_context', 'tipjar')
+              .order('created_at', { ascending: false })
+              .limit(1)
+              .maybeSingle();
+
+            if (newOrg && 'id' in newOrg) {
+              const newOrgId = (newOrg as { id: string }).id;
+              if (affiliateReferralId) {
+                await supabaseAdmin
+                  .from('organizations')
+                  .update({
+                    referred_by_affiliate_id: affiliateReferralId,
+                    affiliate_attribution: {
+                      referral_id: affiliateReferralId,
+                      converted_at: new Date().toISOString()
+                    }
+                  })
+                  .eq('id', newOrgId);
+              }
+              organizationId = newOrgId;
+            }
+          }
+
+          // If we have a referral, convert it to a signup
+          if (affiliateReferralId && organizationId) {
+            try {
+              const { AffiliateService } = await import('@/utils/affiliate/affiliate-service');
+              const affiliateService = new AffiliateService(supabaseAdmin);
+              await affiliateService.convertReferral(affiliateReferralId, data.user.id, organizationId);
+            } catch (conversionError) {
+              console.error('Error converting affiliate referral:', conversionError);
+              // Don't fail signup if conversion fails
+            }
+          }
+
+          // Automatically create affiliate account for new TipJar users
+          if (organizationId) {
+            try {
+              const { AffiliateService } = await import('@/utils/affiliate/affiliate-service');
+              const affiliateService = new AffiliateService(supabaseAdmin);
+              
+              // Check if affiliate already exists by checking for user_id
+              const { data: existingAffiliate } = await supabaseAdmin
+                .from('affiliates')
+                .select('id')
+                .eq('user_id', data.user.id)
+                .maybeSingle();
+              
+              if (!existingAffiliate) {
+                // Create affiliate account automatically
+                const affiliate = await affiliateService.getOrCreateAffiliate(data.user.id);
+                
+                // Update with organization_id and display name
+                const orgName = (unclaimedOrg as any)?.name || businessName || 'User';
+                await supabaseAdmin
+                  .from('affiliates')
+                  .update({
+                    organization_id: organizationId,
+                    display_name: orgName,
+                    status: 'active'
+                  })
+                  .eq('id', affiliate.id);
+                
+                console.log(`Auto-created affiliate account for user ${data.user.id}`);
+              }
+            } catch (affiliateError) {
+              console.error('Error creating affiliate account:', affiliateError);
+              // Don't fail signup if affiliate creation fails
             }
           }
         } catch (claimError) {
           // Log error but don't fail signup - user can still sign up normally
-          console.error('Error during auto-claim:', claimError);
+          console.error('Error during organization setup:', claimError);
         }
       }
 

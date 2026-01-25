@@ -53,6 +53,7 @@ export default function StreamAlertsPageQuery() {
   const [recentDonors, setRecentDonors] = useState<RecentDonor[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [affiliateCode, setAffiliateCode] = useState<string | null>(null);
   const channelRef = useRef<RealtimeChannel | null>(null);
   const supabase = createClient();
 
@@ -118,6 +119,38 @@ export default function StreamAlertsPageQuery() {
 
         if (mounted && donorsData) {
           setRecentDonors(donorsData as RecentDonor[]);
+        }
+
+        // Fetch affiliate code for this user's organization
+        if (mounted && userId) {
+          try {
+            const { data: orgData, error: orgError } = await supabase
+              .from('organizations')
+              .select('id')
+              .eq('owner_id', userId)
+              .eq('product_context', 'tipjar')
+              .maybeSingle();
+
+            if (!orgError && orgData) {
+              const orgId = (orgData as { id: string }).id;
+              const { data: affiliateData, error: affiliateError } = await supabase
+                .from('affiliates')
+                .select('affiliate_code')
+                .eq('organization_id', orgId)
+                .eq('status', 'active')
+                .maybeSingle();
+
+              if (mounted && !affiliateError && affiliateData) {
+                const code = (affiliateData as { affiliate_code: string }).affiliate_code;
+                if (code) {
+                  setAffiliateCode(code);
+                }
+              }
+            }
+          } catch (error) {
+            // Silently fail - affiliate code is optional
+            console.error('Error fetching affiliate code:', error);
+          }
         }
 
         // Subscribe to real-time events
@@ -277,7 +310,7 @@ export default function StreamAlertsPageQuery() {
       {/* Branding Badge */}
       {config.show_branding && (
         <div className="fixed bottom-4 right-4 z-10">
-          <BrandingBadge />
+          <BrandingBadge affiliateCode={affiliateCode} />
         </div>
       )}
     </div>

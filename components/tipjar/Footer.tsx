@@ -123,6 +123,9 @@ export default function TipJarFooter() {
             <Link href="/terms-of-service" className="text-gray-400 hover:text-white text-sm transition-colors">
               Terms of Service
             </Link>
+            <Link href="/tipjar/affiliate/terms" className="text-gray-400 hover:text-white text-sm transition-colors">
+              Affiliate Terms
+            </Link>
           </div>
         </div>
       </div>

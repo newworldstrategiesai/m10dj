@@ -33,7 +33,8 @@ import {
   Palette,
   BookOpen,
   Sparkles,
-  Mic
+  Mic,
+  UserPlus
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -229,6 +230,7 @@ export default function AdminNavbar() {
         { label: 'Pricing', href: '/admin/pricing', icon: <DollarSign className="w-4 h-4" />, description: 'Packages' },
         { label: 'Branding', href: '/admin/branding', icon: <Palette className="w-4 h-4" />, description: 'Customization' },
         { label: 'Organizations', href: '/admin/organizations', icon: <Building className="w-4 h-4" />, description: 'Multi-tenant' },
+        { label: 'Affiliates', href: '/admin/affiliates', icon: <UserPlus className="w-4 h-4" />, description: 'Affiliate program', adminOnly: true },
         { label: 'Notifications', href: '/admin/notifications', icon: <Bell className="w-4 h-4" />, description: 'Alerts' },
       ]
     }
