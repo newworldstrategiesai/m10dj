@@ -127,6 +127,14 @@ export async function middleware(request: NextRequest) {
     return response;
   }
   
+  // Allow signin pages to pass through on localhost (for local development)
+  const isLocalhost = hostnameLower.includes('localhost') || hostnameLower.includes('127.0.0.1');
+  if (isLocalhost && (url.pathname === '/signin' || url.pathname.startsWith('/signin/'))) {
+    const response = await updateSession(request);
+    response.headers.set('x-pathname', request.nextUrl.pathname);
+    return response;
+  }
+  
   // Check which domain we're on
   // Route groups (marketing) don't appear in URLs, so we rewrite to the actual route structure
   const isTipJarDomain = hostnameLower === 'tipjar.live' || 
