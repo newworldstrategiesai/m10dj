@@ -407,17 +407,25 @@ export default function KaraokePlayerPanel({
 
     if (!propDisplayVideo?.videoId) return;
 
-    const updateEmbeddedStatus = () => {
+    // Helper to check if control is ready
+    const isControlReady = () => {
       const control = (window as any).youtubePlayerControl;
-      if (!control) return;
+      if (!control) return false;
+      
+      // Check if all required methods exist
+      return typeof control.getPlayerState === 'function' &&
+             typeof control.getCurrentTime === 'function' &&
+             typeof control.getDuration === 'function';
+    };
 
-      // Check if control methods exist before calling them
-      if (typeof control.getPlayerState !== 'function' ||
-          typeof control.getCurrentTime !== 'function' ||
-          typeof control.getDuration !== 'function') {
-        return; // Control not ready yet
+    const updateEmbeddedStatus = () => {
+      // Double-check control is ready before attempting to use it
+      if (!isControlReady()) {
+        return; // Control not ready yet, skip this update
       }
 
+      const control = (window as any).youtubePlayerControl;
+      
       try {
         const playerState = control.getPlayerState();
         const currentTime = control.getCurrentTime();
@@ -439,18 +447,31 @@ export default function KaraokePlayerPanel({
         }
       } catch (error) {
         // Silently handle errors - player might not be ready
-        console.debug('Player not ready yet:', error);
+        // Don't log errors here as they're expected when player isn't ready
       }
     };
 
-    // Update status periodically
-    const interval = setInterval(updateEmbeddedStatus, 500);
+    // Only start interval if control is ready, otherwise wait and check periodically
+    let interval: NodeJS.Timeout | null = null;
+    let checkTimer: NodeJS.Timeout | null = null;
     
-    // Initial update after a delay to let player load
-    const initialTimer = setTimeout(updateEmbeddedStatus, 1000);
+    const startTracking = () => {
+      if (isControlReady()) {
+        // Control is ready, start regular updates
+        interval = setInterval(updateEmbeddedStatus, 500);
+        updateEmbeddedStatus(); // Initial update
+      } else {
+        // Control not ready yet, check again in 1 second
+        checkTimer = setTimeout(startTracking, 1000);
+      }
+    };
+
+    // Start checking after a short delay to let player initialize
+    const initialTimer = setTimeout(startTracking, 1000);
 
     return () => {
-      clearInterval(interval);
+      if (interval) clearInterval(interval);
+      if (checkTimer) clearTimeout(checkTimer);
       clearTimeout(initialTimer);
     };
   }, [propDisplayVideo?.videoId, propDisplayWindow, volume]);
