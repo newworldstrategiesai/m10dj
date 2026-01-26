@@ -442,63 +442,85 @@ export default function AdminDashboard() {
 
             // Check for form submission match (by email/phone and similar creation time)
             if (contact.email_address || contact.phone) {
-              // Look for contact_submissions with matching email/phone created within 1 hour
-              const submissionQuery = supabase
-                .from('contact_submissions')
-                .select('id')
-                .order('created_at', { ascending: false })
-                .limit(1);
+              try {
+                // Look for contact_submissions with matching email/phone created within 1 hour
+                const submissionQuery = supabase
+                  .from('contact_submissions')
+                  .select('id')
+                  .order('created_at', { ascending: false })
+                  .limit(1);
 
-              if (contact.email_address) {
-                submissionQuery.eq('email', contact.email_address);
-              } else if (contact.phone) {
-                submissionQuery.eq('phone', contact.phone);
-              }
+                if (contact.email_address) {
+                  submissionQuery.eq('email', contact.email_address);
+                } else if (contact.phone) {
+                  submissionQuery.eq('phone', contact.phone);
+                }
 
-              // Check submissions created within 1 hour of contact creation
-              const contactCreatedAt = new Date(contact.created_at);
-              const oneHourBefore = new Date(contactCreatedAt.getTime() - 60 * 60 * 1000);
-              const oneHourAfter = new Date(contactCreatedAt.getTime() + 60 * 60 * 1000);
+                // Check submissions created within 1 hour of contact creation
+                const contactCreatedAt = new Date(contact.created_at);
+                const oneHourBefore = new Date(contactCreatedAt.getTime() - 60 * 60 * 1000);
+                const oneHourAfter = new Date(contactCreatedAt.getTime() + 60 * 60 * 1000);
 
-              submissionQuery.gte('created_at', oneHourBefore.toISOString());
-              submissionQuery.lte('created_at', oneHourAfter.toISOString());
+                submissionQuery.gte('created_at', oneHourBefore.toISOString());
+                submissionQuery.lte('created_at', oneHourAfter.toISOString());
 
-              const { data: submission } = await submissionQuery.single();
+                const { data: submission, error: submissionError } = await submissionQuery.single();
 
-              if (submission) {
-                contactWithSource.submission_id = (submission as any).id;
-                return contactWithSource;
+                // Handle 406 errors gracefully (RLS policy or format issues)
+                if (submissionError) {
+                  // Log but don't break - 406 errors are often RLS-related and non-critical
+                  if (submissionError.status !== 406) {
+                    console.warn('Error checking contact submission:', submissionError);
+                  }
+                } else if (submission) {
+                  contactWithSource.submission_id = (submission as any).id;
+                  return contactWithSource;
+                }
+              } catch (err) {
+                // Silently handle errors - don't break the contact list
+                console.warn('Error checking contact submission match:', err);
               }
             }
 
             // Check for crowd request match (by requester_email/requester_phone)
             if (contact.email_address || contact.phone) {
-              const requestQuery = supabase
-                .from('crowd_requests')
-                .select('id, request_type')
-                .order('created_at', { ascending: false })
-                .limit(1);
+              try {
+                const requestQuery = supabase
+                  .from('crowd_requests')
+                  .select('id, request_type')
+                  .order('created_at', { ascending: false })
+                  .limit(1);
 
-              if (contact.email_address) {
-                requestQuery.eq('requester_email', contact.email_address);
-              } else if (contact.phone) {
-                requestQuery.eq('requester_phone', contact.phone);
-              }
+                if (contact.email_address) {
+                  requestQuery.eq('requester_email', contact.email_address);
+                } else if (contact.phone) {
+                  requestQuery.eq('requester_phone', contact.phone);
+                }
 
-              // Check requests created within 1 hour of contact creation
-              const contactCreatedAt = new Date(contact.created_at);
-              const oneHourBefore = new Date(contactCreatedAt.getTime() - 60 * 60 * 1000);
-              const oneHourAfter = new Date(contactCreatedAt.getTime() + 60 * 60 * 1000);
+                // Check requests created within 1 hour of contact creation
+                const contactCreatedAt = new Date(contact.created_at);
+                const oneHourBefore = new Date(contactCreatedAt.getTime() - 60 * 60 * 1000);
+                const oneHourAfter = new Date(contactCreatedAt.getTime() + 60 * 60 * 1000);
 
-              requestQuery.gte('created_at', oneHourBefore.toISOString());
-              requestQuery.lte('created_at', oneHourAfter.toISOString());
+                requestQuery.gte('created_at', oneHourBefore.toISOString());
+                requestQuery.lte('created_at', oneHourAfter.toISOString());
 
-              const { data: request } = await requestQuery.single();
+                const { data: request, error: requestError } = await requestQuery.single();
 
-              if (request) {
-                contactWithSource.request_id = (request as any).id;
-                contactWithSource.request_type = (request as any).request_type;
-                return contactWithSource;
+                // Handle 406 errors gracefully (RLS policy or format issues)
+                if (requestError) {
+                  // Log but don't break - 406 errors are often RLS-related and non-critical
+                  if (requestError.status !== 406) {
+                    console.warn('Error checking crowd request:', requestError);
+                  }
+                } else if (request) {
+                  contactWithSource.request_id = (request as any).id;
+                  contactWithSource.request_type = (request as any).request_type;
+                  return contactWithSource;
+                }
+              } catch (err) {
+                // Silently handle errors - don't break the contact list
+                console.warn('Error checking crowd request match:', err);
               }
             }
 
