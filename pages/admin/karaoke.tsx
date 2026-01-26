@@ -335,7 +335,7 @@ export default function KaraokeAdminPage() {
     );
   };
 
-  // Format ISO 8601 duration to human readable format
+  // Format ISO 8601 duration to human readable format (for YouTube API responses)
   const formatDuration = (isoDuration: string) => {
     if (!isoDuration) return 'Unknown';
 
@@ -352,6 +352,20 @@ export default function KaraokeAdminPage() {
     } else {
       return `${minutes}:${seconds.toString().padStart(2, '0')}`;
     }
+  };
+
+  // Format seconds to mm:ss or h:mm:ss (for stored video durations)
+  const formatSecondsToTime = (seconds: number | string | undefined): string => {
+    if (!seconds) return '--:--';
+    const secs = typeof seconds === 'string' ? parseInt(seconds, 10) : seconds;
+    if (isNaN(secs) || secs <= 0) return '--:--';
+    const hours = Math.floor(secs / 3600);
+    const mins = Math.floor((secs % 3600) / 60);
+    const remainingSecs = Math.floor(secs % 60);
+    if (hours > 0) {
+      return `${hours}:${mins.toString().padStart(2, '0')}:${remainingSecs.toString().padStart(2, '0')}`;
+    }
+    return `${mins}:${remainingSecs.toString().padStart(2, '0')}`;
   };
 
   // Load data when organization is available
@@ -1488,6 +1502,11 @@ export default function KaraokeAdminPage() {
                               <Music className="w-4 h-4 inline mr-1" />
                               &quot;{signup.song_title}&quot;
                               {signup.song_artist && ` by ${signup.song_artist}`}
+                              {signup.video_data?.youtube_video_duration && (
+                                <span className="ml-2 text-gray-500 dark:text-gray-400">
+                                  ({formatSecondsToTime(signup.video_data.youtube_video_duration)})
+                                </span>
+                              )}
                             </p>
                             <div className="flex items-center gap-4 text-sm text-gray-500 dark:text-gray-400 mt-2 flex-wrap">
                               {signup.singer_phone && (
@@ -1796,7 +1815,9 @@ export default function KaraokeAdminPage() {
                                 )}
                               </div>
                               <p className="text-sm text-gray-600 dark:text-gray-400">
-                                {selectedSignup.video_data?.youtube_channel_name} • Quality: {selectedSignup.video_data?.video_quality_score}/100
+                                {selectedSignup.video_data?.youtube_channel_name} • 
+                                Duration: {formatSecondsToTime(selectedSignup.video_data?.youtube_video_duration)} • 
+                                Quality: {selectedSignup.video_data?.video_quality_score}/100
                               </p>
                             </div>
                             <div className="flex gap-2">
@@ -2074,6 +2095,7 @@ export default function KaraokeAdminPage() {
                           <div className="flex-1">
                             <p className="font-medium text-green-900 dark:text-green-100">Video Linked</p>
                             <p className="text-sm text-green-700 dark:text-green-300">
+                              Duration: {formatSecondsToTime(selectedSignup.video_data?.youtube_video_duration)} •
                               Quality: {selectedSignup.video_data?.video_quality_score}/100 •
                               Status: {selectedSignup.video_data?.link_status}
                               {isKarafunVideo(selectedSignup.video_data?.youtube_channel_name, selectedSignup.video_data?.youtube_channel_id) && (
@@ -2208,6 +2230,7 @@ export default function KaraokeAdminPage() {
                           />
                         </div>
                         <div className="mt-2 flex items-center justify-center gap-4 text-sm text-gray-600 dark:text-gray-400">
+                          <span>Duration: {formatSecondsToTime(selectedSignup.video_data?.youtube_video_duration)}</span>
                           <span>Quality: {selectedSignup.video_data?.video_quality_score}/100</span>
                           {selectedSignup.video_data?.youtube_channel_name && (
                             <span>Channel: {selectedSignup.video_data.youtube_channel_name}</span>
