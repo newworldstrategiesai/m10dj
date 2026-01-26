@@ -998,6 +998,31 @@ export default function KaraokeAdminPage() {
               <Button
                 variant="outline"
                 size="sm"
+                onClick={() => {
+                  // Open external display window directly
+                  const windowName = 'karaokeVideoDisplay';
+                  const displayWindow = window.open(
+                    '/karaoke/video-display',
+                    windowName,
+                    'width=1280,height=720,scrollbars=no,resizable=yes,status=no,toolbar=no,menubar=no,location=no,directories=no'
+                  );
+                  if (displayWindow && karaokeLayoutRef.current) {
+                    // Register the window with KaraokeLayout
+                    karaokeLayoutRef.current.registerDisplayWindow(displayWindow, {
+                      videoId: '',
+                      title: '',
+                      artist: ''
+                    });
+                  }
+                }}
+                className="bg-blue-50 hover:bg-blue-100 border-blue-200 text-blue-700 hover:text-blue-800 dark:bg-blue-900/20 dark:hover:bg-blue-900/30 dark:border-blue-800 dark:text-blue-300"
+              >
+                <Monitor className="w-4 h-4 mr-2" />
+                Open Display
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
                 onClick={() => setShowDisplaySetup(true)}
               >
                 <Eye className="w-4 h-4 mr-2" />
@@ -1108,14 +1133,39 @@ export default function KaraokeAdminPage() {
                   </select>
                 </div>
                 {eventCodeFilter && (
-                  <Button
-                    variant="outline"
-                    onClick={() => setShowDisplaySetup(true)}
-                    className="border-blue-500 text-blue-700 dark:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/30"
-                  >
-                    <Monitor className="w-4 h-4 mr-2" />
-                    TV Display
-                  </Button>
+                  <>
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        // Open external display window directly
+                        const windowName = 'karaokeVideoDisplay';
+                        const displayWindow = window.open(
+                          '/karaoke/video-display',
+                          windowName,
+                          'width=1280,height=720,scrollbars=no,resizable=yes,status=no,toolbar=no,menubar=no,location=no,directories=no'
+                        );
+                        if (displayWindow && karaokeLayoutRef.current) {
+                          karaokeLayoutRef.current.registerDisplayWindow(displayWindow, {
+                            videoId: '',
+                            title: '',
+                            artist: ''
+                          });
+                        }
+                      }}
+                      className="bg-blue-50 hover:bg-blue-100 border-blue-200 text-blue-700 hover:text-blue-800 dark:bg-blue-900/20 dark:hover:bg-blue-900/30 dark:border-blue-800 dark:text-blue-300"
+                    >
+                      <Monitor className="w-4 h-4 mr-2" />
+                      Open Display
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => setShowDisplaySetup(true)}
+                      className="border-blue-500 text-blue-700 dark:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/30"
+                    >
+                      <Eye className="w-4 h-4 mr-2" />
+                      TV Display Setup
+                    </Button>
+                  </>
                 )}
               </div>
             </div>
