@@ -102,8 +102,8 @@ export default function KaraokeAdminPage() {
   const [showManualSignup, setShowManualSignup] = useState(false);
 
   // Search for video suggestions for a signup
-  const searchVideoSuggestionsForSignup = async (signup: KaraokeSignup) => {
-    if (!signup.song_title || signup.video_data) return;
+  const searchVideoSuggestionsForSignup = async (signup: KaraokeSignup): Promise<any[] | null> => {
+    if (!signup.song_title || signup.video_data) return null;
 
     setLoadingVideoSuggestions(prev => ({ ...prev, [signup.id]: true }));
 
@@ -126,6 +126,7 @@ export default function KaraokeAdminPage() {
             ...prev,
             [signup.id]: data.suggestions
           }));
+          return data.suggestions;
         }
       } else {
         console.warn('Failed to find video suggestions:', response.statusText);
@@ -135,6 +136,8 @@ export default function KaraokeAdminPage() {
     } finally {
       setLoadingVideoSuggestions(prev => ({ ...prev, [signup.id]: false }));
     }
+    
+    return null;
   };
 
   // Unlink video from signup
@@ -389,10 +392,21 @@ export default function KaraokeAdminPage() {
     return () => clearInterval(interval);
   }, [autoRefresh, organization]);
 
-  // Auto-search for video suggestions when signup is viewed
+  // Auto-search for video suggestions when signup is viewed AND auto-link if quality is good
   useEffect(() => {
     if (selectedSignup && selectedSignup.song_title && !selectedSignup.video_data && showDetailModal) {
-      searchVideoSuggestionsForSignup(selectedSignup);
+      searchVideoSuggestionsForSignup(selectedSignup).then((suggestions) => {
+        // Auto-link if best suggestion has quality score >= 50
+        if (suggestions && suggestions.length > 0) {
+          const bestSuggestion = suggestions[0];
+          const qualityScore = bestSuggestion.karaokeScore || bestSuggestion.video_quality_score || 0;
+          
+          if (qualityScore >= 50) {
+            console.log(`Auto-linking high-quality video (score: ${qualityScore}) for signup ${selectedSignup.id}`);
+            linkSuggestedVideoToSignup(selectedSignup.id, bestSuggestion);
+          }
+        }
+      });
     }
   }, [selectedSignup, showDetailModal]);
 
@@ -576,7 +590,10 @@ export default function KaraokeAdminPage() {
       setLoading(true);
       let query = supabase
         .from('karaoke_signups')
-        .select('*')
+        .select(`
+          *,
+          video_data:karaoke_song_videos(*)
+        `)
         .eq('organization_id', orgId)
         .order('created_at', { ascending: false });
 
@@ -588,9 +605,87 @@ export default function KaraokeAdminPage() {
 
       if (error) throw error;
 
-      setSignups(data || []);
+      const signupsData = data || [];
+      
+      // Auto-link videos for signups without videos (only for active signups in queue)
+      // This runs in background and doesn't block UI rendering
+      const signupsWithoutVideos = signupsData.filter((s: any) => 
+        !s.video_data && 
+        s.song_title && 
+        ['queued', 'next', 'singing'].includes(s.status) &&
+        // Only auto-link if signup was created recently (within last hour) to avoid re-processing old signups
+        new Date(s.created_at).getTime() > Date.now() - 3600000
+      );
+      
+      if (signupsWithoutVideos.length > 0) {
+        console.log(`Auto-linking videos for ${signupsWithoutVideos.length} recent signups without videos...`);
+        
+        // Process signups in background (don't await - let it run async)
+        signupsWithoutVideos.forEach(async (signup: any) => {
+          try {
+            // Find best video for this signup
+            const response = await fetch('/api/karaoke/find-best-video', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                songTitle: signup.song_title,
+                songArtist: signup.song_artist,
+                organizationId: orgId,
+                prioritizeKarafun: true
+              })
+            });
 
-      const eventCodes = Array.from(new Set((data || []).map((s: any) => s.event_qr_code).filter(Boolean)));
+            if (response.ok) {
+              const videoData = await response.json();
+              const bestVideo = videoData.suggestions?.[0] || videoData.bestVideo;
+              
+              // Auto-link if quality score is good enough (>= 50)
+              if (bestVideo && (bestVideo.karaokeScore || bestVideo.video_quality_score || 0) >= 50) {
+                console.log(`Auto-linking video for signup ${signup.id}: ${bestVideo.title} (Score: ${bestVideo.karaokeScore || bestVideo.video_quality_score})`);
+                
+                const linkResponse = await fetch('/api/karaoke/link-signup-video', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    signupId: signup.id,
+                    videoId: bestVideo.existingLink?.id || null,
+                    videoData: bestVideo,
+                    organizationId: orgId
+                  })
+                });
+
+                if (linkResponse.ok) {
+                  const linkData = await linkResponse.json();
+                  // Update signups state to reflect the new video link
+                  setSignups(prev => prev.map(s => 
+                    s.id === signup.id 
+                      ? { ...s, video_id: linkData.video.id, video_data: linkData.video }
+                      : s
+                  ));
+                  
+                  // Update selected signup if it's the current one
+                  if (selectedSignup && selectedSignup.id === signup.id) {
+                    setSelectedSignup(prev => prev ? {
+                      ...prev,
+                      video_id: linkData.video.id,
+                      video_data: linkData.video
+                    } : null);
+                  }
+                  
+                  console.log(`✅ Auto-linked video for signup ${signup.id}`);
+                }
+              }
+            }
+          } catch (error) {
+            console.error(`Error auto-linking video for signup ${signup.id}:`, error);
+            // Don't throw - continue with other signups
+          }
+        });
+      }
+
+      setSignups(signupsData);
+
+      const eventCodes = Array.from(new Set((signupsData || []).map((s: any) => s.event_qr_code).filter(Boolean)));
       setAvailableEvents(eventCodes as string[]);
     } catch (error: any) {
       console.error('Error loading signups:', error);

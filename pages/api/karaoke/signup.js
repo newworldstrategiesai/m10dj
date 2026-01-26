@@ -558,9 +558,117 @@ async function handler(req, res) {
     // Invalidate queue cache since we added a new signup
     invalidateCache('queue', organization_id, event_qr_code);
 
-    // Auto-link best video if no video was provided
+    // Link video_data if provided in request (from manual signup with selected video)
     let linkedVideo = null;
-    if (!signup.video_id && song_title) {
+    if (video_data && video_data.youtube_video_id && !signup.video_id) {
+      try {
+        console.log('🎬 Linking provided video_data to signup:', signup.id);
+        
+        const serviceClient = getServiceRoleClient();
+        const dbClient = serviceClient || supabase;
+        
+        // Check if video already exists in karaoke_song_videos
+        const { data: songKey } = await dbClient.rpc('normalize_song_key', {
+          title: song_title,
+          artist: song_artist || null
+        });
+        
+        const { data: existingVideo } = await dbClient
+          .from('karaoke_song_videos')
+          .select('id')
+          .eq('organization_id', organization_id)
+          .eq('song_key', songKey)
+          .single();
+        
+        let videoIdToLink = null;
+        
+        if (existingVideo) {
+          // Use existing video
+          videoIdToLink = existingVideo.id;
+          console.log('✅ Using existing video:', videoIdToLink);
+        } else if (video_data.id) {
+          // Video data has an ID (from existing link)
+          videoIdToLink = video_data.id;
+          console.log('✅ Using video ID from video_data:', videoIdToLink);
+        } else {
+          // Need to create video record
+          const { validateYouTubeVideo, calculateKaraokeScore, parseDuration } = await import('@/utils/youtube-api');
+          const videoData = await validateYouTubeVideo(video_data.youtube_video_id);
+          
+          if (videoData) {
+            const qualityScore = calculateKaraokeScore(videoData, song_title, song_artist);
+            const durationSeconds = parseDuration(videoData.duration);
+            
+            const videoRecord = {
+              organization_id: organization_id,
+              song_title: song_title.trim(),
+              song_artist: song_artist?.trim() || null,
+              song_key: songKey,
+              youtube_video_id: video_data.youtube_video_id,
+              youtube_video_title: videoData.title || video_data.youtube_video_title,
+              youtube_channel_name: videoData.channelTitle || video_data.youtube_channel_name,
+              youtube_channel_id: videoData.channelId || video_data.youtube_channel_id,
+              youtube_video_duration: durationSeconds || video_data.youtube_video_duration,
+              youtube_view_count: videoData.viewCount || video_data.youtube_view_count || 0,
+              youtube_like_count: videoData.likeCount || video_data.youtube_like_count || 0,
+              youtube_publish_date: videoData.publishedAt || video_data.youtube_publish_date,
+              video_quality_score: qualityScore || video_data.video_quality_score || 50,
+              is_karaoke_track: (qualityScore || video_data.video_quality_score || 0) > 60,
+              has_lyrics: videoData.description?.toLowerCase().includes('lyrics') || video_data.has_lyrics || false,
+              has_instruments: !videoData.title.toLowerCase().includes('acapella'),
+              source: 'manual',
+              confidence_score: 0.9,
+              link_status: 'active',
+              created_by: req.user?.id || null
+            };
+            
+            const { data: savedVideo, error: saveError } = await dbClient
+              .from('karaoke_song_videos')
+              .upsert(videoRecord, {
+                onConflict: 'organization_id,song_key',
+                returning: 'representation'
+              })
+              .select()
+              .single();
+            
+            if (!saveError && savedVideo) {
+              videoIdToLink = savedVideo.id;
+              console.log('✅ Created new video record:', videoIdToLink);
+            }
+          }
+        }
+        
+        // Link video to signup
+        if (videoIdToLink) {
+          const { data: updatedSignup, error: linkError } = await dbClient
+            .from('karaoke_signups')
+            .update({
+              video_id: videoIdToLink,
+              video_url: `https://www.youtube.com/watch?v=${video_data.youtube_video_id}`,
+              video_embed_allowed: true
+            })
+            .eq('id', signup.id)
+            .eq('organization_id', organization_id)
+            .select(`
+              *,
+              video_data:karaoke_song_videos(*)
+            `)
+            .single();
+          
+          if (!linkError && updatedSignup?.video_data) {
+            linkedVideo = updatedSignup.video_data;
+            signup = updatedSignup; // Update signup with linked video
+            console.log('✅ Successfully linked provided video_data to signup');
+          }
+        }
+      } catch (linkError) {
+        console.error('❌ Error linking provided video_data (non-fatal):', linkError);
+        // Continue - don't fail signup creation
+      }
+    }
+    
+    // Auto-link best video if no video was provided or linked
+    if (!signup.video_id && !linkedVideo && song_title) {
       try {
         console.log('🎬 Attempting to auto-link video for signup:', signup.id, 'Song:', song_title, song_artist);
         
