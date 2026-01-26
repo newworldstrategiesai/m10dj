@@ -74,6 +74,7 @@ export default function MusicQuestionnaire() {
     cocktailHour: false
   });
   const [clickedService, setClickedService] = useState(null);
+  const [showSubmitConfirm, setShowSubmitConfirm] = useState(false);
   const { toast } = useToast();
 
   // Get questionnaire configuration based on event type

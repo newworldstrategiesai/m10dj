@@ -63,11 +63,18 @@ export default function MySongsPage() {
         if (questionnaireResult.success) {
           setQuestionnaireData(questionnaireResult.data);
           setEditingData(questionnaireResult.data);
+          setError(null); // Clear any previous errors
         } else {
-          setError('Questionnaire not found. Please complete the music questionnaire first.');
+          // Questionnaire doesn't exist yet - this is fine, allow creating one
+          setQuestionnaireData(null);
+          setEditingData(null);
+          setError(null); // Don't show error, allow them to create questionnaire
         }
       } else if (questionnaireResponse.status === 404) {
-        setError('Questionnaire not found. Please complete the music questionnaire first.');
+        // Questionnaire doesn't exist yet - this is fine, allow creating one
+        setQuestionnaireData(null);
+        setEditingData(null);
+        setError(null); // Don't show error, allow them to create questionnaire
       } else {
         setError('Failed to load questionnaire data.');
       }
@@ -381,10 +388,10 @@ export default function MySongsPage() {
         <Head>
           <title>My Songs | M10 DJ Company</title>
         </Head>
-        <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-pink-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
+        <div className="min-h-screen bg-gradient-to-b from-white via-gray-50 to-white dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
           <Header />
           <div className="flex flex-col items-center justify-center min-h-[60vh] py-20">
-            <Loader2 className="w-12 h-12 text-purple-600 dark:text-purple-400 animate-spin mb-4" />
+            <Loader2 className="w-12 h-12 text-brand animate-spin mb-4" />
             <p className="text-xl text-gray-600 dark:text-gray-300">Loading your music preferences...</p>
           </div>
         </div>
@@ -398,7 +405,7 @@ export default function MySongsPage() {
         <Head>
           <title>My Songs | M10 DJ Company</title>
         </Head>
-        <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-pink-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
+        <div className="min-h-screen bg-gradient-to-b from-white via-gray-50 to-white dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
           <Header />
           <main className="section-container py-12 md:py-20">
             <div className="max-w-2xl mx-auto text-center">
@@ -406,14 +413,14 @@ export default function MySongsPage() {
                 My Songs
               </h1>
               <p className="text-lg text-gray-600 dark:text-gray-400 mb-8">
-                {error}
+                {error || 'Start creating your music preferences. You can add songs even before selecting services.'}
               </p>
               <Link
                 href={`/quote/${id}/questionnaire`}
                 className="btn-primary inline-flex items-center gap-2"
               >
                 <Music className="w-5 h-5" />
-                Complete Music Questionnaire
+                Start Music Questionnaire
               </Link>
             </div>
           </main>
@@ -430,7 +437,7 @@ export default function MySongsPage() {
         <title>My Songs | M10 DJ Company</title>
       </Head>
 
-      <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-pink-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
+      <div className="min-h-screen bg-gradient-to-b from-white via-gray-50 to-white dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
         <Header />
 
         <main className="section-container py-8 md:py-12">
@@ -439,7 +446,7 @@ export default function MySongsPage() {
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
               <Link
                 href={`/quote/${id}/confirmation`}
-                className="inline-flex items-center gap-2 text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300 transition-colors"
+                className="inline-flex items-center gap-2 text-brand hover:text-brand-dark transition-colors"
               >
                 <ArrowLeft className="w-4 h-4" />
                 Back to Confirmation
@@ -1234,7 +1241,7 @@ export default function MySongsPage() {
                   Complete the music questionnaire to see your song preferences here.
                 </p>
                 <Link href={`/quote/${id}/questionnaire`}>
-                  <Button className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700">
+                  <Button className="btn-primary">
                     <Music className="w-5 h-5 mr-2" />
                     Complete Music Questionnaire
                   </Button>

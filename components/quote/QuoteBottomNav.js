@@ -60,12 +60,12 @@ export default function QuoteBottomNav({ quoteId }) {
                 href={item.href}
                 className={`flex flex-col items-center justify-center px-3 py-2 rounded-lg transition-colors min-w-[60px] ${
                   active
-                    ? 'text-purple-600 dark:text-purple-400'
-                    : 'text-gray-600 dark:text-gray-400 hover:text-purple-600 dark:hover:text-purple-400'
+                    ? 'text-brand dark:text-brand'
+                    : 'text-gray-600 dark:text-gray-400 hover:text-brand dark:hover:text-brand'
                 }`}
               >
-                <Icon className={`w-5 h-5 mb-1 ${active ? 'text-purple-600 dark:text-purple-400' : ''}`} />
-                <span className={`text-xs font-medium ${active ? 'text-purple-600 dark:text-purple-400' : ''}`}>
+                <Icon className={`w-5 h-5 mb-1 ${active ? 'text-brand dark:text-brand' : ''}`} />
+                <span className={`text-xs font-medium ${active ? 'text-brand dark:text-brand' : ''}`}>
                   {item.label}
                 </span>
               </Link>
