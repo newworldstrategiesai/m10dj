@@ -452,8 +452,18 @@ export default function KaraokePlayerPanel({
     // Prefer global window reference over prop, as it's more reliable
     let targetWindow = (window as any).karaokeDisplayWindow || propDisplayWindow;
 
+    // Check if we have an external display window that's open
+    let windowIsOpen = false;
+    try {
+      // Try to check if window is closed - this might throw if cross-origin
+      windowIsOpen = targetWindow && targetWindow.closed === false;
+    } catch (e) {
+      // If we can't check closed status, assume window is open if reference exists
+      windowIsOpen = !!targetWindow;
+    }
+
     // If we have an external display window, use it
-    if (targetWindow && !targetWindow.closed) {
+    if (windowIsOpen) {
       setIsCommandLoading(true);
 
       const message = {
@@ -464,11 +474,21 @@ export default function KaraokePlayerPanel({
       };
 
       try {
-        console.log('📤 Sending to display window:', message);
+        console.log('📤 Sending to display window:', message, 'targetWindow:', targetWindow);
         targetWindow.postMessage(message, '*');
+        console.log('✅ Message sent successfully');
         await new Promise(resolve => setTimeout(resolve, 200));
       } catch (error) {
         console.error('❌ Error sending command:', error);
+        // If sending fails, try to use embedded player as fallback
+        const control = embeddedPlayerControl || (window as any).youtubePlayerControl;
+        if (control) {
+          console.log('🔄 Falling back to embedded player control');
+          // Fall through to embedded player logic below
+        } else {
+          setIsCommandLoading(false);
+          return;
+        }
       } finally {
         setIsCommandLoading(false);
       }
@@ -530,21 +550,20 @@ export default function KaraokePlayerPanel({
 
   // Control functions for external display or embedded player
   const toggleDisplayPlayPause = () => {
-    // If we have an external display window, use it
+    // Check if we have an external display window
     const targetWindow = (window as any).karaokeDisplayWindow || propDisplayWindow;
-    if (targetWindow && !targetWindow.closed) {
-      if (displayStatus?.isPlaying) {
-        sendDisplayCommand('pause');
-      } else {
-        sendDisplayCommand('play');
-      }
+    let windowIsOpen = false;
+    try {
+      windowIsOpen = targetWindow && targetWindow.closed === false;
+    } catch (e) {
+      windowIsOpen = !!targetWindow;
+    }
+
+    // Always use sendDisplayCommand - it will route to the right target
+    if (displayStatus?.isPlaying || isPlaying) {
+      sendDisplayCommand('pause');
     } else {
-      // Use embedded player
-      if (isPlaying) {
-        sendDisplayCommand('pause');
-      } else {
-        sendDisplayCommand('play');
-      }
+      sendDisplayCommand('play');
     }
   };
 
@@ -1027,7 +1046,7 @@ export default function KaraokePlayerPanel({
               </button>
             </div>
 
-            {/* Embedded YouTube Player */}
+            {/* Embedded YouTube Player or Thumbnail */}
             {propDisplayVideo?.videoId ? (
               <div
                 className="relative w-full aspect-video bg-gradient-to-br from-gray-800 to-gray-900 rounded-xl overflow-hidden shadow-2xl group touch-manipulation"
@@ -1035,6 +1054,12 @@ export default function KaraokePlayerPanel({
                 onTouchMove={handleTouchMove}
                 onTouchEnd={handleTouchEnd}
               >
+                {/* Show thumbnail as fallback, YouTube player will overlay when ready */}
+                <img
+                  src={propDisplayVideo.thumbnailUrl || `https://img.youtube.com/vi/${propDisplayVideo.videoId}/maxresdefault.jpg`}
+                  alt={propDisplayVideo.title}
+                  className="absolute inset-0 w-full h-full object-cover opacity-50"
+                />
                 <YouTubePlayer
                   videoId={propDisplayVideo.videoId}
                   isPlaying={isPlaying}
@@ -1066,7 +1091,7 @@ export default function KaraokePlayerPanel({
                     }
                   }}
                   enableExternalControl={true}
-                  className="w-full h-full"
+                  className="w-full h-full relative z-10"
                 />
                 {/* Overlay gradient for better control visibility */}
                 <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent pointer-events-none" />
