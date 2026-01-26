@@ -18,7 +18,7 @@ import { useCrowdRequestValidation } from '../hooks/useCrowdRequestValidation';
 import { crowdRequestAPI } from '../utils/crowd-request-api';
 import { createLogger } from '../utils/logger';
 import { CROWD_REQUEST_CONSTANTS } from '../constants/crowd-request';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { createClient } from '@/utils/supabase/client';
 import { getCoverPhotoUrl } from '../utils/cover-photo-helper';
 import { useQRScanTracking } from '../hooks/useQRScanTracking';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
@@ -37,8 +37,8 @@ const REQUESTER_INFO_KEY = 'm10_requester_info';
 // Wrapper component for /requests route that loads organization data
 export default function RequestsPageWrapper() {
   const router = useRouter();
-  // Don't use useMemo for client component - causes hooks violation
-  const supabase = createClientComponentClient();
+  // Use singleton client to prevent multiple GoTrueClient instances
+  const supabase = createClient();
   const [organization, setOrganization] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showLoader, setShowLoader] = useState(true);
