@@ -113,10 +113,8 @@ export default function PayoutsPage() {
         return;
       }
 
-      if (isPlatformAdmin(user.email || '')) {
-        router.push('/admin/dashboard');
-        return;
-      }
+      // Platform admins can access payouts - don't redirect them
+      // Removed redirect that was incorrectly sending platform admins away
 
       const org = await getCurrentOrganization(supabase);
       if (!org) {

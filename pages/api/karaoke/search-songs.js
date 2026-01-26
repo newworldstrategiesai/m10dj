@@ -1,4 +1,4 @@
-import { createClient } from '@/utils/supabase/server';
+import { createServerSupabaseClient } from '@supabase/auth-helpers-nextjs';
 
 /**
  * Search iTunes API for songs
@@ -49,6 +49,7 @@ async function searchITunes(query, limit = 10) {
  * Search for karaoke songs in the database and iTunes
  */
 export default async function handler(req, res) {
+  const supabase = createServerSupabaseClient({ req, res });
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
@@ -63,8 +64,6 @@ export default async function handler(req, res) {
     }
 
     const limitNum = Math.min(parseInt(limit) || 20, 50); // Max 50 results
-
-    const supabase = createClient();
 
     // Search karaoke songs by title or artist
     const { data, error } = await supabase

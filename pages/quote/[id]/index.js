@@ -2372,23 +2372,6 @@ export default function PersonalizedQuote() {
           <meta name="twitter:description" content="Select your perfect DJ package and customize your event" />
           <meta name="twitter:image" content={`${process.env.NEXT_PUBLIC_SITE_URL || 'https://m10djcompany.com'}/assets/service-selection-og-image.png`} />
         </Head>
-        {/* Simplified Header with Logo Only */}
-        <header className="sticky top-0 z-50 bg-white border-b border-gray-200 dark:bg-gray-900 dark:border-gray-800 h-10 md:h-12">
-          <div className="container mx-auto px-4 h-full">
-            <div className="flex items-center justify-center h-full py-0">
-              <Link href="/" className="flex-shrink-0 h-full flex items-center">
-                <Image
-                  src="/logo-static.jpg"
-                  alt="M10 DJ Company"
-                  width={120}
-                  height={40}
-                  className="h-6 md:h-8 w-auto"
-                  priority
-                />
-              </Link>
-            </div>
-          </div>
-        </header>
         <main className="min-h-screen bg-white dark:bg-gray-900 flex items-center justify-center">
           <div className="text-center">
             <Loader2 className="w-12 h-12 animate-spin text-brand mx-auto mb-4" />
@@ -2427,23 +2410,6 @@ export default function PersonalizedQuote() {
           <meta name="twitter:description" content="Quote not found. Please contact us to get your personalized quote." />
           <meta name="twitter:image" content={`${process.env.NEXT_PUBLIC_SITE_URL || 'https://m10djcompany.com'}/assets/service-selection-og-image.png`} />
         </Head>
-        {/* Simplified Header with Logo Only */}
-        <header className="sticky top-0 z-50 bg-white border-b border-gray-200 dark:bg-gray-900 dark:border-gray-800 h-10 md:h-12">
-          <div className="container mx-auto px-4 h-full">
-            <div className="flex items-center justify-center h-full py-0">
-              <Link href="/" className="flex-shrink-0 h-full flex items-center">
-                <Image
-                  src="/logo-static.jpg"
-                  alt="M10 DJ Company"
-                  width={120}
-                  height={40}
-                  className="h-6 md:h-8 w-auto"
-                  priority
-                />
-              </Link>
-            </div>
-          </div>
-        </header>
         <main className="min-h-screen bg-white dark:bg-gray-900 flex items-center justify-center px-4">
           <div className="text-center max-w-md">
             <div className="text-6xl mb-4">⚠️</div>
@@ -2494,100 +2460,6 @@ export default function PersonalizedQuote() {
         <meta name="twitter:description" content={`Custom DJ services quote for ${leadData.name}'s ${isHoliday ? 'holiday party' : isCorporate ? 'corporate event' : isSchool ? 'school event' : 'wedding'}`} />
         <meta name="twitter:image" content={`${process.env.NEXT_PUBLIC_SITE_URL || 'https://m10djcompany.com'}/assets/service-selection-og-image.png`} />
       </Head>
-      {/* Simplified Header with Logo Only */}
-      <header className="sticky top-0 z-50 bg-white border-b border-gray-200 dark:bg-gray-900 dark:border-gray-800 h-10 md:h-12">
-        <div className="container mx-auto px-4 h-full">
-          <div className="flex items-center justify-between h-full py-0">
-            <div className="flex-1"></div>
-            <Link href="/" className="flex-shrink-0 h-full flex items-center">
-              <Image
-                src="/logo-static.jpg"
-                alt="M10 DJ Company"
-                width={120}
-                height={40}
-                className="h-6 md:h-8 w-auto"
-                priority
-              />
-            </Link>
-            <div className="flex-1 flex justify-end items-center h-full gap-2">
-              {isAdmin && (
-                <button
-                  onClick={() => setAdminMode(!adminMode)}
-                  className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
-                    adminMode
-                      ? 'bg-brand text-black'
-                      : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
-                  }`}
-                  title="Admin Mode: Customize packages for this client"
-                >
-                  <Settings className="w-4 h-4 inline mr-1" />
-                  Admin {adminMode ? 'ON' : 'OFF'}
-                </button>
-              )}
-              {existingSelection && (
-                <button
-                  onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                  className="p-2 text-gray-700 dark:text-gray-300 hover:text-brand dark:hover:text-brand transition-colors"
-                  aria-label="Open menu"
-                >
-                  {isMobileMenuOpen ? (
-                    <X className="w-6 h-6" />
-                  ) : (
-                    <Menu className="w-6 h-6" />
-                  )}
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
-        
-        {/* Mobile Menu Dropdown */}
-        {isMobileMenuOpen && existingSelection && (
-          <div className="absolute top-full left-0 right-0 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 shadow-lg z-40">
-            <div className="container mx-auto px-4 py-4">
-              <nav className="space-y-2">
-                <Link
-                  href={`/quote/${id}/contract`}
-                  className="flex items-center gap-3 px-4 py-3 text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                >
-                  <FileText className={`w-5 h-5 ${getThemeText()}`} />
-                  <span className="font-medium">My Contracts</span>
-                </Link>
-                <Link
-                  href={`/quote/${id}/invoice`}
-                  className="flex items-center gap-3 px-4 py-3 text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                >
-                  <FileText className={`w-5 h-5 ${getThemeText()}`} />
-                  <span className="font-medium">My Invoices</span>
-                </Link>
-                <Link
-                  href={`/quote/${id}/events`}
-                  className="flex items-center gap-3 px-4 py-3 text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                >
-                  <Calendar className={`w-5 h-5 ${getThemeText()}`} />
-                  <span className="font-medium">My Events</span>
-                </Link>
-                {outstandingBalance > 0 && (
-                  <Link
-                    href={`/quote/${id}/payment`}
-                    className={`flex items-center gap-3 px-4 py-3 ${getThemeBg()} ${getThemeHover()} text-white rounded-lg transition-colors font-semibold shadow-lg`}
-                    onClick={() => setIsMobileMenuOpen(false)}
-                  >
-                    <CheckCircle className="w-5 h-5" />
-                    <span>Make Payment</span>
-                    <span className="ml-auto text-sm opacity-90">
-                      ${outstandingBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                    </span>
-                  </Link>
-                )}
-              </nav>
-            </div>
-          </div>
-        )}
-      </header>
       <main className="min-h-screen bg-white dark:bg-gray-900 pb-32 md:pb-32">
         <div className="container mx-auto px-4 py-12 max-w-6xl">
           {/* Header Section */}

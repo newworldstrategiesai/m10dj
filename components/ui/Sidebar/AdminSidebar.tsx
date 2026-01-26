@@ -195,6 +195,7 @@ export default function AdminSidebar({ onSignOut, isMobileOpen: externalIsMobile
     { label: 'Karaoke Queue', href: '/admin/karaoke', icon: <Mic className="w-5 h-5" /> },
     { label: 'Request Page', href: '/admin/requests-page', icon: <Music className="w-5 h-5" /> },
     { label: 'Social Media', href: '/admin/instagram', icon: <Instagram className="w-5 h-5" /> },
+    { label: 'Affiliates', href: '/admin/affiliates', icon: <UserPlus className="w-5 h-5" /> },
   ];
 
   // Filter navigation based on subscription tier and product context
@@ -220,9 +221,14 @@ export default function AdminSidebar({ onSignOut, isMobileOpen: externalIsMobile
       return tipjarNavItems;
     }
 
-    // Platform admins and paid tiers see everything
-    if (isPlatformAdmin || subscriptionTier === 'professional' || subscriptionTier === 'enterprise' || subscriptionTier === 'white_label') {
+    // Platform admins see everything including affiliates
+    if (isPlatformAdmin) {
       return allNavItems;
+    }
+    
+    // Paid tiers see most items but not admin-only features like affiliates
+    if (subscriptionTier === 'professional' || subscriptionTier === 'enterprise' || subscriptionTier === 'white_label') {
+      return allNavItems.filter(item => item.href !== '/admin/affiliates');
     }
 
     // Starter tier only sees request-related features

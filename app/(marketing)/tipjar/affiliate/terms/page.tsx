@@ -32,17 +32,20 @@ export default function AffiliateTermsPage() {
           <section className="mb-12">
             <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">Agreement to Terms</h2>
             <p className="text-gray-700 dark:text-gray-300 leading-relaxed mb-4">
-              These Affiliate Program Terms ("Affiliate Terms") govern your participation in the TipJar.Live Affiliate Program (the "Program") operated by TipJar.Live ("we," "our," or "us"). By applying to or participating in the Program, you agree to be bound by these Affiliate Terms, our general Terms of Service, and our Privacy Policy.
+              These Affiliate Program Terms (&quot;Affiliate Terms&quot;) govern your participation in the TipJar.Live Affiliate Program (the &quot;Program&quot;) operated by TipJar.Live (&quot;we,&quot; &quot;our,&quot; or &quot;us&quot;). By applying to or participating in the Program, you agree to be bound by these Affiliate Terms, our general Terms of Service, and our Privacy Policy.
             </p>
             <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
-              We may update these Affiliate Terms from time to time. Material changes will be notified by posting the updated terms on this page and updating the "Last Updated" date. Your continued participation in the Program after changes constitutes acceptance of the modified terms.
+              We may update these Affiliate Terms from time to time. Material changes will be notified by posting the updated terms on this page and updating the &quot;Last Updated&quot; date. Your continued participation in the Program after changes constitutes acceptance of the modified terms.
             </p>
           </section>
 
           <section className="mb-12">
             <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">Program Overview</h2>
             <p className="text-gray-700 dark:text-gray-300 leading-relaxed mb-4">
-              The TipJar.Live Affiliate Program allows you to earn commissions by referring new users to TipJar.Live. When someone signs up for TipJar.Live through your unique referral link and becomes a paying customer, you earn commissions on their subscriptions and platform fees.
+              The TipJar.Live Affiliate Program allows you to earn commissions by referring new users to TipJar.Live. When someone signs up for TipJar.Live through your unique referral link and creates a Referred Account that generates platform revenue, you earn commissions on their subscriptions and platform fees.
+            </p>
+            <p className="text-gray-700 dark:text-gray-300 leading-relaxed mb-4">
+              <strong>&quot;Referred Account&quot;</strong> means a TipJar.Live user account that was created after clicking an Affiliate&apos;s referral link and is permanently associated with that Affiliate. Once attributed, the referral relationship is permanent and will not change, regardless of future link clicks.
             </p>
             <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
               All TipJar.Live users are automatically enrolled in the affiliate program upon signup. You can access your affiliate dashboard at any time to track your referrals, view earnings, and manage your account.
@@ -72,7 +75,7 @@ export default function AffiliateTermsPage() {
             
             <h3 className="text-2xl font-semibold text-gray-800 dark:text-gray-200 mb-3 mt-6">Referral Links</h3>
             <p className="text-gray-700 dark:text-gray-300 leading-relaxed mb-4">
-              Upon enrollment, you will receive a unique affiliate referral link (e.g., tipjar.live/ref/YOUR_CODE). This link is automatically included in the "Powered by TipJar" badge on your public TipJar pages. You may also share this link through:
+              Upon enrollment, you will receive a unique affiliate referral link (e.g., tipjar.live/ref/YOUR_CODE). This link is automatically included in the &quot;Powered by TipJar&quot; badge on your public TipJar pages. You may also share this link through:
             </p>
             <ul className="list-disc pl-6 text-gray-700 dark:text-gray-300 space-y-2 mb-4">
               <li>Social media posts and profiles</li>
@@ -84,15 +87,18 @@ export default function AffiliateTermsPage() {
 
             <h3 className="text-2xl font-semibold text-gray-800 dark:text-gray-200 mb-3 mt-6">Tracking and Attribution</h3>
             <p className="text-gray-700 dark:text-gray-300 leading-relaxed mb-4">
-              Referrals are tracked through cookies and session data. A referral is attributed to you when:
+              Referrals are tracked through cookies and session data. Attribution occurs when a user signs up for TipJar.Live after clicking an affiliate referral link. Once attributed, the referral relationship is permanent and will not change, regardless of future link clicks.
+            </p>
+            <p className="text-gray-700 dark:text-gray-300 leading-relaxed mb-4">
+              A referral is attributed to you when:
             </p>
             <ul className="list-disc pl-6 text-gray-700 dark:text-gray-300 space-y-2 mb-4">
               <li>A user clicks your referral link</li>
               <li>The user signs up for TipJar.Live within 30 days of clicking</li>
-              <li>The user becomes a paying customer (subscribes or receives tips)</li>
+              <li>The user creates a Referred Account that generates platform revenue</li>
             </ul>
             <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
-              If a user clicks multiple affiliate links, the first click within the attribution window will be credited. We use industry-standard tracking methods, but cannot guarantee 100% accuracy due to browser settings, ad blockers, or other technical limitations.
+              We use industry-standard tracking methods, but cannot guarantee 100% accuracy due to browser settings, ad blockers, or other technical limitations.
             </p>
           </section>
 
@@ -108,15 +114,32 @@ export default function AffiliateTermsPage() {
               <li><strong>Commission Type:</strong> Recurring monthly commissions for as long as the referred user maintains an active subscription</li>
               <li><strong>Calculation:</strong> Based on the subscription tier and amount paid by the referred user</li>
             </ul>
+            <p className="text-gray-700 dark:text-gray-300 leading-relaxed mb-4">
+              Commission rates are defaults and may vary by affiliate, promotion, account type, or referral source. TipJar.Live reserves the right to adjust commission rates with 30 days&apos; notice.
+            </p>
+            <h4 className="text-xl font-semibold text-gray-800 dark:text-gray-200 mb-3 mt-6">Commission Calculation Timing</h4>
+            <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
+              Affiliate commissions are calculated only after transactions have fully settled, cleared any applicable refund or dispute windows, and are confirmed as non-reversible. TipJar.Live may delay commission approval for up to 30 days to account for refunds, chargebacks, or fraud review.
+            </p>
 
             <h3 className="text-2xl font-semibold text-gray-800 dark:text-gray-200 mb-3 mt-6">Platform Fee Commissions</h3>
             <p className="text-gray-700 dark:text-gray-300 leading-relaxed mb-4">
               You also earn a commission on TipJar platform fees from referred users:
             </p>
             <ul className="list-disc pl-6 text-gray-700 dark:text-gray-300 space-y-2 mb-4">
-              <li><strong>Default Rate:</strong> 10% of platform fees collected</li>
-              <li><strong>Platform Fee:</strong> 3.5% + $0.30 per tip transaction</li>
-              <li><strong>Commission Type:</strong> Ongoing commissions on all platform fees from referred users</li>
+              <li><strong>Default Rate:</strong> 10% of net platform fees collected</li>
+              <li><strong>Platform Fee:</strong> The portion of each transaction retained by TipJar.Live, which may include a percentage-based fee, fixed fee, or combination thereof, as disclosed on our pricing page or within the product at the time of the transaction</li>
+              <li><strong>Commission Type:</strong> Ongoing commissions on all net platform fees from referred users</li>
+            </ul>
+            <p className="text-gray-700 dark:text-gray-300 leading-relaxed mb-4">
+              Platform fees do not include third-party payment processor fees (e.g., Stripe fees), refunds, chargebacks, taxes, or disputed amounts. The following are excluded from commission calculations:
+            </p>
+            <ul className="list-disc pl-6 text-gray-700 dark:text-gray-300 space-y-2">
+              <li>Taxes, VAT, or government fees</li>
+              <li>Refunds or reversed transactions</li>
+              <li>Chargebacks and dispute fees</li>
+              <li>Promotional credits or fee waivers</li>
+              <li>Fraudulent or abusive activity</li>
             </ul>
 
             <h3 className="text-2xl font-semibold text-gray-800 dark:text-gray-200 mb-3 mt-6">Referral Bonuses</h3>
@@ -195,7 +218,7 @@ export default function AffiliateTermsPage() {
               When promoting TipJar.Live, you must:
             </p>
             <ul className="list-disc pl-6 text-gray-700 dark:text-gray-300 space-y-2 mb-4">
-              <li>Accurately represent TipJar.Live's features, pricing, and capabilities</li>
+              <li>Accurately represent TipJar.Live&apos;s features, pricing, and capabilities</li>
               <li>Use only approved marketing materials and branding (if provided)</li>
               <li>Comply with all applicable advertising and marketing laws (CAN-SPAM, GDPR, etc.)</li>
               <li>Clearly disclose your affiliate relationship when required by law</li>
@@ -288,12 +311,26 @@ export default function AffiliateTermsPage() {
             </p>
             <ul className="list-disc pl-6 text-gray-700 dark:text-gray-300 space-y-2">
               <li>Modify commission rates, payout thresholds, or program terms at any time</li>
-              <li>Change or discontinue the Program with 30 days' notice</li>
+              <li>Change or discontinue the Program with 30 days&apos; notice</li>
               <li>Add or remove features, benefits, or requirements</li>
               <li>Update tracking methods or attribution windows</li>
             </ul>
             <p className="text-gray-700 dark:text-gray-300 leading-relaxed mt-4">
               Material changes will be communicated via email or through your affiliate dashboard. Your continued participation after changes constitutes acceptance. If you do not agree to changes, you may terminate your participation as described above.
+            </p>
+          </section>
+
+          <section className="mb-12">
+            <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">Confidentiality</h2>
+            <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
+              Affiliate agrees that commission rates, conversion data, referral counts, revenue metrics, and internal dashboard information are confidential and may not be publicly disclosed without prior written consent from TipJar.Live. This includes, but is not limited to, screenshots of affiliate dashboards, commission statements, or referral statistics shared on social media, forums, or other public platforms.
+            </p>
+          </section>
+
+          <section className="mb-12">
+            <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">Use of Name and Marks</h2>
+            <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
+              Affiliate grants TipJar.Live a non-exclusive right to list Affiliate&apos;s name, logo, or username as a participant in the Affiliate Program, unless Affiliate opts out in writing. TipJar.Live may use this information for marketing purposes, case studies, or social proof, subject to Affiliate&apos;s right to opt out at any time by contacting affiliates@tipjar.live.
             </p>
           </section>
 
@@ -317,16 +354,19 @@ export default function AffiliateTermsPage() {
           </section>
 
           <section className="mb-12">
-            <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">Governing Law</h2>
+            <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">Dispute Resolution and Governing Law</h2>
+            <p className="text-gray-700 dark:text-gray-300 leading-relaxed mb-4">
+              These Affiliate Terms are governed by the laws of the jurisdiction in which TipJar.Live operates, without regard to conflict of law principles.
+            </p>
             <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
-              These Affiliate Terms are governed by the laws of the jurisdiction in which TipJar.Live operates, without regard to conflict of law principles. Any disputes arising from or relating to these terms or the Program will be resolved through binding arbitration or in the appropriate courts of that jurisdiction.
+              Any dispute arising out of or relating to these Affiliate Terms shall be resolved through binding arbitration on an individual basis, except where prohibited by law. Affiliate waives any right to participate in class actions or representative proceedings. The arbitration will be conducted by a single arbitrator in accordance with the rules of the American Arbitration Association (or equivalent organization in the applicable jurisdiction), and judgment on the award may be entered in any court having jurisdiction.
             </p>
           </section>
 
           <section className="mb-12 p-6 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg border border-emerald-200 dark:border-emerald-800">
             <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">Ready to Start Earning?</h2>
             <p className="text-gray-700 dark:text-gray-300 leading-relaxed mb-4">
-              If you're a TipJar.Live user, you're already enrolled in the affiliate program! Visit your affiliate dashboard to get your referral link and start earning commissions.
+              If you&apos;re a TipJar.Live user, you&apos;re already enrolled in the affiliate program! Visit your affiliate dashboard to get your referral link and start earning commissions.
             </p>
             <Link 
               href="/tipjar/affiliate"

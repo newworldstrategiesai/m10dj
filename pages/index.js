@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/router';
 import Link from 'next/link';
 import Image from 'next/image';
 import Head from 'next/head';
@@ -13,9 +14,35 @@ import ClientLogoCarousel from '../components/company/ClientLogoCarousel';
 import TestimonialSlider from '../components/company/TestimonialSlider';
 import { generateStructuredData } from '../utils/generateStructuredData';
 
+// Server-side check: prevent Pages Router from rendering on TipJar/DJ Dash domains
+// Return notFound to skip Pages Router, allowing middleware rewrite to serve App Router page
+export async function getServerSideProps(context) {
+  const hostname = context.req.headers.host || '';
+  const hostnameLower = hostname.toLowerCase();
+  
+  // If on TipJar or DJ Dash domain, return notFound
+  // This prevents Pages Router from rendering, allowing middleware rewrite to work
+  // The middleware rewrites / to /tipjar, which serves app/(marketing)/tipjar/page.tsx
+  if (hostnameLower === 'tipjar.live' || 
+      hostnameLower === 'www.tipjar.live' || 
+      hostnameLower.endsWith('.tipjar.live') ||
+      hostnameLower === 'djdash.net' || 
+      hostnameLower === 'www.djdash.net' || 
+      hostnameLower.endsWith('.djdash.net')) {
+    return {
+      notFound: true, // Skip Pages Router, let middleware rewrite handle it
+    };
+  }
+  
+  return {
+    props: {}, // Normal render for M10 DJ Company domain
+  };
+}
+
 export default function Home() {
   const [isVisible, setIsVisible] = useState(false);
   const [isContactModalOpen, setIsContactModalOpen] = useState(false);
+  const router = useRouter();
 
   useEffect(() => {
     setIsVisible(true);

@@ -1,4 +1,4 @@
-import { createClient } from '@/utils/supabase/server';
+import { createServerSupabaseClient } from '@supabase/auth-helpers-nextjs';
 import { generateRotationIdsForSignup } from '@/utils/karaoke-rotation';
 import { canSignupProceed } from '@/utils/karaoke-rotation';
 import { calculateQueuePosition } from '@/utils/karaoke-queue';
@@ -178,7 +178,7 @@ async function handler(req, res) {
     console.log('Organization ID in body:', req.body?.organization_id);
     console.log('Event QR code in body:', req.body?.event_qr_code);
 
-    const supabase = createClient();
+    const supabase = createServerSupabaseClient({ req, res });
 
     // Test basic Supabase connection
     console.log('Testing Supabase connection...');
@@ -220,7 +220,7 @@ async function handler(req, res) {
 
     // Get karaoke settings from cache to reduce database load
     console.log('Fetching karaoke settings for org:', organization_id);
-    const karaokeSettings = await getCachedKaraokeSettings(organization_id);
+    const karaokeSettings = await getCachedKaraokeSettings(organization_id, supabase);
 
     if (!karaokeSettings) {
       console.log('Karaoke settings not found, using defaults');
@@ -356,7 +356,7 @@ async function handler(req, res) {
     }
 
     // Get or create karaoke settings
-    let { data: settings, error: createSettingsError } = await supabase
+    let { data: settings, error: settingsError } = await supabase
       .from('karaoke_settings')
       .select('*')
       .eq('organization_id', organization_id)

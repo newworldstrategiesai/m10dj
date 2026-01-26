@@ -82,7 +82,14 @@ export async function GET(request: NextRequest) {
     // Get or create affiliate account
     const affiliate = await affiliateService.getOrCreateAffiliate(user.id);
 
-    const dashboardData = await affiliateService.getAffiliateDashboard(affiliate.id);
+    // Get time range from query params
+    const { searchParams } = new URL(request.url);
+    const timeRange = searchParams.get('timeRange') as '7d' | '30d' | '90d' | 'all' | null;
+
+    const dashboardData = await affiliateService.getAffiliateDashboard(
+      affiliate.id,
+      timeRange || 'all'
+    );
 
     return NextResponse.json({
       success: true,
@@ -90,7 +97,8 @@ export async function GET(request: NextRequest) {
       referralLink: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://tipjar.live'}/ref/${affiliate.affiliate_code}`,
       stats: dashboardData.stats,
       recentReferrals: dashboardData.recentReferrals,
-      recentCommissions: dashboardData.recentCommissions
+      recentCommissions: dashboardData.recentCommissions,
+      timeRangeStats: dashboardData.timeRangeStats
     });
 
   } catch (error) {

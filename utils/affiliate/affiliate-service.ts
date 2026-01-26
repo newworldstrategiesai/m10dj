@@ -310,9 +310,9 @@ export class AffiliateService {
   }
 
   /**
-   * Get affiliate dashboard data
+   * Get affiliate dashboard data with enhanced performance metrics
    */
-  async getAffiliateDashboard(affiliateId: string): Promise<{
+  async getAffiliateDashboard(affiliateId: string, timeRange?: '7d' | '30d' | '90d' | 'all'): Promise<{
     affiliate: AffiliateData;
     recentReferrals: ReferralData[];
     recentCommissions: CommissionData[];
@@ -321,9 +321,19 @@ export class AffiliateService {
       totalSignups: number;
       totalConversions: number;
       conversionRate: number;
+      clickToSignupRate: number;
+      signupToConversionRate: number;
       pendingBalance: number;
       totalEarned: number;
       totalPaid: number;
+      averageCommissionPerConversion: number;
+      lifetimeValue: number;
+    };
+    timeRangeStats?: {
+      clicks: number;
+      signups: number;
+      conversions: number;
+      earned: number;
     };
   }> {
     try {
@@ -338,38 +348,89 @@ export class AffiliateService {
         throw new Error('Affiliate not found');
       }
 
-      // Get recent referrals
+      // Calculate date range if specified
+      let dateFilter: { gte?: string } = {};
+      if (timeRange && timeRange !== 'all') {
+        const days = timeRange === '7d' ? 7 : timeRange === '30d' ? 30 : 90;
+        const startDate = new Date();
+        startDate.setDate(startDate.getDate() - days);
+        dateFilter.gte = startDate.toISOString();
+      }
+
+      // Get recent referrals (all time for main list)
       const { data: referrals } = await this.supabase
         .from('affiliate_referrals')
         .select('*')
         .eq('affiliate_id', affiliateId)
         .order('created_at', { ascending: false })
-        .limit(10);
+        .limit(50);
 
-      // Get recent commissions
+      // Get recent commissions (all time for main list)
       const { data: commissions } = await this.supabase
         .from('affiliate_commissions')
         .select('*')
         .eq('affiliate_id', affiliateId)
         .order('created_at', { ascending: false })
-        .limit(10);
+        .limit(50);
 
-      // Calculate stats
+      // Get time-range specific stats if requested
+      let timeRangeStats;
+      if (timeRange && timeRange !== 'all') {
+        const { data: rangeReferrals } = await this.supabase
+          .from('affiliate_referrals')
+          .select('*')
+          .eq('affiliate_id', affiliateId)
+          .gte('first_clicked_at', dateFilter.gte!);
+
+        const { data: rangeCommissions } = await this.supabase
+          .from('affiliate_commissions')
+          .select('amount')
+          .eq('affiliate_id', affiliateId)
+          .gte('created_at', dateFilter.gte!);
+
+        const typedReferrals = (rangeReferrals || []) as ReferralData[];
+
+        timeRangeStats = {
+          clicks: typedReferrals.length || 0,
+          signups: typedReferrals.filter((r) => r.conversion_status !== 'clicked').length || 0,
+          conversions: typedReferrals.filter((r) => ['subscribed', 'first_payment', 'active_user'].includes(r.conversion_status)).length || 0,
+          earned: rangeCommissions?.reduce((sum: number, c: { amount: number }) => sum + (c.amount || 0), 0) || 0
+        };
+      }
+
+      // Calculate enhanced stats
+      const clickToSignupRate = affiliate.total_clicks > 0 
+        ? (affiliate.total_signups / affiliate.total_clicks) * 100 
+        : 0;
+      
+      const signupToConversionRate = affiliate.total_signups > 0
+        ? (affiliate.total_conversions / affiliate.total_signups) * 100
+        : 0;
+
+      const averageCommissionPerConversion = affiliate.total_conversions > 0
+        ? affiliate.total_earned / affiliate.total_conversions
+        : 0;
+
       const stats = {
         totalClicks: affiliate.total_clicks,
         totalSignups: affiliate.total_signups,
         totalConversions: affiliate.total_conversions,
         conversionRate: affiliate.total_clicks > 0 ? (affiliate.total_conversions / affiliate.total_clicks) * 100 : 0,
+        clickToSignupRate,
+        signupToConversionRate,
         pendingBalance: affiliate.pending_balance,
         totalEarned: affiliate.total_earned,
-        totalPaid: affiliate.total_paid
+        totalPaid: affiliate.total_paid,
+        averageCommissionPerConversion,
+        lifetimeValue: affiliate.lifetime_value
       };
 
       return {
         affiliate,
         recentReferrals: referrals || [],
         recentCommissions: commissions || [],
-        stats
+        stats,
+        timeRangeStats
       };
     } catch (error) {
       console.error('Error getting affiliate dashboard:', error);

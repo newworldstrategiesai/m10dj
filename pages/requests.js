@@ -1925,16 +1925,23 @@ export function GeneralRequestsPage({
       e.stopPropagation();
     }
     
+    // CRITICAL FIX: Prevent double submission - check FIRST before any other logic
+    // This must be the very first check to prevent race conditions
+    if (submitting) {
+      logger.warn('[handleSubmit] Already submitting, ignoring duplicate call');
+      return;
+    }
+    
+    // CRITICAL FIX: Set submitting state IMMEDIATELY and SYNCHRONOUSLY
+    // This prevents double-clicks and race conditions
+    // Must be set before any async operations or validation
+    setSubmitting(true);
+    
     // Prevent submission if song requests are disabled
     if (requestType === 'song_request' && songRequestsDisabled) {
       logger.warn('[handleSubmit] Song requests are disabled, preventing submission');
       setError('Song requests are currently unavailable. Please use Shoutout or Tip instead.');
-      return;
-    }
-    
-    // Prevent double submission
-    if (submitting) {
-      logger.warn('[handleSubmit] Already submitting, ignoring duplicate call');
+      setSubmitting(false); // Reset since we're not actually submitting
       return;
     }
     
@@ -1951,6 +1958,8 @@ export function GeneralRequestsPage({
     
     if (!isValid) {
       logger.warn('[handleSubmit] Validation failed, showing error');
+      // Reset submitting state since validation failed
+      setSubmitting(false);
       // Scroll to error message after a brief delay to allow state to update
       // Note: Don't check `error` here - it's stale (React state updates are async)
       setTimeout(() => {
@@ -1967,8 +1976,8 @@ export function GeneralRequestsPage({
     }
     
     logger.info('[handleSubmit] Validation passed, proceeding with submission');
-
-    setSubmitting(true);
+    
+    // Note: submitting state is already set above, no need to set it again
 
     // Save requester info to localStorage for future requests
     try {
@@ -4541,8 +4550,20 @@ export function GeneralRequestsPage({
                   <form onSubmit={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
-                    // Only handle if not already submitting
-                    // This is mainly for Enter key presses in form fields
+                    // CRITICAL FIX: Only handle Enter key presses, not button clicks
+                    // Button clicks are handled by button's onClick which properly prevents form submission
+                    // This prevents double-handling and race conditions
+                    // Only process if triggered by Enter key (not by button click)
+                    const target = e.target;
+                    const isEnterKey = e.nativeEvent?.type === 'submit' && !e.isTrusted === false;
+                    
+                    // If this was triggered by a button click (not Enter key), ignore it
+                    // The button's onClick handler will handle it properly
+                    if (e.nativeEvent?.submitter?.type === 'button') {
+                      return;
+                    }
+                    
+                    // Only handle if not already submitting and this is an Enter key press
                     if (!submitting) {
                       // For step 1, navigate to payment step
                       if (currentStep === 1) {
@@ -4556,7 +4577,7 @@ export function GeneralRequestsPage({
                         }, 100);
                         return;
                       }
-                      // For step 2, call handleSubmit
+                      // For step 2, call handleSubmit (only for Enter key)
                       handleSubmit(e);
                     }
                   }} noValidate className="flex-1 flex flex-col space-y-3 sm:space-y-4 overflow-y-auto">
@@ -5166,8 +5187,15 @@ export function GeneralRequestsPage({
               <form onSubmit={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                // Only handle if not already submitting
-                // This is mainly for Enter key presses in form fields
+                // CRITICAL FIX: Only handle Enter key presses, not button clicks
+                // Button clicks are handled by button's onClick which properly prevents form submission
+                // This prevents double-handling and race conditions
+                // If this was triggered by a button click (not Enter key), ignore it
+                if (e.nativeEvent?.submitter?.type === 'button') {
+                  return;
+                }
+                
+                // Only handle if not already submitting and this is an Enter key press
                 if (!submitting) {
                   // For step 1, navigate to payment step
                   if (currentStep === 1) {
@@ -5181,7 +5209,7 @@ export function GeneralRequestsPage({
                     }, 100);
                     return;
                   }
-                  // For step 2, call handleSubmit
+                  // For step 2, call handleSubmit (only for Enter key)
                   handleSubmit(e);
                 }
               }} className="flex-1 flex flex-col space-y-2 sm:space-y-3 overflow-y-auto" style={{ minHeight: 0, maxHeight: '100%' }}>
@@ -5856,8 +5884,10 @@ export function GeneralRequestsPage({
                     style={{ border: 'none', outline: 'none' }}
                     onClick={async (e) => {
                       // CRITICAL: Always prevent default and stop propagation FIRST
+                      // This prevents the form's onSubmit from firing
                       e.preventDefault();
                       e.stopPropagation();
+                      e.stopImmediatePropagation?.(); // Stop all event handlers if available
                       
                       // Always log the click for debugging
                       console.log('[Submit Button] onClick fired', {
@@ -5902,7 +5932,7 @@ export function GeneralRequestsPage({
                         console.log('[Submit Button] Step 2: Calling handleSubmit');
                         logger.info('[Submit Button] Step 2: Calling handleSubmit');
                         
-                        // Call handleSubmit directly - it will handle its own preventDefault
+                        // Call handleSubmit - it will set submitting state synchronously at the start
                         await handleSubmit(e);
                       } catch (error) {
                         console.error('[Submit Button] onClick error:', error);

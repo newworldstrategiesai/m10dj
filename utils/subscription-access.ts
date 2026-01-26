@@ -72,7 +72,8 @@ export async function canAccessAdminPage(
   userEmail: string | null | undefined,
   page: 'contacts' | 'projects' | 'invoices' | 'financial' | 'analytics' | 'team' | 'settings' | 'contracts'
 ): Promise<{ canAccess: boolean; reason?: string; requiredTier?: string }> {
-  // Platform admins can access everything
+  // CRITICAL FIX: Platform admins can access everything - check FIRST before any async operations
+  // This must be checked synchronously to prevent redirects
   if (isPlatformAdmin(userEmail)) {
     return { canAccess: true };
   }
@@ -80,7 +81,15 @@ export async function canAccessAdminPage(
   const { getCurrentOrganization } = await import('./organization-context');
   const org = await getCurrentOrganization(supabase);
 
+  // CRITICAL FIX: If no org found, check again if user is platform admin
+  // This handles race conditions where isPlatformAdmin check might have been missed
   if (!org) {
+    // Double-check platform admin status - sometimes the check above might fail due to timing
+    const { isPlatformAdmin: checkAdminAgain } = await import('./auth-helpers/platform-admin');
+    if (checkAdminAgain(userEmail)) {
+      return { canAccess: true };
+    }
+    
     return { 
       canAccess: false, 
       reason: 'No organization found. Please complete onboarding.',

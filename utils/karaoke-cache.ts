@@ -64,8 +64,14 @@ analyticsCache.startCleanup();
 
 /**
  * Cached karaoke settings lookup
+ * @param organizationId - The organization ID to fetch settings for
+ * @param supabaseClient - Optional Supabase client (for Pages Router compatibility)
+ *                        If not provided, will create a client (for App Router)
  */
-export async function getCachedKaraokeSettings(organizationId: string): Promise<KaraokeSettings | null> {
+export async function getCachedKaraokeSettings(
+  organizationId: string,
+  supabaseClient?: any
+): Promise<KaraokeSettings | null> {
   const cacheKey = `settings:${organizationId}`;
 
   // Check cache first
@@ -76,8 +82,13 @@ export async function getCachedKaraokeSettings(organizationId: string): Promise<
 
   // Fetch from database
   try {
-    const { createClient } = await import('@/utils/supabase/server');
-    const supabase = createClient();
+    let supabase = supabaseClient;
+    
+    // If no client provided, create one (App Router context)
+    if (!supabase) {
+      const { createClient } = await import('@/utils/supabase/server');
+      supabase = createClient();
+    }
 
     const { data, error } = await supabase
       .from('karaoke_settings')

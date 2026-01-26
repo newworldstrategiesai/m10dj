@@ -90,9 +90,19 @@ interface DashboardData {
     totalSignups: number;
     totalConversions: number;
     conversionRate: number;
+    clickToSignupRate: number;
+    signupToConversionRate: number;
     pendingBalance: number;
     totalEarned: number;
     totalPaid: number;
+    averageCommissionPerConversion: number;
+    lifetimeValue: number;
+  };
+  timeRangeStats?: {
+    clicks: number;
+    signups: number;
+    conversions: number;
+    earned: number;
   };
 }
 
@@ -105,15 +115,20 @@ export default function AffiliateDashboard({ user, organization }: AffiliateDash
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
+  const [timeRange, setTimeRange] = useState<'7d' | '30d' | '90d' | 'all'>('all');
   const { toast } = useToast();
 
   useEffect(() => {
     loadDashboardData();
-  }, []);
+  }, [timeRange]);
 
   const loadDashboardData = async () => {
     try {
-      const response = await fetch('/api/affiliate/register');
+      const url = timeRange !== 'all' 
+        ? `/api/affiliate/register?timeRange=${timeRange}`
+        : '/api/affiliate/register';
+      
+      const response = await fetch(url);
       if (response.ok) {
         const data = await response.json();
         setDashboardData(data);
@@ -285,13 +300,85 @@ export default function AffiliateDashboard({ user, organization }: AffiliateDash
           </Card>
         </div>
 
+        {/* Additional Performance Stats */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Conversion Rate</CardTitle>
+              <BarChart3 className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{stats.conversionRate.toFixed(2)}%</div>
+              <p className="text-xs text-muted-foreground">
+                Clicks to conversions
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Click-to-Signup</CardTitle>
+              <TrendingUp className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{stats.clickToSignupRate.toFixed(2)}%</div>
+              <p className="text-xs text-muted-foreground">
+                Clicks that became signups
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Avg. Commission</CardTitle>
+              <DollarSign className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">${stats.averageCommissionPerConversion.toFixed(2)}</div>
+              <p className="text-xs text-muted-foreground">
+                Per conversion
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Lifetime Value</CardTitle>
+              <DollarSign className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">${stats.lifetimeValue.toFixed(2)}</div>
+              <p className="text-xs text-muted-foreground">
+                Total value generated
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+
         <Tabs defaultValue="overview" className="space-y-6">
-          <TabsList>
-            <TabsTrigger value="overview">Overview</TabsTrigger>
-            <TabsTrigger value="referrals">Referrals</TabsTrigger>
-            <TabsTrigger value="commissions">Commissions</TabsTrigger>
-            <TabsTrigger value="settings">Settings</TabsTrigger>
-          </TabsList>
+          <div className="flex items-center justify-between">
+            <TabsList>
+              <TabsTrigger value="overview">Overview</TabsTrigger>
+              <TabsTrigger value="performance">Performance</TabsTrigger>
+              <TabsTrigger value="referrals">Referrals</TabsTrigger>
+              <TabsTrigger value="commissions">Commissions</TabsTrigger>
+              <TabsTrigger value="settings">Settings</TabsTrigger>
+            </TabsList>
+            <div className="flex items-center gap-2">
+              <Label htmlFor="timeRange" className="text-sm">Time Range:</Label>
+              <select
+                id="timeRange"
+                value={timeRange}
+                onChange={(e) => setTimeRange(e.target.value as '7d' | '30d' | '90d' | 'all')}
+                className="px-3 py-1.5 text-sm border rounded-md bg-white dark:bg-gray-800"
+              >
+                <option value="7d">Last 7 days</option>
+                <option value="30d">Last 30 days</option>
+                <option value="90d">Last 90 days</option>
+                <option value="all">All time</option>
+              </select>
+            </div>
+          </div>
 
           <TabsContent value="overview" className="space-y-6">
             {/* Referral Link */}
@@ -432,6 +519,121 @@ export default function AffiliateDashboard({ user, organization }: AffiliateDash
                 </CardContent>
               </Card>
             </div>
+          </TabsContent>
+
+          <TabsContent value="performance" className="space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Conversion Funnel */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Conversion Funnel</CardTitle>
+                  <CardDescription>
+                    Track how clicks convert to signups and paying customers
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                      <div>
+                        <p className="font-medium">Clicks</p>
+                        <p className="text-sm text-muted-foreground">Total link clicks</p>
+                      </div>
+                      <div className="text-2xl font-bold">{stats.totalClicks.toLocaleString()}</div>
+                    </div>
+                    <div className="flex items-center justify-center">
+                      <div className="text-sm text-muted-foreground">
+                        ↓ {stats.clickToSignupRate.toFixed(1)}% conversion
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                      <div>
+                        <p className="font-medium">Signups</p>
+                        <p className="text-sm text-muted-foreground">Users who registered</p>
+                      </div>
+                      <div className="text-2xl font-bold">{stats.totalSignups.toLocaleString()}</div>
+                    </div>
+                    <div className="flex items-center justify-center">
+                      <div className="text-sm text-muted-foreground">
+                        ↓ {stats.signupToConversionRate.toFixed(1)}% conversion
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between p-4 bg-green-50 dark:bg-green-900/20 rounded-lg">
+                      <div>
+                        <p className="font-medium">Conversions</p>
+                        <p className="text-sm text-muted-foreground">Paying customers</p>
+                      </div>
+                      <div className="text-2xl font-bold text-green-600">{stats.totalConversions.toLocaleString()}</div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Performance Metrics */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Performance Metrics</CardTitle>
+                  <CardDescription>
+                    Key performance indicators for your affiliate account
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between p-3 border rounded-lg">
+                      <span className="text-sm font-medium">Overall Conversion Rate</span>
+                      <span className="text-lg font-bold">{stats.conversionRate.toFixed(2)}%</span>
+                    </div>
+                    <div className="flex items-center justify-between p-3 border rounded-lg">
+                      <span className="text-sm font-medium">Click-to-Signup Rate</span>
+                      <span className="text-lg font-bold">{stats.clickToSignupRate.toFixed(2)}%</span>
+                    </div>
+                    <div className="flex items-center justify-between p-3 border rounded-lg">
+                      <span className="text-sm font-medium">Signup-to-Conversion Rate</span>
+                      <span className="text-lg font-bold">{stats.signupToConversionRate.toFixed(2)}%</span>
+                    </div>
+                    <div className="flex items-center justify-between p-3 border rounded-lg">
+                      <span className="text-sm font-medium">Avg. Commission per Conversion</span>
+                      <span className="text-lg font-bold">${stats.averageCommissionPerConversion.toFixed(2)}</span>
+                    </div>
+                    <div className="flex items-center justify-between p-3 border rounded-lg bg-green-50 dark:bg-green-900/20">
+                      <span className="text-sm font-medium">Total Paid Out</span>
+                      <span className="text-lg font-bold text-green-600">${stats.totalPaid.toFixed(2)}</span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Time Range Stats */}
+            {dashboardData.timeRangeStats && timeRange !== 'all' && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Performance in Selected Time Range</CardTitle>
+                  <CardDescription>
+                    Stats for the last {timeRange === '7d' ? '7 days' : timeRange === '30d' ? '30 days' : '90 days'}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                      <p className="text-sm text-muted-foreground">Clicks</p>
+                      <p className="text-2xl font-bold">{dashboardData.timeRangeStats.clicks}</p>
+                    </div>
+                    <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                      <p className="text-sm text-muted-foreground">Signups</p>
+                      <p className="text-2xl font-bold">{dashboardData.timeRangeStats.signups}</p>
+                    </div>
+                    <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg">
+                      <p className="text-sm text-muted-foreground">Conversions</p>
+                      <p className="text-2xl font-bold text-green-600">{dashboardData.timeRangeStats.conversions}</p>
+                    </div>
+                    <div className="p-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg">
+                      <p className="text-sm text-muted-foreground">Earned</p>
+                      <p className="text-2xl font-bold">${dashboardData.timeRangeStats.earned.toFixed(2)}</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
           </TabsContent>
 
           <TabsContent value="referrals" className="space-y-6">
