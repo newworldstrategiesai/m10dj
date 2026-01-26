@@ -645,16 +645,17 @@ async function handler(req, res) {
                       `)
                       .single();
 
-                  if (linkError) {
-                    console.error('❌ Error linking video to signup:', linkError);
-                    throw linkError;
-                  }
+                    if (linkError) {
+                      console.error('❌ Error linking video to signup:', linkError);
+                      throw linkError;
+                    }
 
-                  if (updatedSignup && updatedSignup.video_data) {
-                    linkedVideo = updatedSignup.video_data;
-                    console.log('✅ Successfully auto-linked video to signup:', linkedVideo.youtube_video_id);
-                  } else {
-                    console.warn('⚠️ Video linked but video_data not returned');
+                    if (updatedSignup && updatedSignup.video_data) {
+                      linkedVideo = updatedSignup.video_data;
+                      console.log('✅ Successfully auto-linked video to signup:', linkedVideo.youtube_video_id);
+                    } else {
+                      console.warn('⚠️ Video linked but video_data not returned');
+                    }
                   }
                 } else {
                   console.warn('⚠️ Video validation failed');
