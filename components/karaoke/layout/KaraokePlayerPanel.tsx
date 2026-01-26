@@ -25,6 +25,12 @@ import {
 } from 'lucide-react';
 import { createClient } from '@/utils/supabase/client';
 
+declare global {
+  interface Window {
+    karaokeDisplayWindow?: Window | null;
+  }
+}
+
 interface KaraokePlayerPanelProps {
   onClose: () => void;
   isPremium: boolean;
@@ -380,12 +386,10 @@ export default function KaraokePlayerPanel({
 
     let targetWindow = propDisplayWindow;
 
-    // If no window reference, we can't reliably find existing windows without opening new ones
-    // The parent component (KaraokeLayout) maintains the window reference via propDisplayWindow
-    // If it's not available, we just can't send the command
-    if (!targetWindow || targetWindow.closed) {
-      console.log('⚠️ No display window reference available - cannot send command');
-      console.log('💡 Tip: Open the display window first using the "Display" button');
+    if ((!targetWindow || targetWindow.closed) && typeof window !== 'undefined' && window.karaokeDisplayWindow && !window.karaokeDisplayWindow.closed) {
+      console.log('📦 Using cached global display window from previous open');
+      targetWindow = window.karaokeDisplayWindow;
+      onDisplayWindowChange?.(targetWindow);
     }
 
     if (!targetWindow || targetWindow.closed) {
@@ -1471,8 +1475,8 @@ export default function KaraokePlayerPanel({
       </div>
 
       {/* Queue/Browse Section */}
-      <div className="flex-1 flex flex-col">
-        <div className="p-4 border-b border-gray-800/50">
+      <div className="flex-1 flex flex-col bg-gray-900">
+        <div className="p-4 border-b border-gray-700/50 bg-gray-900">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
               <button
@@ -1500,20 +1504,20 @@ export default function KaraokePlayerPanel({
             <div className="flex items-center gap-2">
               {sidebarView === 'queue' ? (
                 <>
-                  <span className="text-xs text-gray-500">
+                  <span className="text-xs text-gray-400">
                     {queue.length} song{queue.length !== 1 ? 's' : ''} - {formatTime(totalQueueTime)}
                   </span>
                   {queue.length > 0 && (
                     <button
                       onClick={clearQueue}
-                      className="text-xs text-gray-500 hover:text-gray-400 transition-colors"
+                      className="text-xs text-red-400/70 hover:text-red-400 transition-colors"
                     >
                       Clear
                     </button>
                   )}
                 </>
               ) : (
-                <span className="text-xs text-gray-500">
+                <span className="text-xs text-gray-400">
                   Find songs to add
                 </span>
               )}
@@ -1530,17 +1534,17 @@ export default function KaraokePlayerPanel({
                 ? setSearchQuery(e.target.value)
                 : setBrowseSearchQuery(e.target.value)
               }
-              className="pl-10 bg-gray-800/50 border-gray-700 text-white placeholder-gray-400"
+              className="pl-10 bg-gray-800 border-gray-700 text-white placeholder-gray-500 focus:border-purple-500 focus:ring-purple-500/20"
             />
           </div>
         </div>
 
         {/* Queue/Browse Items */}
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto bg-gray-900">
           {sidebarView === 'queue' ? (
             // Queue View
             queue.length === 0 ? (
-              <div className="p-8 text-center">
+              <div className="p-8 text-center bg-gray-900">
                 <Music className="w-12 h-12 text-gray-600 mx-auto mb-4" />
                 <h4 className="text-gray-400 font-medium mb-2">Your queue is empty</h4>
                 <p className="text-sm text-gray-500 mb-4">
@@ -1555,7 +1559,7 @@ export default function KaraokePlayerPanel({
                 </Button>
               </div>
             ) : (
-              <div className="divide-y divide-gray-800/50">
+              <div className="divide-y divide-gray-700/50 bg-gray-900">
                 {queue
                   .filter(song =>
                     song.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -1572,10 +1576,10 @@ export default function KaraokePlayerPanel({
                     onDrop={(e) => handleDrop(e, index)}
                     className={`p-3 transition-all duration-200 cursor-move ${
                       index === 0
-                        ? 'bg-gradient-to-r from-pink-500/10 to-purple-600/10 border-l-4 border-pink-500'
+                        ? 'bg-gradient-to-r from-pink-500/20 to-purple-600/20 border-l-4 border-pink-500'
                         : dragOverIndex === index
                         ? 'bg-blue-500/20 border-2 border-blue-500 border-dashed'
-                        : 'hover:bg-gray-800/30'
+                        : 'bg-gray-900 hover:bg-gray-800/50'
                     } ${draggedItem?.id === song.id ? 'opacity-50' : ''}`}
                   >
                     <div className="flex items-center gap-3">
@@ -1589,7 +1593,7 @@ export default function KaraokePlayerPanel({
                       </div>
 
                       {/* Position Indicator */}
-                      <div className="flex-shrink-0 w-6 h-6 bg-gray-700 rounded-full flex items-center justify-center text-xs text-gray-400 font-medium">
+                      <div className="flex-shrink-0 w-6 h-6 bg-gray-700 rounded-full flex items-center justify-center text-xs text-gray-300 font-medium">
                         {index + 1}
                       </div>
 
@@ -1606,24 +1610,30 @@ export default function KaraokePlayerPanel({
                             <Lock className="w-3 h-3 text-gray-400" />
                           )}
                         </div>
-                        <p className="text-gray-400 text-xs truncate">
+                        <p className="text-purple-300 text-xs truncate">
                           {song.signupData ? song.signupData.singer_name : song.artist}
                         </p>
-                        <p className="text-gray-500 text-xs">{song.duration}</p>
+                        {/* Duration with clock icon */}
+                        <div className="flex items-center gap-1 mt-0.5">
+                          <Clock className="w-3 h-3 text-gray-500" />
+                          <span className="text-gray-400 text-xs font-mono">
+                            {song.duration && song.duration !== '0:00' ? song.duration : (song.signupData?.video_data?.youtube_video_duration || '--:--')}
+                          </span>
+                        </div>
                       </div>
 
                       {/* Actions */}
                       <div className="flex items-center gap-2">
                         <button
                           onClick={() => playQueueItem(song)}
-                          className="text-pink-400 hover:text-pink-300 transition-colors"
+                          className="p-1.5 rounded-full bg-pink-500/20 text-pink-400 hover:bg-pink-500/30 hover:text-pink-300 transition-colors"
                           title="Play Video"
                         >
                           <Play className="w-4 h-4" />
                         </button>
                         <button
                           onClick={() => removeFromQueue(song.id)}
-                          className="text-gray-500 hover:text-gray-400 transition-colors"
+                          className="p-1.5 rounded-full bg-gray-700/50 text-gray-400 hover:bg-gray-600/50 hover:text-gray-300 transition-colors"
                           title="Remove from Queue"
                         >
                           <X className="w-4 h-4" />
@@ -1637,12 +1647,12 @@ export default function KaraokePlayerPanel({
         ) : (
           // Browse View
           browseLoading ? (
-            <div className="p-8 text-center">
+            <div className="p-8 text-center bg-gray-900">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-500 mx-auto mb-4"></div>
               <p className="text-gray-400 text-sm">Searching songs...</p>
             </div>
           ) : browseSearchQuery && browseResults.length === 0 ? (
-            <div className="p-8 text-center">
+            <div className="p-8 text-center bg-gray-900">
               <Search className="w-12 h-12 text-gray-600 mx-auto mb-4" />
               <h4 className="text-gray-400 font-medium mb-2">No songs found</h4>
               <p className="text-sm text-gray-500">
@@ -1650,11 +1660,11 @@ export default function KaraokePlayerPanel({
               </p>
             </div>
           ) : browseResults.length > 0 ? (
-            <div className="divide-y divide-gray-800/50">
+            <div className="divide-y divide-gray-700/50 bg-gray-900">
               {browseResults.map((song) => (
                 <div
                   key={song.id}
-                  className="p-3 hover:bg-gray-800/30 transition-colors cursor-pointer"
+                  className="p-3 bg-gray-900 hover:bg-gray-800/50 transition-colors cursor-pointer"
                   onClick={() => addSongToQueue(song)}
                 >
                   <div className="flex items-center gap-3">
@@ -1671,10 +1681,14 @@ export default function KaraokePlayerPanel({
                           <Crown className="w-3 h-3 text-yellow-400" />
                         )}
                       </div>
-                      <p className="text-gray-400 text-xs truncate">{song.song_artist}</p>
-                      {song.youtube_video_duration && (
-                        <p className="text-gray-500 text-xs">{song.youtube_video_duration}</p>
-                      )}
+                      <p className="text-purple-300 text-xs truncate">{song.song_artist}</p>
+                      {/* Duration with clock icon */}
+                      <div className="flex items-center gap-1 mt-0.5">
+                        <Clock className="w-3 h-3 text-gray-500" />
+                        <span className="text-gray-400 text-xs font-mono">
+                          {song.youtube_video_duration || '--:--'}
+                        </span>
+                      </div>
                     </div>
 
                     {/* Add Button */}
@@ -1689,7 +1703,7 @@ export default function KaraokePlayerPanel({
               ))}
             </div>
           ) : (
-            <div className="p-8 text-center">
+            <div className="p-8 text-center bg-gray-900">
               <Search className="w-12 h-12 text-gray-600 mx-auto mb-4" />
               <h4 className="text-gray-400 font-medium mb-2">Search for songs</h4>
               <p className="text-sm text-gray-500">

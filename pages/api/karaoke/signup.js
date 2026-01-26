@@ -1,4 +1,5 @@
 import { createServerSupabaseClient } from '@supabase/auth-helpers-nextjs';
+import { createClient } from '@supabase/supabase-js';
 import { generateRotationIdsForSignup } from '@/utils/karaoke-rotation';
 import { canSignupProceed } from '@/utils/karaoke-rotation';
 import { calculateQueuePosition } from '@/utils/karaoke-queue';
@@ -6,6 +7,24 @@ import { withSecurity } from '@/utils/rate-limiting';
 import { logSignupChange, getClientInfo } from '@/utils/karaoke-audit';
 import { getCachedKaraokeSettings, invalidateCache } from '@/utils/karaoke-cache';
 import { searchKaraokeVideos } from '@/utils/youtube-api';
+
+// Create service role client for operations that need to bypass RLS (like auto-linking)
+function getServiceRoleClient() {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  
+  if (!supabaseUrl || !serviceRoleKey) {
+    console.warn('⚠️ Service role key not configured - auto-linking may fail due to RLS');
+    return null;
+  }
+  
+  return createClient(supabaseUrl, serviceRoleKey, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false
+    }
+  });
+}
 
 /**
  * Comprehensive duplicate signup detection
@@ -549,6 +568,15 @@ async function handler(req, res) {
         if (!process.env.YOUTUBE_API_KEY) {
           console.warn('⚠️ YOUTUBE_API_KEY not configured, skipping auto-link');
         } else {
+          // Get service role client for auto-linking (bypasses RLS for public signups)
+          const serviceClient = getServiceRoleClient();
+          if (!serviceClient) {
+            console.warn('⚠️ Service role client not available, auto-link may fail');
+          }
+          
+          // Use service client for database operations, fall back to regular client
+          const dbClient = serviceClient || supabase;
+          
           // Search for karaoke videos
           const { searchKaraokeVideos, validateYouTubeVideo, calculateKaraokeScore, parseDuration } = await import('@/utils/youtube-api');
           
@@ -583,8 +611,8 @@ async function handler(req, res) {
                 if (videoData) {
                   console.log('✅ Video validated:', videoData.title);
                   
-                  // Calculate song key
-                  const { data: songKey, error: songKeyError } = await supabase.rpc('normalize_song_key', {
+                  // Calculate song key using service client
+                  const { data: songKey, error: songKeyError } = await dbClient.rpc('normalize_song_key', {
                     title: song_title,
                     artist: song_artist || null
                   });
@@ -599,6 +627,7 @@ async function handler(req, res) {
                   const durationSeconds = parseDuration(videoData.duration);
 
                   // Create video link record
+                  // IMPORTANT: source must be one of: 'youtube_search', 'manual', 'bulk_import', 'admin_override'
                   const videoRecord = {
                     organization_id: organization_id,
                     song_title: song_title.trim(),
@@ -616,15 +645,15 @@ async function handler(req, res) {
                     is_karaoke_track: qualityScore > 60,
                     has_lyrics: videoData.description?.toLowerCase().includes('lyrics') || false,
                     has_instruments: !videoData.title.toLowerCase().includes('acapella'),
-                    source: 'auto-link',
+                    source: 'youtube_search', // Must match DB constraint: 'youtube_search', 'manual', 'bulk_import', 'admin_override'
                     confidence_score: 0.8, // Slightly lower confidence for auto-links
                     link_status: 'active',
                     created_by: null // Public signup, no user
                   };
 
-                  console.log('💾 Saving video record...');
-                  // Upsert video link
-                  const { data: savedVideo, error: saveError } = await supabase
+                  console.log('💾 Saving video record using service client...');
+                  // Upsert video link using service client (bypasses RLS)
+                  const { data: savedVideo, error: saveError } = await dbClient
                     .from('karaoke_song_videos')
                     .upsert(videoRecord, {
                       onConflict: 'organization_id,song_key',
@@ -635,13 +664,19 @@ async function handler(req, res) {
 
                   if (saveError) {
                     console.error('❌ Error saving video:', saveError);
+                    console.error('Save error details:', {
+                      code: saveError.code,
+                      message: saveError.message,
+                      details: saveError.details,
+                      hint: saveError.hint
+                    });
                     throw saveError;
                   }
 
                   if (savedVideo) {
-                    console.log('✅ Video saved, linking to signup...');
-                    // Link video to signup
-                    const { data: updatedSignup, error: linkError } = await supabase
+                    console.log('✅ Video saved with ID:', savedVideo.id, 'linking to signup...');
+                    // Link video to signup using service client (bypasses RLS)
+                    const { data: updatedSignup, error: linkError } = await dbClient
                       .from('karaoke_signups')
                       .update({
                         video_id: savedVideo.id,
@@ -658,6 +693,12 @@ async function handler(req, res) {
 
                     if (linkError) {
                       console.error('❌ Error linking video to signup:', linkError);
+                      console.error('Link error details:', {
+                        code: linkError.code,
+                        message: linkError.message,
+                        details: linkError.details,
+                        hint: linkError.hint
+                      });
                       throw linkError;
                     }
 
@@ -665,7 +706,17 @@ async function handler(req, res) {
                       linkedVideo = updatedSignup.video_data;
                       console.log('✅ Successfully auto-linked video to signup:', linkedVideo.youtube_video_id);
                     } else {
-                      console.warn('⚠️ Video linked but video_data not returned');
+                      console.warn('⚠️ Video linked but video_data not returned - checking manually...');
+                      // Try to fetch the video data separately
+                      const { data: videoCheck } = await dbClient
+                        .from('karaoke_song_videos')
+                        .select('*')
+                        .eq('id', savedVideo.id)
+                        .single();
+                      if (videoCheck) {
+                        linkedVideo = videoCheck;
+                        console.log('✅ Retrieved video data manually:', linkedVideo.youtube_video_id);
+                      }
                     }
                   }
                 } else {
@@ -687,7 +738,8 @@ async function handler(req, res) {
         console.error('Error details:', {
           message: autoLinkError?.message,
           stack: autoLinkError?.stack,
-          name: autoLinkError?.name
+          name: autoLinkError?.name,
+          code: autoLinkError?.code
         });
       }
     } else {

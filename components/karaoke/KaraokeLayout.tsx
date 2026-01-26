@@ -49,6 +49,12 @@ const KaraokeLayout = forwardRef<KaraokeLayoutRef, KaraokeLayoutProps>(({
     thumbnailUrl: string;
   } | null>(null);
 
+  useEffect(() => {
+    if (typeof window !== 'undefined' && (!displayWindow || displayWindow.closed)) {
+      window.karaokeDisplayWindow = null;
+    }
+  }, [displayWindow]);
+
   const handleSignOut = async () => {
     const supabase = createClient();
     await supabase.auth.signOut();
@@ -62,6 +68,9 @@ const KaraokeLayout = forwardRef<KaraokeLayoutRef, KaraokeLayoutProps>(({
     registerDisplayWindow: (window: Window, video: { videoId: string; title: string; artist: string }) => {
       console.log('🎬 Registering display window:', window);
       setDisplayWindow(window);
+      if (typeof window !== 'undefined') {
+        window.karaokeDisplayWindow = window;
+      }
       setDisplayVideo({
         videoId: video.videoId,
         title: video.title,
