@@ -1546,30 +1546,26 @@ export default function KaraokeAdminPage() {
                                     onClick={(e) => {
                                       e.stopPropagation();
 
-                                      // Reuse the same window by using consistent window name
-                                      const windowName = 'karaokeVideoDisplay';
-                                      const displayWindow = window.open('/karaoke/video-display', windowName, 'width=1280,height=720,scrollbars=no,resizable=yes,status=no,toolbar=no,menubar=no,location=no,directories=no');
-                                      if (displayWindow && karaokeLayoutRef.current) {
-                                        karaokeLayoutRef.current.registerDisplayWindow(displayWindow, {
-                                          videoId: videoData.youtube_video_id,
-                                          title: signup.song_title,
-                                          artist: signup.song_artist || ''
-                                        });
-
-                                        // Send video change command to load the video
-                                        setTimeout(() => {
-                                          if (displayWindow && !displayWindow.closed) {
-                                            displayWindow.postMessage({
-                                              type: 'VIDEO_CONTROL',
-                                              data: {
-                                                action: 'changeVideo',
-                                                videoId: videoData.youtube_video_id,
-                                                title: signup.song_title,
-                                                artist: signup.song_artist || ''
-                                              }
-                                            }, window.location.origin);
-                                          }
-                                        }, 1000);
+                                      // Use KaraokeLayout's startPlayingSignup method which handles both mini player and external display
+                                      if (karaokeLayoutRef.current && signup.video_data) {
+                                        console.log('Opening video in display from queue list:', signup);
+                                        karaokeLayoutRef.current.startPlayingSignup(signup);
+                                      } else {
+                                        // Fallback: open window directly with URL parameters
+                                        const windowName = 'karaokeVideoDisplay';
+                                        const displayUrl = `/karaoke/video-display?videoId=${encodeURIComponent(videoData.youtube_video_id)}&title=${encodeURIComponent(signup.song_title)}&artist=${encodeURIComponent(signup.song_artist || '')}`;
+                                        const displayWindow = window.open(
+                                          displayUrl,
+                                          windowName,
+                                          'width=1280,height=720,scrollbars=no,resizable=yes,status=no,toolbar=no,menubar=no,location=no,directories=no'
+                                        );
+                                        if (displayWindow && karaokeLayoutRef.current) {
+                                          karaokeLayoutRef.current.registerDisplayWindow(displayWindow, {
+                                            videoId: videoData.youtube_video_id,
+                                            title: signup.song_title,
+                                            artist: signup.song_artist || ''
+                                          });
+                                        }
                                       }
                                     }}
                                     className="h-8 px-2 bg-green-50 hover:bg-green-100 border-green-200 text-green-700 hover:text-green-800"
