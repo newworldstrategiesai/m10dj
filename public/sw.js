@@ -169,6 +169,16 @@ self.addEventListener('fetch', (event) => {
   // Skip external requests (not same origin)
   if (url.origin !== self.location.origin) return;
 
+  // CRITICAL: Never intercept signin/auth pages - they must always go to network
+  // These pages need fresh content and should never be cached or show offline fallback
+  if (url.pathname.startsWith('/signin') ||
+      url.pathname.startsWith('/signup') ||
+      url.pathname.startsWith('/auth/') ||
+      url.pathname.startsWith('/api/auth/')) {
+    // Let the request pass through to network without service worker interception
+    return;
+  }
+
   // Handle API requests with network-first strategy
   if (API_ENDPOINTS.some(endpoint => url.pathname.startsWith(endpoint))) {
     event.respondWith(CACHE_STRATEGIES.networkFirst(request));
