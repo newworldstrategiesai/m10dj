@@ -1053,17 +1053,14 @@ export default function CrowdRequestsPage() {
     try {
       setLoading(true);
       
-      // Get current user's organization
+      // Get current user's organization (supports platform admins and team members)
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         throw new Error('Not authenticated');
       }
 
-      const { data: org } = await supabase
-        .from('organizations')
-        .select('*')
-        .eq('owner_id', user.id)
-        .single();
+      // Use getCurrentOrganization which handles platform admins and team members
+      const org = await getCurrentOrganization(supabase);
 
       if (!org) {
         throw new Error('No organization found');
@@ -1236,13 +1233,30 @@ export default function CrowdRequestsPage() {
       if (requestsNeedingStatusSync.length > 0) {
         syncPaymentStatusFromStripe(requestsNeedingStatusSync);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching requests:', error);
+      
+      // Don't redirect on error - just show error message
+      // This allows users to see what went wrong and retry
+      const errorMessage = error?.message || 'Failed to load crowd requests';
       toast({
         title: 'Error',
-        description: 'Failed to load crowd requests',
+        description: errorMessage,
         variant: 'destructive',
       });
+      
+      // If it's an auth error, redirect to signin
+      if (errorMessage.includes('Not authenticated') || errorMessage.includes('No organization found')) {
+        // Only redirect if we're sure it's an auth issue
+        // For "No organization found", platform admins should still be able to see the page
+        // So we'll only redirect for actual auth failures
+        if (errorMessage.includes('Not authenticated')) {
+          router.push('/signin?redirect=/admin/crowd-requests');
+          return;
+        }
+        // For "No organization found", show error but don't redirect
+        // Platform admins might not have an org but should still access the page
+      }
     } finally {
       setLoading(false);
     }
@@ -1476,11 +1490,8 @@ export default function CrowdRequestsPage() {
       try {
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
-          const { data: org } = await supabase
-            .from('organizations')
-            .select('name')
-            .eq('owner_id', user.id)
-            .single();
+          // Use getCurrentOrganization to support platform admins and team members
+          const org = await getCurrentOrganization(supabase);
           if (org?.name) {
             artistName = org.name;
           }
@@ -3163,11 +3174,8 @@ export default function CrowdRequestsPage() {
         throw new Error('Not authenticated');
       }
 
-      const { data: org } = await supabase
-        .from('organizations')
-        .select('id')
-        .eq('owner_id', user.id)
-        .single();
+      // Use getCurrentOrganization to support platform admins and team members
+      const org = await getCurrentOrganization(supabase);
 
       if (!org) {
         throw new Error('No organization found');
