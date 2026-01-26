@@ -37,14 +37,32 @@ export default function YouTubePlayer({
   // Generate iframe embed URL with YouTube API enabled for external control
   const embedUrl = `https://www.youtube.com/embed/${videoId}?enablejsapi=1&controls=${showControls ? 1 : 0}&autoplay=${autoPlay && isPlaying ? 1 : 0}&mute=${muted ? 1 : 0}&modestbranding=1&rel=0&iv_load_policy=3&showinfo=0&origin=${typeof window !== 'undefined' ? window.location.origin : ''}`;
 
+  // Helper function to check if player is fully ready with all methods
+  const isPlayerReady = useCallback(() => {
+    if (!playerRef.current) return false;
+    const player = playerRef.current;
+    // Check that all required methods exist and are functions
+    return typeof player.playVideo === 'function' &&
+           typeof player.pauseVideo === 'function' &&
+           typeof player.getCurrentTime === 'function' &&
+           typeof player.getDuration === 'function' &&
+           typeof player.getPlayerState === 'function';
+  }, []);
+
   // Helper function to expose control methods - defined with useCallback so it can be used in callbacks
   const exposeControlMethods = useCallback(() => {
-    if (!enableExternalControl || !playerRef.current) return;
-      if (!enableExternalControl || !playerRef.current) return;
+    if (!enableExternalControl || !isPlayerReady()) {
+      // Don't expose if player isn't ready yet
+      return;
+    }
       
       console.log('🎮 Exposing YouTube player control methods');
       (window as any).youtubePlayerControl = {
         play: () => {
+          if (!isPlayerReady()) {
+            console.debug('⏳ Player not ready for play');
+            return null;
+          }
           console.log('▶️ Calling playVideo()');
           try {
             return playerRef.current?.playVideo();
@@ -54,6 +72,10 @@ export default function YouTubePlayer({
           }
         },
         pause: () => {
+          if (!isPlayerReady()) {
+            console.debug('⏳ Player not ready for pause');
+            return null;
+          }
           console.log('⏸️ Calling pauseVideo()');
           try {
             return playerRef.current?.pauseVideo();
@@ -63,6 +85,10 @@ export default function YouTubePlayer({
           }
         },
         stop: () => {
+          if (!isPlayerReady()) {
+            console.debug('⏳ Player not ready for stop');
+            return null;
+          }
           console.log('⏹️ Calling stopVideo()');
           try {
             return playerRef.current?.stopVideo();
@@ -72,6 +98,10 @@ export default function YouTubePlayer({
           }
         },
         seekTo: (seconds: number) => {
+          if (!isPlayerReady()) {
+            console.debug('⏳ Player not ready for seekTo');
+            return null;
+          }
           console.log('⏩ Calling seekTo()', seconds);
           try {
             return playerRef.current?.seekTo(seconds);
@@ -81,6 +111,10 @@ export default function YouTubePlayer({
           }
         },
         setVolume: (volume: number) => {
+          if (!isPlayerReady()) {
+            console.debug('⏳ Player not ready for setVolume');
+            return null;
+          }
           console.log('🔊 Calling setVolume()', volume);
           try {
             return playerRef.current?.setVolume(volume);
@@ -90,6 +124,10 @@ export default function YouTubePlayer({
           }
         },
         mute: () => {
+          if (!isPlayerReady()) {
+            console.debug('⏳ Player not ready for mute');
+            return null;
+          }
           console.log('🔇 Calling mute()');
           try {
             return playerRef.current?.mute();
@@ -99,6 +137,10 @@ export default function YouTubePlayer({
           }
         },
         unMute: () => {
+          if (!isPlayerReady()) {
+            console.debug('⏳ Player not ready for unMute');
+            return null;
+          }
           console.log('🔊 Calling unMute()');
           try {
             return playerRef.current?.unMute();
@@ -108,6 +150,10 @@ export default function YouTubePlayer({
           }
         },
         loadVideoById: (videoId: string) => {
+          if (!isPlayerReady()) {
+            console.debug('⏳ Player not ready for loadVideoById');
+            return null;
+          }
           console.log('📺 Calling loadVideoById()', videoId);
           try {
             return playerRef.current?.loadVideoById(videoId);
@@ -117,6 +163,9 @@ export default function YouTubePlayer({
           }
         },
         getCurrentTime: () => {
+          if (!isPlayerReady()) {
+            return 0;
+          }
           try {
             return playerRef.current?.getCurrentTime() || 0;
           } catch (error) {
@@ -125,6 +174,9 @@ export default function YouTubePlayer({
           }
         },
         getDuration: () => {
+          if (!isPlayerReady()) {
+            return 0;
+          }
           try {
             return playerRef.current?.getDuration() || 0;
           } catch (error) {
@@ -133,6 +185,9 @@ export default function YouTubePlayer({
           }
         },
         getPlayerState: () => {
+          if (!isPlayerReady()) {
+            return -1;
+          }
           try {
             return playerRef.current?.getPlayerState() || -1;
           } catch (error) {
@@ -142,7 +197,7 @@ export default function YouTubePlayer({
         }
       };
       console.log('✅ YouTube player control methods exposed successfully');
-  }, [enableExternalControl]);
+  }, [enableExternalControl, isPlayerReady]);
 
   // Load YouTube IFrame API and create player
   useEffect(() => {
@@ -172,8 +227,19 @@ export default function YouTubePlayer({
               setIsLoading(false);
               setError(null);
               onStateChange?.('playing');
-              // Expose control methods when player is ready
-              exposeControlMethods();
+              // Wait a bit for player to fully initialize before exposing control methods
+              setTimeout(() => {
+                if (mountedRef.current && isPlayerReady()) {
+                  exposeControlMethods();
+                } else {
+                  // If not ready yet, try again after a short delay
+                  setTimeout(() => {
+                    if (mountedRef.current && isPlayerReady()) {
+                      exposeControlMethods();
+                    }
+                  }, 500);
+                }
+              }, 100);
             }
           },
           onStateChange: (event: any) => {
@@ -214,13 +280,13 @@ export default function YouTubePlayer({
     if (!enableExternalControl) return;
 
     // Try to expose immediately if player is already ready
-    if (playerRef.current) {
+    if (isPlayerReady()) {
       exposeControlMethods();
     }
 
     // Also check periodically in case player loads after this effect runs
     const checkInterval = setInterval(() => {
-      if (playerRef.current && !(window as any).youtubePlayerControl) {
+      if (isPlayerReady() && !(window as any).youtubePlayerControl) {
         exposeControlMethods();
       }
     }, 500);
@@ -228,7 +294,7 @@ export default function YouTubePlayer({
     return () => {
       clearInterval(checkInterval);
     };
-  }, [enableExternalControl, videoId]);
+  }, [enableExternalControl, videoId, isPlayerReady, exposeControlMethods]);
 
   // Cleanup on unmount
   useEffect(() => {

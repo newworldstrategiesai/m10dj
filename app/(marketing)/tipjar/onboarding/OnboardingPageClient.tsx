@@ -1,11 +1,11 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { useRouter } from 'next/navigation';
 import TipJarOnboardingWizard from '@/components/tipjar/OnboardingWizard';
 import { Loader2 } from 'lucide-react';
 import TipJarAnimatedLoader from '@/components/ui/TipJarAnimatedLoader';
+import { createClient } from '@/utils/supabase/client';
 
 interface OnboardingPageClientProps {
   user: any;
@@ -17,7 +17,7 @@ export default function OnboardingPageClient({
   organization: initialOrganization
 }: OnboardingPageClientProps) {
   const router = useRouter();
-  const supabase = createClientComponentClient();
+  const supabase = createClient();
   const [organization, setOrganization] = useState(initialOrganization);
   const [loading, setLoading] = useState(!initialOrganization);
   const [checking, setChecking] = useState(false);

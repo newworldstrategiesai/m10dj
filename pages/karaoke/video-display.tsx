@@ -250,10 +250,21 @@ export default function VideoDisplayPage() {
         const duration = control.getDuration();
         const playerState = control.getPlayerState();
 
+        // Only send updates if we have valid data
+        // Duration must be > 0 (video is loaded)
+        // CurrentTime should be >= 0 and <= duration
+        if (duration === undefined || duration <= 0) {
+          return; // Video not loaded yet, don't send update
+        }
+
+        if (currentTime === undefined || currentTime < 0 || currentTime > duration) {
+          return; // Invalid currentTime, don't send update
+        }
+
         const statusData = {
           isPlaying: playerState === 1,
-          currentTime: currentTime || 0,
-          duration: duration || 0,
+          currentTime: currentTime,
+          duration: duration,
           volume: volume,
           videoId: currentVideo?.videoId || '',
           title: currentVideo?.title || '',
@@ -315,10 +326,21 @@ export default function VideoDisplayPage() {
           const duration = control.getDuration();
           const playerState = control.getPlayerState();
 
+          // Only send updates if we have valid data
+          // Duration must be > 0 (video is loaded)
+          // CurrentTime should be >= 0 and <= duration
+          if (duration === undefined || duration <= 0) {
+            return; // Video not loaded yet, don't send update
+          }
+
+          if (currentTime === undefined || currentTime < 0 || currentTime > duration) {
+            return; // Invalid currentTime, don't send update
+          }
+
           const statusData = {
             isPlaying: playerState === 1, // YT.PlayerState.PLAYING
-            currentTime: currentTime || 0,
-            duration: duration || 0,
+            currentTime: currentTime,
+            duration: duration,
             volume: volume,
             videoId: currentVideo.videoId,
             title: currentVideo.title,

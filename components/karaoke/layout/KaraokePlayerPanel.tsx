@@ -375,12 +375,72 @@ export default function KaraokePlayerPanel({
 
       if (type === 'VIDEO_STATUS') {
         console.log('📊 Processing VIDEO_STATUS:', data);
-        setDisplayStatus({
-          isPlaying: data.playerState === 1 || data.isPlaying,
-          currentTime: data.currentTime || 0,
-          duration: data.duration || 0,
-          volume: data.volume || 50
-        });
+        
+        // Only update if we have valid duration (video is loaded)
+        // and currentTime is within valid range
+        const newDuration = data.duration || 0;
+        const newCurrentTime = data.currentTime || 0;
+        const newIsPlaying = data.playerState === 1 || data.isPlaying;
+        
+        if (newDuration > 0 && newCurrentTime >= 0 && newCurrentTime <= newDuration) {
+          setDisplayStatus(prev => {
+            // Only update if values have changed significantly to prevent flickering
+            if (!prev) {
+              // First time setting status, update everything
+              setIsPlaying(newIsPlaying);
+              setCurrentTime(newCurrentTime);
+              setDuration(newDuration);
+              return {
+                isPlaying: newIsPlaying,
+                currentTime: newCurrentTime,
+                duration: newDuration,
+                volume: data.volume || volume || 50
+              };
+            }
+            
+            // Check if duration changed significantly
+            if (Math.abs(prev.duration - newDuration) > 1) {
+              setIsPlaying(newIsPlaying);
+              setCurrentTime(newCurrentTime);
+              setDuration(newDuration);
+              return {
+                isPlaying: newIsPlaying,
+                currentTime: newCurrentTime,
+                duration: newDuration,
+                volume: data.volume || prev.volume || 50
+              };
+            }
+            
+            // Check if currentTime changed significantly
+            if (Math.abs(prev.currentTime - newCurrentTime) > 0.5) {
+              setCurrentTime(newCurrentTime);
+              // Only update isPlaying if it actually changed
+              const shouldUpdatePlaying = prev.isPlaying !== newIsPlaying;
+              if (shouldUpdatePlaying) {
+                setIsPlaying(newIsPlaying);
+              }
+              return {
+                ...prev,
+                isPlaying: shouldUpdatePlaying ? newIsPlaying : prev.isPlaying,
+                currentTime: newCurrentTime,
+                volume: data.volume || prev.volume || 50
+              };
+            }
+            
+            // Only update playing state if it changed (and nothing else changed significantly)
+            if (prev.isPlaying !== newIsPlaying) {
+              setIsPlaying(newIsPlaying);
+              return {
+                ...prev,
+                isPlaying: newIsPlaying,
+                volume: data.volume || prev.volume || 50
+              };
+            }
+            
+            // No significant change, keep previous state
+            return prev;
+          });
+        }
 
         // Update display video info if we don't have it
         if (!propDisplayVideo && data.videoId && onDisplayVideoChange) {
@@ -419,16 +479,41 @@ export default function KaraokePlayerPanel({
       if (!control) return false;
       
       // Check if all required methods exist
-      return typeof control.getPlayerState === 'function' &&
-             typeof control.getCurrentTime === 'function' &&
-             typeof control.getDuration === 'function';
+      const hasMethods = typeof control.getPlayerState === 'function' &&
+                         typeof control.getCurrentTime === 'function' &&
+                         typeof control.getDuration === 'function';
+      
+      if (!hasMethods) return false;
+      
+      // Try to call getPlayerState to verify the underlying player is ready
+      // If it throws, the player isn't ready yet
+      // Note: -1 is a valid state (unstarted), so we accept it
+      try {
+        const testState = control.getPlayerState();
+        // If we can call the method without error, the control is functional
+        return testState !== undefined;
+      } catch (error) {
+        return false;
+      }
     };
+
+    let consecutiveFailures = 0;
+    const maxFailures = 3;
 
     const updateEmbeddedStatus = () => {
       // Double-check control is ready before attempting to use it
       if (!isControlReady()) {
+        consecutiveFailures++;
+        // If we've failed too many times, stop trying
+        if (consecutiveFailures >= maxFailures) {
+          console.debug('⏸️ Stopping embedded status updates - player not ready after multiple attempts');
+          return;
+        }
         return; // Control not ready yet, skip this update
       }
+
+      // Reset failure counter on success
+      consecutiveFailures = 0;
 
       const control = (window as any).youtubePlayerControl;
       
@@ -438,22 +523,72 @@ export default function KaraokePlayerPanel({
         const duration = control.getDuration();
 
         // Only update if we got valid values
-        if (playerState !== undefined && currentTime !== undefined && duration !== undefined) {
-          setIsPlaying(playerState === 1); // YT.PlayerState.PLAYING
-          setCurrentTime(currentTime || 0);
-          setDuration(duration || 0);
-
-          // Update displayStatus for consistency
-          setDisplayStatus({
-            isPlaying: playerState === 1,
-            currentTime: currentTime || 0,
-            duration: duration || 0,
-            volume: volume
+        // - playerState should be defined and not -1 (unstarted)
+        // - duration must be > 0 (video must be loaded)
+        // - currentTime should be >= 0 and <= duration
+        if (playerState !== undefined && 
+            playerState !== -1 && 
+            duration !== undefined && 
+            duration > 0 &&
+            currentTime !== undefined && 
+            currentTime >= 0 && 
+            currentTime <= duration) {
+          
+          // Only update if values have actually changed to prevent unnecessary re-renders
+          setDisplayStatus(prev => {
+            const newIsPlaying = playerState === 1;
+            
+            // If duration changed significantly (more than 1 second), update everything
+            if (!prev || Math.abs(prev.duration - duration) > 1) {
+              setIsPlaying(newIsPlaying);
+              setCurrentTime(currentTime);
+              setDuration(duration);
+              return {
+                isPlaying: newIsPlaying,
+                currentTime: currentTime,
+                duration: duration,
+                volume: volume
+              };
+            }
+            
+            // If currentTime changed significantly (more than 0.5 seconds), update it
+            // BUT don't update isPlaying unless it actually changed
+            if (!prev || Math.abs(prev.currentTime - currentTime) > 0.5) {
+              setCurrentTime(currentTime);
+              const shouldUpdatePlaying = prev.isPlaying !== newIsPlaying;
+              if (shouldUpdatePlaying) {
+                setIsPlaying(newIsPlaying);
+              }
+              return {
+                ...prev,
+                isPlaying: shouldUpdatePlaying ? newIsPlaying : prev.isPlaying,
+                currentTime: currentTime,
+                volume: volume
+              };
+            }
+            
+            // Only update playing state if it changed (and nothing else changed significantly)
+            if (prev.isPlaying !== newIsPlaying) {
+              setIsPlaying(newIsPlaying);
+              return {
+                ...prev,
+                isPlaying: newIsPlaying,
+                volume: volume
+              };
+            }
+            
+            // No significant change, return previous state
+            return prev;
           });
         }
       } catch (error) {
+        consecutiveFailures++;
         // Silently handle errors - player might not be ready
         // Don't log errors here as they're expected when player isn't ready
+        // If we've failed too many times consecutively, stop the interval
+        if (consecutiveFailures >= maxFailures) {
+          console.debug('⏸️ Stopping embedded status updates due to repeated errors');
+        }
       }
     };
 
@@ -464,7 +599,17 @@ export default function KaraokePlayerPanel({
     const startTracking = () => {
       if (isControlReady()) {
         // Control is ready, start regular updates
-        interval = setInterval(updateEmbeddedStatus, 500);
+        consecutiveFailures = 0; // Reset failure counter
+        interval = setInterval(() => {
+          updateEmbeddedStatus();
+          // Stop interval if we've had too many consecutive failures
+          if (consecutiveFailures >= maxFailures && interval) {
+            clearInterval(interval);
+            interval = null;
+            // Try again after a longer delay
+            checkTimer = setTimeout(startTracking, 5000);
+          }
+        }, 500);
         updateEmbeddedStatus(); // Initial update
       } else {
         // Control not ready yet, check again in 1 second
@@ -538,14 +683,33 @@ export default function KaraokePlayerPanel({
     let retries = 0;
     const maxRetries = 3;
     
-    while (!control && retries < maxRetries) {
+    // Helper to check if control is actually ready and functional
+    const isControlFunctional = (ctrl: any) => {
+      if (!ctrl) return false;
+      // Check methods exist
+      if (typeof ctrl.getPlayerState !== 'function' ||
+          typeof ctrl.play !== 'function' ||
+          typeof ctrl.pause !== 'function') {
+        return false;
+      }
+      // Try to verify player is ready by checking state
+      try {
+        const state = ctrl.getPlayerState();
+        // If we can get state (even if -1), the control is at least functional
+        return state !== undefined;
+      } catch (error) {
+        return false;
+      }
+    };
+    
+    while (!isControlFunctional(control) && retries < maxRetries) {
       console.log(`⏳ Waiting for embedded player control (attempt ${retries + 1}/${maxRetries})...`);
       await new Promise(resolve => setTimeout(resolve, 500));
       control = embeddedPlayerControl || (window as any).youtubePlayerControl;
       retries++;
     }
     
-    if (control) {
+    if (isControlFunctional(control)) {
       console.log('🎮 Using embedded player control');
       setIsCommandLoading(true);
       try {
@@ -602,6 +766,10 @@ export default function KaraokePlayerPanel({
         setIsCommandLoading(false);
       }
       return;
+    } else {
+      // Control exists but isn't functional yet
+      console.debug('⏳ Embedded player control not ready yet, command will be ignored');
+      return;
     }
 
     console.warn('❌ No display window or embedded player available - cannot send command', {
@@ -625,21 +793,25 @@ export default function KaraokePlayerPanel({
 
     // Determine current playing state - prefer displayStatus over local isPlaying state
     // as displayStatus is updated from the actual player
-    const currentlyPlaying = displayStatus?.isPlaying ?? isPlaying;
+    // Only use displayStatus if it has valid duration (video is loaded)
+    const hasValidStatus = displayStatus && displayStatus.duration > 0;
+    const currentlyPlaying = hasValidStatus 
+      ? displayStatus.isPlaying 
+      : isPlaying;
     
     // Always use sendDisplayCommand - it will route to the right target
     try {
       if (currentlyPlaying) {
         await sendDisplayCommand('pause');
-        // Optimistically update local state
-        if (displayStatus) {
+        // Optimistically update local state - only if we have valid status
+        if (hasValidStatus) {
           setDisplayStatus({ ...displayStatus, isPlaying: false });
         }
         setIsPlaying(false);
       } else {
         await sendDisplayCommand('play');
-        // Optimistically update local state
-        if (displayStatus) {
+        // Optimistically update local state - only if we have valid status
+        if (hasValidStatus) {
           setDisplayStatus({ ...displayStatus, isPlaying: true });
         }
         setIsPlaying(true);
@@ -652,7 +824,7 @@ export default function KaraokePlayerPanel({
     } catch (error) {
       console.error('Error toggling play/pause:', error);
       // Still update UI optimistically even if command fails
-      if (displayStatus) {
+      if (hasValidStatus) {
         setDisplayStatus({ ...displayStatus, isPlaying: !currentlyPlaying });
       }
       setIsPlaying(!currentlyPlaying);
@@ -1134,7 +1306,7 @@ export default function KaraokePlayerPanel({
       </div>
 
       {/* Enhanced Now Playing Section */}
-      <div className="p-6 border-b border-gray-800/50 bg-gradient-to-b from-gray-900/50 to-transparent">
+      <div className="p-6 border-b border-gray-800/50 bg-gray-900/95">
         <div className="flex items-center justify-between mb-6">
           <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
             <div className="w-1.5 h-1.5 bg-purple-500 rounded-full animate-pulse" />
@@ -1273,7 +1445,7 @@ export default function KaraokePlayerPanel({
 
               {/* Rich Metadata Display */}
               <div className="grid grid-cols-2 gap-4 text-xs">
-                <div className="bg-gray-800/30 rounded-lg p-3">
+                <div className="bg-gray-900/60 rounded-lg p-3 border border-gray-800/30">
                   <div className="flex items-center gap-2 mb-2">
                     <div className="w-2 h-2 bg-red-500 rounded-full" />
                     <span className="text-gray-400 font-medium">YouTube</span>
@@ -1294,7 +1466,7 @@ export default function KaraokePlayerPanel({
                   </div>
                 </div>
 
-                <div className="bg-gray-800/30 rounded-lg p-3">
+                <div className="bg-gray-900/60 rounded-lg p-3 border border-gray-800/30">
                   <div className="flex items-center gap-2 mb-2">
                     <div className="w-2 h-2 bg-purple-500 rounded-full" />
                     <span className="text-gray-400 font-medium">Karaoke</span>
@@ -1319,7 +1491,7 @@ export default function KaraokePlayerPanel({
 
             {/* Enhanced Progress Bar - Mirrors External Display */}
             {propDisplayVideo && (
-              <div className="space-y-3 relative bg-gray-800/20 rounded-lg p-4 border border-gray-700/30">
+              <div className="space-y-3 relative bg-gray-900/60 rounded-lg p-4 border border-gray-800/30">
                 {/* Progress Bar Label */}
                 <div className="flex items-center justify-between text-xs text-gray-400 mb-2">
                   <span className="font-medium">Live Progress</span>
@@ -1465,21 +1637,28 @@ export default function KaraokePlayerPanel({
 
               <button
                 onClick={toggleDisplayPlayPause}
-                disabled={isCommandLoading}
+                disabled={isCommandLoading || !propDisplayVideo}
                 className={`p-4 rounded-full text-white shadow-lg transition-all touch-manipulation min-w-[64px] min-h-[64px] flex items-center justify-center ${
-                  isCommandLoading
-                    ? 'bg-gray-600 cursor-not-allowed'
+                  isCommandLoading || !propDisplayVideo
+                    ? 'bg-gray-600 cursor-not-allowed opacity-50'
                     : 'karaoke-gradient-primary hover:shadow-xl active:shadow-lg hover:scale-105 active:scale-95'
                 }`}
-                title="Space: Play/Pause"
+                title={!propDisplayVideo ? "No video loaded" : "Space: Play/Pause"}
               >
                 {isCommandLoading ? (
                   <div className="w-8 h-8 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                ) : (displayStatus?.isPlaying ?? isPlaying) ? (
-                  <Pause className="w-8 h-8" />
-                ) : (
-                  <Play className="w-8 h-8 ml-1" />
-                )}
+                ) : (() => {
+                  // Only use displayStatus if it has valid duration (video is loaded)
+                  const hasValidStatus = displayStatus && displayStatus.duration > 0;
+                  const isCurrentlyPlaying = hasValidStatus 
+                    ? displayStatus.isPlaying 
+                    : isPlaying;
+                  return isCurrentlyPlaying ? (
+                    <Pause className="w-8 h-8" />
+                  ) : (
+                    <Play className="w-8 h-8 ml-1" />
+                  );
+                })()}
               </button>
 
               <button
@@ -1538,7 +1717,7 @@ export default function KaraokePlayerPanel({
             </div>
 
             {/* Enhanced Volume Controls */}
-            <div className="bg-gray-800/30 rounded-lg p-4 space-y-3">
+            <div className="bg-gray-900/80 rounded-lg p-4 space-y-3 border border-gray-800/50">
               <div className="flex items-center justify-between text-xs text-gray-400">
                 <span className="font-medium">Volume</span>
                 <span className="font-mono">{isMuted ? 'Muted' : `${volume}%`}</span>
@@ -1607,7 +1786,7 @@ export default function KaraokePlayerPanel({
 
             {/* Audio Visualization */}
             {displayStatus?.isPlaying && (
-              <div className="bg-gray-800/30 rounded-lg p-4">
+              <div className="bg-gray-900/80 rounded-lg p-4 border border-gray-800/50">
                 <div className="flex items-center justify-between mb-3">
                   <span className="text-xs text-gray-400 font-medium">Audio Levels</span>
                   <div className="flex items-center gap-1">

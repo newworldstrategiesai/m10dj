@@ -56,12 +56,32 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return await getLibrary(req, res, supabase, organizationId, user.id);
 
   } catch (error) {
-    console.error('Library API error:', error);
-    console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace');
+    // Properly serialize error for logging
+    const errorDetails = {
+      message: error instanceof Error ? error.message : String(error),
+      code: (error as any)?.code,
+      details: (error as any)?.details,
+      hint: (error as any)?.hint,
+      stack: error instanceof Error ? error.stack : undefined
+    };
+    
+    console.error('Library API error:', JSON.stringify(errorDetails, null, 2));
+    
+    // Handle column/table doesn't exist errors gracefully
+    if (errorDetails.code === '42703' || errorDetails.code === '42P01') {
+      return res.status(200).json({
+        videos: [],
+        total: 0,
+        message: 'Video library feature not yet available - migration required',
+        error: errorDetails.message
+      });
+    }
+    
     return res.status(500).json({
       error: 'Internal server error',
-      message: error instanceof Error ? error.message : String(error),
-      stack: error instanceof Error ? error.stack : undefined
+      message: errorDetails.message,
+      code: errorDetails.code,
+      hint: errorDetails.hint
     });
   }
 }
@@ -101,16 +121,31 @@ async function getLibrary(req: NextApiRequest, res: NextApiResponse, supabase: a
       .order('added_at', { ascending: false });
 
     if (error) {
-      // If column doesn't exist, the table might not be migrated yet
-      if (error.code === '42703' && error.message?.includes('title')) {
-        console.warn('user_video_library table missing title column - migration may not have run');
+      // If column doesn't exist (42703) or table doesn't exist (42P01), return gracefully
+      if (error.code === '42703' || error.code === '42P01') {
+        const errorDetails = {
+          code: error.code,
+          message: error.message || String(error),
+          details: error.details,
+          hint: error.hint
+        };
+        console.warn('user_video_library table/column issue:', JSON.stringify(errorDetails, null, 2));
         return res.status(200).json({
           videos: [],
           total: 0,
-          message: 'Video library feature not yet available - migration required'
+          message: 'Video library feature not yet available - migration required',
+          error: errorDetails.message
         });
       }
-      console.error('Query error:', error);
+      
+      // Properly serialize error for logging
+      const errorDetails = {
+        code: error.code,
+        message: error.message || String(error),
+        details: error.details,
+        hint: error.hint
+      };
+      console.error('Query error:', JSON.stringify(errorDetails, null, 2));
       throw error;
     }
 
@@ -138,16 +173,32 @@ async function getLibrary(req: NextApiRequest, res: NextApiResponse, supabase: a
       total: mappedVideos?.length || 0
     });
   } catch (error) {
-    console.error('Get library error:', error);
-    console.error('Error details:', {
+    // Properly serialize error for logging and response
+    const errorDetails = {
       message: error instanceof Error ? error.message : String(error),
       code: (error as any)?.code,
       details: (error as any)?.details,
       hint: (error as any)?.hint
-    });
+    };
+    
+    console.error('Get library error:', JSON.stringify(errorDetails, null, 2));
+    
+    // Handle column doesn't exist error (42703)
+    if (errorDetails.code === '42703') {
+      console.warn('Column does not exist error - migration may be required');
+      return res.status(200).json({
+        videos: [],
+        total: 0,
+        message: 'Video library feature not yet available - migration required',
+        error: errorDetails.message
+      });
+    }
+    
     return res.status(500).json({
       error: 'Failed to get library',
-      details: error instanceof Error ? error.message : String(error)
+      details: errorDetails.message,
+      code: errorDetails.code,
+      hint: errorDetails.hint
     });
   }
 }
