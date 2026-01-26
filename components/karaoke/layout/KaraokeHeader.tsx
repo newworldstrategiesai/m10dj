@@ -27,11 +27,6 @@ export default function KaraokeHeader({ user, onSignOut, isPremium }: KaraokeHea
 
         {/* Right side - Actions */}
         <div className="flex items-center gap-3">
-          {/* Download App Button */}
-          <Button variant="outline" size="sm" className="hidden md:flex border-gray-600 text-gray-300 hover:bg-gray-800 hover:text-white">
-            Download the app
-          </Button>
-
           {/* Settings */}
           <button className="p-2 rounded-lg bg-gray-800/50 hover:bg-gray-700/50 text-gray-400 hover:text-white transition-colors">
             <Settings className="w-5 h-5" />
