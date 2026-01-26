@@ -41,7 +41,7 @@ export default function ContactsPage() {
             
             if (!isAdmin) {
                 // Check subscription access for SaaS users
-                const access = await canAccessAdminPage(supabase, user.email, 'contacts');
+                const access = await canAccessAdminPage(supabase as any, user.email, 'contacts');
                 
                 if (!access.canAccess) {
                     // Redirect starter tier users to their dashboard with upgrade prompt
@@ -66,8 +66,8 @@ export default function ContactsPage() {
             }
 
             setApiKeys({
-                twilioSid: apiKeysData?.twilio_sid || process.env.TWILIO_ACCOUNT_SID,
-                twilioAuthToken: apiKeysData?.twilio_auth_token || process.env.TWILIO_AUTH_TOKEN
+                twilioSid: (apiKeysData as any)?.twilio_sid || process.env.TWILIO_ACCOUNT_SID,
+                twilioAuthToken: (apiKeysData as any)?.twilio_auth_token || process.env.TWILIO_AUTH_TOKEN
             });
 
         } catch (error: any) {

@@ -155,8 +155,8 @@ export default function FormSubmissionsPage() {
 
   const updateSubmissionStatus = async (id: string, newStatus: FormSubmission['status']) => {
     try {
-      const { error } = await supabase
-        .from('contact_submissions')
+      const { error } = await (supabase
+        .from('contact_submissions') as any)
         .update({ status: newStatus, updated_at: new Date().toISOString() })
         .eq('id', id);
 
@@ -241,8 +241,8 @@ export default function FormSubmissionsPage() {
   const findContactByEmail = async (email: string) => {
     try {
       setLookingUpContact(email);
-      const { data, error } = await supabase
-        .from('contacts')
+      const { data, error } = await (supabase
+        .from('contacts') as any)
         .select('id')
         .eq('email_address', email)
         .is('deleted_at', null)
@@ -253,7 +253,7 @@ export default function FormSubmissionsPage() {
         return null;
       }
 
-      return data.id;
+      return (data as any).id;
     } catch (error) {
       console.error('Error finding contact:', error);
       return null;
@@ -1156,7 +1156,7 @@ djbenmurray@gmail.com`
 
       // Log communication
       console.log('📝 Logging communication to database...');
-      const { error: logError } = await supabase.from('communication_log').insert({
+      const { error: logError } = await (supabase.from('communication_log') as any).insert({
         contact_submission_id: submission.id,
         communication_type: 'email',
         direction: 'outbound',
@@ -1176,8 +1176,8 @@ djbenmurray@gmail.com`
       // Update submission status if it was "new"
       if (submission.status === 'new') {
         console.log('📊 Updating submission status to "contacted"...');
-        const { error: updateError } = await supabase
-          .from('contact_submissions')
+        const { error: updateError } = await (supabase
+          .from('contact_submissions') as any)
           .update({ status: 'contacted', updated_at: new Date().toISOString() })
           .eq('id', submission.id);
           
