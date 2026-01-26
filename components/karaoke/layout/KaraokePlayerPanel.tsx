@@ -106,6 +106,12 @@ export default function KaraokePlayerPanel({
 
   // Track last auto-played signup to prevent duplicate auto-plays
   const lastAutoPlayedSignupId = useRef<string | null>(null);
+  
+  // Track if component has initialized to prevent auto-opening window on initial load
+  const hasInitialized = useRef(false);
+  
+  // Track previous signup ID to detect when it changes
+  const previousSignupId = useRef<string | null>(null);
 
   // Loading states
   const [isCommandLoading, setIsCommandLoading] = useState(false);
@@ -822,7 +828,26 @@ export default function KaraokePlayerPanel({
 
     // Only proceed if we have a current signup with video data
     if (!currentSignup?.video_data) {
+      // Reset tracking when there's no current signup
+      if (hasInitialized.current) {
+        previousSignupId.current = null;
+      }
       return;
+    }
+
+    // On initial load, mark as initialized and track the signup ID, but don't auto-open window
+    if (!hasInitialized.current) {
+      hasInitialized.current = true;
+      previousSignupId.current = currentSignup.id;
+      lastAutoPlayedSignupId.current = currentSignup.id;
+      console.log('Initial load detected - skipping auto-open window for existing signup:', currentSignup.id);
+      return;
+    }
+
+    // Only auto-play if the signup ID changed (meaning a new signup became 'singing')
+    // Don't auto-play if it's the same signup (was already singing on page load)
+    if (currentSignup.id === previousSignupId.current) {
+      return; // Same signup, don't auto-open window
     }
 
     // Prevent multiple executions for the same signup
@@ -830,7 +855,7 @@ export default function KaraokePlayerPanel({
       return;
     }
 
-    console.log('Auto-playing signup:', currentSignup);
+    console.log('Auto-playing signup (status changed):', currentSignup);
 
     const videoData = {
       videoId: currentSignup.video_data.youtube_video_id,
@@ -900,8 +925,9 @@ export default function KaraokePlayerPanel({
       }
     }
 
-    // Mark this signup as auto-played
+    // Mark this signup as auto-played and track it as the previous signup
     lastAutoPlayedSignupId.current = currentSignup.id;
+    previousSignupId.current = currentSignup.id;
 
   }, [currentSignup?.id, currentSignup?.video_data?.youtube_video_id, mounted, onDisplayVideoChange, onDisplayWindowChange, propDisplayWindow]);
 
