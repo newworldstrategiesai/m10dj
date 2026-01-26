@@ -168,6 +168,9 @@ export default function KaraokePlayerPanel({
   
   // Track previous signup ID to detect when it changes
   const previousSignupId = useRef<string | null>(null);
+
+  // Track if we're currently auto-advancing to prevent duplicate triggers
+  const isAutoAdvancingRef = useRef(false);
   
   // Use ref to track display window to avoid dependency issues
   const displayWindowRef = useRef(propDisplayWindow);
@@ -420,6 +423,47 @@ export default function KaraokePlayerPanel({
     return total + mins * 60 + secs;
   }, 0);
 
+  // Handle video end - auto-advance to next song in queue
+  const handleVideoEnd = useCallback(() => {
+    // Prevent duplicate triggers
+    if (isAutoAdvancingRef.current) {
+      return;
+    }
+
+    // Only auto-advance if we have a current signup and onSignupStatusChange callback
+    if (!currentSignup || !onSignupStatusChange) {
+      return;
+    }
+
+    // Check if there's a next song in the queue
+    const nextSignup = signups.find(signup => signup.status === 'next') 
+      || signups.find(signup => signup.status === 'queued' && signup.video_data);
+
+    if (!nextSignup) {
+      // No next song - just mark current as completed
+      console.log('No next song in queue, marking current as completed');
+      onSignupStatusChange(currentSignup.id, 'completed');
+      return;
+    }
+
+    isAutoAdvancingRef.current = true;
+    console.log('Video ended - auto-advancing to next song:', nextSignup.song_title);
+
+    // Mark current signup as completed
+    onSignupStatusChange(currentSignup.id, 'completed');
+
+    // Small delay to ensure status update completes, then start next song
+    setTimeout(() => {
+      // Update next signup to 'singing' - this will trigger auto-play via existing useEffect
+      onSignupStatusChange(nextSignup.id, 'singing');
+      
+      // Reset flag after a delay to allow for the next video to start
+      setTimeout(() => {
+        isAutoAdvancingRef.current = false;
+      }, 2000);
+    }, 500);
+  }, [currentSignup, signups, onSignupStatusChange]);
+
   // Listen for status updates from display window - SIMPLE APPROACH
   useEffect(() => {
     // Only run on client side to prevent hydration errors
@@ -448,6 +492,13 @@ export default function KaraokePlayerPanel({
       }
 
       const { type, data } = event.data;
+
+      // Handle video end event from display window
+      if (type === 'VIDEO_STATUS' && (data.playerState === 0 || data.playerState === (window as any).YT?.PlayerState?.ENDED)) {
+        // Video ended - auto-advance to next song
+        handleVideoEnd();
+        return;
+      }
 
       if (type === 'VIDEO_STATUS') {
         // Only log in development and not for every status update
@@ -532,6 +583,14 @@ export default function KaraokePlayerPanel({
             // Check if currentTime changed significantly
             if (Math.abs(prev.currentTime - newCurrentTime) > 0.5) {
               setCurrentTime(newCurrentTime);
+              
+              // Check if video ended (currentTime reached duration or very close)
+              const timeRemaining = newDuration - newCurrentTime;
+              if (timeRemaining <= 1 && prev.isPlaying && newDuration > 0) {
+                // Video likely ended - trigger auto-advance
+                setTimeout(() => handleVideoEnd(), 500);
+              }
+              
               // Only update isPlaying if it actually changed
               if (prev.isPlaying !== newIsPlaying) {
                 updatePlayingStateDebounced(newIsPlaying);
@@ -582,7 +641,7 @@ export default function KaraokePlayerPanel({
         playingStateTimeoutRef.current = null;
       }
     };
-  }, [propDisplayVideo?.videoId, onDisplayVideoChange, mounted, updatePlayingStateDebounced]); // Use videoId instead of whole object
+  }, [propDisplayVideo?.videoId, onDisplayVideoChange, mounted, updatePlayingStateDebounced, handleVideoEnd]); // Use videoId instead of whole object
 
   // Track embedded player status when no external display window
   useEffect(() => {
@@ -729,13 +788,21 @@ export default function KaraokePlayerPanel({
             // BUT don't update isPlaying unless it actually changed
             if (Math.abs(prev.currentTime - currentTime) > 0.5) {
               setCurrentTime(currentTime);
-              const shouldUpdatePlaying = prev.isPlaying !== newIsPlaying;
-              if (shouldUpdatePlaying) {
-                setIsPlaying(newIsPlaying);
+              
+              // Check if video ended (currentTime reached duration or very close)
+              const timeRemaining = duration - currentTime;
+              if (timeRemaining <= 1 && prev.isPlaying && duration > 0) {
+                // Video likely ended - trigger auto-advance
+                setTimeout(() => handleVideoEnd(), 500);
+              }
+              
+              // Only update playing state if it actually changed
+              if (prev.isPlaying !== newIsPlaying) {
+                updatePlayingStateDebounced(newIsPlaying);
               }
               return {
                 ...prev,
-                isPlaying: shouldUpdatePlaying ? newIsPlaying : prev.isPlaying,
+                isPlaying: prev.isPlaying !== newIsPlaying ? newIsPlaying : prev.isPlaying,
                 currentTime: currentTime,
                 volume: volume
               };
@@ -743,7 +810,7 @@ export default function KaraokePlayerPanel({
             
             // Only update playing state if it changed (and nothing else changed significantly)
             if (prev.isPlaying !== newIsPlaying) {
-              setIsPlaying(newIsPlaying);
+              updatePlayingStateDebounced(newIsPlaying);
               return {
                 ...prev,
                 isPlaying: newIsPlaying,
@@ -804,7 +871,7 @@ export default function KaraokePlayerPanel({
         playingStateTimeoutRef.current = null;
       }
     };
-  }, [propDisplayVideo?.videoId, volume, updatePlayingStateDebounced]); // Removed propDisplayWindow from deps - it's a Window object that can't be compared reliably
+  }, [propDisplayVideo?.videoId, volume, updatePlayingStateDebounced, handleVideoEnd]); // Removed propDisplayWindow from deps - it's a Window object that can't be compared reliably
 
   // Send control command to display window or embedded player - WITH FALLBACK
   const sendDisplayCommand = useCallback(async (action: string, data?: any) => {
@@ -1628,6 +1695,12 @@ export default function KaraokePlayerPanel({
                   }}
                   onStateChange={(state) => {
                     setIsPlaying(state === 'playing');
+                    
+                    // Handle video end - auto-advance to next song
+                    if (state === 'ended') {
+                      handleVideoEnd();
+                    }
+                    
                     // Update display status for consistency
                     const targetWindow = (window as any).karaokeDisplayWindow || propDisplayWindow;
                     if (!targetWindow || targetWindow.closed) {
