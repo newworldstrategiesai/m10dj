@@ -411,17 +411,25 @@ export default function KaraokePlayerPanel({
       const control = (window as any).youtubePlayerControl;
       if (!control) return;
 
+      // Check if control methods exist before calling them
+      if (typeof control.getPlayerState !== 'function' ||
+          typeof control.getCurrentTime !== 'function' ||
+          typeof control.getDuration !== 'function') {
+        return; // Control not ready yet
+      }
+
       try {
         const playerState = control.getPlayerState();
         const currentTime = control.getCurrentTime();
         const duration = control.getDuration();
 
-        setIsPlaying(playerState === 1); // YT.PlayerState.PLAYING
-        setCurrentTime(currentTime || 0);
-        setDuration(duration || 0);
+        // Only update if we got valid values
+        if (playerState !== undefined && currentTime !== undefined && duration !== undefined) {
+          setIsPlaying(playerState === 1); // YT.PlayerState.PLAYING
+          setCurrentTime(currentTime || 0);
+          setDuration(duration || 0);
 
-        // Update displayStatus for consistency
-        if (!displayStatus || displayStatus.duration !== duration) {
+          // Update displayStatus for consistency
           setDisplayStatus({
             isPlaying: playerState === 1,
             currentTime: currentTime || 0,
@@ -430,7 +438,8 @@ export default function KaraokePlayerPanel({
           });
         }
       } catch (error) {
-        // Silently handle errors
+        // Silently handle errors - player might not be ready
+        console.debug('Player not ready yet:', error);
       }
     };
 
@@ -513,39 +522,50 @@ export default function KaraokePlayerPanel({
       console.log('🎮 Using embedded player control');
       setIsCommandLoading(true);
       try {
+        // Check if control methods exist before calling them
         switch (action) {
           case 'play':
-            control.play();
-            setIsPlaying(true);
+            if (typeof control.play === 'function') {
+              control.play();
+              setIsPlaying(true);
+            }
             break;
           case 'pause':
-            control.pause();
-            setIsPlaying(false);
+            if (typeof control.pause === 'function') {
+              control.pause();
+              setIsPlaying(false);
+            }
             break;
           case 'stop':
-            control.stop();
-            setIsPlaying(false);
-            setCurrentTime(0);
+            if (typeof control.stop === 'function') {
+              control.stop();
+              setIsPlaying(false);
+              setCurrentTime(0);
+            }
             break;
           case 'seek':
-            if (data?.seconds !== undefined) {
+            if (data?.seconds !== undefined && typeof control.seekTo === 'function') {
               control.seekTo(data.seconds);
               setCurrentTime(data.seconds);
             }
             break;
           case 'volume':
-            if (data?.volume !== undefined) {
+            if (data?.volume !== undefined && typeof control.setVolume === 'function') {
               control.setVolume(data.volume);
               setVolume(data.volume);
             }
             break;
           case 'mute':
-            control.mute();
-            setIsMuted(true);
+            if (typeof control.mute === 'function') {
+              control.mute();
+              setIsMuted(true);
+            }
             break;
           case 'unmute':
-            control.unMute();
-            setIsMuted(false);
+            if (typeof control.unMute === 'function') {
+              control.unMute();
+              setIsMuted(false);
+            }
             break;
         }
         await new Promise(resolve => setTimeout(resolve, 200));
@@ -581,26 +601,35 @@ export default function KaraokePlayerPanel({
     const currentlyPlaying = displayStatus?.isPlaying ?? isPlaying;
     
     // Always use sendDisplayCommand - it will route to the right target
-    if (currentlyPlaying) {
-      await sendDisplayCommand('pause');
-      // Optimistically update local state
-      if (displayStatus) {
-        setDisplayStatus({ ...displayStatus, isPlaying: false });
+    try {
+      if (currentlyPlaying) {
+        await sendDisplayCommand('pause');
+        // Optimistically update local state
+        if (displayStatus) {
+          setDisplayStatus({ ...displayStatus, isPlaying: false });
+        }
+        setIsPlaying(false);
+      } else {
+        await sendDisplayCommand('play');
+        // Optimistically update local state
+        if (displayStatus) {
+          setDisplayStatus({ ...displayStatus, isPlaying: true });
+        }
+        setIsPlaying(true);
       }
-      setIsPlaying(false);
-    } else {
-      await sendDisplayCommand('play');
-      // Optimistically update local state
+      
+      // Request status update to sync with actual player state
+      setTimeout(() => {
+        updateDisplayStatus();
+      }, 300);
+    } catch (error) {
+      console.error('Error toggling play/pause:', error);
+      // Still update UI optimistically even if command fails
       if (displayStatus) {
-        setDisplayStatus({ ...displayStatus, isPlaying: true });
+        setDisplayStatus({ ...displayStatus, isPlaying: !currentlyPlaying });
       }
-      setIsPlaying(true);
+      setIsPlaying(!currentlyPlaying);
     }
-    
-    // Request status update to sync with actual player state
-    setTimeout(() => {
-      updateDisplayStatus();
-    }, 300);
   };
 
   const stopDisplayVideo = () => {
@@ -1242,7 +1271,7 @@ export default function KaraokePlayerPanel({
             </div>
 
             {/* Enhanced Progress Bar - Mirrors External Display */}
-            {propDisplayWindow && !propDisplayWindow.closed && (
+            {propDisplayVideo && (
               <div className="space-y-3 relative bg-gray-800/20 rounded-lg p-4 border border-gray-700/30">
                 {/* Progress Bar Label */}
                 <div className="flex items-center justify-between text-xs text-gray-400 mb-2">
@@ -1399,7 +1428,7 @@ export default function KaraokePlayerPanel({
               >
                 {isCommandLoading ? (
                   <div className="w-8 h-8 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                ) : displayStatus?.isPlaying ? (
+                ) : (displayStatus?.isPlaying ?? isPlaying) ? (
                   <Pause className="w-8 h-8" />
                 ) : (
                   <Play className="w-8 h-8 ml-1" />
