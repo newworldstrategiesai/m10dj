@@ -435,7 +435,9 @@ async function handler(req, res) {
       group_members: group_size > 1 ? group_members.map((m) => m.trim()) : null,
       song_title,
       song_artist: song_artist?.trim() || null,
-      video_data: video_data || null, // Include video data if provided
+      // Only include video_data if it has a valid youtube_video_id
+      // Don't save empty/invalid video_data objects that would cause gray icons
+      video_data: (video_data && video_data.youtube_video_id) ? video_data : null,
       singer_email: singer_email?.trim() || null,
       singer_phone: singer_phone?.trim() || null,
       singer_rotation_id,
@@ -696,6 +698,26 @@ async function handler(req, res) {
       }
     }
 
+    // Re-fetch signup with video_data to ensure we have the latest data after auto-linking
+    let finalSignup = signup;
+    if (linkedVideo || signup.video_id) {
+      const { data: refreshedSignup, error: refreshError } = await supabase
+        .from('karaoke_signups')
+        .select(`
+          *,
+          video_data:karaoke_song_videos(*)
+        `)
+        .eq('id', signup.id)
+        .single();
+      
+      if (!refreshError && refreshedSignup) {
+        finalSignup = refreshedSignup;
+        console.log('✅ Refreshed signup with video_data:', refreshedSignup.video_data?.youtube_video_id || 'none');
+      } else {
+        console.warn('⚠️ Could not refresh signup, using original:', refreshError?.message);
+      }
+    }
+
     // Log successful signup
     await logSignupChange(
       organization_id,
@@ -716,12 +738,17 @@ async function handler(req, res) {
     );
 
     // Return response with linked video if available
+    // Only include video_data if it has a valid youtube_video_id
+    const responseVideoData = finalSignup.video_data && finalSignup.video_data.youtube_video_id 
+      ? finalSignup.video_data 
+      : null;
+
     return res.status(201).json({
       success: true,
       signup: {
-        ...signup,
+        ...finalSignup,
         queue_position: queuePosition,
-        video_data: linkedVideo || signup.video_data
+        video_data: responseVideoData
       },
       requires_payment: is_priority && settings.priority_pricing_enabled && signup.payment_status === 'pending',
       video_auto_linked: !!linkedVideo
