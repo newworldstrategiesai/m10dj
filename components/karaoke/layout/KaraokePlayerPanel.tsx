@@ -86,6 +86,7 @@ export default function KaraokePlayerPanel({
   const [browseSearchQuery, setBrowseSearchQuery] = useState('');
   const [browseResults, setBrowseResults] = useState<any[]>([]);
   const [browseLoading, setBrowseLoading] = useState(false);
+  const [embeddedPlayerControl, setEmbeddedPlayerControl] = useState<any>(null);
 
   // Use props for display window tracking
   const [displayStatus, setDisplayStatus] = useState<{
@@ -394,9 +395,6 @@ export default function KaraokePlayerPanel({
     };
   }, [propDisplayVideo, onDisplayVideoChange, mounted]);
 
-  // State for embedded player control
-  const [embeddedPlayerControl, setEmbeddedPlayerControl] = useState<any>(null);
-
   // Track embedded player status when no external display window
   useEffect(() => {
     const targetWindow = (window as any).karaokeDisplayWindow || propDisplayWindow;
@@ -445,7 +443,7 @@ export default function KaraokePlayerPanel({
       clearInterval(interval);
       clearTimeout(initialTimer);
     };
-  }, [propDisplayVideo?.videoId, propDisplayWindow, displayStatus, volume]);
+  }, [propDisplayVideo?.videoId, propDisplayWindow, volume]);
 
   // Send control command to display window or embedded player - WITH FALLBACK
   const sendDisplayCommand = async (action: string, data?: any) => {
@@ -1072,6 +1070,32 @@ export default function KaraokePlayerPanel({
                 />
                 {/* Overlay gradient for better control visibility */}
                 <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent pointer-events-none" />
+                
+                {/* Play/Pause overlay */}
+                {displayStatus && (
+                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                    <div className={`w-20 h-20 rounded-full flex items-center justify-center transition-all duration-300 ${
+                      displayStatus.isPlaying
+                        ? 'bg-purple-500/90 scale-100 shadow-lg shadow-purple-500/50'
+                        : 'bg-black/70 scale-90 hover:scale-100'
+                    }`}>
+                      {displayStatus.isPlaying ? (
+                        <div className="flex gap-1">
+                          <div className="w-1 h-8 bg-white animate-pulse" style={{ animationDelay: '0ms' }} />
+                          <div className="w-1 h-8 bg-white animate-pulse" style={{ animationDelay: '200ms' }} />
+                          <div className="w-1 h-8 bg-white animate-pulse" style={{ animationDelay: '400ms' }} />
+                        </div>
+                      ) : (
+                        <Play className="w-10 h-10 text-white ml-1" />
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Quality badge */}
+                <div className="absolute top-3 right-3 bg-black/70 backdrop-blur-sm rounded-full px-2 py-1">
+                  <span className="text-xs text-white font-medium">HD</span>
+                </div>
               </div>
             ) : (
               <div className="relative w-full aspect-video bg-gradient-to-br from-gray-800 to-gray-900 rounded-xl overflow-hidden shadow-2xl flex items-center justify-center">
@@ -1081,33 +1105,6 @@ export default function KaraokePlayerPanel({
                 </div>
               </div>
             )}
-
-              {/* Play/Pause overlay */}
-              {displayStatus && (
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className={`w-20 h-20 rounded-full flex items-center justify-center transition-all duration-300 ${
-                    displayStatus.isPlaying
-                      ? 'bg-purple-500/90 scale-100 shadow-lg shadow-purple-500/50'
-                      : 'bg-black/70 scale-90 hover:scale-100'
-                  }`}>
-                    {displayStatus.isPlaying ? (
-                      <div className="flex gap-1">
-                        <div className="w-1 h-8 bg-white animate-pulse" style={{ animationDelay: '0ms' }} />
-                        <div className="w-1 h-8 bg-white animate-pulse" style={{ animationDelay: '200ms' }} />
-                        <div className="w-1 h-8 bg-white animate-pulse" style={{ animationDelay: '400ms' }} />
-                      </div>
-                    ) : (
-                      <Play className="w-10 h-10 text-white ml-1" />
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {/* Quality badge */}
-              <div className="absolute top-3 right-3 bg-black/70 backdrop-blur-sm rounded-full px-2 py-1">
-                <span className="text-xs text-white font-medium">HD</span>
-              </div>
-            </div>
 
             {/* Enhanced Song Info */}
             <div className="text-center space-y-2">
