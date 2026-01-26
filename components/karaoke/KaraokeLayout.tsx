@@ -145,6 +145,19 @@ const KaraokeLayout = forwardRef<KaraokeLayoutRef, KaraokeLayoutProps>(({
           );
           if (targetWindow) {
             setDisplayWindow(targetWindow);
+            // Register the display window with empty video data initially
+            // This ensures proper communication setup
+            setTimeout(() => {
+              if (targetWindow && !targetWindow.closed) {
+                console.log('Registering newly opened display window');
+                // Use the registerDisplayWindow method to properly set up communication
+                setDisplayWindow(targetWindow);
+                // Store the display window reference globally
+                if (typeof window !== 'undefined') {
+                  (window as any).karaokeDisplayWindow = targetWindow;
+                }
+              }
+            }, 500); // Wait a bit for window to load
           } else {
             console.error('Failed to open display window - popup may be blocked');
           }
@@ -158,7 +171,7 @@ const KaraokeLayout = forwardRef<KaraokeLayoutRef, KaraokeLayoutProps>(({
                 targetWindow.postMessage({
                   type: 'VIDEO_CONTROL',
                   data: { action: 'changeVideo', ...videoData }
-                }, window.location.origin);
+                }, '*');
                 console.log('✅ Sent video command to display window');
               } catch (error) {
                 console.error('Error sending video command:', error);
@@ -169,7 +182,7 @@ const KaraokeLayout = forwardRef<KaraokeLayoutRef, KaraokeLayoutProps>(({
                       targetWindow.postMessage({
                         type: 'VIDEO_CONTROL',
                         data: { action: 'changeVideo', ...videoData }
-                      }, window.location.origin);
+                      }, '*');
                     } catch (retryError) {
                       console.error('Retry failed:', retryError);
                     }
