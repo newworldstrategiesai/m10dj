@@ -380,41 +380,12 @@ export default function KaraokePlayerPanel({
 
     let targetWindow = propDisplayWindow;
 
-    // If no window reference, try to find any open karaoke display windows
+    // If no window reference, we can't reliably find existing windows without opening new ones
+    // The parent component (KaraokeLayout) maintains the window reference via propDisplayWindow
+    // If it's not available, we just can't send the command
     if (!targetWindow || targetWindow.closed) {
-      console.log('🔍 Looking for open karaoke display windows...');
-
-      // Try to find any window with karaoke display in the URL
-      for (let i = 0; i < 10; i++) {
-        try {
-          const testWindow = window.open('', `karaokeVideoDisplay_${i}`);
-          if (testWindow && !testWindow.closed &&
-              testWindow.location.href.includes('video-display')) {
-            console.log('🎯 Found existing display window:', i);
-            targetWindow = testWindow;
-            // Update the prop to maintain the reference
-            onDisplayWindowChange?.(testWindow);
-            break;
-          }
-        } catch (e) {
-          // Cross-origin access might fail, ignore
-        }
-      }
-
-      // If still no window found, try the general karaokeVideoDisplay name
-      if (!targetWindow || targetWindow.closed) {
-        try {
-          const generalWindow = window.open('', 'karaokeVideoDisplay');
-          if (generalWindow && !generalWindow.closed &&
-              generalWindow.location.href.includes('video-display')) {
-            console.log('🎯 Found general display window');
-            targetWindow = generalWindow;
-            onDisplayWindowChange?.(generalWindow);
-          }
-        } catch (e) {
-          // Ignore cross-origin errors
-        }
-      }
+      console.log('⚠️ No display window reference available - cannot send command');
+      console.log('💡 Tip: Open the display window first using the "Display" button');
     }
 
     if (!targetWindow || targetWindow.closed) {
@@ -518,81 +489,40 @@ export default function KaraokePlayerPanel({
 
     // Ensure we have a display window
     let targetWindow = propDisplayWindow;
+    const windowName = 'karaokeVideoDisplay';
     
     if (!targetWindow || targetWindow.closed) {
       console.log('No display window available, opening new one');
-      const windowName = 'karaokeVideoDisplay';
       
-      // Try to find existing window first
-      try {
-        const existingWindow = window.open('', windowName);
-        if (existingWindow && !existingWindow.closed) {
-          try {
-            // Check if it's the right window by checking URL
-            if (existingWindow.location.href.includes('video-display')) {
-              targetWindow = existingWindow;
-              onDisplayWindowChange?.(existingWindow);
-            } else {
-              // Close the wrong window and open a new one
-              existingWindow.close();
-              targetWindow = window.open(
-                '/karaoke/video-display',
-                windowName,
-                'width=1280,height=720,scrollbars=no,resizable=yes,status=no,toolbar=no,menubar=no,location=no,directories=no'
-              );
-              if (targetWindow) {
-                onDisplayWindowChange?.(targetWindow);
-              }
-            }
-          } catch (e) {
-            // Cross-origin access might fail, open new window
-            targetWindow = window.open(
-              '/karaoke/video-display',
-              windowName,
-              'width=1280,height=720,scrollbars=no,resizable=yes,status=no,toolbar=no,menubar=no,location=no,directories=no'
-            );
-            if (targetWindow) {
-              onDisplayWindowChange?.(targetWindow);
-            }
-          }
-        } else {
-          // Open new display window with video URL parameters
-          const displayUrl = `/karaoke/video-display?videoId=${encodeURIComponent(video.videoId)}&title=${encodeURIComponent(video.title)}&artist=${encodeURIComponent(video.artist || '')}`;
-          targetWindow = window.open(
-            displayUrl,
-            windowName,
-            'width=1280,height=720,scrollbars=no,resizable=yes,status=no,toolbar=no,menubar=no,location=no,directories=no'
-          );
-          if (targetWindow) {
-            onDisplayWindowChange?.(targetWindow);
-            targetWindow.focus();
-          }
-        }
-      } catch (error) {
-        console.error('Error opening display window:', error);
-        // Fallback: open with URL parameters
-        const displayUrl = `/karaoke/video-display?videoId=${encodeURIComponent(video.videoId)}&title=${encodeURIComponent(video.title)}&artist=${encodeURIComponent(video.artist || '')}`;
-        targetWindow = window.open(
-          displayUrl,
-          windowName,
-          'width=1280,height=720,scrollbars=no,resizable=yes,status=no,toolbar=no,menubar=no,location=no,directories=no'
-        );
-        if (targetWindow) {
-          onDisplayWindowChange?.(targetWindow);
-        }
+      // Open new display window with video URL parameters directly
+      // Never use window.open('', name) as it creates about:blank tabs
+      const displayUrl = `/karaoke/video-display?videoId=${encodeURIComponent(video.videoId)}&title=${encodeURIComponent(video.title)}&artist=${encodeURIComponent(video.artist || '')}`;
+      targetWindow = window.open(
+        displayUrl,
+        windowName,
+        'width=1280,height=720,scrollbars=no,resizable=yes,status=no,toolbar=no,menubar=no,location=no,directories=no'
+      );
+      
+      if (targetWindow) {
+        onDisplayWindowChange?.(targetWindow);
+        targetWindow.focus();
+        console.log('Opened new display window with video:', video.videoId);
+      } else {
+        console.error('Failed to open display window - popup may be blocked');
+        toast({
+          title: 'Popup Blocked',
+          description: 'Please allow popups for this site to open the display window.',
+          variant: 'destructive'
+        });
+        return;
       }
 
-      // Wait a bit for the window to load, then send the commands (if window was opened without URL params)
-      if (targetWindow && !targetWindow.location.href.includes('videoId=')) {
-        setTimeout(() => {
-          if (targetWindow && !targetWindow.closed) {
-            sendDisplayCommand('changeVideo', video);
-            setTimeout(() => sendDisplayCommand('play'), 500);
-          }
-        }, 1000);
-      }
+      // Window was opened with URL parameters, so video should load automatically
+      // No need to send commands via postMessage since URL params handle it
+      console.log('Display window opened with URL parameters, video should auto-load');
     } else {
-      // Window exists, just change the video and play
+      // Window exists and is open, send commands via postMessage
+      console.log('Display window exists, sending video commands via postMessage');
       sendDisplayCommand('changeVideo', video);
       setTimeout(() => sendDisplayCommand('play'), 500);
     }
@@ -682,25 +612,16 @@ export default function KaraokePlayerPanel({
     // Check if display window exists and is open
     if (!targetWindow || targetWindow.closed) {
       console.log('Display window not open, opening new window...');
-      // Try to find existing window first
-      try {
-        const existingWindow = window.open('', windowName);
-        if (existingWindow && !existingWindow.closed && existingWindow.location.href.includes('video-display')) {
-          targetWindow = existingWindow;
-          onDisplayWindowChange?.(existingWindow);
-        } else {
-          // Open new display window
-          targetWindow = window.open(
-            '/karaoke/video-display',
-            windowName,
-            'width=1280,height=720,scrollbars=no,resizable=yes,status=no,toolbar=no,menubar=no,location=no,directories=no'
-          );
-          if (targetWindow) {
-            onDisplayWindowChange?.(targetWindow);
-          }
-        }
-      } catch (error) {
-        console.error('Error opening display window:', error);
+      // Open new display window directly - never use window.open('', name) as it creates about:blank
+      targetWindow = window.open(
+        '/karaoke/video-display',
+        windowName,
+        'width=1280,height=720,scrollbars=no,resizable=yes,status=no,toolbar=no,menubar=no,location=no,directories=no'
+      );
+      if (targetWindow) {
+        onDisplayWindowChange?.(targetWindow);
+      } else {
+        console.error('Failed to open display window - popup may be blocked');
       }
     }
 
@@ -858,21 +779,25 @@ export default function KaraokePlayerPanel({
           {/* Open Display Window Button */}
           <button
             onClick={() => {
-              // Open display window - use the same logic as the admin page
+              // Open display window - never use window.open('', name) as it creates about:blank tabs
               const windowName = 'karaokeVideoDisplay';
-              const existingWindow = window.open('', windowName);
-
-              if (existingWindow && !existingWindow.closed) {
+              
+              // Use propDisplayWindow if available, otherwise open new window
+              if (propDisplayWindow && !propDisplayWindow.closed) {
                 // Window already exists, just focus it
-                existingWindow.focus();
+                propDisplayWindow.focus();
                 // Request status update to sync with current state
                 setTimeout(() => {
-                  if (existingWindow) {
-                    const targetOrigin = existingWindow.location?.origin || '*';
-                    existingWindow.postMessage({
-                      type: 'VIDEO_CONTROL',
-                      data: { action: 'getStatus' }
-                    }, targetOrigin);
+                  if (propDisplayWindow && !propDisplayWindow.closed) {
+                    try {
+                      const targetOrigin = propDisplayWindow.location?.origin || '*';
+                      propDisplayWindow.postMessage({
+                        type: 'VIDEO_CONTROL',
+                        data: { action: 'getStatus' }
+                      }, targetOrigin);
+                    } catch (e) {
+                      console.warn('Cannot access display window (cross-origin):', e);
+                    }
                   }
                 }, 500);
               } else {
@@ -885,16 +810,20 @@ export default function KaraokePlayerPanel({
                   // If there's a current signup, load its video
                   if (currentSignup && currentSignup.video_data) {
                     setTimeout(() => {
-                      const targetOrigin = displayWindow.location?.origin || '*';
-                      displayWindow.postMessage({
-                        type: 'VIDEO_CONTROL',
-                        data: {
-                          action: 'changeVideo',
-                          videoId: currentSignup.video_data.youtube_video_id,
-                          title: currentSignup.song_title,
-                          artist: currentSignup.song_artist || ''
-                        }
-                      }, targetOrigin);
+                      try {
+                        const targetOrigin = displayWindow.location?.origin || '*';
+                        displayWindow.postMessage({
+                          type: 'VIDEO_CONTROL',
+                          data: {
+                            action: 'changeVideo',
+                            videoId: currentSignup.video_data.youtube_video_id,
+                            title: currentSignup.song_title,
+                            artist: currentSignup.song_artist || ''
+                          }
+                        }, targetOrigin);
+                      } catch (e) {
+                        console.warn('Cannot send message to display window (cross-origin):', e);
+                      }
                     }, 1000);
                   }
                 }
