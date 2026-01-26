@@ -3,9 +3,9 @@
  * View and manage contact form submissions from the website
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/router';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { createClient } from '@/utils/supabase/client';
 import AdminLayout from '@/components/layouts/AdminLayout';
 import {
   ClipboardList,
@@ -60,7 +60,7 @@ interface CommunicationLog {
 
 export default function FormSubmissionsPage() {
   const router = useRouter();
-  const supabase = createClientComponentClient();
+  const supabase = useMemo(() => createClient(), []);
   const [submissions, setSubmissions] = useState<FormSubmission[]>([]);
   const [filteredSubmissions, setFilteredSubmissions] = useState<FormSubmission[]>([]);
   const [loading, setLoading] = useState(true);
@@ -195,15 +195,27 @@ export default function FormSubmissionsPage() {
         .delete()
         .eq('id', id);
 
-      if (error) throw error;
+      if (error) {
+        // Handle 409 conflict error (likely foreign key constraint)
+        if (error.code === '23503' || error.message?.includes('409') || error.message?.includes('conflict')) {
+          alert('Cannot delete this submission because it is referenced by other records (e.g., communications, notifications). Please remove those references first.');
+          return;
+        }
+        throw error;
+      }
 
       setSubmissions(prev => prev.filter(s => s.id !== id));
       if (selectedSubmission?.id === id) {
         setSelectedSubmission(null);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error deleting submission:', error);
-      alert('Failed to delete submission');
+      // Check for HTTP 409 status
+      if (error.status === 409 || error.code === '23503' || error.message?.includes('409') || error.message?.includes('conflict')) {
+        alert('Cannot delete this submission because it is referenced by other records (e.g., communications, notifications). Please remove those references first.');
+      } else {
+        alert(`Failed to delete submission: ${error.message || 'Unknown error'}`);
+      }
     }
   };
 
@@ -905,7 +917,7 @@ function EmailComposeModal({
   onClose: () => void; 
   onSuccess: () => void;
 }) {
-  const supabase = createClientComponentClient();
+  const supabase = useMemo(() => createClient(), []);
   const [sending, setSending] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState<string>('custom');
   const [includeServiceLink, setIncludeServiceLink] = useState(submission.event_type === 'Wedding' || submission.event_type === 'wedding');

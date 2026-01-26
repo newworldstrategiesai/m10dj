@@ -18,8 +18,9 @@ import { toast, useToast } from '@/components/ui/Toasts/use-toast';
 import { Checkbox } from '@/components/ui/checkbox';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { createClient } from '@/utils/supabase/client';
 import PipelineView from '@/components/admin/PipelineView';
+import { useMemo } from 'react';
 
 interface Contact {
   id: string;
@@ -122,7 +123,7 @@ const getTemperatureColor = (temperature: string | null) => {
 
 export default function ContactsWrapper({ userId, apiKeys }: ContactsWrapperProps) {
   const router = useRouter();
-  const supabase = createClientComponentClient();
+  const supabase = useMemo(() => createClient(), []);
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [filteredContacts, setFilteredContacts] = useState<Contact[]>([]);
   const [loading, setLoading] = useState(true);

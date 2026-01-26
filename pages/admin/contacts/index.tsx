@@ -3,16 +3,17 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import ContactsWrapper from '@/components/ui/Contacts/ContactsWrapper';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { createClient } from '@/utils/supabase/client';
 import AdminLayout from '@/components/layouts/AdminLayout';
 import PageLoadingWrapper from '@/components/ui/PageLoadingWrapper';
+import { useMemo } from 'react';
 
 export default function ContactsPage() {
     const [user, setUser] = useState<any>(null);
     const [loading, setLoading] = useState(true);
     const [apiKeys, setApiKeys] = useState<any>({});
     const router = useRouter();
-    const supabase = createClientComponentClient();
+    const supabase = useMemo(() => createClient(), []);
 
     useEffect(() => {
         checkUser();
