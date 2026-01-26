@@ -829,10 +829,10 @@ export default function KaraokePlayerPanel({
                 }
               }
             }}
-            className="px-3 py-1 bg-white/20 hover:bg-white/30 text-white text-xs font-medium rounded-full transition-all duration-200 flex items-center gap-1"
+            className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg transition-all duration-200 flex items-center gap-1.5 shadow-md hover:shadow-lg"
             title="Open Display Window"
           >
-            <Monitor className="w-3 h-3" />
+            <Monitor className="w-4 h-4" />
             Display
           </button>
         </div>
