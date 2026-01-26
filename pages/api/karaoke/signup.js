@@ -518,11 +518,13 @@ async function handler(req, res) {
 
     // Insert signup
     console.log('Attempting to insert karaoke signup:', signupData);
-    const { data: signup, error: insertError } = await supabase
+    const insertResult = await supabase
       .from('karaoke_signups')
       .insert(signupData)
       .select()
       .single();
+    let signup = insertResult.data;
+    const insertError = insertResult.error;
 
     if (insertError) {
       console.error('Error creating karaoke signup:', insertError);

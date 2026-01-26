@@ -381,7 +381,7 @@ export default function KaraokePlayerPanel({
     setDragOverIndex(null);
   };
 
-  const handleDrop = (e: React.DragEvent, dropIndex: number) => {
+  const handleDrop = async (e: React.DragEvent, dropIndex: number) => {
     e.preventDefault();
 
     if (!draggedItem) return;
@@ -393,19 +393,78 @@ export default function KaraokePlayerPanel({
       return;
     }
 
-    // Calculate new priority order for the dragged item
     const draggedSignup = draggedItem.signupData;
-    if (draggedSignup && onSignupStatusChange) {
-      // For simplicity, we'll just update the priority order
-      // In a real implementation, you might want more sophisticated reordering
-      const basePriority = draggedSignup.priority_order || 0;
-      const newPriority = dropIndex < draggedIndex ? basePriority - 100 : basePriority + 100;
+    if (!draggedSignup) {
+      setDraggedItem(null);
+      setDragOverIndex(null);
+      return;
+    }
 
-      // This would need to be implemented in the admin interface
-      // For now, just show a message
+    // Calculate new priority order based on position
+    // Queue is sorted by priority_order ascending (lower = earlier in queue)
+    let newPriority: number;
+    
+    if (dropIndex === 0) {
+      // Moving to first position - use priority of current first item minus 100
+      const firstItem = queue[0];
+      const firstPriority = firstItem?.signupData?.priority_order || 1000;
+      newPriority = firstPriority - 100;
+    } else if (dropIndex >= queue.length - 1) {
+      // Moving to last position - use priority of current last item plus 100
+      const lastItem = queue[queue.length - 1];
+      const lastPriority = lastItem?.signupData?.priority_order || 1000;
+      newPriority = lastPriority + 100;
+    } else {
+      // Moving to middle position - calculate between adjacent items
+      const prevItem = queue[dropIndex - 1];
+      const nextItem = queue[dropIndex + 1];
+      const prevPriority = prevItem?.signupData?.priority_order || 1000;
+      const nextPriority = nextItem?.signupData?.priority_order || 1000;
+      
+      // Calculate midpoint between prev and next priorities
+      newPriority = Math.floor((prevPriority + nextPriority) / 2);
+      
+      // Ensure we have enough space between priorities (minimum gap of 10)
+      if (Math.abs(newPriority - prevPriority) < 10 || Math.abs(newPriority - nextPriority) < 10) {
+        // Not enough space, adjust to create gap
+        if (draggedIndex < dropIndex) {
+          // Moving down - place closer to next item
+          newPriority = nextPriority - 50;
+        } else {
+          // Moving up - place closer to prev item
+          newPriority = prevPriority + 50;
+        }
+      }
+    }
+
+    try {
+      // Call API to update priority_order
+      const response = await fetch('/api/karaoke/reorder', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          signup_id: draggedSignup.id,
+          priority_order: newPriority
+        })
+      });
+
+      if (response.ok) {
+        toast({
+          title: 'Queue Reordered',
+          description: `${draggedItem.title} moved to position ${dropIndex + 1}`,
+        });
+      } else {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to reorder queue');
+      }
+    } catch (error: any) {
+      console.error('Error reordering queue:', error);
       toast({
-        title: 'Queue reordering',
-        description: 'Use the admin interface to reorder signups',
+        title: 'Reordering Failed',
+        description: error.message || 'Failed to update queue order',
+        variant: 'destructive'
       });
     }
 
@@ -652,7 +711,10 @@ export default function KaraokePlayerPanel({
       return; // External window is open, don't track embedded player
     }
 
-    if (!propDisplayVideo?.videoId) return;
+    // Track embedded player if we have either propDisplayVideo OR a youtubePlayerControl
+    // This allows controls to work even when video isn't tied to a signup
+    const hasVideoControl = !!(window as any).youtubePlayerControl;
+    if (!propDisplayVideo?.videoId && !hasVideoControl) return;
 
     // Helper to check if control is ready
     const isControlReady = () => {
@@ -1033,6 +1095,36 @@ export default function KaraokePlayerPanel({
       throw new Error('Player control not ready');
     }
 
+    // If we get here, try one more time to find embedded player (might have loaded)
+    const finalControl = (window as any).youtubePlayerControl;
+    if (finalControl && typeof finalControl.play === 'function') {
+      // Use the control directly
+      try {
+        switch (action) {
+          case 'play':
+            if (typeof finalControl.play === 'function') finalControl.play();
+            break;
+          case 'pause':
+            if (typeof finalControl.pause === 'function') finalControl.pause();
+            break;
+          case 'volume':
+            if (data?.volume !== undefined && typeof finalControl.setVolume === 'function') {
+              finalControl.setVolume(data.volume);
+            }
+            break;
+          case 'mute':
+            if (typeof finalControl.mute === 'function') finalControl.mute();
+            break;
+          case 'unmute':
+            if (typeof finalControl.unMute === 'function') finalControl.unMute();
+            break;
+        }
+        return; // Successfully used embedded player
+      } catch (error) {
+        console.error('Error using final control attempt:', error);
+      }
+    }
+    
     console.warn('❌ No display window or embedded player available - cannot send command', {
       hasDisplayWindow: !!targetWindow,
       displayWindowClosed: targetWindow?.closed,
@@ -1046,6 +1138,26 @@ export default function KaraokePlayerPanel({
   const updateDisplayStatus = useCallback(() => {
     sendDisplayCommand('getStatus');
   }, [sendDisplayCommand]);
+
+  // Check if any video player is available (display window, embedded player, or propDisplayVideo)
+  const hasVideoPlayer = useCallback(() => {
+    // Check for display window
+    const targetWindow = (window as any).karaokeDisplayWindow || propDisplayWindow;
+    let windowIsOpen = false;
+    try {
+      windowIsOpen = targetWindow && targetWindow.closed === false;
+    } catch (e) {
+      windowIsOpen = !!targetWindow;
+    }
+    
+    // Check for embedded player control
+    const hasEmbeddedPlayer = !!(embeddedPlayerControl || (window as any).youtubePlayerControl);
+    
+    // Check for propDisplayVideo
+    const hasDisplayVideo = !!propDisplayVideo;
+    
+    return windowIsOpen || hasEmbeddedPlayer || hasDisplayVideo;
+  }, [propDisplayWindow, embeddedPlayerControl, propDisplayVideo]);
 
   // Control functions for external display or embedded player
   const toggleDisplayPlayPause = useCallback(async () => {
@@ -1166,18 +1278,24 @@ export default function KaraokePlayerPanel({
   };
 
   const setDisplayVolume = useCallback((newVolume: number) => {
-    sendDisplayCommand('volume', { volume: newVolume });
+    // Only send command if we have a video player available
+    if (hasVideoPlayer()) {
+      sendDisplayCommand('volume', { volume: newVolume });
+    }
     setVolume(newVolume);
-  }, [sendDisplayCommand]);
+  }, [sendDisplayCommand, hasVideoPlayer]);
 
   const toggleDisplayMute = useCallback(() => {
-    if (isMuted) {
-      sendDisplayCommand('unmute');
-    } else {
-      sendDisplayCommand('mute');
+    // Only send command if we have a video player available
+    if (hasVideoPlayer()) {
+      if (isMuted) {
+        sendDisplayCommand('unmute');
+      } else {
+        sendDisplayCommand('mute');
+      }
     }
     setIsMuted(!isMuted);
-  }, [isMuted, sendDisplayCommand]);
+  }, [isMuted, sendDisplayCommand, hasVideoPlayer]);
 
   // Change video in display window
   const changeDisplayVideo = (video: { videoId: string; title: string; artist: string }) => {
@@ -1968,13 +2086,13 @@ export default function KaraokePlayerPanel({
 
               <button
                 onClick={toggleDisplayPlayPause}
-                disabled={isCommandLoading || !propDisplayVideo}
+                disabled={isCommandLoading || !hasVideoPlayer()}
                 className={`p-4 rounded-full text-white shadow-lg transition-all touch-manipulation min-w-[64px] min-h-[64px] flex items-center justify-center ${
-                  isCommandLoading || !propDisplayVideo
+                  isCommandLoading || !hasVideoPlayer()
                     ? 'bg-gray-600 cursor-not-allowed opacity-50'
                     : 'karaoke-gradient-primary hover:shadow-xl active:shadow-lg hover:scale-105 active:scale-95'
                 }`}
-                title={!propDisplayVideo ? "No video loaded" : "Space: Play/Pause"}
+                title={!hasVideoPlayer() ? "No video loaded" : "Space: Play/Pause"}
               >
                 {isCommandLoading ? (
                   <div className="w-8 h-8 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -2372,17 +2490,17 @@ export default function KaraokePlayerPanel({
                     onDragOver={(e) => handleDragOver(e, index)}
                     onDragLeave={handleDragLeave}
                     onDrop={(e) => handleDrop(e, index)}
-                    className={`p-3 transition-all duration-200 cursor-move ${
+                    className={`p-3 transition-all duration-200 cursor-move group ${
                       index === 0
                         ? 'bg-gradient-to-r from-pink-500/20 to-purple-600/20 border-l-4 border-pink-500'
                         : dragOverIndex === index
-                        ? 'bg-blue-500/20 border-2 border-blue-500 border-dashed'
+                        ? 'bg-blue-500/20 border-2 border-blue-500 border-dashed scale-105'
                         : 'bg-gray-900 hover:bg-gray-800/50'
-                    } ${draggedItem?.id === song.id ? 'opacity-50' : ''}`}
+                    } ${draggedItem?.id === song.id ? 'opacity-50 scale-95' : ''}`}
                   >
                     <div className="flex items-center gap-3">
                       {/* Drag Handle */}
-                      <div className="flex-shrink-0 text-gray-500 hover:text-gray-300 transition-colors">
+                      <div className="flex-shrink-0 text-gray-500 group-hover:text-gray-300 transition-colors cursor-grab active:cursor-grabbing">
                         <div className="flex flex-col gap-1">
                           <div className="w-1 h-1 bg-current rounded-full" />
                           <div className="w-1 h-1 bg-current rounded-full" />
