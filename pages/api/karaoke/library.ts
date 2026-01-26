@@ -83,37 +83,50 @@ async function getLibrary(req: NextApiRequest, res: NextApiResponse, supabase: a
     console.log('Table exists, count:', tableCheck);
 
     // Get user's video library
+    // Use select('*') to get all available columns, then map to expected structure
     const { data: libraryVideos, error } = await supabase
       .from('user_video_library')
-      .select(`
-        id,
-        title,
-        artist,
-        youtube_video_id,
-        thumbnail_url,
-        duration,
-        channel_title,
-        quality_score,
-        is_favorite,
-        tags,
-        added_at,
-        play_count,
-        created_at
-      `)
+      .select('*')
       .eq('organization_id', organizationId)
       .eq('user_id', userId)
       .order('added_at', { ascending: false });
 
     if (error) {
+      // If column doesn't exist, the table might not be migrated yet
+      if (error.code === '42703' && error.message?.includes('title')) {
+        console.warn('user_video_library table missing title column - migration may not have run');
+        return res.status(200).json({
+          videos: [],
+          total: 0,
+          message: 'Video library feature not yet available - migration required'
+        });
+      }
       console.error('Query error:', error);
       throw error;
     }
 
-    console.log('Query successful, returned videos:', libraryVideos?.length || 0);
+    // Map the data to ensure consistent structure (handle missing columns gracefully)
+    const mappedVideos = (libraryVideos || []).map((video: any) => ({
+      id: video.id,
+      title: video.title || video.youtube_video_title || 'Unknown Title',
+      artist: video.artist || null,
+      youtube_video_id: video.youtube_video_id,
+      thumbnail_url: video.thumbnail_url,
+      duration: video.duration,
+      channel_title: video.channel_title,
+      quality_score: video.quality_score || 50,
+      is_favorite: video.is_favorite || false,
+      tags: video.tags || [],
+      added_at: video.added_at,
+      play_count: video.play_count || 0,
+      created_at: video.created_at
+    }));
+
+    console.log('Query successful, returned videos:', mappedVideos?.length || 0);
 
     return res.status(200).json({
-      videos: libraryVideos || [],
-      total: libraryVideos?.length || 0
+      videos: mappedVideos || [],
+      total: mappedVideos?.length || 0
     });
   } catch (error) {
     console.error('Get library error:', error);

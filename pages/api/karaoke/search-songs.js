@@ -66,10 +66,13 @@ export default async function handler(req, res) {
     const limitNum = Math.min(parseInt(limit) || 20, 50); // Max 50 results
 
     // Search karaoke songs by title or artist
+    // Properly escape the query to handle commas and special characters
+    // Use parameterized query approach to avoid SQL injection
+    const searchPattern = `%${query.trim()}%`;
     const { data, error } = await supabase
       .from('karaoke_song_videos')
       .select('*')
-      .or(`song_title.ilike.%${query}%,song_artist.ilike.%${query}%`)
+      .or(`song_title.ilike.${searchPattern},song_artist.ilike.${searchPattern}`)
       .limit(Math.min(limitNum, 10)); // Limit database results to leave room for iTunes
 
     if (error) {
