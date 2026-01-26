@@ -54,7 +54,7 @@ export default function VideoDisplayPage() {
 
     // SIMPLE: Listen for messages from admin panel
     const handleMessage = (event: MessageEvent) => {
-      console.log('🎧 DISPLAY WINDOW: Received message:', event.data, 'from:', event.origin);
+      console.log('🎧 DISPLAY WINDOW: Received message:', event.data, 'from:', event.origin, 'type:', event.data?.type);
 
       // Accept messages from our admin panel
       const isValidOrigin = event.origin === window.location.origin ||

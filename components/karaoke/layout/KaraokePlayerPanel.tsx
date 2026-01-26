@@ -396,14 +396,14 @@ export default function KaraokePlayerPanel({
 
   // Send control command to display window - WITH FALLBACK
   const sendDisplayCommand = async (action: string, data?: any) => {
-    console.log('🎮 Sending command:', action, 'to window:', propDisplayWindow);
+    console.log('🎮 Sending command:', action, 'prop window:', propDisplayWindow, 'global window:', (window as any).karaokeDisplayWindow);
 
-    let targetWindow = propDisplayWindow;
+    // Prefer global window reference over prop, as it's more reliable
+    let targetWindow = (window as any).karaokeDisplayWindow || propDisplayWindow;
 
-    if ((!targetWindow || targetWindow.closed) && typeof window !== 'undefined' && window.karaokeDisplayWindow && !window.karaokeDisplayWindow.closed) {
-      console.log('📦 Using cached global display window from previous open');
-      targetWindow = window.karaokeDisplayWindow;
-      onDisplayWindowChange?.(targetWindow);
+    if (!targetWindow || targetWindow.closed) {
+      console.warn('❌ No display window available - cannot send command');
+      return;
     }
 
     if (!targetWindow || targetWindow.closed) {

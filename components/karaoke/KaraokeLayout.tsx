@@ -135,71 +135,28 @@ const KaraokeLayout = forwardRef<KaraokeLayoutRef, KaraokeLayoutProps>(({
 
         // Check if display window exists and is open
         if (!targetWindow || targetWindow.closed) {
-          console.log('Display window not open, opening new window...');
-          // Never use window.open('', name) as it creates about:blank tabs
-          // Open new display window directly
+          console.log('Display window not open, opening new window with video params...');
+          // Open display window with URL parameters for reliable video loading
+          const videoUrl = `/karaoke/video-display?videoId=${encodeURIComponent(videoData.videoId)}&title=${encodeURIComponent(videoData.title)}&artist=${encodeURIComponent(videoData.artist)}`;
           targetWindow = window.open(
-            '/karaoke/video-display',
+            videoUrl,
             windowName,
             'width=1280,height=720,scrollbars=no,resizable=yes,status=no,toolbar=no,menubar=no,location=no,directories=no'
           );
           if (targetWindow) {
             setDisplayWindow(targetWindow);
-            // Register the display window with empty video data initially
-            // This ensures proper communication setup
-            setTimeout(() => {
-              if (targetWindow && !targetWindow.closed) {
-                console.log('Registering newly opened display window');
-                // Use the registerDisplayWindow method to properly set up communication
-                setDisplayWindow(targetWindow);
-                // Store the display window reference globally
-                if (typeof window !== 'undefined') {
-                  (window as any).karaokeDisplayWindow = targetWindow;
-                }
-              }
-            }, 500); // Wait a bit for window to load
+            // Store the display window reference globally immediately
+            if (typeof window !== 'undefined') {
+              (window as any).karaokeDisplayWindow = targetWindow;
+              console.log('🎬 Set global display window reference');
+            }
           } else {
             console.error('Failed to open display window - popup may be blocked');
           }
         }
 
-        // Send change video command to display window after a short delay to ensure it's loaded
-        if (targetWindow) {
-          const sendVideoCommand = () => {
-            if (targetWindow && !targetWindow.closed) {
-              try {
-                targetWindow.postMessage({
-                  type: 'VIDEO_CONTROL',
-                  data: { action: 'changeVideo', ...videoData }
-                }, '*');
-                console.log('✅ Sent video command to display window');
-              } catch (error) {
-                console.error('Error sending video command:', error);
-                // Retry after a longer delay if window might still be loading
-                setTimeout(() => {
-                  if (targetWindow && !targetWindow.closed) {
-                    try {
-                      targetWindow.postMessage({
-                        type: 'VIDEO_CONTROL',
-                        data: { action: 'changeVideo', ...videoData }
-                      }, '*');
-                    } catch (retryError) {
-                      console.error('Retry failed:', retryError);
-                    }
-                  }
-                }, 2000);
-              }
-            }
-          };
-
-          // If window was just opened, wait a bit for it to load
-          if (!displayWindow || displayWindow.closed) {
-            setTimeout(sendVideoCommand, 1000);
-          } else {
-            // Window already exists, send immediately
-            sendVideoCommand();
-          }
-        }
+        // Video loads via URL parameters, no need to send changeVideo command
+        console.log('✅ Display window opened with video URL parameters');
       }
     },
     clearPlayerQueue: () => {
