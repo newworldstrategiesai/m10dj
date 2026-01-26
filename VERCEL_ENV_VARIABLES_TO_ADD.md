@@ -9,6 +9,38 @@
 
 ---
 
+## CRITICAL: Variables Required for Karaoke Auto-Linking
+
+### SUPABASE_SERVICE_ROLE_KEY
+
+**Key**: `SUPABASE_SERVICE_ROLE_KEY`
+
+**Value**: (Get from Supabase Dashboard → Settings → API → service_role key)
+
+**Environment**: 
+- ✅ Production
+- ✅ Preview  
+- ✅ Development
+
+**Why**: Required for auto-linking karaoke videos during public signups (bypasses RLS)
+
+---
+
+### YOUTUBE_API_KEY
+
+**Key**: `YOUTUBE_API_KEY`
+
+**Value**: (Your YouTube Data API v3 key)
+
+**Environment**: 
+- ✅ Production
+- ✅ Preview  
+- ✅ Development
+
+**Why**: Required for searching YouTube for karaoke videos during auto-linking
+
+---
+
 ## Variable 1: DOWNLOAD_SERVER_URL
 
 **Key**: `DOWNLOAD_SERVER_URL`
