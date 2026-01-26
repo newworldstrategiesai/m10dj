@@ -71,6 +71,7 @@ export default function BatchCreateTipJarPage() {
   const [previewEmail, setPreviewEmail] = useState<{ html: string; subject: string } | null>(null);
   const [showEmailPreview, setShowEmailPreview] = useState(false);
   const [reviewOrg, setReviewOrg] = useState<CreatedOrganization | null>(null);
+  const [previewProspect, setPreviewProspect] = useState<Prospect | null>(null);
   const [showReview, setShowReview] = useState(false);
   const [sendingEmail, setSendingEmail] = useState(false);
   
@@ -429,6 +430,7 @@ export default function BatchCreateTipJarPage() {
     const subject = `Your TipJar page is ready! 🎉`;
 
     setPreviewEmail({ html, subject });
+    setPreviewProspect(null); // Clear previewProspect when previewing created org
     setShowEmailPreview(true);
     // reviewOrg is set by the button onClick handler
   };
@@ -461,6 +463,8 @@ export default function BatchCreateTipJarPage() {
     const subject = `Your TipJar page is ready! 🎉`;
 
     setPreviewEmail({ html, subject });
+    setPreviewProspect(prospect);
+    setReviewOrg(null); // Clear reviewOrg when previewing prospect
     setShowEmailPreview(true);
   };
 
@@ -733,37 +737,54 @@ export default function BatchCreateTipJarPage() {
         }}>
           <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
             <DialogHeader>
-              <DialogTitle>Email Preview</DialogTitle>
+              <DialogTitle>Email Preview - Welcome Email</DialogTitle>
               <DialogDescription>
-                This is how the welcome email will look to prospects
+                This is how the email will look to prospects
               </DialogDescription>
             </DialogHeader>
             
             {previewEmail && (
-              <div className="flex-1 overflow-y-auto border rounded-lg bg-gray-50 p-4">
-                <div className="mb-4 text-sm text-muted-foreground bg-white p-3 rounded border">
-                  <p><strong>Subject:</strong> {previewEmail.subject}</p>
-                  {reviewOrg && (
-                    <p className="text-xs mt-1">
-                      <strong>Recipient:</strong> {reviewOrg.prospect_email}
-                    </p>
-                  )}
+              <>
+                <div className="flex-1 overflow-y-auto border rounded-lg bg-gray-50 p-4">
+                  <div className="mb-4 text-sm text-muted-foreground bg-white p-3 rounded border">
+                    <p><strong>Subject:</strong> {previewEmail.subject}</p>
+                    {reviewOrg && (
+                      <p className="text-xs mt-1">
+                        <strong>Recipient:</strong> {reviewOrg.prospect_email}
+                      </p>
+                    )}
+                    {previewProspect && (
+                      <p className="text-xs mt-1">
+                        <strong>Recipient:</strong> {previewProspect.email}
+                      </p>
+                    )}
+                  </div>
+                  <div 
+                    className="bg-white rounded-lg shadow-sm overflow-hidden"
+                    style={{ minHeight: '500px' }}
+                    dangerouslySetInnerHTML={{ __html: previewEmail.html }}
+                  />
                 </div>
-                <div 
-                  className="bg-white rounded-lg shadow-sm overflow-hidden"
-                  style={{ minHeight: '500px' }}
-                  dangerouslySetInnerHTML={{ __html: previewEmail.html }}
-                />
                 
-                {reviewOrg && (
-                  <div className="mt-4 flex gap-2">
+                <div className="flex justify-end gap-2 pt-4 border-t">
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setShowEmailPreview(false);
+                      setPreviewProspect(null);
+                    }}
+                    disabled={sendingEmail}
+                  >
+                    Close
+                  </Button>
+                  {reviewOrg && (
                     <Button
                       onClick={() => {
                         setShowEmailPreview(false);
                         sendWelcomeEmail(reviewOrg);
                       }}
                       disabled={sendingEmail}
-                      className="flex-1 bg-green-600 hover:bg-green-700"
+                      className="bg-green-600 hover:bg-green-700"
                     >
                       {sendingEmail ? (
                         <>
@@ -773,19 +794,24 @@ export default function BatchCreateTipJarPage() {
                       ) : (
                         <>
                           <Send className="w-4 h-4 mr-2" />
-                          Send This Email
+                          Send Email
                         </>
                       )}
                     </Button>
+                  )}
+                  {previewProspect && (
                     <Button
                       variant="outline"
-                      onClick={() => setShowEmailPreview(false)}
+                      disabled
+                      className="opacity-50 cursor-not-allowed"
+                      title="Create the organization first to send the email"
                     >
-                      Close Preview
+                      <Mail className="w-4 h-4 mr-2" />
+                      Create Page to Send
                     </Button>
-                  </div>
-                )}
-              </div>
+                  )}
+                </div>
+              </>
             )}
           </DialogContent>
         </Dialog>
