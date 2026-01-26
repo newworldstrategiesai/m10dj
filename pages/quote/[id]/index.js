@@ -3539,7 +3539,6 @@ export default function PersonalizedQuote() {
         </div>
       )}
       <QuoteBottomNav quoteId={id} />
-      </main>
       </div>
     </>
   );
