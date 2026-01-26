@@ -496,7 +496,18 @@ export default function KaraokePlayerPanel({
     }
 
     // Otherwise, use embedded player if available
-    const control = embeddedPlayerControl || (window as any).youtubePlayerControl;
+    // Wait a bit for player to be ready (retry up to 3 times)
+    let control = embeddedPlayerControl || (window as any).youtubePlayerControl;
+    let retries = 0;
+    const maxRetries = 3;
+    
+    while (!control && retries < maxRetries) {
+      console.log(`⏳ Waiting for embedded player control (attempt ${retries + 1}/${maxRetries})...`);
+      await new Promise(resolve => setTimeout(resolve, 500));
+      control = embeddedPlayerControl || (window as any).youtubePlayerControl;
+      retries++;
+    }
+    
     if (control) {
       console.log('🎮 Using embedded player control');
       setIsCommandLoading(true);
@@ -545,7 +556,12 @@ export default function KaraokePlayerPanel({
       return;
     }
 
-    console.warn('❌ No display window or embedded player available - cannot send command');
+    console.warn('❌ No display window or embedded player available - cannot send command', {
+      hasDisplayWindow: !!targetWindow,
+      displayWindowClosed: targetWindow?.closed,
+      hasEmbeddedControl: !!(embeddedPlayerControl || (window as any).youtubePlayerControl),
+      propDisplayVideo: !!propDisplayVideo
+    });
   };
 
   // Control functions for external display or embedded player
