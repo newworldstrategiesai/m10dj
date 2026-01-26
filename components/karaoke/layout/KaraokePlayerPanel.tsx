@@ -1,7 +1,7 @@
 'use client';
 
 import dynamic from 'next/dynamic';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -70,8 +70,13 @@ export default function KaraokePlayerPanel({
 }: KaraokePlayerPanelProps) {
   const { toast } = useToast();
 
-  // Debug window reference
-  console.log('🎪 KaraokePlayerPanel render - displayWindow:', propDisplayWindow, 'closed:', propDisplayWindow?.closed);
+  // Debug window reference - only log in development and use useEffect to avoid triggering Fast Refresh
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🎪 KaraokePlayerPanel mounted - displayWindow:', propDisplayWindow, 'closed:', propDisplayWindow?.closed);
+    }
+  }, []); // Only log on mount, not every render
+  
   const [logoError, setLogoError] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
@@ -112,6 +117,12 @@ export default function KaraokePlayerPanel({
   
   // Track previous signup ID to detect when it changes
   const previousSignupId = useRef<string | null>(null);
+  
+  // Use ref to track display window to avoid dependency issues
+  const displayWindowRef = useRef(propDisplayWindow);
+  useEffect(() => {
+    displayWindowRef.current = propDisplayWindow;
+  }, [propDisplayWindow]);
 
   // Loading states
   const [isCommandLoading, setIsCommandLoading] = useState(false);
@@ -148,14 +159,21 @@ export default function KaraokePlayerPanel({
   const currentSignup = signups.find(signup => signup.status === 'singing');
 
   // Debug logging for current signup changes - only in development
+  // Use ref to track previous signup ID to avoid logging on every render
+  const previousSignupIdRef = useRef<string | null>(null);
   useEffect(() => {
-    if (process.env.NODE_ENV === 'development') {
-      console.log('KaraokePlayerPanel - signups updated, currentSignup:', currentSignup);
-      if (currentSignup) {
-        console.log('Current singing signup:', currentSignup.singer_name, currentSignup.song_title, currentSignup.status);
+    const currentSignupId = currentSignup?.id || null;
+    // Only log if the signup actually changed
+    if (previousSignupIdRef.current !== currentSignupId) {
+      previousSignupIdRef.current = currentSignupId;
+      if (process.env.NODE_ENV === 'development') {
+        console.log('KaraokePlayerPanel - signups updated, currentSignup:', currentSignup);
+        if (currentSignup) {
+          console.log('Current singing signup:', currentSignup.singer_name, currentSignup.song_title, currentSignup.status);
+        }
       }
     }
-  }, [signups, currentSignup]);
+  }, [currentSignup?.id]); // Only depend on the ID, not the whole object
 
   // Touch/swipe handling
   const [touchStart, setTouchStart] = useState<number | null>(null);
@@ -357,8 +375,6 @@ export default function KaraokePlayerPanel({
     if (!mounted) return;
 
     const handleMessage = (event: MessageEvent) => {
-      console.log('🎧 SIMPLE: Received message:', event.data, 'from origin:', event.origin);
-
       // Accept messages from our display window or any localhost/tipjar domain
       const isValidOrigin = event.origin === window.location.origin ||
                            event.origin === 'null' ||
@@ -367,14 +383,26 @@ export default function KaraokePlayerPanel({
                            event.origin.includes('m10djcompany.com');
 
       if (!isValidOrigin) {
-        console.log('🚫 Rejected message from invalid origin:', event.origin);
+        // Silently ignore YouTube iframe messages - they're expected and not errors
+        // Only log in development if it's not from YouTube
+        if (process.env.NODE_ENV === 'development' && !event.origin.includes('youtube.com')) {
+          console.debug('🚫 Rejected message from invalid origin:', event.origin);
+        }
         return;
+      }
+
+      // Only log valid messages in development
+      if (process.env.NODE_ENV === 'development') {
+        console.log('🎧 SIMPLE: Received message:', event.data, 'from origin:', event.origin);
       }
 
       const { type, data } = event.data;
 
       if (type === 'VIDEO_STATUS') {
-        console.log('📊 Processing VIDEO_STATUS:', data);
+        // Only log in development and not for every status update
+        if (process.env.NODE_ENV === 'development') {
+          console.debug('📊 Processing VIDEO_STATUS:', data);
+        }
         
         // Only update if we have valid duration (video is loaded)
         // and currentTime is within valid range
@@ -460,7 +488,7 @@ export default function KaraokePlayerPanel({
     return () => {
       window.removeEventListener('message', handleMessage);
     };
-  }, [propDisplayVideo, onDisplayVideoChange, mounted]);
+  }, [propDisplayVideo?.videoId, onDisplayVideoChange, mounted]); // Use videoId instead of whole object
 
   // Track embedded player status when no external display window
   useEffect(() => {
@@ -625,11 +653,13 @@ export default function KaraokePlayerPanel({
       if (checkTimer) clearTimeout(checkTimer);
       clearTimeout(initialTimer);
     };
-  }, [propDisplayVideo?.videoId, propDisplayWindow, volume]);
+  }, [propDisplayVideo?.videoId, volume]); // Removed propDisplayWindow from deps - it's a Window object that can't be compared reliably
 
   // Send control command to display window or embedded player - WITH FALLBACK
-  const sendDisplayCommand = async (action: string, data?: any) => {
-    console.log('🎮 Sending command:', action, 'prop window:', propDisplayWindow, 'global window:', (window as any).karaokeDisplayWindow);
+  const sendDisplayCommand = useCallback(async (action: string, data?: any) => {
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🎮 Sending command:', action, 'prop window:', propDisplayWindow, 'global window:', (window as any).karaokeDisplayWindow);
+    }
 
     // Prefer global window reference over prop, as it's more reliable
     let targetWindow = (window as any).karaokeDisplayWindow || propDisplayWindow;
@@ -668,7 +698,9 @@ export default function KaraokePlayerPanel({
         // If sending fails, try to use embedded player as fallback
         const control = embeddedPlayerControl || (window as any).youtubePlayerControl;
         if (control) {
-          console.log('🔄 Falling back to embedded player control');
+          if (process.env.NODE_ENV === 'development') {
+            console.log('🔄 Falling back to embedded player control');
+          }
           // Continue to embedded player logic below
         } else {
           throw new Error('Failed to send command and no embedded player available');
@@ -702,14 +734,18 @@ export default function KaraokePlayerPanel({
     };
     
     while (!isControlFunctional(control) && retries < maxRetries) {
-      console.log(`⏳ Waiting for embedded player control (attempt ${retries + 1}/${maxRetries})...`);
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`⏳ Waiting for embedded player control (attempt ${retries + 1}/${maxRetries})...`);
+      }
       await new Promise(resolve => setTimeout(resolve, 500));
       control = embeddedPlayerControl || (window as any).youtubePlayerControl;
       retries++;
     }
     
     if (isControlFunctional(control)) {
-      console.log('🎮 Using embedded player control');
+      if (process.env.NODE_ENV === 'development') {
+        console.log('🎮 Using embedded player control');
+      }
       setIsCommandLoading(true);
       try {
         // Check if control methods exist before calling them
@@ -786,11 +822,18 @@ export default function KaraokePlayerPanel({
       propDisplayVideo: !!propDisplayVideo
     });
     throw new Error('No display window or embedded player available');
-  };
+  }, [propDisplayWindow, embeddedPlayerControl]);
+
+  // Request status update from display window
+  const updateDisplayStatus = useCallback(() => {
+    sendDisplayCommand('getStatus');
+  }, [sendDisplayCommand]);
 
   // Control functions for external display or embedded player
-  const toggleDisplayPlayPause = async () => {
-    console.log('🎮 toggleDisplayPlayPause called');
+  const toggleDisplayPlayPause = useCallback(async () => {
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🎮 toggleDisplayPlayPause called');
+    }
     
     // Check if we have an external display window
     const targetWindow = (window as any).karaokeDisplayWindow || propDisplayWindow;
@@ -801,7 +844,9 @@ export default function KaraokePlayerPanel({
       windowIsOpen = !!targetWindow;
     }
 
-    console.log('🎮 Window status:', { windowIsOpen, hasTargetWindow: !!targetWindow });
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🎮 Window status:', { windowIsOpen, hasTargetWindow: !!targetWindow });
+    }
 
     // Try to get actual player state first
     let actualPlayerState: boolean | null = null;
@@ -814,7 +859,9 @@ export default function KaraokePlayerPanel({
           type: 'VIDEO_CONTROL',
           data: { action: 'getStatus' }
         }, '*');
-        console.log('📡 Requested status from display window');
+        if (process.env.NODE_ENV === 'development') {
+          console.log('📡 Requested status from display window');
+        }
       } catch (e) {
         console.warn('Could not request status from display window:', e);
       }
@@ -826,12 +873,16 @@ export default function KaraokePlayerPanel({
           const playerState = control.getPlayerState();
           // YouTube PlayerState: -1=unstarted, 0=ended, 1=playing, 2=paused, 3=buffering, 5=cued
           actualPlayerState = playerState === 1; // playing
-          console.log('🎮 Embedded player state:', playerState, 'isPlaying:', actualPlayerState);
+          if (process.env.NODE_ENV === 'development') {
+            console.log('🎮 Embedded player state:', playerState, 'isPlaying:', actualPlayerState);
+          }
         } catch (e) {
           console.warn('Could not get player state:', e);
         }
       } else {
-        console.warn('⚠️ No embedded player control available');
+        if (process.env.NODE_ENV === 'development') {
+          console.warn('⚠️ No embedded player control available');
+        }
       }
     }
 
@@ -843,19 +894,25 @@ export default function KaraokePlayerPanel({
         ? displayStatus.isPlaying 
         : isPlaying;
     
-    console.log('🎮 Toggle play/pause - currentlyPlaying:', currentlyPlaying, {
-      actualState: actualPlayerState,
-      displayStatus: displayStatus?.isPlaying,
-      isPlaying: isPlaying,
-      hasValidStatus
-    });
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🎮 Toggle play/pause - currentlyPlaying:', currentlyPlaying, {
+        actualState: actualPlayerState,
+        displayStatus: displayStatus?.isPlaying,
+        isPlaying: isPlaying,
+        hasValidStatus
+      });
+    }
     
     // Always use sendDisplayCommand - it will route to the right target
     try {
       if (currentlyPlaying) {
-        console.log('⏸️ Sending pause command...');
+        if (process.env.NODE_ENV === 'development') {
+          console.log('⏸️ Sending pause command...');
+        }
         await sendDisplayCommand('pause');
-        console.log('✅ Pause command sent');
+        if (process.env.NODE_ENV === 'development') {
+          console.log('✅ Pause command sent');
+        }
         // Optimistically update local state - only if we have valid status
         if (hasValidStatus) {
           setDisplayStatus({ ...displayStatus, isPlaying: false });
@@ -884,30 +941,25 @@ export default function KaraokePlayerPanel({
       }
       setIsPlaying(!currentlyPlaying);
     }
-  };
+  }, [propDisplayWindow, displayStatus, isPlaying, sendDisplayCommand, updateDisplayStatus]);
 
   const stopDisplayVideo = () => {
     sendDisplayCommand('stop');
   };
 
-  const setDisplayVolume = (newVolume: number) => {
+  const setDisplayVolume = useCallback((newVolume: number) => {
     sendDisplayCommand('volume', { volume: newVolume });
     setVolume(newVolume);
-  };
+  }, [sendDisplayCommand]);
 
-  const toggleDisplayMute = () => {
+  const toggleDisplayMute = useCallback(() => {
     if (isMuted) {
       sendDisplayCommand('unmute');
     } else {
       sendDisplayCommand('mute');
     }
     setIsMuted(!isMuted);
-  };
-
-  // Request status update from display window
-  const updateDisplayStatus = () => {
-    sendDisplayCommand('getStatus');
-  };
+  }, [isMuted, sendDisplayCommand]);
 
   // Change video in display window
   const changeDisplayVideo = (video: { videoId: string; title: string; artist: string }) => {
@@ -1195,7 +1247,7 @@ export default function KaraokePlayerPanel({
 
     const handleKeyPress = (event: KeyboardEvent) => {
       // Only handle shortcuts when display window is active
-      if (!propDisplayWindow || !displayStatus) return;
+      if (!displayWindowRef.current || !displayStatus) return;
 
       // Ignore if user is typing in an input
       if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) {
@@ -1246,7 +1298,7 @@ export default function KaraokePlayerPanel({
 
     window.addEventListener('keydown', handleKeyPress);
     return () => window.removeEventListener('keydown', handleKeyPress);
-  }, [propDisplayWindow, displayStatus, volume, toggleDisplayPlayPause, toggleDisplayMute, setDisplayVolume, sendDisplayCommand, updateDisplayStatus, mounted]);
+  }, [displayStatus?.isPlaying, volume, toggleDisplayPlayPause, toggleDisplayMute, setDisplayVolume, sendDisplayCommand, updateDisplayStatus, mounted]); // Removed propDisplayWindow - use displayStatus.isPlaying instead
 
   return (
     <aside className="w-full md:w-96 bg-gray-900/95 backdrop-blur-xl border-l border-gray-700/50 flex flex-col karaoke-scrollbar shadow-2xl">

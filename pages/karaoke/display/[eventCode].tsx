@@ -15,6 +15,11 @@ export default function KaraokeDisplayPage() {
   const [organizationId, setOrganizationId] = useState<string | null>(null);
   const [organizationName, setOrganizationName] = useState<string>('');
 
+  // Normalize eventCode - handle router not being ready and ensure "all" is passed correctly
+  const normalizedEventCode = router.isReady 
+    ? (Array.isArray(eventCode) ? eventCode[0] : eventCode) || 'all'
+    : 'all';
+
   // Use real-time queue updates
   const {
     queueData,
@@ -22,7 +27,11 @@ export default function KaraokeDisplayPage() {
     lastUpdate,
     error: realtimeError,
     refreshQueue
-  } = useRealtimeKaraoke(organizationId, (Array.isArray(eventCode) ? eventCode[0] : eventCode) || null, !!organizationId && !!eventCode);
+  } = useRealtimeKaraoke(
+    organizationId, 
+    normalizedEventCode, 
+    !!organizationId && router.isReady
+  );
 
   // Extract data from real-time updates
   const currentSinger = queueData?.current || null;
@@ -35,9 +44,9 @@ export default function KaraokeDisplayPage() {
     if (!organizationId) return;
 
     try {
-      const queryParams = eventCode === 'all'
+      const queryParams = normalizedEventCode === 'all'
         ? `organization_id=${organizationId}`
-        : `event_code=${eventCode}&organization_id=${organizationId}`;
+        : `event_code=${normalizedEventCode}&organization_id=${organizationId}`;
 
       const response = await fetch(`/api/karaoke/queue?${queryParams}`);
 
@@ -51,8 +60,22 @@ export default function KaraokeDisplayPage() {
     }
   };
 
+  // Trigger initial fetch when organizationId becomes available
+  useEffect(() => {
+    if (organizationId && router.isReady) {
+      // Small delay to ensure hook is ready
+      const timer = setTimeout(() => {
+        refreshQueue();
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [organizationId, router.isReady, refreshQueue]);
+
   // Get organization ID
   useEffect(() => {
+    // Wait for router to be ready
+    if (!router.isReady) return;
+
     async function getOrganization() {
       try {
         const urlParams = new URLSearchParams(window.location.search);
@@ -61,9 +84,12 @@ export default function KaraokeDisplayPage() {
         if (orgId) {
           setOrganizationId(orgId);
           // For "all" events, we don't need an organization name, but for specific events we can try to get it
-          if (eventCode !== 'all') {
+          const currentEventCode = router.isReady 
+            ? (Array.isArray(eventCode) ? eventCode[0] : eventCode) || 'all'
+            : 'all';
+          if (currentEventCode && currentEventCode !== 'all') {
             // Look up via event info API (shared with crowd-requests)
-            const lookupResponse = await fetch(`/api/crowd-request/event-info?code=${eventCode}`);
+            const lookupResponse = await fetch(`/api/crowd-request/event-info?code=${currentEventCode}`);
             if (lookupResponse.ok) {
               const eventData = await lookupResponse.json();
               setOrganizationName(eventData.organization_name || eventData.organization?.name || '');
@@ -75,7 +101,7 @@ export default function KaraokeDisplayPage() {
       }
     }
     getOrganization();
-  }, [eventCode]);
+  }, [router.isReady, eventCode]);
 
   // Open current singer's video in display window
   const openCurrentVideoInDisplay = () => {
@@ -125,9 +151,9 @@ export default function KaraokeDisplayPage() {
   return (
     <>
       <Head>
-        <title>Karaoke Queue | {eventCode === 'all' ? (organizationName || 'All Events') : eventCode}</title>
+        <title>Karaoke Queue | {normalizedEventCode === 'all' ? (organizationName || 'All Events') : normalizedEventCode}</title>
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
-        <meta property="og:title" content={`Karaoke Queue - ${eventCode === 'all' ? (organizationName || 'All Events') : eventCode}`} />
+        <meta property="og:title" content={`Karaoke Queue - ${normalizedEventCode === 'all' ? (organizationName || 'All Events') : normalizedEventCode}`} />
         <meta property="og:description" content="Live karaoke queue display. See who's singing next and track the lineup in real-time!" />
         <meta property="og:image" content="https://tipjar.live/assets/tipjar-karaoke-display-og.png" />
         <meta property="og:image:width" content="1200" />
@@ -135,7 +161,7 @@ export default function KaraokeDisplayPage() {
         <meta property="og:image:alt" content="Karaoke Queue Display - Live lineup and who's singing next!" />
         <meta property="og:type" content="website" />
         <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" content={`Karaoke Queue - ${eventCode === 'all' ? (organizationName || 'All Events') : eventCode}`} />
+        <meta name="twitter:title" content={`Karaoke Queue - ${normalizedEventCode === 'all' ? (organizationName || 'All Events') : normalizedEventCode}`} />
         <meta name="twitter:description" content="Live karaoke queue display. See who's singing next in real-time!" />
         <meta name="twitter:image" content="https://tipjar.live/assets/tipjar-karaoke-display-og.png" />
         <style>{`
@@ -171,11 +197,11 @@ export default function KaraokeDisplayPage() {
                 </div>
                 <div>
                   <h1 className="text-5xl sm:text-6xl font-black tracking-tight mb-1">
-                    {eventCode === 'all' ? 'ALL EVENTS KARAOKE' : 'KARAOKE QUEUE'}
+                    {normalizedEventCode === 'all' ? 'ALL EVENTS KARAOKE' : 'KARAOKE QUEUE'}
                   </h1>
                   {organizationName && (
                     <p className="text-2xl sm:text-3xl text-purple-300 font-bold">
-                      {eventCode === 'all' ? organizationName : `${organizationName} - ${eventCode}`}
+                      {normalizedEventCode === 'all' ? organizationName : `${organizationName} - ${normalizedEventCode}`}
                     </p>
                   )}
                 </div>

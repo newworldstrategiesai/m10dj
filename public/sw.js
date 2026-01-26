@@ -195,6 +195,15 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  // Skip webpack hot-update files and other development files
+  if (url.pathname.includes('webpack') ||
+      url.pathname.includes('hot-update') ||
+      url.pathname.includes('_next/static/chunks') ||
+      url.pathname.includes('_next/webpack')) {
+    // Let these pass through without caching
+    return;
+  }
+
   // Handle API requests with network-first strategy
   if (API_ENDPOINTS.some(endpoint => url.pathname.startsWith(endpoint))) {
     event.respondWith(CACHE_STRATEGIES.networkFirst(request));
