@@ -109,6 +109,20 @@ export default function KaraokePlayerPanel({
   const [isCommandLoading, setIsCommandLoading] = useState(false);
   const [thumbnailLoading, setThumbnailLoading] = useState(true);
 
+  // Helper to format seconds to mm:ss or h:mm:ss
+  const formatDuration = (seconds: number | string | undefined): string => {
+    if (!seconds) return '--:--';
+    const secs = typeof seconds === 'string' ? parseInt(seconds, 10) : seconds;
+    if (isNaN(secs) || secs <= 0) return '--:--';
+    const hours = Math.floor(secs / 3600);
+    const mins = Math.floor((secs % 3600) / 60);
+    const remainingSecs = Math.floor(secs % 60);
+    if (hours > 0) {
+      return `${hours}:${mins.toString().padStart(2, '0')}:${remainingSecs.toString().padStart(2, '0')}`;
+    }
+    return `${mins}:${remainingSecs.toString().padStart(2, '0')}`;
+  };
+
   // Derive queue from signups that have videos and are queued/next
   const queue = signups
     .filter(signup => signup.video_data && ['queued', 'next'].includes(signup.status))
@@ -117,7 +131,7 @@ export default function KaraokePlayerPanel({
       id: signup.id,
       title: signup.song_title,
       artist: signup.song_artist || '',
-      duration: signup.video_data?.youtube_video_duration || '0:00',
+      duration: formatDuration(signup.video_data?.youtube_video_duration),
       thumbnailUrl: `https://img.youtube.com/vi/${signup.video_data?.youtube_video_id}/default.jpg`,
       isPremium: signup.video_data?.is_premium || false,
       signupData: signup // Keep reference to original signup
@@ -1617,7 +1631,7 @@ export default function KaraokePlayerPanel({
                         <div className="flex items-center gap-1 mt-0.5">
                           <Clock className="w-3 h-3 text-gray-500" />
                           <span className="text-gray-400 text-xs font-mono">
-                            {song.duration && song.duration !== '0:00' ? song.duration : (song.signupData?.video_data?.youtube_video_duration || '--:--')}
+                            {song.duration && song.duration !== '--:--' ? song.duration : '--:--'}
                           </span>
                         </div>
                       </div>
@@ -1686,7 +1700,7 @@ export default function KaraokePlayerPanel({
                       <div className="flex items-center gap-1 mt-0.5">
                         <Clock className="w-3 h-3 text-gray-500" />
                         <span className="text-gray-400 text-xs font-mono">
-                          {song.youtube_video_duration || '--:--'}
+                          {formatDuration(song.youtube_video_duration)}
                         </span>
                       </div>
                     </div>
