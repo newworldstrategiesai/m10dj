@@ -58,8 +58,9 @@ const CACHE_STRATEGIES = {
       }
       return networkResponse;
     } catch (error) {
-      // Return offline fallback for critical pages
-      if (request.destination === 'document') {
+      // Only show offline fallback if browser is actually offline
+      // Don't show offline page for network errors when online - let the app handle errors
+      if (request.destination === 'document' && !navigator.onLine) {
         const offlineResponse = new Response(
           `
           <!DOCTYPE html>
@@ -114,6 +115,7 @@ const CACHE_STRATEGIES = {
         );
         return offlineResponse;
       }
+      // If online but network request failed, throw error to let the app handle it
       throw error;
     }
   }
