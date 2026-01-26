@@ -469,7 +469,11 @@ export default function AdminDashboard() {
                 // Handle 406 errors gracefully (RLS policy or format issues)
                 if (submissionError) {
                   // Log but don't break - 406 errors are often RLS-related and non-critical
-                  if (submissionError.status !== 406) {
+                  // Check error message for 406 status (PostgrestError doesn't have status property)
+                  const is406Error = submissionError.message?.includes('406') || 
+                                    submissionError.code === 'PGRST301' ||
+                                    submissionError.message?.includes('Not Acceptable');
+                  if (!is406Error) {
                     console.warn('Error checking contact submission:', submissionError);
                   }
                 } else if (submission) {
@@ -510,7 +514,11 @@ export default function AdminDashboard() {
                 // Handle 406 errors gracefully (RLS policy or format issues)
                 if (requestError) {
                   // Log but don't break - 406 errors are often RLS-related and non-critical
-                  if (requestError.status !== 406) {
+                  // Check error message for 406 status (PostgrestError doesn't have status property)
+                  const is406Error = requestError.message?.includes('406') || 
+                                    requestError.code === 'PGRST301' ||
+                                    requestError.message?.includes('Not Acceptable');
+                  if (!is406Error) {
                     console.warn('Error checking crowd request:', requestError);
                   }
                 } else if (request) {
