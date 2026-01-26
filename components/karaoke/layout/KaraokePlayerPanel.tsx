@@ -680,11 +680,21 @@ export default function KaraokePlayerPanel({
     } else {
       // Window exists and is open, send commands via postMessage
       console.log('Display window exists, sending video commands via postMessage');
-      sendDisplayCommand('changeVideo', video);
-      setTimeout(() => sendDisplayCommand('play'), 500);
+      // Try to change video, but don't fail if it doesn't work - status update will handle it
+      try {
+        sendDisplayCommand('changeVideo', video);
+        setTimeout(() => {
+          sendDisplayCommand('play').catch(err => {
+            console.warn('Failed to send play command, but continuing with status update:', err);
+          });
+        }, 500);
+      } catch (err) {
+        console.warn('Failed to send video commands, but continuing with status update:', err);
+      }
     }
 
     // Update the signup status to 'singing'
+    // The API will automatically complete the current singer if one exists (admin override)
     if (onSignupStatusChange) {
       onSignupStatusChange(queueItem.signupData.id, 'singing');
     }

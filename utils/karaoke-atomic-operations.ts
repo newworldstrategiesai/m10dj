@@ -66,14 +66,47 @@ export class KaraokeQueueManager {
       }
 
       // Check for concurrent singing constraint
+      // If admin is changing songs, automatically complete the current singer first
       if (newStatus === 'singing') {
         const currentlySinging = await this.getCurrentlySinging(organizationId, eventQrCode);
         if (currentlySinging && currentlySinging.id !== signupId) {
-          return {
-            success: false,
-            error: 'Another person is already singing',
-            conflict: true
-          };
+          // Admin override: automatically complete the current singer
+          // (This API endpoint is admin-only, so we can safely override)
+          console.log(`Admin override: Completing current singer ${currentlySinging.id} to allow ${signupId} to sing`);
+          
+          const completeCurrentSinger = await this.supabase
+            .from('karaoke_signups')
+            .update({
+              status: 'completed',
+              completed_at: new Date().toISOString(),
+              times_sung: (currentlySinging.times_sung || 0) + 1,
+              last_sung_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', currentlySinging.id)
+            .eq('organization_id', organizationId)
+            .select()
+            .single();
+
+          if (completeCurrentSinger.error) {
+            console.error('Failed to complete current singer:', completeCurrentSinger.error);
+            return {
+              success: false,
+              error: 'Failed to complete current singer',
+              conflict: true
+            };
+          }
+
+          // Log the auto-completion
+          await this.logQueueOperation({
+            signupId: currentlySinging.id,
+            operation: 'status_update',
+            oldStatus: 'singing',
+            newStatus: 'completed',
+            performedBy: performedBy || 'system',
+            organizationId,
+            eventQrCode
+          });
         }
       }
 
