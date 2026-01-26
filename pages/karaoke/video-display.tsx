@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
-import { X, Maximize, Minimize, Volume2, VolumeX, RotateCcw } from 'lucide-react';
+import { X, Maximize, Minimize, Volume2, VolumeX, RotateCcw, Play, Pause, SkipBack, SkipForward } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import YouTubePlayer from '@/components/karaoke/YouTubePlayer';
 
@@ -18,6 +18,14 @@ export default function VideoDisplayPage() {
   const router = useRouter();
   const { videoId: initialVideoId, title: initialTitle, artist: initialArtist } = router.query;
 
+  // Helper function to format time
+  const formatTime = (seconds: number): string => {
+    if (!seconds || isNaN(seconds)) return '0:00';
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
   const [currentVideo, setCurrentVideo] = useState<{
     videoId: string;
     title: string;
@@ -26,6 +34,9 @@ export default function VideoDisplayPage() {
 
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [volume, setVolume] = useState(50);
+  const [isPlaying, setIsPlaying] = useState(true);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
 
   // Initialize video data when router is ready
   useEffect(() => {
@@ -229,7 +240,7 @@ export default function VideoDisplayPage() {
       }
     };
 
-    // SIMPLE: Send status updates to admin panel
+    // SIMPLE: Send status updates to admin panel and update local state
     const sendStatusUpdate = (overrides = {}) => {
       try {
         const control = (window as any).youtubePlayerControl;
@@ -250,6 +261,11 @@ export default function VideoDisplayPage() {
           playerState: playerState,
           ...overrides
         };
+
+        // Update local state for display controls
+        setIsPlaying(statusData.isPlaying);
+        setCurrentTime(statusData.currentTime);
+        setDuration(statusData.duration);
 
         const message = {
           type: 'VIDEO_STATUS',
@@ -389,6 +405,32 @@ export default function VideoDisplayPage() {
     window.location.reload();
   };
 
+  // Playback control functions
+  const togglePlayPause = () => {
+    const control = (window as any).youtubePlayerControl;
+    if (!control) return;
+
+    if (isPlaying) {
+      control.pause();
+      setIsPlaying(false);
+    } else {
+      control.play();
+      setIsPlaying(true);
+    }
+  };
+
+  const seekVideo = (seconds: number) => {
+    const control = (window as any).youtubePlayerControl;
+    if (!control) return;
+
+    control.seekTo(seconds);
+  };
+
+  const rewind10 = () => seekVideo(Math.max(0, currentTime - 10));
+  const forward10 = () => seekVideo(Math.min(duration, currentTime + 10));
+  const rewind30 = () => seekVideo(Math.max(0, currentTime - 30));
+  const forward30 = () => seekVideo(Math.min(duration, currentTime + 30));
+
   // Show loading while waiting for router query
   if (!router.isReady) {
     return (
@@ -505,6 +547,62 @@ export default function VideoDisplayPage() {
               </Button>
             </div>
 
+            {/* Playback Controls */}
+            <div className="flex items-center gap-1">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={rewind30}
+                className="text-white hover:bg-white/20 p-2"
+                title="Rewind 30s"
+              >
+                <SkipBack className="w-4 h-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={rewind10}
+                className="text-white hover:bg-white/20 p-2"
+                title="Rewind 10s"
+              >
+                -10s
+              </Button>
+
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={togglePlayPause}
+                className="text-white hover:bg-white/20 p-2 mx-1"
+                title={isPlaying ? "Pause" : "Play"}
+              >
+                {isPlaying ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5" />}
+              </Button>
+
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={forward10}
+                className="text-white hover:bg-white/20 p-2"
+                title="Forward 10s"
+              >
+                +10s
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={forward30}
+                className="text-white hover:bg-white/20 p-2"
+                title="Forward 30s"
+              >
+                <SkipForward className="w-4 h-4" />
+              </Button>
+            </div>
+
+            {/* Time Display */}
+            <div className="text-white text-sm font-mono min-w-[80px] text-center">
+              {formatTime(currentTime)} / {formatTime(duration)}
+            </div>
+
             {/* Refresh */}
             <Button
               variant="ghost"
@@ -544,11 +642,23 @@ export default function VideoDisplayPage() {
           </div>
         </div>
 
+        {/* Progress Bar */}
+        <div className={`absolute bottom-16 left-4 right-4 bg-black/50 backdrop-blur-sm rounded-lg p-2 transition-opacity duration-300 ${isFullscreen ? 'opacity-0 hover:opacity-100' : 'opacity-100'}`}>
+          <div className="w-full bg-gray-700 rounded-full h-2">
+            <div
+              className="bg-purple-500 h-2 rounded-full transition-all duration-200"
+              style={{
+                width: duration > 0 ? `${(currentTime / duration) * 100}%` : '0%'
+              }}
+            />
+          </div>
+        </div>
+
         {/* Instructions overlay for first-time use */}
         <div className="absolute bottom-4 left-4 right-4 bg-black/70 backdrop-blur-sm rounded-lg p-3 text-white text-sm text-center">
           <p>💡 <strong>Pro Tip:</strong> Drag this window to your second display for karaoke performances!</p>
           <p className="text-xs text-gray-300 mt-1">
-            Press F11 for fullscreen • Use volume controls • Close when done
+            Press F11 for fullscreen • Use playback controls • Volume up/down • Close when done
           </p>
         </div>
       </div>
