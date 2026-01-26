@@ -405,8 +405,8 @@ export default function Header({
       
       <header 
         className={`fixed w-full top-0 z-50 transition-all duration-300 overflow-visible ${
-          // Hide header on desktop for quote pages
-          isQuotePage && quoteId ? 'hidden md:hidden' : ''
+          // Hide header on desktop (md and above) for quote pages, but keep on mobile
+          isQuotePage && quoteId ? 'md:hidden' : ''
         } ${
           shouldBeTransparent
             ? isScrolled
