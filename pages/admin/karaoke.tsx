@@ -1502,9 +1502,9 @@ export default function KaraokeAdminPage() {
                               <Music className="w-4 h-4 inline mr-1" />
                               &quot;{signup.song_title}&quot;
                               {signup.song_artist && ` by ${signup.song_artist}`}
-                              {signup.video_data?.youtube_video_duration && (
+                              {(signup.video_data as any)?.youtube_video_duration && (
                                 <span className="ml-2 text-gray-500 dark:text-gray-400">
-                                  ({formatSecondsToTime(signup.video_data.youtube_video_duration)})
+                                  ({formatSecondsToTime((signup.video_data as any).youtube_video_duration)})
                                 </span>
                               )}
                             </p>
@@ -1816,7 +1816,7 @@ export default function KaraokeAdminPage() {
                               </div>
                               <p className="text-sm text-gray-600 dark:text-gray-400">
                                 {selectedSignup.video_data?.youtube_channel_name} • 
-                                Duration: {formatSecondsToTime(selectedSignup.video_data?.youtube_video_duration)} • 
+                                Duration: {formatSecondsToTime((selectedSignup.video_data as any)?.youtube_video_duration)} • 
                                 Quality: {selectedSignup.video_data?.video_quality_score}/100
                               </p>
                             </div>
@@ -2095,7 +2095,7 @@ export default function KaraokeAdminPage() {
                           <div className="flex-1">
                             <p className="font-medium text-green-900 dark:text-green-100">Video Linked</p>
                             <p className="text-sm text-green-700 dark:text-green-300">
-                              Duration: {formatSecondsToTime(selectedSignup.video_data?.youtube_video_duration)} •
+                              Duration: {formatSecondsToTime((selectedSignup.video_data as any)?.youtube_video_duration)} •
                               Quality: {selectedSignup.video_data?.video_quality_score}/100 •
                               Status: {selectedSignup.video_data?.link_status}
                               {isKarafunVideo(selectedSignup.video_data?.youtube_channel_name, selectedSignup.video_data?.youtube_channel_id) && (
@@ -2230,7 +2230,7 @@ export default function KaraokeAdminPage() {
                           />
                         </div>
                         <div className="mt-2 flex items-center justify-center gap-4 text-sm text-gray-600 dark:text-gray-400">
-                          <span>Duration: {formatSecondsToTime(selectedSignup.video_data?.youtube_video_duration)}</span>
+                          <span>Duration: {formatSecondsToTime((selectedSignup.video_data as any)?.youtube_video_duration)}</span>
                           <span>Quality: {selectedSignup.video_data?.video_quality_score}/100</span>
                           {selectedSignup.video_data?.youtube_channel_name && (
                             <span>Channel: {selectedSignup.video_data.youtube_channel_name}</span>
