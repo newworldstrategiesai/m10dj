@@ -154,14 +154,21 @@ export class YouTubeAPI {
 
   /**
    * Get detailed information for specific videos
+   * Returns full video metadata including snippet data (title, channel, etc.)
    */
   async getVideoDetails(videoIds: string[]): Promise<Array<{
     id: string;
+    title: string;
+    description: string;
+    channelTitle: string;
+    channelId: string;
+    publishedAt: string;
     duration: string;
     viewCount: number;
     likeCount: number;
     tags: string[];
     embeddable: boolean;
+    thumbnailUrl: string;
   }>> {
     if (videoIds.length === 0) return [];
 
@@ -185,11 +192,18 @@ export class YouTubeAPI {
 
       return data.items.map((item: any) => ({
         id: item.id,
+        title: item.snippet?.title || '',
+        description: item.snippet?.description || '',
+        channelTitle: item.snippet?.channelTitle || '',
+        channelId: item.snippet?.channelId || '',
+        publishedAt: item.snippet?.publishedAt || '',
         duration: item.contentDetails?.duration || 'PT0S',
         viewCount: parseInt(item.statistics?.viewCount || '0'),
         likeCount: parseInt(item.statistics?.likeCount || '0'),
         tags: item.snippet?.tags || [],
-        embeddable: item.status?.embeddable !== false // Default to true if not specified
+        embeddable: item.status?.embeddable !== false, // Default to true if not specified
+        thumbnailUrl: item.snippet?.thumbnails?.medium?.url ||
+                     item.snippet?.thumbnails?.default?.url || ''
       }));
     } catch (error) {
       console.error('YouTube video details error:', error);
@@ -199,26 +213,37 @@ export class YouTubeAPI {
 
   /**
    * Validate if a video exists and get its current metadata
+   * Uses the videos API directly (not search) for reliable video lookup
    */
   async validateVideo(videoId: string): Promise<YouTubeVideo | null> {
     try {
+      console.log(`🔍 Validating video: ${videoId}`);
+      
+      // Get video details directly from the videos API - this is the correct way to look up a video by ID
       const videos = await this.getVideoDetails([videoId]);
-      if (videos.length === 0) return null;
+      
+      if (videos.length === 0) {
+        console.warn(`⚠️ Video not found: ${videoId}`);
+        return null;
+      }
 
       const details = videos[0];
+      console.log(`✅ Video validated: ${details.title}`);
 
-      // Get basic info via search (since we need title, channel, etc.)
-      const searchResults = await this.searchVideos(`id:${videoId}`, { maxResults: 1 });
-      const searchInfo = searchResults[0];
-
-      if (!searchInfo) return null;
-
+      // Return the video data in YouTubeVideo format
       return {
-        ...searchInfo,
+        id: details.id,
+        title: details.title,
+        description: details.description,
+        channelTitle: details.channelTitle,
+        channelId: details.channelId,
+        publishedAt: details.publishedAt,
         duration: details.duration,
         viewCount: details.viewCount,
         likeCount: details.likeCount,
-        tags: details.tags
+        thumbnailUrl: details.thumbnailUrl,
+        tags: details.tags,
+        embeddable: details.embeddable
       };
     } catch (error) {
       console.error(`Video validation error for ${videoId}:`, error);

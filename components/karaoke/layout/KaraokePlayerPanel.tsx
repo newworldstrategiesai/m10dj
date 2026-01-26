@@ -421,9 +421,10 @@ export default function KaraokePlayerPanel({
     };
 
     try {
-      // Send via postMessage
+      // Send via postMessage - use '*' for targetOrigin since cross-window origins may not match exactly
+      // The display window validates the source origin on its end
       console.log('📤 Sending to display window:', message);
-      targetWindow.postMessage(message, window.location.origin);
+      targetWindow.postMessage(message, '*');
 
       // Small delay for visual feedback
       await new Promise(resolve => setTimeout(resolve, 200));

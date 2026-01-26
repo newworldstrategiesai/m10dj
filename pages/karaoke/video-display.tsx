@@ -98,7 +98,7 @@ export default function VideoDisplayPage() {
               data: { pong: true, ready: !!(window as any).youtubePlayerControl }
             };
             // Send via postMessage only
-            if (window.opener) window.opener.postMessage(pongMessage, window.location.origin);
+            if (window.opener) window.opener.postMessage(pongMessage, '*');
             break;
           case 'play':
             try {
@@ -257,9 +257,9 @@ export default function VideoDisplayPage() {
           timestamp: Date.now()
         };
 
-        // ONLY send via postMessage to opener
+        // ONLY send via postMessage to opener - use '*' for targetOrigin for reliability
         if (window.opener) {
-          window.opener.postMessage(message, window.location.origin);
+          window.opener.postMessage(message, '*');
           console.log('📡 DISPLAY: Sent status to admin panel:', statusData);
         }
       } catch (error) {
@@ -336,15 +336,15 @@ export default function VideoDisplayPage() {
             console.warn('❌ localStorage failed:', error);
           }
 
-          // Channel 3: postMessage to opener (traditional)
+          // Channel 3: postMessage to opener (traditional) - use '*' for reliability
           if (window.opener) {
-            window.opener.postMessage(message, window.location.origin);
+            window.opener.postMessage(message, '*');
             console.log('📡 Sent to opener via postMessage');
           }
 
-          // Channel 4: postMessage to parent (additional)
+          // Channel 4: postMessage to parent (additional) - use '*' for reliability
           if (window.parent && window.parent !== window.opener && window.parent !== window) {
-            window.parent.postMessage(message, window.location.origin);
+            window.parent.postMessage(message, '*');
             console.log('📡 Sent to parent via postMessage');
           }
 
