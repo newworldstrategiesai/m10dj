@@ -126,25 +126,17 @@ const KaraokeLayout = forwardRef<KaraokeLayoutRef, KaraokeLayoutProps>(({
         // Check if display window exists and is open
         if (!targetWindow || targetWindow.closed) {
           console.log('Display window not open, opening new window...');
-          // Try to find existing window first
-          try {
-            const existingWindow = window.open('', windowName);
-            if (existingWindow && !existingWindow.closed && existingWindow.location.href.includes('video-display')) {
-              targetWindow = existingWindow;
-              setDisplayWindow(existingWindow);
-            } else {
-              // Open new display window
-              targetWindow = window.open(
-                '/karaoke/video-display',
-                windowName,
-                'width=1280,height=720,scrollbars=no,resizable=yes,status=no,toolbar=no,menubar=no,location=no,directories=no'
-              );
-              if (targetWindow) {
-                setDisplayWindow(targetWindow);
-              }
-            }
-          } catch (error) {
-            console.error('Error opening display window:', error);
+          // Never use window.open('', name) as it creates about:blank tabs
+          // Open new display window directly
+          targetWindow = window.open(
+            '/karaoke/video-display',
+            windowName,
+            'width=1280,height=720,scrollbars=no,resizable=yes,status=no,toolbar=no,menubar=no,location=no,directories=no'
+          );
+          if (targetWindow) {
+            setDisplayWindow(targetWindow);
+          } else {
+            console.error('Failed to open display window - popup may be blocked');
           }
         }
 

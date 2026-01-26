@@ -612,27 +612,13 @@ export default function VideoManager({
       });
     }
 
-    // Try to find existing display window first
+    // Use the displayWindow prop if available and open
     let targetWindow = displayWindow;
     
-    // If no window reference or window is closed, try to find existing window by name
+    // If no window reference or window is closed, we'll open a new one
+    // Never use window.open('', name) as it creates about:blank tabs
     if (!targetWindow || targetWindow.closed) {
-      try {
-        // Try to access existing window by name
-        const existingWindow = window.open('', 'karaokeVideoDisplay');
-        if (existingWindow && !existingWindow.closed) {
-          // Check if it's the right window by checking URL
-          try {
-            if (existingWindow.location.href.includes('video-display')) {
-              targetWindow = existingWindow;
-            }
-          } catch (e) {
-            // Cross-origin access might fail, that's okay
-          }
-        }
-      } catch (e) {
-        // Ignore errors when trying to access window
-      }
+      targetWindow = null; // Will open new window below
     }
 
     // Check if display window is already open
