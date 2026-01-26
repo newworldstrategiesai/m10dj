@@ -612,20 +612,61 @@ export default function VideoManager({
       });
     }
 
-    // Check if display window is already open
-    if (displayWindow && !displayWindow.closed) {
-      // Send change video command to existing window
-      displayWindow.postMessage({
-        type: 'VIDEO_CONTROL',
-        data: {
-          action: 'changeVideo',
-          videoId,
-          title: songTitle,
-          artist: songArtist || ''
+    // Try to find existing display window first
+    let targetWindow = displayWindow;
+    
+    // If no window reference or window is closed, try to find existing window by name
+    if (!targetWindow || targetWindow.closed) {
+      try {
+        // Try to access existing window by name
+        const existingWindow = window.open('', 'karaokeVideoDisplay');
+        if (existingWindow && !existingWindow.closed) {
+          // Check if it's the right window by checking URL
+          try {
+            if (existingWindow.location.href.includes('video-display')) {
+              targetWindow = existingWindow;
+            }
+          } catch (e) {
+            // Cross-origin access might fail, that's okay
+          }
         }
-      }, window.location.origin);
+      } catch (e) {
+        // Ignore errors when trying to access window
+      }
+    }
 
-      displayWindow.focus();
+    // Check if display window is already open
+    if (targetWindow && !targetWindow.closed) {
+      // Send change video command to existing window with retry logic
+      const sendVideoCommand = () => {
+        try {
+          targetWindow.postMessage({
+            type: 'VIDEO_CONTROL',
+            data: {
+              action: 'changeVideo',
+              videoId,
+              title: songTitle,
+              artist: songArtist || ''
+            }
+          }, window.location.origin);
+          console.log('✅ Sent video command to existing display window');
+          targetWindow.focus();
+        } catch (error) {
+          console.error('Error sending video command, opening new window:', error);
+          // If postMessage fails, open new window with URL
+          const newWindow = window.open(
+            displayUrl,
+            'karaokeVideoDisplay',
+            'width=1280,height=720,scrollbars=no,resizable=yes,status=no,toolbar=no,menubar=no,location=no,directories=no'
+          );
+          if (newWindow) {
+            newWindow.focus();
+          }
+        }
+      };
+
+      // Wait a bit for window to be ready, then send command
+      setTimeout(sendVideoCommand, 100);
     } else {
       // Open in a new window optimized for secondary display
       const newWindow = window.open(
@@ -1713,7 +1754,16 @@ export default function VideoManager({
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => openVideoInDisplayWindow(result.id, linkingSong?.title || 'Unknown Song', linkingSong?.artist)}
+                          onClick={() => {
+                            // Use signup data if in signup-link mode, otherwise use linkingSong
+                            const songTitle = mode === 'signup-link' && signupToLink
+                              ? signupToLink.song_title
+                              : (linkingSong?.title || result.title || 'Unknown Song');
+                            const songArtist = mode === 'signup-link' && signupToLink
+                              ? signupToLink.song_artist
+                              : (linkingSong?.artist || result.channelTitle || '');
+                            openVideoInDisplayWindow(result.id, songTitle, songArtist);
+                          }}
                           title="Open in display window"
                           className="bg-blue-50 hover:bg-blue-100 border-blue-200 text-blue-700 hover:text-blue-800 dark:bg-blue-900/20 dark:hover:bg-blue-900/30 dark:border-blue-800 dark:text-blue-300"
                         >

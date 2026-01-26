@@ -118,6 +118,8 @@ export default function App({ Component, pageProps }) {
     router.pathname.startsWith('/crowd-request') ||
     (router.pathname.includes('/organizations/') && router.pathname.includes('/requests'));
   const isBidPage = router.pathname === '/bid';
+  // Check if we're on karaoke admin pages (uses its own header, don't show AdminNavbar)
+  const isKaraokeAdminPage = router.pathname.startsWith('/admin/karaoke');
   // Check if we're on karaoke pages (signup and status)
   const isKaraokePage = (router.pathname.includes('/organizations/') && router.pathname.includes('/sing')) ||
                         router.pathname.startsWith('/karaoke/');
@@ -272,8 +274,8 @@ export default function App({ Component, pageProps }) {
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
       </Head>
-      {/* Admin Navbar - appears on all admin pages */}
-      {isAdminRoute && !isSignInPage && <AdminNavbar />}
+      {/* Admin Navbar - appears on all admin pages except karaoke admin (which has its own header) */}
+      {isAdminRoute && !isSignInPage && !isKaraokeAdminPage && <AdminNavbar />}
 
       {/* Error Recovery Boundary for main content */}
       <ErrorRecoveryBoundary

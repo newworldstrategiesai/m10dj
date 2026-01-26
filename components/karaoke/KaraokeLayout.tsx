@@ -116,15 +116,74 @@ const KaraokeLayout = forwardRef<KaraokeLayoutRef, KaraokeLayoutProps>(({
           signupData: signup // Include signup data for mini player
         };
 
-        // Update the display video state for the mini player
+        // Update the display video state for the mini player (this makes it appear in the sidebar)
         setDisplayVideo(videoData);
 
-        // Send change video command to display window if available
-        if (displayWindow && !displayWindow.closed) {
-          displayWindow.postMessage({
-            type: 'VIDEO_CONTROL',
-            data: { action: 'changeVideo', ...videoData }
-          }, window.location.origin);
+        // Ensure display window is open, then send video command
+        const windowName = 'karaokeVideoDisplay';
+        let targetWindow = displayWindow;
+
+        // Check if display window exists and is open
+        if (!targetWindow || targetWindow.closed) {
+          console.log('Display window not open, opening new window...');
+          // Try to find existing window first
+          try {
+            const existingWindow = window.open('', windowName);
+            if (existingWindow && !existingWindow.closed && existingWindow.location.href.includes('video-display')) {
+              targetWindow = existingWindow;
+              setDisplayWindow(existingWindow);
+            } else {
+              // Open new display window
+              targetWindow = window.open(
+                '/karaoke/video-display',
+                windowName,
+                'width=1280,height=720,scrollbars=no,resizable=yes,status=no,toolbar=no,menubar=no,location=no,directories=no'
+              );
+              if (targetWindow) {
+                setDisplayWindow(targetWindow);
+              }
+            }
+          } catch (error) {
+            console.error('Error opening display window:', error);
+          }
+        }
+
+        // Send change video command to display window after a short delay to ensure it's loaded
+        if (targetWindow) {
+          const sendVideoCommand = () => {
+            if (targetWindow && !targetWindow.closed) {
+              try {
+                targetWindow.postMessage({
+                  type: 'VIDEO_CONTROL',
+                  data: { action: 'changeVideo', ...videoData }
+                }, window.location.origin);
+                console.log('✅ Sent video command to display window');
+              } catch (error) {
+                console.error('Error sending video command:', error);
+                // Retry after a longer delay if window might still be loading
+                setTimeout(() => {
+                  if (targetWindow && !targetWindow.closed) {
+                    try {
+                      targetWindow.postMessage({
+                        type: 'VIDEO_CONTROL',
+                        data: { action: 'changeVideo', ...videoData }
+                      }, window.location.origin);
+                    } catch (retryError) {
+                      console.error('Retry failed:', retryError);
+                    }
+                  }
+                }, 2000);
+              }
+            }
+          };
+
+          // If window was just opened, wait a bit for it to load
+          if (!displayWindow || displayWindow.closed) {
+            setTimeout(sendVideoCommand, 1000);
+          } else {
+            // Window already exists, send immediately
+            sendVideoCommand();
+          }
         }
       }
     },

@@ -621,11 +621,14 @@ export default function KaraokeAdminPage() {
 
       // If status changed to 'singing', start playing the video
       if (newStatus === 'singing') {
-        // Use the optimistically updated signup data
-        const updatedSignup = signups.find(s => s.id === signupId);
+        // Create the updated signup object with the new status
+        const updatedSignup = { ...originalSignup, status: newStatus };
         if (updatedSignup && updatedSignup.video_data && karaokeLayoutRef.current) {
           console.log('Starting to play signup after status update:', updatedSignup);
-          karaokeLayoutRef.current.startPlayingSignup(updatedSignup);
+          // Use setTimeout to ensure state is updated before calling startPlayingSignup
+          setTimeout(() => {
+            karaokeLayoutRef.current?.startPlayingSignup(updatedSignup);
+          }, 100);
         }
       }
 

@@ -174,10 +174,10 @@ export default function DiscoverPage({ isPremium }: DiscoverPageProps) {
 
         <div className="relative flex items-center justify-between">
           <div className="flex-1">
-            <h2 className="text-3xl md:text-4xl font-bold mb-2">
+            <h2 className="text-3xl md:text-4xl font-bold mb-2 text-white">
               Sing without limits.
             </h2>
-            <p className="text-lg opacity-90 mb-6 max-w-md">
+            <p className="text-lg opacity-90 mb-6 max-w-md text-white">
               Subscribe to unlock full versions of songs and premium features for the ultimate karaoke experience.
             </p>
             <Button className="bg-white text-pink-600 hover:bg-gray-100 font-semibold px-8 py-3 text-lg shadow-xl">
@@ -260,13 +260,13 @@ export default function DiscoverPage({ isPremium }: DiscoverPageProps) {
 
                 {/* Content */}
                 <div className="p-4">
-                  <h3 className="font-bold text-white text-lg mb-1">{playlist.name}</h3>
-                  <p className="text-gray-400 text-sm mb-3">{playlist.description}</p>
+                  <h3 className="font-bold text-gray-900 dark:text-white text-lg mb-1">{playlist.name}</h3>
+                  <p className="text-gray-700 dark:text-gray-400 text-sm mb-3">{playlist.description}</p>
 
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <Music className="w-4 h-4 text-gray-500" />
-                      <span className="text-gray-500 text-sm">{playlist.songCount} songs</span>
+                      <Music className="w-4 h-4 text-gray-600 dark:text-gray-500" />
+                      <span className="text-gray-600 dark:text-gray-500 text-sm">{playlist.songCount} songs</span>
                     </div>
                   </div>
                 </div>
