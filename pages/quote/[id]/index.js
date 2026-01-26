@@ -4,6 +4,7 @@ import Head from 'next/head';
 import Link from 'next/link';
 import Image from 'next/image';
 import QuoteBottomNav from '../../../components/quote/QuoteBottomNav';
+import Header from '../../../components/company/Header';
 import { CheckCircle, Sparkles, Music, Calendar, MapPin, Users, Heart, Star, ArrowLeft, Loader2, ChevronDown, ChevronUp, FileText, Menu, X, Tag, XCircle, Settings, Trash2 } from 'lucide-react';
 import { createClient } from '@supabase/supabase-js';
 
@@ -2460,6 +2461,8 @@ export default function PersonalizedQuote() {
         <meta name="twitter:description" content={`Custom DJ services quote for ${leadData.name}'s ${isHoliday ? 'holiday party' : isCorporate ? 'corporate event' : isSchool ? 'school event' : 'wedding'}`} />
         <meta name="twitter:image" content={`${process.env.NEXT_PUBLIC_SITE_URL || 'https://m10djcompany.com'}/assets/service-selection-og-image.png`} />
       </Head>
+      <div className="min-h-screen bg-gradient-to-b from-white via-gray-50 to-white dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
+        <Header />
       <main className="min-h-screen bg-white dark:bg-gray-900 pb-32 md:pb-32">
         <div className="container mx-auto px-4 py-12 max-w-6xl">
           {/* Header Section */}
@@ -3536,6 +3539,8 @@ export default function PersonalizedQuote() {
         </div>
       )}
       <QuoteBottomNav quoteId={id} />
+      </main>
+      </div>
     </>
   );
 }
