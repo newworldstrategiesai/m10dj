@@ -296,6 +296,31 @@ export default function YouTubePlayer({
     };
   }, [enableExternalControl, videoId, isPlayerReady, exposeControlMethods]);
 
+  // Ensure player stays muted if muted prop is true
+  useEffect(() => {
+    if (!muted || !enableExternalControl) return;
+
+    const ensureMuted = () => {
+      if (isPlayerReady() && playerRef.current) {
+        try {
+          playerRef.current.mute();
+        } catch (error) {
+          console.debug('Could not mute player:', error);
+        }
+      }
+    };
+
+    // Try immediately if player is ready
+    ensureMuted();
+
+    // Also check periodically to ensure it stays muted
+    const muteInterval = setInterval(ensureMuted, 1000);
+
+    return () => {
+      clearInterval(muteInterval);
+    };
+  }, [muted, enableExternalControl, isPlayerReady]);
+
   // Cleanup on unmount
   useEffect(() => {
     return () => {

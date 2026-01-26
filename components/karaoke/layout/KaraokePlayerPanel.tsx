@@ -1481,6 +1481,10 @@ export default function KaraokePlayerPanel({
 
     // Update display video state (this makes it appear in the mini player sidebar)
     onDisplayVideoChange?.(videoData);
+    
+    // Set playing state to true for auto-play
+    setIsPlaying(true);
+    updatePlayingStateDebounced(true, true);
 
     // Ensure display window is open, then send video command
     const windowName = 'karaokeVideoDisplay';
@@ -1507,11 +1511,27 @@ export default function KaraokePlayerPanel({
       const sendVideoCommand = () => {
         if (targetWindow && !targetWindow.closed) {
           try {
+            // Send changeVideo command
             targetWindow.postMessage({
               type: 'VIDEO_CONTROL',
               data: { action: 'changeVideo', ...videoData }
             }, window.location.origin);
             console.log('✅ Sent video command to display window from auto-play');
+            
+            // Also send play command after a short delay to ensure video is loaded
+            setTimeout(() => {
+              if (targetWindow && !targetWindow.closed) {
+                try {
+                  targetWindow.postMessage({
+                    type: 'VIDEO_CONTROL',
+                    data: { action: 'play' }
+                  }, window.location.origin);
+                  console.log('✅ Sent play command to display window');
+                } catch (playError) {
+                  console.error('Error sending play command:', playError);
+                }
+              }
+            }, 800);
           } catch (error) {
             console.error('Error sending video command:', error);
             // Retry after a longer delay if window might still be loading
@@ -1522,6 +1542,15 @@ export default function KaraokePlayerPanel({
                     type: 'VIDEO_CONTROL',
                     data: { action: 'changeVideo', ...videoData }
                   }, window.location.origin);
+                  // Also send play command
+                  setTimeout(() => {
+                    if (targetWindow && !targetWindow.closed) {
+                      targetWindow.postMessage({
+                        type: 'VIDEO_CONTROL',
+                        data: { action: 'play' }
+                      }, window.location.origin);
+                    }
+                  }, 800);
                 } catch (retryError) {
                   console.error('Retry failed:', retryError);
                 }
@@ -1538,6 +1567,21 @@ export default function KaraokePlayerPanel({
         // Window already exists, send immediately
         sendVideoCommand();
       }
+    }
+    
+    // Also ensure embedded player starts playing if no display window
+    if (!targetWindow || targetWindow.closed) {
+      setTimeout(() => {
+        const control = embeddedPlayerControl || (window as any).youtubePlayerControl;
+        if (control && typeof control.play === 'function') {
+          try {
+            control.play();
+            console.log('✅ Auto-playing embedded player');
+          } catch (error) {
+            console.warn('Could not auto-play embedded player:', error);
+          }
+        }
+      }, 500);
     }
 
     // Mark this signup as auto-played and track it as the previous signup
@@ -1801,8 +1845,9 @@ export default function KaraokePlayerPanel({
                   videoId={propDisplayVideo.videoId}
                   isPlaying={isPlaying}
                   showControls={false}
-                  autoPlay={false}
+                  autoPlay={true}
                   volume={volume}
+                  muted={true}
                   onVolumeChange={(newVolume) => {
                     setVolume(newVolume);
                     // Also update display status if no external window

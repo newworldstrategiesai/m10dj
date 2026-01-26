@@ -194,6 +194,7 @@ export default function VideoDisplayPage() {
                 artist: data.artist || ''
               };
               setCurrentVideo(newVideo);
+              setIsPlaying(true); // Set playing state immediately
 
               // Change the video in the YouTube player
               const control = (window as any).youtubePlayerControl;
@@ -201,6 +202,19 @@ export default function VideoDisplayPage() {
                 console.log('🎬 Loading new video in player');
                 try {
                   control.loadVideoById(data.videoId);
+                  
+                  // Auto-play the video after loading (with delay to ensure video is ready)
+                  setTimeout(() => {
+                    try {
+                      if (control.play) {
+                        control.play();
+                        console.log('▶️ Auto-playing video after change');
+                        setIsPlaying(true);
+                      }
+                    } catch (playError) {
+                      console.warn('⚠️ Could not auto-play video:', playError);
+                    }
+                  }, 500);
 
                   // Send status updates at multiple intervals to ensure sync
                   const sendVideoChangeUpdate = () => {
@@ -208,7 +222,8 @@ export default function VideoDisplayPage() {
                       videoChanged: true,
                       videoId: data.videoId,
                       title: data.title,
-                      artist: data.artist || ''
+                      artist: data.artist || '',
+                      isPlaying: true
                     });
                   };
 
@@ -228,7 +243,8 @@ export default function VideoDisplayPage() {
                 videoChanged: true,
                 videoId: data.videoId,
                 title: data.title,
-                artist: data.artist || ''
+                artist: data.artist || '',
+                isPlaying: true
               });
             }
             break;

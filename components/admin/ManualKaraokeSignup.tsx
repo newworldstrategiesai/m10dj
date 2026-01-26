@@ -145,10 +145,10 @@ export default function ManualKaraokeSignup({
   };
 
   return (
-    <div className="w-full max-w-2xl mx-auto px-4 sm:px-0">
-      <div className="bg-white dark:bg-gray-900 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+    <div className="w-full max-w-2xl mx-auto px-4 sm:px-0 flex flex-col h-full max-h-full">
+      <div className="bg-white dark:bg-gray-900 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden flex flex-col h-full max-h-full">
         {/* Header */}
-        <div className="bg-gradient-to-r from-blue-600 to-purple-600 px-6 py-4">
+        <div className="bg-gradient-to-r from-blue-600 to-purple-600 px-6 py-4 flex-shrink-0">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-white/20 rounded-lg">
               <UserPlus className="w-5 h-5 text-white" />
@@ -160,8 +160,9 @@ export default function ManualKaraokeSignup({
           </div>
         </div>
 
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-4 sm:space-y-6">
+        {/* Form - Scrollable content with sticky button */}
+        <form onSubmit={handleSubmit} className="flex flex-col h-full max-h-full overflow-hidden">
+          <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 sm:space-y-6">
           {/* Error Display */}
           {error && (
             <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
@@ -308,15 +309,16 @@ export default function ManualKaraokeSignup({
               onCheckedChange={setIsPriority}
             />
           </div>
+          </div>
 
-          {/* Submit Buttons */}
-          <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
+          {/* Submit Buttons - Always visible at bottom, outside scrollable area */}
+          <div className="flex-shrink-0 flex flex-col sm:flex-row gap-3 pt-4 pb-4 px-4 sm:px-6 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 z-10 w-full">
             {onClose && (
               <Button
                 type="button"
                 onClick={onClose}
                 variant="outline"
-                className="flex-1 h-12 sm:h-11 order-2 sm:order-1"
+                className="flex-1 h-12 sm:h-11 order-2 sm:order-1 min-w-0 w-full sm:w-auto"
                 disabled={submitting}
               >
                 Cancel
@@ -325,17 +327,17 @@ export default function ManualKaraokeSignup({
             <Button
               type="submit"
               disabled={submitting}
-              className="flex-1 h-12 sm:h-11 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 order-1 sm:order-2"
+              className="flex-1 h-12 sm:h-11 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 order-1 sm:order-2 min-w-0 w-full sm:w-auto flex-shrink-0"
             >
               {submitting ? (
                 <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Creating...
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin flex-shrink-0" />
+                  <span>Creating...</span>
                 </>
               ) : (
                 <>
-                  <UserPlus className="w-4 h-4 mr-2" />
-                  Add to Queue
+                  <UserPlus className="w-4 h-4 mr-2 flex-shrink-0" />
+                  <span>Add to Queue</span>
                 </>
               )}
             </Button>

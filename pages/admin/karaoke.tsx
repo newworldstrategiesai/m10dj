@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useRouter } from 'next/router';
-import { createClient } from '@/utils/supabase/client';
 import {
   Mic,
   Users,
@@ -57,6 +56,7 @@ import { logSettingsChange, getClientInfo } from '@/utils/karaoke-audit';
 import YouTubePlayer from '@/components/karaoke/YouTubePlayer';
 import { useKaraokeAuth } from '@/hooks/useKaraokeAuth';
 import ManualKaraokeSignup from '@/components/admin/ManualKaraokeSignup';
+import { createClient } from '@/utils/supabase/client';
 
 export default function KaraokeAdminPage() {
   const router = useRouter();
@@ -64,8 +64,8 @@ export default function KaraokeAdminPage() {
 
   // Simplified auth - just use the hook directly without additional state
   const { user, organization, subscriptionTier, isLoading: authLoading, isAuthenticated } = useKaraokeAuth();
-
-  // Create Supabase client (singleton to prevent multiple instances)
+  
+  // Create Supabase client (singleton - shared with useKaraokeAuth hook)
   const supabase = createClient();
 
 

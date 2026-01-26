@@ -9,6 +9,7 @@ import { useToast } from '@/components/ui/Toasts/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import {
   Search,
   Play,
@@ -1033,7 +1034,7 @@ export default function VideoManager({
               <div className="flex-1 relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                 <Input
-                  placeholder="Search for karaoke songs or videos..."
+                  placeholder="Search all of YouTube for videos..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   onKeyPress={(e) => e.key === 'Enter' && searchVideos(undefined, undefined, true)}
@@ -1258,8 +1259,25 @@ export default function VideoManager({
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => window.open(getYouTubeEmbedUrl(video.youtube_video_id), '_blank')}
-                      title="Open embed player"
+                      onClick={() => {
+                        if (onDisplayVideoChange) {
+                          onDisplayVideoChange({
+                            videoId: video.youtube_video_id,
+                            title: video.song_title,
+                            artist: video.song_artist || '',
+                            thumbnailUrl: `https://img.youtube.com/vi/${video.youtube_video_id}/default.jpg`
+                          });
+                          toast({
+                            title: 'Added to Queue',
+                            description: `${video.song_title}${video.song_artist ? ` by ${video.song_artist}` : ''} added to mini player`,
+                          });
+                        } else {
+                          // Fallback: open in display window if callback not available
+                          openVideoInDisplayWindow(video.youtube_video_id, video.song_title, video.song_artist);
+                        }
+                      }}
+                      title="Add to mini player queue"
+                      className="bg-purple-50 hover:bg-purple-100 border-purple-200 text-purple-700 hover:text-purple-800 dark:bg-purple-900/20 dark:hover:bg-purple-900/30 dark:border-purple-800 dark:text-purple-300"
                     >
                       <Play className="w-4 h-4" />
                     </Button>
@@ -1320,8 +1338,30 @@ export default function VideoManager({
                       <div className="opacity-0 group-hover:opacity-100 transition-opacity flex gap-2">
                         <Button
                           size="sm"
-                          onClick={() => playVideo(result.id)}
+                          onClick={() => {
+                            if (onDisplayVideoChange) {
+                              // Extract title and artist from result title (format: "Title - Artist" or just "Title")
+                              const titleParts = result.title.split(' - ');
+                              const videoTitle = titleParts[0] || result.title;
+                              const videoArtist = titleParts.length > 1 ? titleParts.slice(1).join(' - ') : '';
+                              
+                              onDisplayVideoChange({
+                                videoId: result.id,
+                                title: videoTitle,
+                                artist: videoArtist,
+                                thumbnailUrl: result.thumbnailUrl
+                              });
+                              toast({
+                                title: 'Added to Queue',
+                                description: `${videoTitle}${videoArtist ? ` by ${videoArtist}` : ''} added to mini player`,
+                              });
+                            } else {
+                              // Fallback: use existing playVideo function
+                              playVideo(result.id);
+                            }
+                          }}
                           className="bg-black/70 hover:bg-black/90 text-white"
+                          title="Add to mini player queue"
                         >
                           <Play className="w-4 h-4" />
                         </Button>
@@ -1372,21 +1412,83 @@ export default function VideoManager({
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => addToLibrary(result)}
-                          title="Add to library"
-                          className="h-8 w-8 p-0"
+                          onClick={() => {
+                            if (onDisplayVideoChange) {
+                              const titleParts = result.title.split(' - ');
+                              const videoTitle = titleParts[0] || result.title;
+                              const videoArtist = titleParts.length > 1 ? titleParts.slice(1).join(' - ') : '';
+                              
+                              onDisplayVideoChange({
+                                videoId: result.id,
+                                title: videoTitle,
+                                artist: videoArtist,
+                                thumbnailUrl: result.thumbnailUrl
+                              });
+                              toast({
+                                title: 'Playing Now',
+                                description: `${videoTitle}${videoArtist ? ` by ${videoArtist}` : ''} added to queue`,
+                              });
+                            } else {
+                              playVideo(result.id);
+                            }
+                          }}
+                          title="Play immediately"
+                          className="h-8 w-8 p-0 bg-purple-50 hover:bg-purple-100 dark:bg-purple-900/20 dark:hover:bg-purple-900/30"
                         >
-                          <Plus className="w-3 h-3" />
+                          <Play className="w-3 h-3 text-purple-700 dark:text-purple-300" />
                         </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => window.open(getYouTubeWatchUrl(result.id), '_blank')}
-                          title="Open in YouTube"
-                          className="h-8 w-8 p-0"
-                        >
-                          <ExternalLink className="w-3 h-3" />
-                        </Button>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                              <MoreVertical className="w-3 h-3" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem
+                              onClick={() => {
+                                const titleParts = result.title.split(' - ');
+                                const videoTitle = titleParts[0] || result.title;
+                                const videoArtist = titleParts.length > 1 ? titleParts.slice(1).join(' - ') : '';
+                                
+                                addToLibrary(result, videoTitle, videoArtist).then(() => {
+                                  if (onDisplayVideoChange) {
+                                    onDisplayVideoChange({
+                                      videoId: result.id,
+                                      title: videoTitle,
+                                      artist: videoArtist,
+                                      thumbnailUrl: result.thumbnailUrl
+                                    });
+                                    toast({
+                                      title: 'Added & Playing',
+                                      description: `${videoTitle} added to library and queue`,
+                                    });
+                                  }
+                                });
+                              }}
+                            >
+                              <Plus className="w-4 h-4 mr-2" />
+                              Add to Library & Play
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => {
+                                const titleParts = result.title.split(' - ');
+                                const videoTitle = titleParts[0] || result.title;
+                                const videoArtist = titleParts.length > 1 ? titleParts.slice(1).join(' - ') : '';
+                                addToLibrary(result, videoTitle, videoArtist);
+                              }}
+                            >
+                              <Library className="w-4 h-4 mr-2" />
+                              Add to Library Only
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              onClick={() => window.open(getYouTubeWatchUrl(result.id), '_blank')}
+                            >
+                              <ExternalLink className="w-4 h-4 mr-2" />
+                              Open in YouTube
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </div>
                     </div>
                   </div>
@@ -1434,27 +1536,85 @@ export default function VideoManager({
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => playVideo(result.id)}
-                      title="Play video"
+                      onClick={() => {
+                        if (onDisplayVideoChange) {
+                          // Extract title and artist from result title (format: "Title - Artist" or just "Title")
+                          const titleParts = result.title.split(' - ');
+                          const videoTitle = titleParts[0] || result.title;
+                          const videoArtist = titleParts.length > 1 ? titleParts.slice(1).join(' - ') : '';
+                          
+                          onDisplayVideoChange({
+                            videoId: result.id,
+                            title: videoTitle,
+                            artist: videoArtist,
+                            thumbnailUrl: result.thumbnailUrl
+                          });
+                          toast({
+                            title: 'Playing Now',
+                            description: `${videoTitle}${videoArtist ? ` by ${videoArtist}` : ''} added to queue`,
+                          });
+                        } else {
+                          // Fallback: use existing playVideo function
+                          playVideo(result.id);
+                        }
+                      }}
+                      title="Play immediately"
+                      className="bg-purple-50 hover:bg-purple-100 border-purple-200 text-purple-700 hover:text-purple-800 dark:bg-purple-900/20 dark:hover:bg-purple-900/30 dark:border-purple-800 dark:text-purple-300"
                     >
                       <Play className="w-4 h-4" />
                     </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => addToLibrary(result)}
-                      title="Add to library"
-                    >
-                      <Plus className="w-4 h-4" />
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => window.open(getYouTubeWatchUrl(result.id), '_blank')}
-                      title="Open in YouTube"
-                    >
-                      <ExternalLink className="w-4 h-4" />
-                    </Button>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="outline" size="sm">
+                          <MoreVertical className="w-4 h-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem
+                          onClick={() => {
+                            const titleParts = result.title.split(' - ');
+                            const videoTitle = titleParts[0] || result.title;
+                            const videoArtist = titleParts.length > 1 ? titleParts.slice(1).join(' - ') : '';
+                            
+                            addToLibrary(result, videoTitle, videoArtist).then(() => {
+                              if (onDisplayVideoChange) {
+                                onDisplayVideoChange({
+                                  videoId: result.id,
+                                  title: videoTitle,
+                                  artist: videoArtist,
+                                  thumbnailUrl: result.thumbnailUrl
+                                });
+                                toast({
+                                  title: 'Added & Playing',
+                                  description: `${videoTitle} added to library and queue`,
+                                });
+                              }
+                            });
+                          }}
+                        >
+                          <Plus className="w-4 h-4 mr-2" />
+                          Add to Library & Play
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => {
+                            const titleParts = result.title.split(' - ');
+                            const videoTitle = titleParts[0] || result.title;
+                            const videoArtist = titleParts.length > 1 ? titleParts.slice(1).join(' - ') : '';
+                            addToLibrary(result, videoTitle, videoArtist);
+                          }}
+                        >
+                          <Library className="w-4 h-4 mr-2" />
+                          Add to Library Only
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                          onClick={() => window.open(getYouTubeWatchUrl(result.id), '_blank')}
+                        >
+                          <ExternalLink className="w-4 h-4 mr-2" />
+                          Open in YouTube
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
                 </div>
               ))}
@@ -1502,11 +1662,27 @@ export default function VideoManager({
                       alt={video.title}
                       className="w-full aspect-video object-cover"
                     />
-                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center gap-2">
                       <Button
                         size="sm"
-                        onClick={() => playVideo(video.youtubeVideoId)}
+                        onClick={() => {
+                          if (onDisplayVideoChange) {
+                            onDisplayVideoChange({
+                              videoId: video.youtubeVideoId,
+                              title: video.title,
+                              artist: video.artist || '',
+                              thumbnailUrl: video.thumbnailUrl
+                            });
+                            toast({
+                              title: 'Playing Now',
+                              description: `${video.title}${video.artist ? ` by ${video.artist}` : ''} added to queue`,
+                            });
+                          } else {
+                            playVideo(video.youtubeVideoId);
+                          }
+                        }}
                         className="bg-black/70 hover:bg-black/90 text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                        title="Play immediately"
                       >
                         <Play className="w-4 h-4" />
                       </Button>

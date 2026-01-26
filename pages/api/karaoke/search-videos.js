@@ -1,6 +1,6 @@
 import { createServerSupabaseClient } from '@supabase/auth-helpers-nextjs';
 import { createClient } from '@supabase/supabase-js';
-import { searchKaraokeVideos, validateYouTubeVideo } from '@/utils/youtube-api';
+import { searchKaraokeVideos, validateYouTubeVideo, YouTubeAPI, parseDuration } from '@/utils/youtube-api';
 import { withSecurity } from '@/utils/rate-limiting';
 
 /**
@@ -23,8 +23,9 @@ export default async function handler(req, res) {
 
     const { songTitle, songArtist, organizationId, maxResults = 10, filters, generalSearch } = req.body;
 
-    if (!songTitle || songTitle.trim().length < 1) {
-      return res.status(400).json({ error: 'Song title is required' });
+    // Require either songTitle or generalSearch
+    if ((!songTitle || songTitle.trim().length < 1) && (!generalSearch || generalSearch.trim().length < 1)) {
+      return res.status(400).json({ error: 'Song title or general search query is required' });
     }
 
     if (!organizationId) {
@@ -60,10 +61,55 @@ export default async function handler(req, res) {
     let youtubeError = null;
     if (hasYouTubeAPI) {
       try {
-        videos = await searchKaraokeVideos(searchQuery, searchArtist, {
-          maxResults: Math.min(maxResults, 50), // Allow more results for enhanced UI
-          filters
-        });
+        // Use general YouTube search for generalSearch, karaoke-specific search otherwise
+        if (generalSearch) {
+          // General YouTube search - search all videos
+          const api = new YouTubeAPI();
+          const rawVideos = await api.searchVideos(searchQuery, {
+            maxResults: Math.min(maxResults, 50),
+            order: filters?.sortBy === 'viewCount' ? 'viewCount' : filters?.sortBy === 'date' ? 'date' : 'relevance'
+          });
+
+          // Convert to search result format with basic scoring
+          videos = rawVideos.map(video => ({
+            id: video.id,
+            title: video.title,
+            channelTitle: video.channelTitle,
+            karaokeScore: 50, // Default score for general videos
+            relevanceScore: 50,
+            viewCount: video.viewCount,
+            duration: video.duration,
+            publishedAt: video.publishedAt,
+            thumbnailUrl: video.thumbnailUrl
+          }));
+
+          // Apply filters if provided
+          if (filters) {
+            const { minQuality, maxDuration, channel } = filters;
+            videos = videos.filter(video => {
+              if (minQuality !== undefined && video.karaokeScore < minQuality) return false;
+              if (maxDuration !== undefined) {
+                const durationSeconds = parseDuration(video.duration);
+                if (durationSeconds > maxDuration) return false;
+              }
+              if (channel && !video.channelTitle.toLowerCase().includes(channel.toLowerCase())) return false;
+              return true;
+            });
+
+            // Apply sorting
+            if (filters.sortBy === 'viewCount') {
+              videos.sort((a, b) => b.viewCount - a.viewCount);
+            } else if (filters.sortBy === 'date') {
+              videos.sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime());
+            }
+          }
+        } else {
+          // Karaoke-specific search
+          videos = await searchKaraokeVideos(searchQuery, searchArtist, {
+            maxResults: Math.min(maxResults, 50), // Allow more results for enhanced UI
+            filters
+          });
+        }
       } catch (error) {
         console.error('YouTube search failed:', error);
         youtubeError = error.message || 'YouTube search failed';
