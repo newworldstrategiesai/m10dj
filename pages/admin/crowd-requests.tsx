@@ -1067,16 +1067,20 @@ export default function CrowdRequestsPage() {
       }
 
       setOrganization(org);
+      
+      // Type assertion to access requests_* properties that exist in DB but not in TypeScript type
+      const orgWithRequests = org as any;
+      
       setHeaderSettings({
-        artistName: org.requests_header_artist_name || '',
-        location: org.requests_header_location || '',
-        date: org.requests_header_date || ''
+        artistName: orgWithRequests.requests_header_artist_name || '',
+        location: orgWithRequests.requests_header_location || '',
+        date: orgWithRequests.requests_header_date || ''
       });
       setCoverPhotoSettings({
-        requests_cover_photo_url: org.requests_cover_photo_url || '',
-        requests_artist_photo_url: org.requests_artist_photo_url || '',
-        requests_venue_photo_url: org.requests_venue_photo_url || '',
-        requests_primary_cover_source: (org.requests_primary_cover_source as 'artist' | 'venue') || 'artist',
+        requests_cover_photo_url: orgWithRequests.requests_cover_photo_url || '',
+        requests_artist_photo_url: orgWithRequests.requests_artist_photo_url || '',
+        requests_venue_photo_url: orgWithRequests.requests_venue_photo_url || '',
+        requests_primary_cover_source: (orgWithRequests.requests_primary_cover_source as 'artist' | 'venue') || 'artist',
       });
       // Load cover photo history - handle both JSONB array and string array
       const loadPhotoHistory = (historyData: any): string[] => {
@@ -1093,41 +1097,41 @@ export default function CrowdRequestsPage() {
         return [];
       };
       
-      setCoverPhotoHistory(loadPhotoHistory(org.requests_cover_photo_history));
-      setArtistPhotoHistory(loadPhotoHistory(org.requests_artist_photo_history));
-      setVenuePhotoHistory(loadPhotoHistory(org.requests_venue_photo_history));
+      setCoverPhotoHistory(loadPhotoHistory(orgWithRequests.requests_cover_photo_history));
+      setArtistPhotoHistory(loadPhotoHistory(orgWithRequests.requests_artist_photo_history));
+      setVenuePhotoHistory(loadPhotoHistory(orgWithRequests.requests_venue_photo_history));
       setPageSettings({
-        pageTitle: org.requests_page_title || '',
-        pageDescription: org.requests_page_description || '',
-        mainHeading: org.requests_main_heading || '',
-        songRequestLabel: org.requests_song_request_label || '',
-        shoutoutLabel: org.requests_shoutout_label || '',
-        musicLinkLabel: org.requests_music_link_label || '',
-        musicLinkPlaceholder: org.requests_music_link_placeholder || '',
-        musicLinkHelpText: org.requests_music_link_help_text || '',
-        manualEntryDivider: org.requests_manual_entry_divider || '',
-        startOverText: org.requests_start_over_text || '',
-        songTitleLabel: org.requests_song_title_label || '',
-        songTitlePlaceholder: org.requests_song_title_placeholder || '',
-        artistNameLabel: org.requests_artist_name_label || '',
-        artistNamePlaceholder: org.requests_artist_name_placeholder || '',
-        audioUploadLabel: org.requests_audio_upload_label || '',
-        audioUploadDescription: org.requests_audio_upload_description || '',
-        artistRightsText: org.requests_artist_rights_text || '',
-        isArtistText: org.requests_is_artist_text || '',
-        audioFeeText: org.requests_audio_fee_text || '',
-        recipientNameLabel: org.requests_recipient_name_label || '',
-        recipientNamePlaceholder: org.requests_recipient_name_placeholder || '',
-        messageLabel: org.requests_message_label || '',
-        messagePlaceholder: org.requests_message_placeholder || '',
-        submitButtonText: org.requests_submit_button_text || '',
-        step1Text: org.requests_step_1_text || '',
-        step2Text: org.requests_step_2_text || '',
-        defaultRequestType: org.requests_default_request_type || 'song_request',
-        showAudioUpload: org.requests_show_audio_upload !== false,
-        showFastTrack: org.requests_show_fast_track !== false,
-        showNextSong: org.requests_show_next_song !== false,
-        showBundleDiscount: org.requests_show_bundle_discount !== false
+        pageTitle: orgWithRequests.requests_page_title || '',
+        pageDescription: orgWithRequests.requests_page_description || '',
+        mainHeading: orgWithRequests.requests_main_heading || '',
+        songRequestLabel: orgWithRequests.requests_song_request_label || '',
+        shoutoutLabel: orgWithRequests.requests_shoutout_label || '',
+        musicLinkLabel: orgWithRequests.requests_music_link_label || '',
+        musicLinkPlaceholder: orgWithRequests.requests_music_link_placeholder || '',
+        musicLinkHelpText: orgWithRequests.requests_music_link_help_text || '',
+        manualEntryDivider: orgWithRequests.requests_manual_entry_divider || '',
+        startOverText: orgWithRequests.requests_start_over_text || '',
+        songTitleLabel: orgWithRequests.requests_song_title_label || '',
+        songTitlePlaceholder: orgWithRequests.requests_song_title_placeholder || '',
+        artistNameLabel: orgWithRequests.requests_artist_name_label || '',
+        artistNamePlaceholder: orgWithRequests.requests_artist_name_placeholder || '',
+        audioUploadLabel: orgWithRequests.requests_audio_upload_label || '',
+        audioUploadDescription: orgWithRequests.requests_audio_upload_description || '',
+        artistRightsText: orgWithRequests.requests_artist_rights_text || '',
+        isArtistText: orgWithRequests.requests_is_artist_text || '',
+        audioFeeText: orgWithRequests.requests_audio_fee_text || '',
+        recipientNameLabel: orgWithRequests.requests_recipient_name_label || '',
+        recipientNamePlaceholder: orgWithRequests.requests_recipient_name_placeholder || '',
+        messageLabel: orgWithRequests.requests_message_label || '',
+        messagePlaceholder: orgWithRequests.requests_message_placeholder || '',
+        submitButtonText: orgWithRequests.requests_submit_button_text || '',
+        step1Text: orgWithRequests.requests_step_1_text || '',
+        step2Text: orgWithRequests.requests_step_2_text || '',
+        defaultRequestType: orgWithRequests.requests_default_request_type || 'song_request',
+        showAudioUpload: orgWithRequests.requests_show_audio_upload !== false,
+        showFastTrack: orgWithRequests.requests_show_fast_track !== false,
+        showNextSong: orgWithRequests.requests_show_next_song !== false,
+        showBundleDiscount: orgWithRequests.requests_show_bundle_discount !== false
       });
 
       // Filter by organization_id OR null (to catch orphaned requests that need assignment)
