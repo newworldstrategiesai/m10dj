@@ -24,6 +24,7 @@ import {
   Monitor
 } from 'lucide-react';
 import { createClient } from '@/utils/supabase/client';
+import YouTubePlayer from '@/components/karaoke/YouTubePlayer';
 
 declare global {
   interface Window {
@@ -107,7 +108,6 @@ export default function KaraokePlayerPanel({
 
   // Loading states
   const [isCommandLoading, setIsCommandLoading] = useState(false);
-  const [thumbnailLoading, setThumbnailLoading] = useState(true);
 
   // Helper to format seconds to mm:ss or h:mm:ss
   const formatDuration = (seconds: number | string | undefined): string => {
@@ -394,54 +394,159 @@ export default function KaraokePlayerPanel({
     };
   }, [propDisplayVideo, onDisplayVideoChange, mounted]);
 
-  // Send control command to display window - WITH FALLBACK
+  // State for embedded player control
+  const [embeddedPlayerControl, setEmbeddedPlayerControl] = useState<any>(null);
+
+  // Track embedded player status when no external display window
+  useEffect(() => {
+    const targetWindow = (window as any).karaokeDisplayWindow || propDisplayWindow;
+    
+    // Only track embedded player if no external window is open
+    if (targetWindow && !targetWindow.closed) {
+      return; // External window is open, don't track embedded player
+    }
+
+    if (!propDisplayVideo?.videoId) return;
+
+    const updateEmbeddedStatus = () => {
+      const control = (window as any).youtubePlayerControl;
+      if (!control) return;
+
+      try {
+        const playerState = control.getPlayerState();
+        const currentTime = control.getCurrentTime();
+        const duration = control.getDuration();
+
+        setIsPlaying(playerState === 1); // YT.PlayerState.PLAYING
+        setCurrentTime(currentTime || 0);
+        setDuration(duration || 0);
+
+        // Update displayStatus for consistency
+        if (!displayStatus || displayStatus.duration !== duration) {
+          setDisplayStatus({
+            isPlaying: playerState === 1,
+            currentTime: currentTime || 0,
+            duration: duration || 0,
+            volume: volume
+          });
+        }
+      } catch (error) {
+        // Silently handle errors
+      }
+    };
+
+    // Update status periodically
+    const interval = setInterval(updateEmbeddedStatus, 500);
+    
+    // Initial update after a delay to let player load
+    const initialTimer = setTimeout(updateEmbeddedStatus, 1000);
+
+    return () => {
+      clearInterval(interval);
+      clearTimeout(initialTimer);
+    };
+  }, [propDisplayVideo?.videoId, propDisplayWindow, displayStatus, volume]);
+
+  // Send control command to display window or embedded player - WITH FALLBACK
   const sendDisplayCommand = async (action: string, data?: any) => {
     console.log('🎮 Sending command:', action, 'prop window:', propDisplayWindow, 'global window:', (window as any).karaokeDisplayWindow);
 
     // Prefer global window reference over prop, as it's more reliable
     let targetWindow = (window as any).karaokeDisplayWindow || propDisplayWindow;
 
-    if (!targetWindow || targetWindow.closed) {
-      console.warn('❌ No display window available - cannot send command');
+    // If we have an external display window, use it
+    if (targetWindow && !targetWindow.closed) {
+      setIsCommandLoading(true);
+
+      const message = {
+        type: 'VIDEO_CONTROL',
+        data: { action, ...data },
+        timestamp: Date.now(),
+        source: 'player_panel'
+      };
+
+      try {
+        console.log('📤 Sending to display window:', message);
+        targetWindow.postMessage(message, '*');
+        await new Promise(resolve => setTimeout(resolve, 200));
+      } catch (error) {
+        console.error('❌ Error sending command:', error);
+      } finally {
+        setIsCommandLoading(false);
+      }
       return;
     }
 
-    if (!targetWindow || targetWindow.closed) {
-      console.warn('❌ No display window available - cannot send command');
+    // Otherwise, use embedded player if available
+    const control = embeddedPlayerControl || (window as any).youtubePlayerControl;
+    if (control) {
+      console.log('🎮 Using embedded player control');
+      setIsCommandLoading(true);
+      try {
+        switch (action) {
+          case 'play':
+            control.play();
+            setIsPlaying(true);
+            break;
+          case 'pause':
+            control.pause();
+            setIsPlaying(false);
+            break;
+          case 'stop':
+            control.stop();
+            setIsPlaying(false);
+            setCurrentTime(0);
+            break;
+          case 'seek':
+            if (data?.seconds !== undefined) {
+              control.seekTo(data.seconds);
+              setCurrentTime(data.seconds);
+            }
+            break;
+          case 'volume':
+            if (data?.volume !== undefined) {
+              control.setVolume(data.volume);
+              setVolume(data.volume);
+            }
+            break;
+          case 'mute':
+            control.mute();
+            setIsMuted(true);
+            break;
+          case 'unmute':
+            control.unMute();
+            setIsMuted(false);
+            break;
+        }
+        await new Promise(resolve => setTimeout(resolve, 200));
+      } catch (error) {
+        console.error('❌ Error controlling embedded player:', error);
+      } finally {
+        setIsCommandLoading(false);
+      }
       return;
     }
 
-    setIsCommandLoading(true);
-
-    const message = {
-      type: 'VIDEO_CONTROL',
-      data: { action, ...data },
-      timestamp: Date.now(),
-      source: 'player_panel'
-    };
-
-    try {
-      // Send via postMessage - use '*' for targetOrigin since cross-window origins may not match exactly
-      // The display window validates the source origin on its end
-      console.log('📤 Sending to display window:', message);
-      targetWindow.postMessage(message, '*');
-
-      // Small delay for visual feedback
-      await new Promise(resolve => setTimeout(resolve, 200));
-
-    } catch (error) {
-      console.error('❌ Error sending command:', error);
-    } finally {
-      setIsCommandLoading(false);
-    }
+    console.warn('❌ No display window or embedded player available - cannot send command');
   };
 
-  // Control functions for external display
+  // Control functions for external display or embedded player
   const toggleDisplayPlayPause = () => {
-    if (displayStatus?.isPlaying) {
-      sendDisplayCommand('pause');
+    // If we have an external display window, use it
+    const targetWindow = (window as any).karaokeDisplayWindow || propDisplayWindow;
+    if (targetWindow && !targetWindow.closed) {
+      if (displayStatus?.isPlaying) {
+        sendDisplayCommand('pause');
+      } else {
+        sendDisplayCommand('play');
+      }
     } else {
-      sendDisplayCommand('play');
+      // Use embedded player
+      if (isPlaying) {
+        sendDisplayCommand('pause');
+      } else {
+        sendDisplayCommand('play');
+      }
     }
   };
 
@@ -922,36 +1027,58 @@ export default function KaraokePlayerPanel({
               </button>
             </div>
 
-            {/* Enhanced Thumbnail with Visual Effects */}
-            <div
-              className="relative w-full aspect-video bg-gradient-to-br from-gray-800 to-gray-900 rounded-xl overflow-hidden shadow-2xl group touch-manipulation"
-              onTouchStart={handleTouchStart}
-              onTouchMove={handleTouchMove}
-              onTouchEnd={handleTouchEnd}
-            >
-              {/* Background pattern for loading state */}
-              <div className="absolute inset-0 bg-gradient-to-br from-purple-500/10 to-pink-500/10 opacity-50" />
-
-              {thumbnailLoading && (
-                <div className="absolute inset-0 bg-gray-800 flex items-center justify-center">
-                  <div className="w-8 h-8 border-2 border-purple-500 border-t-transparent rounded-full animate-spin" />
+            {/* Embedded YouTube Player */}
+            {propDisplayVideo?.videoId ? (
+              <div
+                className="relative w-full aspect-video bg-gradient-to-br from-gray-800 to-gray-900 rounded-xl overflow-hidden shadow-2xl group touch-manipulation"
+                onTouchStart={handleTouchStart}
+                onTouchMove={handleTouchMove}
+                onTouchEnd={handleTouchEnd}
+              >
+                <YouTubePlayer
+                  videoId={propDisplayVideo.videoId}
+                  isPlaying={isPlaying}
+                  showControls={false}
+                  autoPlay={false}
+                  volume={volume}
+                  onVolumeChange={(newVolume) => {
+                    setVolume(newVolume);
+                    // Also update display status if no external window
+                    const targetWindow = (window as any).karaokeDisplayWindow || propDisplayWindow;
+                    if (!targetWindow || targetWindow.closed) {
+                      setDisplayStatus(prev => prev ? { ...prev, volume: newVolume } : null);
+                    }
+                  }}
+                  onStateChange={(state) => {
+                    setIsPlaying(state === 'playing');
+                    // Update display status for consistency
+                    const targetWindow = (window as any).karaokeDisplayWindow || propDisplayWindow;
+                    if (!targetWindow || targetWindow.closed) {
+                      setDisplayStatus(prev => prev ? { 
+                        ...prev, 
+                        isPlaying: state === 'playing' 
+                      } : {
+                        isPlaying: state === 'playing',
+                        currentTime: 0,
+                        duration: 0,
+                        volume: volume
+                      });
+                    }
+                  }}
+                  enableExternalControl={true}
+                  className="w-full h-full"
+                />
+                {/* Overlay gradient for better control visibility */}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent pointer-events-none" />
+              </div>
+            ) : (
+              <div className="relative w-full aspect-video bg-gradient-to-br from-gray-800 to-gray-900 rounded-xl overflow-hidden shadow-2xl flex items-center justify-center">
+                <div className="text-center text-gray-500">
+                  <Music className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                  <p className="text-sm">No video selected</p>
                 </div>
-              )}
-              <img
-                src={propDisplayVideo.thumbnailUrl}
-                alt={propDisplayVideo.title}
-                className={`w-full h-full object-cover transition-all duration-300 group-hover:scale-105 ${
-                  thumbnailLoading ? 'opacity-0' : 'opacity-100'
-                }`}
-                onLoad={() => setThumbnailLoading(false)}
-                onError={(e) => {
-                  e.currentTarget.src = '/api/placeholder/320/180';
-                  setThumbnailLoading(false);
-                }}
-              />
-
-              {/* Overlay gradient */}
-              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+              </div>
+            )}
 
               {/* Play/Pause overlay */}
               {displayStatus && (
