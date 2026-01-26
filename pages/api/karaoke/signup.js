@@ -520,108 +520,157 @@ async function handler(req, res) {
     let linkedVideo = null;
     if (!signup.video_id && song_title) {
       try {
-        console.log('Attempting to auto-link video for signup:', signup.id);
+        console.log('🎬 Attempting to auto-link video for signup:', signup.id, 'Song:', song_title, song_artist);
         
-        // Search for karaoke videos
-        const { searchKaraokeVideos, validateYouTubeVideo, calculateKaraokeScore, parseDuration } = await import('@/utils/youtube-api');
-        const videos = await searchKaraokeVideos(song_title, song_artist, {
-          maxResults: 5,
-          filters: {
-            minQuality: 60 // Only consider good quality videos
-          }
-        });
+        // Check if YouTube API key is available
+        if (!process.env.YOUTUBE_API_KEY) {
+          console.warn('⚠️ YOUTUBE_API_KEY not configured, skipping auto-link');
+        } else {
+          // Search for karaoke videos
+          const { searchKaraokeVideos, validateYouTubeVideo, calculateKaraokeScore, parseDuration } = await import('@/utils/youtube-api');
+          
+          console.log('🔍 Searching for videos...');
+          const videos = await searchKaraokeVideos(song_title, song_artist, {
+            maxResults: 5,
+            filters: {
+              minQuality: 50 // Lower threshold to catch more videos
+            }
+          });
 
-        if (videos && videos.length > 0) {
-          // Get top embeddable video
-          const embeddableVideos = videos.filter(video => video.embeddable !== false);
-          if (embeddableVideos.length > 0) {
-            // Sort by karaoke score (highest first)
-            embeddableVideos.sort((a, b) => (b.karaokeScore || 0) - (a.karaokeScore || 0));
-            const bestVideo = embeddableVideos[0];
+          console.log(`📹 Found ${videos?.length || 0} videos`);
+
+          if (videos && videos.length > 0) {
+            // Get top embeddable video
+            const embeddableVideos = videos.filter(video => video.embeddable !== false);
+            console.log(`✅ ${embeddableVideos.length} embeddable videos found`);
             
-            // Only auto-link if quality score is good enough (>= 60)
-            if (bestVideo.karaokeScore >= 60) {
-              console.log('Auto-linking video with score:', bestVideo.karaokeScore);
+            if (embeddableVideos.length > 0) {
+              // Sort by karaoke score (highest first)
+              embeddableVideos.sort((a, b) => (b.karaokeScore || 0) - (a.karaokeScore || 0));
+              const bestVideo = embeddableVideos[0];
               
-              // Validate and get full video data
-              const videoData = await validateYouTubeVideo(bestVideo.id);
-              if (videoData) {
-                // Calculate song key
-                const songKeyResult = await supabase.rpc('normalize_song_key', {
-                  title: song_title,
-                  artist: song_artist || null
-                });
-                const songKey = songKeyResult.data;
+              console.log(`🏆 Best video: ${bestVideo.title} (Score: ${bestVideo.karaokeScore})`);
+              
+              // Only auto-link if quality score is good enough (>= 50, lowered from 60)
+              if (bestVideo.karaokeScore >= 50) {
+                console.log('✅ Auto-linking video with score:', bestVideo.karaokeScore);
+                
+                // Validate and get full video data
+                const videoData = await validateYouTubeVideo(bestVideo.id);
+                if (videoData) {
+                  console.log('✅ Video validated:', videoData.title);
+                  
+                  // Calculate song key
+                  const { data: songKey, error: songKeyError } = await supabase.rpc('normalize_song_key', {
+                    title: song_title,
+                    artist: song_artist || null
+                  });
+                  
+                  if (songKeyError) {
+                    console.error('❌ Error calculating song key:', songKeyError);
+                    throw songKeyError;
+                  }
 
-                // Calculate quality score
-                const qualityScore = calculateKaraokeScore(videoData, song_title, song_artist);
-                const durationSeconds = parseDuration(videoData.duration);
+                  // Calculate quality score
+                  const qualityScore = calculateKaraokeScore(videoData, song_title, song_artist);
+                  const durationSeconds = parseDuration(videoData.duration);
 
-                // Create video link record
-                const videoRecord = {
-                  organization_id: organization_id,
-                  song_title: song_title.trim(),
-                  song_artist: song_artist?.trim() || null,
-                  song_key: songKey,
-                  youtube_video_id: bestVideo.id,
-                  youtube_video_title: videoData.title,
-                  youtube_channel_name: videoData.channelTitle,
-                  youtube_channel_id: videoData.channelId,
-                  youtube_video_duration: durationSeconds,
-                  youtube_view_count: videoData.viewCount,
-                  youtube_like_count: videoData.likeCount || 0,
-                  youtube_publish_date: videoData.publishedAt,
-                  video_quality_score: qualityScore,
-                  is_karaoke_track: qualityScore > 60,
-                  has_lyrics: videoData.description?.toLowerCase().includes('lyrics') || false,
-                  has_instruments: !videoData.title.toLowerCase().includes('acapella'),
-                  source: 'auto-link',
-                  confidence_score: 0.8, // Slightly lower confidence for auto-links
-                  link_status: 'active',
-                  created_by: null // Public signup, no user
-                };
+                  // Create video link record
+                  const videoRecord = {
+                    organization_id: organization_id,
+                    song_title: song_title.trim(),
+                    song_artist: song_artist?.trim() || null,
+                    song_key: songKey,
+                    youtube_video_id: bestVideo.id,
+                    youtube_video_title: videoData.title,
+                    youtube_channel_name: videoData.channelTitle,
+                    youtube_channel_id: videoData.channelId,
+                    youtube_video_duration: durationSeconds,
+                    youtube_view_count: videoData.viewCount,
+                    youtube_like_count: videoData.likeCount || 0,
+                    youtube_publish_date: videoData.publishedAt,
+                    video_quality_score: qualityScore,
+                    is_karaoke_track: qualityScore > 60,
+                    has_lyrics: videoData.description?.toLowerCase().includes('lyrics') || false,
+                    has_instruments: !videoData.title.toLowerCase().includes('acapella'),
+                    source: 'auto-link',
+                    confidence_score: 0.8, // Slightly lower confidence for auto-links
+                    link_status: 'active',
+                    created_by: null // Public signup, no user
+                  };
 
-                // Upsert video link
-                const { data: savedVideo, error: saveError } = await supabase
-                  .from('karaoke_song_videos')
-                  .upsert(videoRecord, {
-                    onConflict: 'organization_id,song_key',
-                    returning: 'representation'
-                  })
-                  .select()
-                  .single();
-
-                if (!saveError && savedVideo) {
-                  // Link video to signup
-                  const { data: updatedSignup, error: linkError } = await supabase
-                    .from('karaoke_signups')
-                    .update({
-                      video_id: savedVideo.id,
-                      video_url: `https://www.youtube.com/watch?v=${bestVideo.id}`,
-                      video_embed_allowed: true
+                  console.log('💾 Saving video record...');
+                  // Upsert video link
+                  const { data: savedVideo, error: saveError } = await supabase
+                    .from('karaoke_song_videos')
+                    .upsert(videoRecord, {
+                      onConflict: 'organization_id,song_key',
+                      returning: 'representation'
                     })
-                    .eq('id', signup.id)
-                    .eq('organization_id', organization_id)
-                    .select(`
-                      *,
-                      video_data:karaoke_song_videos(*)
-                    `)
+                    .select()
                     .single();
 
-                  if (!linkError && updatedSignup && updatedSignup.video_data) {
-                    linkedVideo = updatedSignup.video_data;
-                    console.log('Successfully auto-linked video to signup');
+                  if (saveError) {
+                    console.error('❌ Error saving video:', saveError);
+                    throw saveError;
                   }
+
+                  if (savedVideo) {
+                    console.log('✅ Video saved, linking to signup...');
+                    // Link video to signup
+                    const { data: updatedSignup, error: linkError } = await supabase
+                      .from('karaoke_signups')
+                      .update({
+                        video_id: savedVideo.id,
+                        video_url: `https://www.youtube.com/watch?v=${bestVideo.id}`,
+                        video_embed_allowed: true
+                      })
+                      .eq('id', signup.id)
+                      .eq('organization_id', organization_id)
+                      .select(`
+                        *,
+                        video_data:karaoke_song_videos(*)
+                      `)
+                      .single();
+
+                  if (linkError) {
+                    console.error('❌ Error linking video to signup:', linkError);
+                    throw linkError;
+                  }
+
+                  if (updatedSignup && updatedSignup.video_data) {
+                    linkedVideo = updatedSignup.video_data;
+                    console.log('✅ Successfully auto-linked video to signup:', linkedVideo.youtube_video_id);
+                  } else {
+                    console.warn('⚠️ Video linked but video_data not returned');
+                  }
+                } else {
+                  console.warn('⚠️ Video validation failed');
                 }
+              } else {
+                console.log('⚠️ Best video quality score too low for auto-linking:', bestVideo.karaokeScore, '(minimum: 50)');
               }
             } else {
-              console.log('Best video quality score too low for auto-linking:', bestVideo.karaokeScore);
+              console.log('⚠️ No embeddable videos found');
             }
+          } else {
+            console.log('⚠️ No videos found for song:', song_title);
           }
         }
       } catch (autoLinkError) {
         // Don't fail signup creation if auto-linking fails
-        console.error('Error auto-linking video (non-fatal):', autoLinkError);
+        console.error('❌ Error auto-linking video (non-fatal):', autoLinkError);
+        console.error('Error details:', {
+          message: autoLinkError?.message,
+          stack: autoLinkError?.stack,
+          name: autoLinkError?.name
+        });
+      }
+    } else {
+      if (signup.video_id) {
+        console.log('ℹ️ Signup already has video_id, skipping auto-link');
+      } else if (!song_title) {
+        console.log('ℹ️ No song_title provided, skipping auto-link');
       }
     }
 
