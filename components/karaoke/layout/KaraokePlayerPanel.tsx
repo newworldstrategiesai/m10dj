@@ -201,8 +201,9 @@ export default function KaraokePlayerPanel({
   ];
 
   const formatTime = (seconds: number) => {
+    if (!seconds || isNaN(seconds)) return '0:00';
     const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
+    const secs = Math.floor(seconds % 60);
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
@@ -565,7 +566,7 @@ export default function KaraokePlayerPanel({
   };
 
   // Control functions for external display or embedded player
-  const toggleDisplayPlayPause = () => {
+  const toggleDisplayPlayPause = async () => {
     // Check if we have an external display window
     const targetWindow = (window as any).karaokeDisplayWindow || propDisplayWindow;
     let windowIsOpen = false;
@@ -575,12 +576,31 @@ export default function KaraokePlayerPanel({
       windowIsOpen = !!targetWindow;
     }
 
+    // Determine current playing state - prefer displayStatus over local isPlaying state
+    // as displayStatus is updated from the actual player
+    const currentlyPlaying = displayStatus?.isPlaying ?? isPlaying;
+    
     // Always use sendDisplayCommand - it will route to the right target
-    if (displayStatus?.isPlaying || isPlaying) {
-      sendDisplayCommand('pause');
+    if (currentlyPlaying) {
+      await sendDisplayCommand('pause');
+      // Optimistically update local state
+      if (displayStatus) {
+        setDisplayStatus({ ...displayStatus, isPlaying: false });
+      }
+      setIsPlaying(false);
     } else {
-      sendDisplayCommand('play');
+      await sendDisplayCommand('play');
+      // Optimistically update local state
+      if (displayStatus) {
+        setDisplayStatus({ ...displayStatus, isPlaying: true });
+      }
+      setIsPlaying(true);
     }
+    
+    // Request status update to sync with actual player state
+    setTimeout(() => {
+      updateDisplayStatus();
+    }, 300);
   };
 
   const stopDisplayVideo = () => {
@@ -1287,7 +1307,7 @@ export default function KaraokePlayerPanel({
                   </span>
                   <div className="flex items-center gap-2">
                     <span className="text-gray-500 hover:text-gray-400 cursor-pointer transition-colors">
-                      -{formatTime(displayStatus.duration - displayStatus.currentTime)}
+                      -{formatTime(Math.max(0, displayStatus.duration - displayStatus.currentTime))}
                     </span>
                     <span className="text-gray-600">/</span>
                     <span className="text-gray-400 font-mono">
