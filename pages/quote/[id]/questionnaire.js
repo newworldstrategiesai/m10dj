@@ -2,7 +2,7 @@ import { useRouter } from 'next/router';
 import { useState, useEffect, useRef, useMemo } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
-import { ArrowRight, ArrowLeft, CheckCircle, Music, Heart, Mic, Radio, Link as LinkIcon, Save, Loader2, Sparkles, HelpCircle, Edit2, Check, Download, PartyPopper, RotateCcw, AlertTriangle, Wifi, WifiOff, FileText } from 'lucide-react';
+import { ArrowRight, ArrowLeft, CheckCircle, Music, Heart, Mic, Radio, Link as LinkIcon, Save, Loader2, Sparkles, HelpCircle, Edit2, Check, Download, PartyPopper, RotateCcw, AlertTriangle, AlertCircle, Wifi, WifiOff, FileText } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useToast } from '@/components/ui/Toasts/use-toast';
 import { Badge } from '@/components/ui/badge';
@@ -75,6 +75,11 @@ export default function MusicQuestionnaire() {
   });
   const [clickedService, setClickedService] = useState(null);
   const [showSubmitConfirm, setShowSubmitConfirm] = useState(false);
+  const [isOnline, setIsOnline] = useState(typeof navigator !== 'undefined' ? navigator.onLine : true);
+  const [queueStatus, setQueueStatus] = useState({ pending: 0, failed: 0 });
+  const storageRef = useRef(null);
+  const queueRef = useRef(null);
+  const submissionIdempotencyKey = useRef(null);
   const { toast } = useToast();
 
   // Get questionnaire configuration based on event type
@@ -82,6 +87,51 @@ export default function MusicQuestionnaire() {
     const eventType = leadData?.eventType || 'wedding';
     return getQuestionnaireConfig(eventType);
   }, [leadData?.eventType]);
+
+  // Initialize storage and queue, and set up online/offline listeners
+  useEffect(() => {
+    if (!id) return;
+
+    // Initialize storage and queue
+    storageRef.current = new QuestionnaireStorage(id);
+    queueRef.current = new QuestionnaireQueue(id);
+
+    // Update queue status periodically
+    const updateQueueStatus = async () => {
+      if (queueRef.current) {
+        const status = await queueRef.current.getStatus();
+        setQueueStatus(status || { pending: 0, failed: 0 });
+      }
+    };
+
+    // Initial status update
+    updateQueueStatus();
+
+    // Update queue status every 2 seconds
+    const statusInterval = setInterval(updateQueueStatus, 2000);
+
+    // Set up online/offline event listeners
+    const handleOnline = () => {
+      setIsOnline(true);
+      // Try to process queue when coming back online
+      if (queueRef.current) {
+        queueRef.current.processQueue();
+      }
+    };
+    const handleOffline = () => setIsOnline(false);
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    // Set initial online status
+    setIsOnline(navigator.onLine);
+
+    return () => {
+      clearInterval(statusInterval);
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, [id]);
 
   useEffect(() => {
     if (!id) return;
@@ -815,7 +865,7 @@ export default function MusicQuestionnaire() {
 
       // Generate idempotency key to prevent duplicate submissions
       const idempotencyKey = `${id}_submit_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-      setSubmissionIdempotencyKey.current = idempotencyKey;
+      submissionIdempotencyKey.current = idempotencyKey;
 
       // Save to all storage layers first
       if (storageRef.current) {
