@@ -79,6 +79,9 @@ export default function BatchDashboardPage() {
   const [showQuickCreate, setShowQuickCreate] = useState(false);
   const [emailPreview, setEmailPreview] = useState<{ html: string; subject: string; type: string } | null>(null);
   const [showEmailPreview, setShowEmailPreview] = useState(false);
+  const [previewOrg, setPreviewOrg] = useState<BatchOrganization | null>(null);
+  const [previewEmailType, setPreviewEmailType] = useState<'welcome' | 'reminder' | 'claimed' | null>(null);
+  const [sendingEmail, setSendingEmail] = useState(false);
   const [quickCreateLoading, setQuickCreateLoading] = useState(false);
   
   // Quick create form state
@@ -178,6 +181,77 @@ export default function BatchDashboardPage() {
     });
   };
 
+  // Send email for an organization
+  const sendEmail = async (org: BatchOrganization, emailType: 'welcome' | 'reminder' | 'claimed') => {
+    setSendingEmail(true);
+    try {
+      if (emailType === 'welcome') {
+        const response = await fetch('/api/admin/tipjar/send-welcome-email', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            organization_id: org.id,
+            prospect_email: org.prospect_email
+          })
+        });
+
+        const result = await response.json();
+
+        if (!response.ok) {
+          throw new Error(result.error || 'Failed to send email');
+        }
+
+        toast({
+          title: 'Email Sent',
+          description: `Welcome email sent successfully to ${org.prospect_email}`,
+        });
+      } else if (emailType === 'reminder') {
+        const response = await fetch('/api/admin/tipjar/send-reminders', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            organization_ids: [org.id]
+          })
+        });
+
+        const result = await response.json();
+
+        if (!response.ok) {
+          throw new Error(result.error || 'Failed to send reminder email');
+        }
+
+        toast({
+          title: 'Email Sent',
+          description: `Reminder email sent successfully to ${org.prospect_email}`,
+        });
+      } else {
+        // Claimed email is typically sent automatically, but we can show a message
+        toast({
+          title: 'Info',
+          description: 'Account claimed emails are sent automatically when an account is claimed.',
+        });
+      }
+
+      // Close preview dialog after sending
+      setShowEmailPreview(false);
+      setPreviewOrg(null);
+      setPreviewEmailType(null);
+    } catch (error: any) {
+      console.error('Error sending email:', error);
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to send email',
+        variant: 'destructive'
+      });
+    } finally {
+      setSendingEmail(false);
+    }
+  };
+
   // Preview email for an organization
   const previewEmail = (org: BatchOrganization, emailType: 'welcome' | 'reminder' | 'claimed') => {
     const baseUrl = process.env.NEXT_PUBLIC_TIPJAR_URL || (typeof window !== 'undefined' ? window.location.origin : 'https://tipjar.live');
@@ -224,6 +298,8 @@ export default function BatchDashboardPage() {
       }
 
       setEmailPreview(emailData);
+      setPreviewOrg(org);
+      setPreviewEmailType(emailType);
       setShowEmailPreview(true);
     } catch (error: any) {
       console.error('Error generating email preview:', error);
@@ -672,17 +748,51 @@ export default function BatchDashboardPage() {
             </DialogHeader>
             
             {emailPreview && (
-              <div className="flex-1 overflow-y-auto border rounded-lg bg-gray-50 p-4">
-                <div className="mb-4 text-sm text-muted-foreground bg-white p-3 rounded border">
-                  <p><strong>Email Type:</strong> {emailPreview.type}</p>
-                  <p><strong>Subject:</strong> {emailPreview.subject}</p>
+              <>
+                <div className="flex-1 overflow-y-auto border rounded-lg bg-gray-50 p-4">
+                  <div className="mb-4 text-sm text-muted-foreground bg-white p-3 rounded border">
+                    <p><strong>Email Type:</strong> {emailPreview.type}</p>
+                    <p><strong>Subject:</strong> {emailPreview.subject}</p>
+                    {previewOrg && (
+                      <p><strong>Recipient:</strong> {previewOrg.prospect_email}</p>
+                    )}
+                  </div>
+                  <div 
+                    className="bg-white rounded-lg shadow-sm overflow-hidden"
+                    style={{ minHeight: '500px' }}
+                    dangerouslySetInnerHTML={{ __html: emailPreview.html }}
+                  />
                 </div>
-                <div 
-                  className="bg-white rounded-lg shadow-sm overflow-hidden"
-                  style={{ minHeight: '500px' }}
-                  dangerouslySetInnerHTML={{ __html: emailPreview.html }}
-                />
-              </div>
+                
+                <div className="flex justify-end gap-2 pt-4 border-t">
+                  <Button
+                    variant="outline"
+                    onClick={() => setShowEmailPreview(false)}
+                    disabled={sendingEmail}
+                  >
+                    Close
+                  </Button>
+                  {previewOrg && previewEmailType && previewEmailType !== 'claimed' && (
+                    <Button
+                      onClick={() => sendEmail(previewOrg, previewEmailType)}
+                      disabled={sendingEmail}
+                      className="bg-green-600 hover:bg-green-700"
+                    >
+                      {sendingEmail ? (
+                        <>
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          Sending...
+                        </>
+                      ) : (
+                        <>
+                          <MailIcon className="w-4 h-4 mr-2" />
+                          Send Email
+                        </>
+                      )}
+                    </Button>
+                  )}
+                </div>
+              </>
             )}
           </DialogContent>
         </Dialog>
