@@ -197,6 +197,16 @@ async function handler(req, res) {
 
     console.log('Supabase connection successful, count:', testData);
     
+    // Check if this is an admin manual signup (authenticated user)
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    const isAdminManualSignup = !userError && user !== null;
+    
+    if (isAdminManualSignup) {
+      console.log('✅ Admin manual signup detected - user:', user?.id);
+    } else {
+      console.log('ℹ️ Public signup (no authenticated user)');
+    }
+    
     const {
       event_qr_code,
       organization_id,
@@ -428,8 +438,8 @@ async function handler(req, res) {
       priority_order: is_priority && settings.priority_pricing_enabled ? 50 : 1000
     };
 
-    // Check rotation fairness (if enabled)
-    if (settings.rotation_enabled) {
+    // Check rotation fairness (if enabled) - SKIP for admin manual signups
+    if (settings.rotation_enabled && !isAdminManualSignup) {
       // Get existing signups for this event
       const { data: existingSignups } = await supabase
         .from('karaoke_signups')
@@ -472,6 +482,8 @@ async function handler(req, res) {
         );
         signupData.priority_order = Math.min(signupData.priority_order, rotationPriority);
       }
+    } else if (isAdminManualSignup) {
+      console.log('✅ Admin manual signup - skipping rotation checks');
     }
 
     // Insert signup
