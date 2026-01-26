@@ -175,6 +175,14 @@ export async function middleware(request: NextRequest) {
       return response;
     }
 
+    // Allow karaoke status routes to pass through to Pages Router
+    if (path.startsWith('/status/karaoke/')) {
+      const response = await updateSession(request);
+      response.headers.set('x-pathname', request.nextUrl.pathname);
+      response.headers.set('x-product', 'tipjar');
+      return response;
+    }
+
     // Rewrite paths to tipjar marketing routes
     if (path === '/' || path === '') {
       rewritePath = '/tipjar';
