@@ -44,9 +44,19 @@ export default function SongAutocomplete({
   const inputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const justSelectedRef = useRef<boolean>(false);
 
   // Search songs
   useEffect(() => {
+    // If we just made a selection, don't search immediately
+    if (justSelectedRef.current) {
+      justSelectedRef.current = false;
+      setSuggestions([]);
+      setShowSuggestions(false);
+      setLoading(false);
+      return;
+    }
+
     // Clear previous timeout
     if (timeoutRef.current) {
       clearTimeout(timeoutRef.current);
@@ -88,7 +98,10 @@ export default function SongAutocomplete({
         if (response.ok) {
           const data = await response.json();
           setSuggestions(data.suggestions || []);
-          setShowSuggestions(true);
+          // Only show suggestions if we didn't just make a selection
+          if (!justSelectedRef.current) {
+            setShowSuggestions(true);
+          }
         } else {
           setSuggestions([]);
         }
@@ -144,7 +157,18 @@ export default function SongAutocomplete({
 
   // Handle suggestion selection
   const handleSelect = (suggestion: SongSuggestion) => {
+    // Set flag to prevent search from re-showing suggestions
+    justSelectedRef.current = true;
+    
+    // Clear suggestions immediately to prevent re-showing
+    setSuggestions([]);
+    setShowSuggestions(false);
+    setSelectedIndex(-1);
+    
+    // Update the input value
     onChange(suggestion.title);
+    
+    // Call onSelect callback
     if (onSelect) {
       // Handle different sources differently
       if (suggestion.source === 'database') {
@@ -197,8 +221,8 @@ export default function SongAutocomplete({
         });
       }
     }
-    setShowSuggestions(false);
-    setSelectedIndex(-1);
+    
+    // Blur the input to remove focus
     inputRef.current?.blur();
   };
 
