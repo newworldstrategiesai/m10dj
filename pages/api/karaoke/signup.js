@@ -256,54 +256,63 @@ async function handler(req, res) {
       }
     }
 
-    // Comprehensive duplicate detection
-    const duplicateCheck = await checkForDuplicateSignup(supabase, {
-      organization_id,
-      event_qr_code,
-      singer_name,
-      singer_phone,
-      song_title,
-      song_artist,
-      group_members,
-      group_size
-    });
-
-    if (duplicateCheck.isDuplicate) {
-      return res.status(409).json({
-        error: 'Duplicate signup detected',
-        message: duplicateCheck.message,
-        details: duplicateCheck.details
+    // Comprehensive duplicate detection - SKIP for admin manual signups
+    if (!isAdminManualSignup) {
+      const duplicateCheck = await checkForDuplicateSignup(supabase, {
+        organization_id,
+        event_qr_code,
+        singer_name,
+        singer_phone,
+        song_title,
+        song_artist,
+        group_members,
+        group_size
       });
+
+      if (duplicateCheck.isDuplicate) {
+        return res.status(409).json({
+          error: 'Duplicate signup detected',
+          message: duplicateCheck.message,
+          details: duplicateCheck.details
+        });
+      }
+    } else {
+      console.log('✅ Admin manual signup - skipping duplicate check');
     }
 
     // Check phone field requirements based on admin setting (default to required if not set)
-    const phoneFieldMode = karaokeSettings?.phone_field_mode || 'required';
+    // SKIP phone validation for admin manual signups
+    if (!isAdminManualSignup) {
+      const phoneFieldMode = karaokeSettings?.phone_field_mode || 'required';
 
-    if (phoneFieldMode === 'required') {
-      if (!singer_phone || !singer_phone.trim()) {
-        return res.status(400).json({
-          error: 'Phone number is required',
-          message: 'Please provide a phone number so we can notify you when you\'re next up!'
-        });
-      }
+      if (phoneFieldMode === 'required') {
+        if (!singer_phone || !singer_phone.trim()) {
+          return res.status(400).json({
+            error: 'Phone number is required',
+            message: 'Please provide a phone number so we can notify you when you\'re next up!'
+          });
+        }
 
-      // Validate phone number format (at least 10 digits)
-      const phoneDigits = singer_phone.replace(/\D/g, '');
-      if (phoneDigits.length < 10) {
-        return res.status(400).json({
-          error: 'Invalid phone number',
-          message: 'Please enter a valid phone number (at least 10 digits)'
-        });
+        // Validate phone number format (at least 10 digits)
+        const phoneDigits = singer_phone.replace(/\D/g, '');
+        if (phoneDigits.length < 10) {
+          return res.status(400).json({
+            error: 'Invalid phone number',
+            message: 'Please enter a valid phone number (at least 10 digits)'
+          });
+        }
+      } else if (phoneFieldMode === 'optional' && singer_phone && singer_phone.trim()) {
+        // If optional and provided, validate format
+        const phoneDigits = singer_phone.replace(/\D/g, '');
+        if (phoneDigits.length < 10) {
+          return res.status(400).json({
+            error: 'Invalid phone number',
+            message: 'Please enter a valid phone number (at least 10 digits)'
+          });
+        }
       }
-    } else if (phoneFieldMode === 'optional' && singer_phone && singer_phone.trim()) {
-      // If optional and provided, validate format
-      const phoneDigits = singer_phone.replace(/\D/g, '');
-      if (phoneDigits.length < 10) {
-        return res.status(400).json({
-          error: 'Invalid phone number',
-          message: 'Please enter a valid phone number (at least 10 digits)'
-        });
-      }
+    } else {
+      console.log('✅ Admin manual signup - skipping phone validation');
     }
 
     if (group_size < 1 || group_size > 10) {
