@@ -70,12 +70,21 @@ async function getLibrary(req: NextApiRequest, res: NextApiResponse, supabase: a
   try {
     console.log('Get library called with:', { organizationId, userId });
 
-    // First check if user_video_library table exists
+    // First check if user_video_library table exists and is accessible
     const { data: tableCheck, error: tableError } = await supabase
       .from('user_video_library')
       .select('count', { count: 'exact', head: true });
 
     if (tableError) {
+      // If table doesn't exist or column is missing, return empty result gracefully
+      if (tableError.code === '42P01' || tableError.code === '42703') {
+        console.warn('user_video_library table not available:', tableError.message);
+        return res.status(200).json({
+          videos: [],
+          total: 0,
+          message: 'Video library feature not yet available - migration required'
+        });
+      }
       console.error('Table check error:', tableError);
       throw new Error(`Table access error: ${tableError.message}`);
     }

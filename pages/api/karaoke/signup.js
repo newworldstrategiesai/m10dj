@@ -202,9 +202,9 @@ async function handler(req, res) {
     const isAdminManualSignup = !userError && user !== null;
     
     if (isAdminManualSignup) {
-      console.log('✅ Admin manual signup detected - user:', user?.id);
+      console.log('✅ Admin manual signup detected - user:', user?.id, 'email:', user?.email);
     } else {
-      console.log('ℹ️ Public signup (no authenticated user)');
+      console.log('ℹ️ Public signup (no authenticated user)', userError ? `- error: ${userError.message}` : '');
     }
     
     const {
