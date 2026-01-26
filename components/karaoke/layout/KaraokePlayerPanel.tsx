@@ -900,61 +900,63 @@ export default function KaraokePlayerPanel({
             </span>
           </div>
 
-          {/* Open Display Window Button */}
+          {/* Open Display Window Button - Always Visible */}
           <button
             onClick={() => {
-              // Open display window - never use window.open('', name) as it creates about:blank tabs
+              // Check for existing display window (prefer global reference, then prop)
+              const existingWindow = (window as any).karaokeDisplayWindow || propDisplayWindow;
               const windowName = 'karaokeVideoDisplay';
               
-              // Use propDisplayWindow if available, otherwise open new window
-              if (propDisplayWindow && !propDisplayWindow.closed) {
+              if (existingWindow && !existingWindow.closed) {
                 // Window already exists, just focus it
-                propDisplayWindow.focus();
+                existingWindow.focus();
                 // Request status update to sync with current state
                 setTimeout(() => {
-                  if (propDisplayWindow && !propDisplayWindow.closed) {
+                  if (existingWindow && !existingWindow.closed) {
                     try {
-                      const targetOrigin = propDisplayWindow.location?.origin || '*';
-                      propDisplayWindow.postMessage({
+                      existingWindow.postMessage({
                         type: 'VIDEO_CONTROL',
                         data: { action: 'getStatus' }
-                      }, targetOrigin);
+                      }, '*');
                     } catch (e) {
-                      console.warn('Cannot access display window (cross-origin):', e);
+                      console.warn('Cannot access display window:', e);
                     }
                   }
                 }, 500);
-              } else {
-                // Open new display window with default content
-                const displayWindow = window.open('/karaoke/video-display', windowName, 'width=1280,height=720,scrollbars=no,resizable=yes,status=no,toolbar=no,menubar=no,location=no,directories=no');
-                if (displayWindow) {
-                  // Register the window
-                  onDisplayWindowChange?.(displayWindow);
+                return;
+              }
 
-                  // If there's a current signup, load its video
-                  if (currentSignup && currentSignup.video_data) {
-                    setTimeout(() => {
-                      try {
-                        const targetOrigin = displayWindow.location?.origin || '*';
-                        displayWindow.postMessage({
-                          type: 'VIDEO_CONTROL',
-                          data: {
-                            action: 'changeVideo',
-                            videoId: currentSignup.video_data.youtube_video_id,
-                            title: currentSignup.song_title,
-                            artist: currentSignup.song_artist || ''
-                          }
-                        }, targetOrigin);
-                      } catch (e) {
-                        console.warn('Cannot send message to display window (cross-origin):', e);
-                      }
-                    }, 1000);
-                  }
+              // Open new display window with default content
+              const displayWindow = window.open('/karaoke/video-display', windowName, 'width=1280,height=720,scrollbars=no,resizable=yes,status=no,toolbar=no,menubar=no,location=no,directories=no');
+              if (displayWindow) {
+                // Register the window globally and with parent
+                if (typeof window !== 'undefined') {
+                  (window as any).karaokeDisplayWindow = displayWindow;
+                }
+                onDisplayWindowChange?.(displayWindow);
+
+                // If there's a current signup, load its video
+                if (currentSignup && currentSignup.video_data) {
+                  setTimeout(() => {
+                    try {
+                      displayWindow.postMessage({
+                        type: 'VIDEO_CONTROL',
+                        data: {
+                          action: 'changeVideo',
+                          videoId: currentSignup.video_data.youtube_video_id,
+                          title: currentSignup.song_title,
+                          artist: currentSignup.song_artist || ''
+                        }
+                      }, '*');
+                    } catch (e) {
+                      console.warn('Cannot send message to display window:', e);
+                    }
+                  }, 1000);
                 }
               }
             }}
             className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg transition-all duration-200 flex items-center gap-1.5 shadow-md hover:shadow-lg"
-            title="Open Display Window"
+            title="Open/Focus Display Window"
           >
             <Monitor className="w-4 h-4" />
             Display

@@ -1013,8 +1013,17 @@ export default function KaraokeAdminPage() {
                 variant="outline"
                 size="sm"
                 onClick={() => {
-                  // Open external display window directly
+                  // Check if display window already exists
                   const windowName = 'karaokeVideoDisplay';
+                  const existingWindow = (window as any).karaokeDisplayWindow;
+                  
+                  if (existingWindow && !existingWindow.closed) {
+                    // Window exists and is open, just focus it
+                    existingWindow.focus();
+                    return;
+                  }
+
+                  // Open new display window
                   const displayWindow = window.open(
                     '/karaoke/video-display',
                     windowName,
@@ -1151,8 +1160,17 @@ export default function KaraokeAdminPage() {
                     <Button
                       variant="outline"
                       onClick={() => {
-                        // Open external display window directly
+                        // Check if display window already exists
                         const windowName = 'karaokeVideoDisplay';
+                        const existingWindow = (window as any).karaokeDisplayWindow;
+                        
+                        if (existingWindow && !existingWindow.closed) {
+                          // Window exists and is open, just focus it
+                          existingWindow.focus();
+                          return;
+                        }
+
+                        // Open new display window
                         const displayWindow = window.open(
                           '/karaoke/video-display',
                           windowName,
