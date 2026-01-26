@@ -109,6 +109,57 @@ export default function KaraokePlayerPanel({
   const [progressHoverPosition, setProgressHoverPosition] = useState<number | null>(null);
   const progressBarRef = useRef<HTMLDivElement>(null);
 
+  // Debounce play/pause state updates to prevent rapid flickering
+  const lastPlayingStateUpdateRef = useRef<number>(0);
+  const playingStateDebounceDelay = 300; // Only update playing state if it's been stable for 300ms
+  const pendingPlayingStateRef = useRef<boolean | null>(null);
+  const playingStateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Debounced update for playing state to prevent rapid flickering
+  const updatePlayingStateDebounced = useCallback((newIsPlaying: boolean, immediate: boolean = false) => {
+    const now = Date.now();
+    
+    // If immediate update is requested (e.g., user clicked button), update right away
+    if (immediate) {
+      lastPlayingStateUpdateRef.current = now;
+      pendingPlayingStateRef.current = null;
+      if (playingStateTimeoutRef.current) {
+        clearTimeout(playingStateTimeoutRef.current);
+        playingStateTimeoutRef.current = null;
+      }
+      setIsPlaying(newIsPlaying);
+      return;
+    }
+
+    // Store the pending state
+    pendingPlayingStateRef.current = newIsPlaying;
+
+    // Clear any existing timeout
+    if (playingStateTimeoutRef.current) {
+      clearTimeout(playingStateTimeoutRef.current);
+    }
+
+    // Only update if enough time has passed since last update
+    const timeSinceLastUpdate = now - lastPlayingStateUpdateRef.current;
+    if (timeSinceLastUpdate >= playingStateDebounceDelay) {
+      // Enough time has passed, update immediately
+      lastPlayingStateUpdateRef.current = now;
+      pendingPlayingStateRef.current = null;
+      setIsPlaying(newIsPlaying);
+    } else {
+      // Schedule update after debounce delay
+      const remainingDelay = playingStateDebounceDelay - timeSinceLastUpdate;
+      playingStateTimeoutRef.current = setTimeout(() => {
+        if (pendingPlayingStateRef.current !== null) {
+          lastPlayingStateUpdateRef.current = Date.now();
+          setIsPlaying(pendingPlayingStateRef.current);
+          pendingPlayingStateRef.current = null;
+        }
+        playingStateTimeoutRef.current = null;
+      }, remainingDelay);
+    }
+  }, []);
+
   // Track last auto-played signup to prevent duplicate auto-plays
   const lastAutoPlayedSignupId = useRef<string | null>(null);
   
@@ -414,8 +465,8 @@ export default function KaraokePlayerPanel({
           setDisplayStatus(prev => {
             // Only update if values have changed significantly to prevent flickering
             if (!prev) {
-              // First time setting status, update everything
-              setIsPlaying(newIsPlaying);
+              // First time setting status, update everything immediately
+              updatePlayingStateDebounced(newIsPlaying, true);
               setCurrentTime(newCurrentTime);
               setDuration(newDuration);
               return {
@@ -426,14 +477,53 @@ export default function KaraokePlayerPanel({
               };
             }
             
-            // Check if duration changed significantly
-            if (Math.abs(prev.duration - newDuration) > 1) {
-              setIsPlaying(newIsPlaying);
-              setCurrentTime(newCurrentTime);
+            // Check if duration changed significantly (more than 5 seconds to prevent small fluctuations)
+            const durationDiff = Math.abs(prev.duration - newDuration);
+            if (durationDiff > 5) {
+              // Only reset currentTime if duration changed significantly AND the new currentTime is reasonable
+              // Preserve progress ratio if duration change is moderate
+              const progressRatio = prev.duration > 0 ? prev.currentTime / prev.duration : 0;
+              const expectedCurrentTime = newDuration * progressRatio;
+              
+              // Use new currentTime if it's close to expected, otherwise use expected to preserve progress
+              const finalCurrentTime = Math.abs(newCurrentTime - expectedCurrentTime) < 2 
+                ? newCurrentTime 
+                : Math.max(0, Math.min(newDuration, expectedCurrentTime));
+              
+              // Only update playing state if it actually changed
+              if (prev.isPlaying !== newIsPlaying) {
+                updatePlayingStateDebounced(newIsPlaying);
+              }
+              setCurrentTime(finalCurrentTime);
               setDuration(newDuration);
               return {
-                isPlaying: newIsPlaying,
-                currentTime: newCurrentTime,
+                isPlaying: prev.isPlaying !== newIsPlaying ? newIsPlaying : prev.isPlaying,
+                currentTime: finalCurrentTime,
+                duration: newDuration,
+                volume: data.volume || prev.volume || 50
+              };
+            }
+            
+            // If duration changed slightly (1-5 seconds), preserve progress ratio
+            if (durationDiff > 1 && durationDiff <= 5) {
+              const progressRatio = prev.duration > 0 ? prev.currentTime / prev.duration : 0;
+              const expectedCurrentTime = newDuration * progressRatio;
+              
+              // Use new currentTime if it's reasonable, otherwise preserve ratio
+              const finalCurrentTime = Math.abs(newCurrentTime - expectedCurrentTime) < 3
+                ? newCurrentTime
+                : Math.max(0, Math.min(newDuration, expectedCurrentTime));
+              
+              setCurrentTime(finalCurrentTime);
+              // Only update playing state if it actually changed
+              if (prev.isPlaying !== newIsPlaying) {
+                updatePlayingStateDebounced(newIsPlaying);
+              }
+              setDuration(newDuration);
+              return {
+                ...prev,
+                isPlaying: prev.isPlaying !== newIsPlaying ? newIsPlaying : prev.isPlaying,
+                currentTime: finalCurrentTime,
                 duration: newDuration,
                 volume: data.volume || prev.volume || 50
               };
@@ -443,13 +533,12 @@ export default function KaraokePlayerPanel({
             if (Math.abs(prev.currentTime - newCurrentTime) > 0.5) {
               setCurrentTime(newCurrentTime);
               // Only update isPlaying if it actually changed
-              const shouldUpdatePlaying = prev.isPlaying !== newIsPlaying;
-              if (shouldUpdatePlaying) {
-                setIsPlaying(newIsPlaying);
+              if (prev.isPlaying !== newIsPlaying) {
+                updatePlayingStateDebounced(newIsPlaying);
               }
               return {
                 ...prev,
-                isPlaying: shouldUpdatePlaying ? newIsPlaying : prev.isPlaying,
+                isPlaying: prev.isPlaying !== newIsPlaying ? newIsPlaying : prev.isPlaying,
                 currentTime: newCurrentTime,
                 volume: data.volume || prev.volume || 50
               };
@@ -457,7 +546,7 @@ export default function KaraokePlayerPanel({
             
             // Only update playing state if it changed (and nothing else changed significantly)
             if (prev.isPlaying !== newIsPlaying) {
-              setIsPlaying(newIsPlaying);
+              updatePlayingStateDebounced(newIsPlaying);
               return {
                 ...prev,
                 isPlaying: newIsPlaying,
@@ -487,8 +576,13 @@ export default function KaraokePlayerPanel({
 
     return () => {
       window.removeEventListener('message', handleMessage);
+      // Clean up any pending playing state updates
+      if (playingStateTimeoutRef.current) {
+        clearTimeout(playingStateTimeoutRef.current);
+        playingStateTimeoutRef.current = null;
+      }
     };
-  }, [propDisplayVideo?.videoId, onDisplayVideoChange, mounted]); // Use videoId instead of whole object
+  }, [propDisplayVideo?.videoId, onDisplayVideoChange, mounted, updatePlayingStateDebounced]); // Use videoId instead of whole object
 
   // Track embedded player status when no external display window
   useEffect(() => {
@@ -566,9 +660,9 @@ export default function KaraokePlayerPanel({
           setDisplayStatus(prev => {
             const newIsPlaying = playerState === 1;
             
-            // If duration changed significantly (more than 1 second), update everything
-            if (!prev || Math.abs(prev.duration - duration) > 1) {
-              setIsPlaying(newIsPlaying);
+            if (!prev) {
+              // First time setting status, update immediately
+              updatePlayingStateDebounced(newIsPlaying, true);
               setCurrentTime(currentTime);
               setDuration(duration);
               return {
@@ -579,9 +673,61 @@ export default function KaraokePlayerPanel({
               };
             }
             
+            // Check if duration changed significantly (more than 5 seconds to prevent small fluctuations)
+            const durationDiff = Math.abs(prev.duration - duration);
+            if (durationDiff > 5) {
+              // Only reset currentTime if duration changed significantly AND the new currentTime is reasonable
+              // Preserve progress ratio if duration change is moderate
+              const progressRatio = prev.duration > 0 ? prev.currentTime / prev.duration : 0;
+              const expectedCurrentTime = duration * progressRatio;
+              
+              // Use new currentTime if it's close to expected, otherwise use expected to preserve progress
+              const finalCurrentTime = Math.abs(currentTime - expectedCurrentTime) < 2 
+                ? currentTime 
+                : Math.max(0, Math.min(duration, expectedCurrentTime));
+              
+              // Only update playing state if it actually changed
+              if (prev.isPlaying !== newIsPlaying) {
+                updatePlayingStateDebounced(newIsPlaying);
+              }
+              setCurrentTime(finalCurrentTime);
+              setDuration(duration);
+              return {
+                isPlaying: prev.isPlaying !== newIsPlaying ? newIsPlaying : prev.isPlaying,
+                currentTime: finalCurrentTime,
+                duration: duration,
+                volume: volume
+              };
+            }
+            
+            // If duration changed slightly (1-5 seconds), preserve progress ratio
+            if (durationDiff > 1 && durationDiff <= 5) {
+              const progressRatio = prev.duration > 0 ? prev.currentTime / prev.duration : 0;
+              const expectedCurrentTime = duration * progressRatio;
+              
+              // Use new currentTime if it's reasonable, otherwise preserve ratio
+              const finalCurrentTime = Math.abs(currentTime - expectedCurrentTime) < 3
+                ? currentTime
+                : Math.max(0, Math.min(duration, expectedCurrentTime));
+              
+              setCurrentTime(finalCurrentTime);
+              const shouldUpdatePlaying = prev.isPlaying !== newIsPlaying;
+              if (shouldUpdatePlaying) {
+                setIsPlaying(newIsPlaying);
+              }
+              setDuration(duration);
+              return {
+                ...prev,
+                isPlaying: shouldUpdatePlaying ? newIsPlaying : prev.isPlaying,
+                currentTime: finalCurrentTime,
+                duration: duration,
+                volume: volume
+              };
+            }
+            
             // If currentTime changed significantly (more than 0.5 seconds), update it
             // BUT don't update isPlaying unless it actually changed
-            if (!prev || Math.abs(prev.currentTime - currentTime) > 0.5) {
+            if (Math.abs(prev.currentTime - currentTime) > 0.5) {
               setCurrentTime(currentTime);
               const shouldUpdatePlaying = prev.isPlaying !== newIsPlaying;
               if (shouldUpdatePlaying) {
@@ -652,8 +798,13 @@ export default function KaraokePlayerPanel({
       if (interval) clearInterval(interval);
       if (checkTimer) clearTimeout(checkTimer);
       clearTimeout(initialTimer);
+      // Clean up any pending playing state updates
+      if (playingStateTimeoutRef.current) {
+        clearTimeout(playingStateTimeoutRef.current);
+        playingStateTimeoutRef.current = null;
+      }
     };
-  }, [propDisplayVideo?.videoId, volume]); // Removed propDisplayWindow from deps - it's a Window object that can't be compared reliably
+  }, [propDisplayVideo?.videoId, volume, updatePlayingStateDebounced]); // Removed propDisplayWindow from deps - it's a Window object that can't be compared reliably
 
   // Send control command to display window or embedded player - WITH FALLBACK
   const sendDisplayCommand = useCallback(async (action: string, data?: any) => {
@@ -917,7 +1068,7 @@ export default function KaraokePlayerPanel({
         if (hasValidStatus) {
           setDisplayStatus({ ...displayStatus, isPlaying: false });
         }
-        setIsPlaying(false);
+        updatePlayingStateDebounced(false, true); // Immediate update for user action
       } else {
         console.log('▶️ Sending play command...');
         await sendDisplayCommand('play');
@@ -926,7 +1077,7 @@ export default function KaraokePlayerPanel({
         if (hasValidStatus) {
           setDisplayStatus({ ...displayStatus, isPlaying: true });
         }
-        setIsPlaying(true);
+        updatePlayingStateDebounced(true, true); // Immediate update for user action
       }
       
       // Request status update to sync with actual player state
@@ -939,7 +1090,7 @@ export default function KaraokePlayerPanel({
       if (hasValidStatus) {
         setDisplayStatus({ ...displayStatus, isPlaying: !currentlyPlaying });
       }
-      setIsPlaying(!currentlyPlaying);
+      updatePlayingStateDebounced(!currentlyPlaying, true); // Immediate update for user action
     }
   }, [propDisplayWindow, displayStatus, isPlaying, sendDisplayCommand, updateDisplayStatus]);
 
