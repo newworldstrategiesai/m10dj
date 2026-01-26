@@ -46,6 +46,8 @@ export default function RequestsPageWrapper() {
   const [startTime] = useState(() => Date.now());
 
   useEffect(() => {
+    let isMounted = true;
+    
     async function loadOrganizationByContext() {
       try {
         // Detect which domain we're on
@@ -85,11 +87,17 @@ export default function RequestsPageWrapper() {
                 .eq('id', membership.organization_id)
                 .single();
               
-              if (org?.slug) {
-                // Redirect to their specific page
-                console.log('🔀 [REQUESTS] TipJar user detected, redirecting to their page:', org.slug);
-                router.replace(`/${org.slug}/requests`);
-                return;
+              if (org?.slug && isMounted) {
+                // Prevent redirect loops - check if we're already on the target page
+                const currentPath = router.asPath;
+                const targetPath = `/${org.slug}/requests`;
+                
+                if (currentPath !== targetPath) {
+                  // Redirect to their specific page
+                  console.log('🔀 [REQUESTS] TipJar user detected, redirecting to their page:', org.slug);
+                  router.replace(targetPath);
+                  return;
+                }
               }
             }
             
@@ -100,10 +108,16 @@ export default function RequestsPageWrapper() {
               .eq('owner_id', user.id)
               .single();
             
-            if (ownedOrg?.slug) {
-              console.log('🔀 [REQUESTS] TipJar owner detected, redirecting to their page:', ownedOrg.slug);
-              router.replace(`/${ownedOrg.slug}/requests`);
-              return;
+            if (ownedOrg?.slug && isMounted) {
+              // Prevent redirect loops - check if we're already on the target page
+              const currentPath = router.asPath;
+              const targetPath = `/${ownedOrg.slug}/requests`;
+              
+              if (currentPath !== targetPath) {
+                console.log('🔀 [REQUESTS] TipJar owner detected, redirecting to their page:', ownedOrg.slug);
+                router.replace(targetPath);
+                return;
+              }
             }
           }
           
@@ -116,8 +130,8 @@ export default function RequestsPageWrapper() {
           targetSlug = 'm10djcompany';
         }
         
-        if (!targetSlug) {
-          setLoading(false);
+        if (!targetSlug || !isMounted) {
+          if (isMounted) setLoading(false);
           return;
         }
         
@@ -130,11 +144,11 @@ export default function RequestsPageWrapper() {
 
         if (error) {
           console.error('❌ [REQUESTS] Error loading organization:', error);
-          setLoading(false);
+          if (isMounted) setLoading(false);
           return;
         }
 
-        if (org && (org.subscription_status === 'active' || org.subscription_status === 'trial')) {
+        if (org && (org.subscription_status === 'active' || org.subscription_status === 'trial') && isMounted) {
           // Auto-fix: If requests_header_artist_name is missing, set it to organization name
           if (!org.requests_header_artist_name && org.name) {
             try {
@@ -143,7 +157,7 @@ export default function RequestsPageWrapper() {
                 .update({ requests_header_artist_name: org.name })
                 .eq('id', org.id);
               
-              if (!updateError) {
+              if (!updateError && isMounted) {
                 org.requests_header_artist_name = org.name;
                 console.log('✅ [REQUESTS] Auto-set requests_header_artist_name to:', org.name);
               }
@@ -152,27 +166,38 @@ export default function RequestsPageWrapper() {
             }
           }
           
-          setOrganization(org);
-          console.log('✅ [REQUESTS] Organization loaded:', {
-            id: org.id,
-            name: org.name,
-            slug: org.slug,
-            artist_name: org.requests_header_artist_name
-          });
+          if (isMounted) {
+            setOrganization(org);
+            console.log('✅ [REQUESTS] Organization loaded:', {
+              id: org.id,
+              name: org.name,
+              slug: org.slug,
+              artist_name: org.requests_header_artist_name
+            });
+          }
         }
       } catch (err) {
         console.error('❌ [REQUESTS] Error:', err);
       } finally {
-        setLoading(false);
+        if (isMounted) {
+          setLoading(false);
+        }
       }
     }
 
     loadOrganizationByContext();
     
+    // Cleanup function to prevent state updates after unmount
+    return () => {
+      isMounted = false;
+    };
+    
     // Note: We don't set up a polling interval here because it would cause
     // redirect loops. The slug-based page ([slug]/requests.js) handles its own polling.
     // For the /requests page, data is loaded once on mount.
-  }, [supabase, router]);
+    // CRITICAL: Don't include supabase or router in deps - supabase is a singleton,
+    // and router changes can cause infinite loops. Only run once on mount.
+  }, []); // Empty dependency array - only run once on mount
 
   // Ensure loader shows for minimum time to prevent flash
   useEffect(() => {
