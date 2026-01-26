@@ -658,23 +658,22 @@ export default function KaraokePlayerPanel({
       try {
         console.log('📤 Sending to display window:', message, 'targetWindow:', targetWindow);
         targetWindow.postMessage(message, '*');
-        console.log('✅ Message sent successfully');
+        console.log('✅ Message sent successfully to display window');
         await new Promise(resolve => setTimeout(resolve, 200));
+        setIsCommandLoading(false);
+        return; // Successfully sent to external window
       } catch (error) {
-        console.error('❌ Error sending command:', error);
+        console.error('❌ Error sending command to display window:', error);
+        setIsCommandLoading(false);
         // If sending fails, try to use embedded player as fallback
         const control = embeddedPlayerControl || (window as any).youtubePlayerControl;
         if (control) {
           console.log('🔄 Falling back to embedded player control');
-          // Fall through to embedded player logic below
+          // Continue to embedded player logic below
         } else {
-          setIsCommandLoading(false);
-          return;
+          throw new Error('Failed to send command and no embedded player available');
         }
-      } finally {
-        setIsCommandLoading(false);
       }
-      return;
     }
 
     // Otherwise, use embedded player if available
@@ -768,8 +767,16 @@ export default function KaraokePlayerPanel({
       return;
     } else {
       // Control exists but isn't functional yet
-      console.debug('⏳ Embedded player control not ready yet, command will be ignored');
-      return;
+      console.warn('⏳ Embedded player control not ready yet, command will be ignored', {
+        hasControl: !!control,
+        hasMethods: control ? {
+          getPlayerState: typeof control.getPlayerState === 'function',
+          play: typeof control.play === 'function',
+          pause: typeof control.pause === 'function'
+        } : null
+      });
+      // Don't return silently - throw error so caller knows command failed
+      throw new Error('Player control not ready');
     }
 
     console.warn('❌ No display window or embedded player available - cannot send command', {
@@ -778,10 +785,13 @@ export default function KaraokePlayerPanel({
       hasEmbeddedControl: !!(embeddedPlayerControl || (window as any).youtubePlayerControl),
       propDisplayVideo: !!propDisplayVideo
     });
+    throw new Error('No display window or embedded player available');
   };
 
   // Control functions for external display or embedded player
   const toggleDisplayPlayPause = async () => {
+    console.log('🎮 toggleDisplayPlayPause called');
+    
     // Check if we have an external display window
     const targetWindow = (window as any).karaokeDisplayWindow || propDisplayWindow;
     let windowIsOpen = false;
@@ -791,25 +801,70 @@ export default function KaraokePlayerPanel({
       windowIsOpen = !!targetWindow;
     }
 
-    // Determine current playing state - prefer displayStatus over local isPlaying state
-    // as displayStatus is updated from the actual player
-    // Only use displayStatus if it has valid duration (video is loaded)
+    console.log('🎮 Window status:', { windowIsOpen, hasTargetWindow: !!targetWindow });
+
+    // Try to get actual player state first
+    let actualPlayerState: boolean | null = null;
+    
+    // If we have an external window, try to get status from it
+    if (windowIsOpen) {
+      // Request status update first
+      try {
+        targetWindow.postMessage({
+          type: 'VIDEO_CONTROL',
+          data: { action: 'getStatus' }
+        }, '*');
+        console.log('📡 Requested status from display window');
+      } catch (e) {
+        console.warn('Could not request status from display window:', e);
+      }
+    } else {
+      // Check embedded player state directly
+      const control = (window as any).youtubePlayerControl;
+      if (control && typeof control.getPlayerState === 'function') {
+        try {
+          const playerState = control.getPlayerState();
+          // YouTube PlayerState: -1=unstarted, 0=ended, 1=playing, 2=paused, 3=buffering, 5=cued
+          actualPlayerState = playerState === 1; // playing
+          console.log('🎮 Embedded player state:', playerState, 'isPlaying:', actualPlayerState);
+        } catch (e) {
+          console.warn('Could not get player state:', e);
+        }
+      } else {
+        console.warn('⚠️ No embedded player control available');
+      }
+    }
+
+    // Determine current playing state - prefer actual player state, then displayStatus, then local isPlaying
     const hasValidStatus = displayStatus && displayStatus.duration > 0;
-    const currentlyPlaying = hasValidStatus 
-      ? displayStatus.isPlaying 
-      : isPlaying;
+    const currentlyPlaying = actualPlayerState !== null
+      ? actualPlayerState
+      : hasValidStatus 
+        ? displayStatus.isPlaying 
+        : isPlaying;
+    
+    console.log('🎮 Toggle play/pause - currentlyPlaying:', currentlyPlaying, {
+      actualState: actualPlayerState,
+      displayStatus: displayStatus?.isPlaying,
+      isPlaying: isPlaying,
+      hasValidStatus
+    });
     
     // Always use sendDisplayCommand - it will route to the right target
     try {
       if (currentlyPlaying) {
+        console.log('⏸️ Sending pause command...');
         await sendDisplayCommand('pause');
+        console.log('✅ Pause command sent');
         // Optimistically update local state - only if we have valid status
         if (hasValidStatus) {
           setDisplayStatus({ ...displayStatus, isPlaying: false });
         }
         setIsPlaying(false);
       } else {
+        console.log('▶️ Sending play command...');
         await sendDisplayCommand('play');
+        console.log('✅ Play command sent');
         // Optimistically update local state - only if we have valid status
         if (hasValidStatus) {
           setDisplayStatus({ ...displayStatus, isPlaying: true });
@@ -822,7 +877,7 @@ export default function KaraokePlayerPanel({
         updateDisplayStatus();
       }, 300);
     } catch (error) {
-      console.error('Error toggling play/pause:', error);
+      console.error('❌ Error toggling play/pause:', error);
       // Still update UI optimistically even if command fails
       if (hasValidStatus) {
         setDisplayStatus({ ...displayStatus, isPlaying: !currentlyPlaying });
