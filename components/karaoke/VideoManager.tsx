@@ -331,11 +331,30 @@ export default function VideoManager({
         // Non-200 status code or success: false
         const errorData = data.error || data.message || 'Search failed';
         
-        // Handle 503 from general search endpoint
-        if (response.status === 503 && data.error === 'YouTube search temporarily unavailable') {
+        // Handle 503 from general search endpoint (graceful degradation)
+        if (response.status === 503) {
+          const isTemporaryUnavailable = 
+            data.error === 'YouTube search temporarily unavailable' ||
+            data.error === 'YouTube API not configured' ||
+            errorData.includes('temporarily unavailable') ||
+            errorData.includes('YouTube search temporarily unavailable');
+          
+          if (isTemporaryUnavailable) {
+            toast({
+              title: 'Search Temporarily Unavailable',
+              description: 'Video search is temporarily unavailable. Please try again in a moment.',
+              variant: 'default'
+            });
+            setSearchResults([]);
+            return; // Don't throw error for graceful degradation
+          }
+        }
+        
+        // Handle 401 Unauthorized
+        if (response.status === 401) {
           toast({
-            title: 'Search Temporarily Unavailable',
-            description: 'Video search is temporarily unavailable. Please try again in a moment.',
+            title: 'Authentication Required',
+            description: 'Please log in to search for videos.',
             variant: 'default'
           });
           setSearchResults([]);
@@ -345,16 +364,33 @@ export default function VideoManager({
         throw new Error(errorData);
       }
     } catch (error: any) {
+      // Check if this is a graceful degradation error (should not be logged)
+      const errorMessage = error?.message || String(error || '');
+      const isTemporaryUnavailable = 
+        errorMessage.includes('temporarily unavailable') ||
+        errorMessage.includes('YouTube search temporarily unavailable') ||
+        errorMessage.includes('YouTube API not configured');
+      
       // Only log actual errors, not graceful degradation
-      if (!error?.message?.includes('temporarily unavailable')) {
+      if (!isTemporaryUnavailable) {
         console.error('Video search error:', error);
       }
-      const errorMessage = error?.message || 'Unable to search for videos. Please try again.';
-      toast({
-        title: 'Search Failed',
-        description: errorMessage,
-        variant: 'destructive'
-      });
+      
+      // Show appropriate toast based on error type
+      if (isTemporaryUnavailable) {
+        toast({
+          title: 'Search Temporarily Unavailable',
+          description: 'Video search is temporarily unavailable. Please try again in a moment.',
+          variant: 'default'
+        });
+      } else {
+        toast({
+          title: 'Search Failed',
+          description: errorMessage || 'Unable to search for videos. Please try again.',
+          variant: 'destructive'
+        });
+      }
+      
       // Set empty results on error so UI doesn't show stale data
       setSearchResults([]);
     } finally {

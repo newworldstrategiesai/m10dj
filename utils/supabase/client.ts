@@ -12,29 +12,49 @@ declare global {
 // Define a function to create a Supabase client for client-side operations
 // Uses singleton pattern to prevent multiple instances
 export const createClient = () => {
-  // Check global first (persists across hot reloads)
-  // Also check window object for browser context
+  // Check window object first (browser context)
   if (typeof window !== 'undefined') {
-    if ((window as any)[SUPABASE_CLIENT_KEY]) {
-      return (window as any)[SUPABASE_CLIENT_KEY];
+    const windowClient = (window as any)[SUPABASE_CLIENT_KEY];
+    if (windowClient) {
+      return windowClient;
     }
   }
   
-  if (globalThis[SUPABASE_CLIENT_KEY]) {
-    return globalThis[SUPABASE_CLIENT_KEY];
+  // Check globalThis (works in both browser and Node.js contexts)
+  if (typeof globalThis !== 'undefined' && globalThis[SUPABASE_CLIENT_KEY]) {
+    const globalClient = globalThis[SUPABASE_CLIENT_KEY];
+    // Also store in window if available for consistency
+    if (typeof window !== 'undefined') {
+      (window as any)[SUPABASE_CLIENT_KEY] = globalClient;
+    }
+    return globalClient;
   }
 
-  // Create new instance only if it doesn't exist
+  // Check global (Node.js fallback)
+  if (typeof global !== 'undefined' && (global as any)[SUPABASE_CLIENT_KEY]) {
+    const globalClient = (global as any)[SUPABASE_CLIENT_KEY];
+    // Store in globalThis and window for consistency
+    globalThis[SUPABASE_CLIENT_KEY] = globalClient;
+    if (typeof window !== 'undefined') {
+      (window as any)[SUPABASE_CLIENT_KEY] = globalClient;
+    }
+    return globalClient;
+  }
+
+  // Create new instance only if it doesn't exist anywhere
   const clientInstance = createBrowserClient<Database>(
     // Pass Supabase URL and anonymous key from the environment to the client
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   );
 
-  // Store in both global and window to persist across hot reloads
+  // Store in all available global objects to ensure persistence
   globalThis[SUPABASE_CLIENT_KEY] = clientInstance;
   if (typeof window !== 'undefined') {
     (window as any)[SUPABASE_CLIENT_KEY] = clientInstance;
+  }
+  if (typeof global !== 'undefined') {
+    (global as any)[SUPABASE_CLIENT_KEY] = clientInstance;
   }
 
   // Add debug logging to track client creation
