@@ -319,7 +319,8 @@ export default function KaraokePlayerPanel({
 
     setBrowseLoading(true);
     try {
-      const supabase = (window as any).supabaseClient || createClient();
+      // Always use singleton client to prevent multiple instances
+      const supabase = createClient();
       const { data, error } = await supabase
         .from('karaoke_song_videos')
         .select('*')
@@ -966,14 +967,23 @@ export default function KaraokePlayerPanel({
       };
 
       try {
+        // Check if window is still open before sending
+        if (targetWindow.closed) {
+          throw new Error('Display window is closed');
+        }
+        
         console.log('📤 Sending to display window:', message, 'targetWindow:', targetWindow);
         targetWindow.postMessage(message, '*');
         console.log('✅ Message sent successfully to display window');
         await new Promise(resolve => setTimeout(resolve, 200));
         setIsCommandLoading(false);
         return; // Successfully sent to external window
-      } catch (error) {
-        console.error('❌ Error sending command to display window:', error);
+      } catch (error: any) {
+        // Silently handle postMessage errors (window might be closed or on different origin)
+        const errorMessage = error?.message || String(error);
+        if (process.env.NODE_ENV === 'development') {
+          console.warn('⚠️ Could not send command to display window:', errorMessage);
+        }
         setIsCommandLoading(false);
         // If sending fails, try to use embedded player as fallback
         const control = embeddedPlayerControl || (window as any).youtubePlayerControl;
@@ -983,7 +993,10 @@ export default function KaraokePlayerPanel({
           }
           // Continue to embedded player logic below
         } else {
-          throw new Error('Failed to send command and no embedded player available');
+          // Don't throw error, just log warning
+          if (process.env.NODE_ENV === 'development') {
+            console.warn('⚠️ Display window unavailable and no embedded player available');
+          }
         }
       }
     }
@@ -1185,10 +1198,12 @@ export default function KaraokePlayerPanel({
     if (windowIsOpen) {
       // Request status update first
       try {
-        targetWindow.postMessage({
-          type: 'VIDEO_CONTROL',
-          data: { action: 'getStatus' }
-        }, '*');
+        if (targetWindow && !targetWindow.closed) {
+          targetWindow.postMessage({
+            type: 'VIDEO_CONTROL',
+            data: { action: 'getStatus' }
+          }, '*');
+        }
         if (process.env.NODE_ENV === 'development') {
           console.log('📡 Requested status from display window');
         }
@@ -1515,7 +1530,7 @@ export default function KaraokePlayerPanel({
             targetWindow.postMessage({
               type: 'VIDEO_CONTROL',
               data: { action: 'changeVideo', ...videoData }
-            }, window.location.origin);
+            }, '*'); // Use '*' for same-origin windows
             console.log('✅ Sent video command to display window from auto-play');
             
             // Also send play command after a short delay to ensure video is loaded
@@ -1525,15 +1540,21 @@ export default function KaraokePlayerPanel({
                   targetWindow.postMessage({
                     type: 'VIDEO_CONTROL',
                     data: { action: 'play' }
-                  }, window.location.origin);
+                  }, '*');
                   console.log('✅ Sent play command to display window');
                 } catch (playError) {
-                  console.error('Error sending play command:', playError);
+                  // Silently handle postMessage errors
+                  if (process.env.NODE_ENV === 'development') {
+                    console.warn('Could not send play command:', playError);
+                  }
                 }
               }
             }, 800);
           } catch (error) {
-            console.error('Error sending video command:', error);
+            // Silently handle postMessage errors
+            if (process.env.NODE_ENV === 'development') {
+              console.warn('Could not send video command:', error);
+            }
             // Retry after a longer delay if window might still be loading
             setTimeout(() => {
               if (targetWindow && !targetWindow.closed) {
@@ -1541,18 +1562,28 @@ export default function KaraokePlayerPanel({
                   targetWindow.postMessage({
                     type: 'VIDEO_CONTROL',
                     data: { action: 'changeVideo', ...videoData }
-                  }, window.location.origin);
+                  }, '*');
                   // Also send play command
                   setTimeout(() => {
                     if (targetWindow && !targetWindow.closed) {
-                      targetWindow.postMessage({
-                        type: 'VIDEO_CONTROL',
-                        data: { action: 'play' }
-                      }, window.location.origin);
+                      try {
+                        targetWindow.postMessage({
+                          type: 'VIDEO_CONTROL',
+                          data: { action: 'play' }
+                        }, '*');
+                      } catch (playError) {
+                        // Silently handle errors
+                        if (process.env.NODE_ENV === 'development') {
+                          console.warn('Could not send play command on retry:', playError);
+                        }
+                      }
                     }
                   }, 800);
                 } catch (retryError) {
-                  console.error('Retry failed:', retryError);
+                  // Silently handle retry errors
+                  if (process.env.NODE_ENV === 'development') {
+                    console.warn('Retry failed:', retryError);
+                  }
                 }
               }
             }, 2000);
@@ -1737,15 +1768,17 @@ export default function KaraokePlayerPanel({
                 if (currentSignup && currentSignup.video_data) {
                   setTimeout(() => {
                     try {
-                      displayWindow.postMessage({
-                        type: 'VIDEO_CONTROL',
-                        data: {
-                          action: 'changeVideo',
-                          videoId: currentSignup.video_data.youtube_video_id,
-                          title: currentSignup.song_title,
-                          artist: currentSignup.song_artist || ''
-                        }
-                      }, '*');
+                      if (displayWindow && !displayWindow.closed) {
+                        displayWindow.postMessage({
+                          type: 'VIDEO_CONTROL',
+                          data: {
+                            action: 'changeVideo',
+                            videoId: currentSignup.video_data.youtube_video_id,
+                            title: currentSignup.song_title,
+                            artist: currentSignup.song_artist || ''
+                          }
+                        }, '*');
+                      }
                     } catch (e) {
                       console.warn('Cannot send message to display window:', e);
                     }

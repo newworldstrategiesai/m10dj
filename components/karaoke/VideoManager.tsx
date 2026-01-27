@@ -724,11 +724,12 @@ export default function VideoManager({
               title: songTitle,
               artist: songArtist || ''
             }
-          }, window.location.origin);
+          }, '*'); // Use '*' for same-origin windows
           console.log('✅ Sent video command to existing display window');
           targetWindow.focus();
         } catch (error) {
-          console.error('Error sending video command, opening new window:', error);
+          // Silently handle postMessage errors - window might be closed or on different origin
+          console.warn('Could not send message to display window, opening new window:', error);
           // If postMessage fails, open new window with URL
           const newWindow = window.open(
             displayUrl,

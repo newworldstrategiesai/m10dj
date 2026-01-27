@@ -84,13 +84,16 @@ const KaraokeLayout = forwardRef<KaraokeLayoutRef, KaraokeLayoutProps>(({
         if (newWindow && !newWindow.closed) {
           try {
             console.log('📡 Requesting initial status from display window');
-            // Use * as fallback since same-origin should work for our use case
+            // Use '*' for same-origin windows
             newWindow.postMessage({
               type: 'VIDEO_CONTROL',
               data: { action: 'getStatus' }
             }, '*');
           } catch (error) {
-            console.warn('❌ Error requesting initial status:', error);
+            // Silently handle postMessage errors (window might be closed or on different origin)
+            if (process.env.NODE_ENV === 'development') {
+              console.warn('Could not request initial status:', error);
+            }
           }
         }
       }, 2000); // Wait for video to load
@@ -98,10 +101,17 @@ const KaraokeLayout = forwardRef<KaraokeLayoutRef, KaraokeLayoutProps>(({
     changeDisplayVideo: (video: { videoId: string; title: string; artist: string }) => {
       // If window exists, send change command; otherwise just update local state
       if (displayWindow && !displayWindow.closed) {
-        displayWindow.postMessage({
-          type: 'VIDEO_CONTROL',
-          data: { action: 'changeVideo', ...video }
-        }, '*');
+        try {
+          displayWindow.postMessage({
+            type: 'VIDEO_CONTROL',
+            data: { action: 'changeVideo', ...video }
+          }, '*');
+        } catch (error) {
+          // Silently handle postMessage errors (window might be closed or on different origin)
+          if (process.env.NODE_ENV === 'development') {
+            console.warn('Could not send changeVideo command:', error);
+          }
+        }
       }
       setDisplayVideo({
         videoId: video.videoId,

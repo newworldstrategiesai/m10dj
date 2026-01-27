@@ -2364,15 +2364,20 @@ export default function KaraokeAdminPage() {
                                   // Send video change command to load the video
                                   setTimeout(() => {
                                     if (displayWindow && !displayWindow.closed && selectedSignup.video_data) {
-                                      displayWindow.postMessage({
-                                        type: 'VIDEO_CONTROL',
-                                        data: {
-                                          action: 'changeVideo',
-                                          videoId: selectedSignup.video_data.youtube_video_id,
-                                          title: selectedSignup.song_title,
-                                          artist: selectedSignup.song_artist || ''
-                                        }
-                                      }, window.location.origin);
+                                      try {
+                                        displayWindow.postMessage({
+                                          type: 'VIDEO_CONTROL',
+                                          data: {
+                                            action: 'changeVideo',
+                                            videoId: selectedSignup.video_data.youtube_video_id,
+                                            title: selectedSignup.song_title,
+                                            artist: selectedSignup.song_artist || ''
+                                          }
+                                        }, '*'); // Use '*' for same-origin windows
+                                      } catch (error) {
+                                        // Silently handle postMessage errors (window might be on different origin)
+                                        console.warn('Could not send message to display window:', error);
+                                      }
                                     }
                                   }, 1000);
                                 }
