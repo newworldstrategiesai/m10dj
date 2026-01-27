@@ -244,26 +244,54 @@ export default function VideoManager({
 
     setSearching(true);
     try {
-      const response = await fetch('/api/karaoke/search-videos', {
+      // Use new general search endpoint for general searches, karaoke endpoint for karaoke-specific
+      const endpoint = isGeneralSearch 
+        ? '/api/youtube/search-general'
+        : '/api/karaoke/search-videos';
+
+      const requestBody = isGeneralSearch
+        ? {
+            query: query.trim(),
+            maxResults: 50,
+            order: searchFilters?.sortBy === 'viewCount' ? 'viewCount' : searchFilters?.sortBy === 'date' ? 'date' : 'relevance',
+            filters: {
+              maxDuration: searchFilters?.maxDuration,
+              channel: searchFilters?.channel
+            }
+          }
+        : {
+            songTitle: query.trim(),
+            songArtist: songArtist?.trim(),
+            organizationId,
+            maxResults: 50,
+            filters: searchFilters
+          };
+
+      const response = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          songTitle: isGeneralSearch ? null : query.trim(),
-          songArtist: songArtist?.trim(),
-          organizationId,
-          maxResults: 50,
-          filters: searchFilters,
-          generalSearch: isGeneralSearch ? query.trim() : null
-        })
+        body: JSON.stringify(requestBody)
       });
 
       const data = await response.json();
 
-      if (response.ok && !data.error) {
+      if (response.ok && data.success !== false) {
+        // Always set results, even if empty or there are warnings
         setSearchResults(data.videos || []);
 
+        // Handle graceful degradation (API returns 200 with error message)
+        if (data.error && data.error.includes('temporarily unavailable')) {
+          // This is graceful degradation - show info toast, not error
+          toast({
+            title: 'Search Temporarily Unavailable',
+            description: 'Video search is temporarily unavailable. Please try again in a moment.',
+            variant: 'default'
+          });
+          return; // Don't throw error for graceful degradation
+        }
+
         // Show appropriate messages based on YouTube status
-        if (!data.youtubeAvailable) {
+        if (!data.youtubeAvailable && !isGeneralSearch) {
           toast({
             title: 'YouTube Search Unavailable',
             description: 'YouTube API key not configured. Video search results may be limited.',
@@ -294,16 +322,41 @@ export default function VideoManager({
             variant: 'default'
           });
         }
+        
+        // Only throw error if there's a critical error and no videos returned (non-graceful)
+        if (data.error && (!data.videos || data.videos.length === 0) && !data.error.includes('temporarily unavailable')) {
+          throw new Error(data.error || 'Search failed');
+        }
       } else {
-        throw new Error(data.error || 'Search failed');
+        // Non-200 status code or success: false
+        const errorData = data.error || data.message || 'Search failed';
+        
+        // Handle 503 from general search endpoint
+        if (response.status === 503 && data.error === 'YouTube search temporarily unavailable') {
+          toast({
+            title: 'Search Temporarily Unavailable',
+            description: 'Video search is temporarily unavailable. Please try again in a moment.',
+            variant: 'default'
+          });
+          setSearchResults([]);
+          return;
+        }
+        
+        throw new Error(errorData);
       }
-    } catch (error) {
-      console.error('Video search error:', error);
+    } catch (error: any) {
+      // Only log actual errors, not graceful degradation
+      if (!error?.message?.includes('temporarily unavailable')) {
+        console.error('Video search error:', error);
+      }
+      const errorMessage = error?.message || 'Unable to search for videos. Please try again.';
       toast({
         title: 'Search Failed',
-        description: 'Unable to search for videos. Please try again.',
+        description: errorMessage,
         variant: 'destructive'
       });
+      // Set empty results on error so UI doesn't show stale data
+      setSearchResults([]);
     } finally {
       setSearching(false);
     }

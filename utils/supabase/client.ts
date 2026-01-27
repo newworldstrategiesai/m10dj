@@ -13,6 +13,13 @@ declare global {
 // Uses singleton pattern to prevent multiple instances
 export const createClient = () => {
   // Check global first (persists across hot reloads)
+  // Also check window object for browser context
+  if (typeof window !== 'undefined') {
+    if ((window as any)[SUPABASE_CLIENT_KEY]) {
+      return (window as any)[SUPABASE_CLIENT_KEY];
+    }
+  }
+  
   if (globalThis[SUPABASE_CLIENT_KEY]) {
     return globalThis[SUPABASE_CLIENT_KEY];
   }
@@ -24,8 +31,11 @@ export const createClient = () => {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   );
 
-  // Store in global to persist across hot reloads
+  // Store in both global and window to persist across hot reloads
   globalThis[SUPABASE_CLIENT_KEY] = clientInstance;
+  if (typeof window !== 'undefined') {
+    (window as any)[SUPABASE_CLIENT_KEY] = clientInstance;
+  }
 
   // Add debug logging to track client creation
   if (process.env.NODE_ENV === 'development') {
