@@ -171,24 +171,52 @@ export default async function handler(req, res) {
           });
 
           try {
+            // Get current invoice data to verify amounts
+            const { data: currentInvoice, error: fetchError } = await supabase
+              .from('invoices')
+              .select('total_amount, amount_paid, invoice_number, invoice_status')
+              .eq('id', invoiceId)
+              .single();
+
+            if (fetchError) {
+              console.error('⚠️ Error fetching invoice before update:', fetchError);
+            }
+
+            // Calculate base payment amount (excluding gratuity)
+            // This should match the invoice total_amount for a full payment
+            const basePaymentAmount = paymentAmount - gratuityAmount;
+            
             // Update invoice status and payment info
             const invoiceUpdate = {
               invoice_status: 'Paid',
-              amount_paid: paymentAmount - gratuityAmount, // Base payment amount (excluding gratuity)
+              amount_paid: basePaymentAmount, // Base payment amount (excluding gratuity)
               balance_due: 0, // Invoice is fully paid
               paid_date: new Date().toISOString(),
               updated_at: new Date().toISOString()
             };
 
-            const { error: invoiceUpdateError } = await supabase
+            const { error: invoiceUpdateError, data: updatedInvoice } = await supabase
               .from('invoices')
               .update(invoiceUpdate)
-              .eq('id', invoiceId);
+              .eq('id', invoiceId)
+              .select();
 
             if (invoiceUpdateError) {
               console.error('⚠️ Error updating invoice status:', invoiceUpdateError);
+              console.error('Invoice update details:', {
+                invoiceId,
+                invoiceNumber: currentInvoice?.invoice_number,
+                attemptedUpdate: invoiceUpdate,
+                error: invoiceUpdateError
+              });
             } else {
-              console.log(`✅ Invoice ${invoiceId} marked as paid`);
+              console.log(`✅ Invoice ${invoiceId} marked as paid`, {
+                invoiceNumber: currentInvoice?.invoice_number || 'N/A',
+                previousStatus: currentInvoice?.invoice_status || 'N/A',
+                amountPaid: basePaymentAmount,
+                paymentAmount: paymentAmount,
+                gratuityAmount: gratuityAmount
+              });
             }
 
             // Build payment notes with gratuity info if applicable
@@ -209,17 +237,22 @@ export default async function handler(req, res) {
               .single();
 
             if (invoiceData?.contact_id) {
+              // Payment record total_amount should be base payment (excluding gratuity)
+              // The database trigger will sum payments and update invoice.amount_paid
+              // Gratuity is tracked separately in the gratuity field
               const paymentRecord = {
                 contact_id: invoiceData.contact_id,
                 invoice_id: invoiceId,
                 payment_name: 'Invoice Payment',
-                total_amount: paymentAmount, // Total including gratuity
-                gratuity: gratuityAmount,
+                total_amount: basePaymentAmount, // Base payment amount (excluding gratuity)
+                gratuity: gratuityAmount, // Gratuity tracked separately
                 payment_status: 'Paid',
                 payment_method: 'Credit Card',
                 transaction_date: new Date().toISOString().split('T')[0],
                 payment_notes: paymentNotes,
                 organization_id: invoiceData.organization_id || null,
+                stripe_session_id: session.id,
+                stripe_payment_intent: session.payment_intent || session.id,
                 created_at: new Date().toISOString(),
                 updated_at: new Date().toISOString()
               };
@@ -235,6 +268,34 @@ export default async function handler(req, res) {
                 }
               } else {
                 console.log('✅ Payment record created from invoice checkout for invoice:', invoiceId);
+                
+                // Verify invoice was updated correctly by trigger (non-blocking check)
+                setTimeout(async () => {
+                  try {
+                    const { data: verifiedInvoice } = await supabase
+                      .from('invoices')
+                      .select('invoice_status, amount_paid, balance_due')
+                      .eq('id', invoiceId)
+                      .single();
+                    
+                    if (verifiedInvoice) {
+                      if (verifiedInvoice.invoice_status === 'Paid' && verifiedInvoice.balance_due === 0) {
+                        console.log(`✅ Invoice ${invoiceId} verified as paid by trigger`);
+                      } else {
+                        console.warn(`⚠️ Invoice ${invoiceId} status mismatch after trigger:`, {
+                          status: verifiedInvoice.invoice_status,
+                          amountPaid: verifiedInvoice.amount_paid,
+                          balanceDue: verifiedInvoice.balance_due,
+                          expectedStatus: 'Paid',
+                          expectedBalanceDue: 0
+                        });
+                      }
+                    }
+                  } catch (err) {
+                    // Non-critical verification, just log
+                    console.log('Could not verify invoice status:', err.message);
+                  }
+                }, 1000); // Check after 1 second to allow trigger to complete
               }
             }
 
@@ -251,6 +312,63 @@ export default async function handler(req, res) {
                 }
               } catch (err) {
                 console.error('Error ensuring contract exists for invoice:', err);
+              }
+            })();
+
+            // Notify admin about invoice payment (non-blocking)
+            (async () => {
+              try {
+                const { sendAdminNotification } = await import('../../../utils/admin-notifications');
+                
+                // Get invoice and contact details for notification
+                const { data: invoiceDetails } = await supabase
+                  .from('invoices')
+                  .select(`
+                    id,
+                    invoice_number,
+                    total_amount,
+                    amount_paid,
+                    balance_due,
+                    contact_id,
+                    contacts (
+                      id,
+                      first_name,
+                      last_name,
+                      email_address
+                    )
+                  `)
+                  .eq('id', invoiceId)
+                  .single();
+                
+                if (invoiceDetails?.contacts) {
+                  const contact = invoiceDetails.contacts;
+                  const contactName = contact.first_name || contact.last_name 
+                    ? `${contact.first_name || ''} ${contact.last_name || ''}`.trim()
+                    : 'Client';
+                  
+                  // Calculate remaining balance
+                  const totalPaid = parseFloat(invoiceDetails.amount_paid || 0);
+                  const invoiceTotal = parseFloat(invoiceDetails.total_amount || 0);
+                  const remaining = Math.max(0, invoiceTotal - totalPaid);
+                  
+                  sendAdminNotification('payment_made', {
+                    invoiceId: invoiceId,
+                    invoiceNumber: invoiceDetails.invoice_number,
+                    contactId: invoiceDetails.contact_id,
+                    leadId: invoiceDetails.contact_id, // For compatibility with notification system
+                    leadName: contactName,
+                    amount: paymentAmount,
+                    totalPaid: totalPaid,
+                    remaining: remaining,
+                    paymentType: 'invoice'
+                  }).catch(err => console.error('Failed to notify admin about invoice payment:', err));
+                  
+                  console.log(`✅ Admin notification queued for invoice payment: ${invoiceId}`);
+                } else {
+                  console.warn(`⚠️ Could not fetch invoice/contact details for admin notification: ${invoiceId}`);
+                }
+              } catch (err) {
+                console.error('Error sending admin notification for invoice payment:', err);
               }
             })();
 

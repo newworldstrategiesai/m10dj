@@ -85,6 +85,8 @@ interface Payment {
   transaction_date: string; // Database column is transaction_date, not payment_date
   payment_date?: string; // Keep for backward compatibility
   amount: number;
+  total_amount?: number; // Payment total amount
+  gratuity?: number; // Gratuity amount
   payment_method: string;
   payment_status: string;
   transaction_id: string;
@@ -1647,6 +1649,9 @@ export default function InvoiceDetailPage() {
   const [emailValue, setEmailValue] = useState('');
   const [savingEmail, setSavingEmail] = useState(false);
   const [emailTracking, setEmailTracking] = useState<any[]>([]);
+  const [editingAmountPaid, setEditingAmountPaid] = useState(false);
+  const [amountPaidValue, setAmountPaidValue] = useState('');
+  const [savingAmounts, setSavingAmounts] = useState(false);
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -2137,10 +2142,23 @@ export default function InvoiceDetailPage() {
         body: JSON.stringify({ invoice_status: newStatus })
       });
 
-      const data = await response.json();
+      // Handle 404 - API route might not be deployed yet
+      if (response.status === 404) {
+        throw new Error('API route not found. Please ensure the update-status endpoint is deployed.');
+      }
+
+      // Check if response is JSON before parsing
+      const contentType = response.headers.get('content-type');
+      let data;
+      if (contentType && contentType.includes('application/json')) {
+        data = await response.json();
+      } else {
+        const text = await response.text();
+        throw new Error(`Unexpected response format: ${text.substring(0, 100)}`);
+      }
 
       if (!response.ok) {
-        throw new Error(data.error || 'Failed to update invoice status');
+        throw new Error(data.error || `Failed to update invoice status (${response.status})`);
       }
 
       // Update local state
@@ -2157,11 +2175,87 @@ export default function InvoiceDetailPage() {
       console.error('Error updating invoice status:', error);
       toast({
         title: 'Error',
-        description: error.message || 'Failed to update invoice status',
+        description: error.message || 'Failed to update invoice status. Please try again or contact support.',
         variant: 'destructive'
       });
     } finally {
       setUpdatingStatus(false);
+    }
+  };
+
+  const handleAmountUpdate = async () => {
+    if (!invoice || savingAmounts) return;
+
+    const amountPaid = parseFloat(amountPaidValue);
+    if (isNaN(amountPaid) || amountPaid < 0) {
+      toast({
+        title: 'Invalid Amount',
+        description: 'Please enter a valid amount',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    setSavingAmounts(true);
+    try {
+      // Calculate balance_due
+      const total = invoice.total_amount || 0;
+      const balanceDue = Math.max(0, total - amountPaid);
+
+      // Determine status based on amounts
+      let newStatus = invoice.invoice_status;
+      if (amountPaid >= total) {
+        newStatus = 'Paid';
+      } else if (amountPaid > 0) {
+        newStatus = 'Partial';
+      }
+
+      const response = await fetch(`/api/invoices/${invoice.id}/update-status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          invoice_status: newStatus,
+          amount_paid: amountPaid,
+          balance_due: balanceDue
+        })
+      });
+
+      // Handle 404 - API route might not be deployed yet
+      if (response.status === 404) {
+        throw new Error('API route not found. Please ensure the update-status endpoint is deployed.');
+      }
+
+      // Check if response is JSON before parsing
+      const contentType = response.headers.get('content-type');
+      let data;
+      if (contentType && contentType.includes('application/json')) {
+        data = await response.json();
+      } else {
+        const text = await response.text();
+        throw new Error(`Unexpected response format: ${text.substring(0, 100)}`);
+      }
+
+      if (!response.ok) {
+        throw new Error(data.error || `Failed to update invoice amounts (${response.status})`);
+      }
+
+      toast({
+        title: 'Amounts Updated',
+        description: `Invoice amounts updated successfully`,
+      });
+
+      // Refresh invoice details to get latest data
+      await fetchInvoiceDetails();
+      setEditingAmountPaid(false);
+    } catch (error: any) {
+      console.error('Error updating invoice amounts:', error);
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to update invoice amounts. Please try again or contact support.',
+        variant: 'destructive'
+      });
+    } finally {
+      setSavingAmounts(false);
     }
   };
 
@@ -2874,6 +2968,10 @@ export default function InvoiceDetailPage() {
                 const isFullyPaid = amountPaid >= total;
                 const isPartiallyPaid = amountPaid > 0 && amountPaid < total;
                 
+                // Calculate total gratuity from all payments
+                const totalGratuity = paymentData?.payments?.reduce((sum: number, p: any) => 
+                  sum + (parseFloat(p.gratuity?.toString() || '0') || 0), 0) || 0;
+                
                 console.log('💰 Totals calculation:', {
                   useQuoteTotals,
                   quoteSubtotal: quoteTotals.subtotal,
@@ -2911,10 +3009,76 @@ export default function InvoiceDetailPage() {
                     </div>
                     {hasPayment && (
                       <>
-                        <div className="flex justify-between text-green-600 font-semibold pt-2 border-t border-gray-300">
+                        <div className="flex justify-between items-center text-green-600 font-semibold pt-2 border-t border-gray-300">
                           <span>Amount Paid:</span>
-                          <span>{formatCurrency(amountPaid)}</span>
+                          {editingAmountPaid ? (
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="number"
+                                step="0.01"
+                                value={amountPaidValue}
+                                onChange={(e) => setAmountPaidValue(e.target.value)}
+                                className="w-24 h-8 rounded-md border border-gray-300 bg-white px-2 py-1 text-sm text-right font-semibold text-green-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-500"
+                                placeholder="0.00"
+                                disabled={savingAmounts}
+                                autoFocus
+                              />
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={handleAmountUpdate}
+                                disabled={savingAmounts}
+                                className="h-8 text-xs"
+                              >
+                                {savingAmounts ? 'Saving...' : 'Save'}
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => {
+                                  setEditingAmountPaid(false);
+                                  setAmountPaidValue('');
+                                }}
+                                disabled={savingAmounts}
+                                className="h-8 w-8 p-0"
+                              >
+                                <X className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-2">
+                              <span>{formatCurrency(amountPaid)}</span>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => {
+                                  setEditingAmountPaid(true);
+                                  setAmountPaidValue(amountPaid.toString());
+                                }}
+                                className="h-6 w-6 p-0"
+                                title="Edit amount paid (for retroactive corrections)"
+                              >
+                                <Edit className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          )}
                         </div>
+                        
+                        {/* Total Gratuity Summary */}
+                        {totalGratuity > 0 && (
+                          <div className="mt-3 p-3 bg-purple-50 border border-purple-200 rounded-lg">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2 text-purple-800">
+                                <span className="text-lg">💝</span>
+                                <span className="font-semibold text-sm">Total Gratuity:</span>
+                              </div>
+                              <span className="font-bold text-purple-900">{formatCurrency(totalGratuity)}</span>
+                            </div>
+                            <p className="text-xs text-purple-700 mt-1">
+                              Thank you for your generosity!
+                            </p>
+                          </div>
+                        )}
                         
                         {/* Payment History - Show individual payments (same as quote page) */}
                         {paymentData?.payments && paymentData.payments.length > 0 && (
@@ -2951,9 +3115,16 @@ export default function InvoiceDetailPage() {
                                         {payment.description && ` • ${payment.description}`}
                                       </p>
                                     </div>
-                                    <span className="text-sm font-semibold text-blue-900">
-                                      {formatCurrency(parseFloat(payment.total_amount) || 0)}
-                                    </span>
+                                    <div className="text-right">
+                                      <span className="text-sm font-semibold text-blue-900 block">
+                                        {formatCurrency(parseFloat(payment.total_amount) || 0)}
+                                      </span>
+                                      {payment.gratuity && parseFloat(payment.gratuity) > 0 && (
+                                        <span className="text-xs text-purple-600 mt-0.5 block">
+                                          + {formatCurrency(parseFloat(payment.gratuity))} gratuity
+                                        </span>
+                                      )}
+                                    </div>
                                   </div>
                                 );
                               })}
@@ -3179,19 +3350,40 @@ export default function InvoiceDetailPage() {
                         <CreditCard className="h-4 w-4 sm:h-5 sm:w-5 text-green-600" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="font-semibold text-gray-900 text-sm sm:text-base">{formatCurrency(payment.amount)}</p>
+                        <div className="flex items-center gap-2">
+                          <p className="font-semibold text-gray-900 text-sm sm:text-base">
+                            {formatCurrency(payment.total_amount || payment.amount || 0)}
+                          </p>
+                          {(payment as any).gratuity && parseFloat((payment as any).gratuity) > 0 && (
+                            <span className="text-xs text-purple-600 font-medium">
+                              (+ {formatCurrency(parseFloat((payment as any).gratuity))} gratuity)
+                            </span>
+                          )}
+                        </div>
                         <p className="text-xs sm:text-sm text-gray-600">
                           {(payment.transaction_date || payment.payment_date) ? formatDate(payment.transaction_date || payment.payment_date || '') : 'No date'} • {payment.payment_method || 'N/A'}
                         </p>
                         {payment.transaction_id && (
                           <p className="text-xs text-gray-500 mt-1 break-all">Transaction: {payment.transaction_id}</p>
                         )}
+                        {(payment as any).payment_notes && (
+                          <p className="text-xs text-gray-500 mt-1">{(payment as any).payment_notes}</p>
+                        )}
                       </div>
                     </div>
-                    <Badge className="bg-green-100 text-green-800 border-green-200 self-start sm:self-auto">
-                      <CheckCircle className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
-                      <span className="text-xs sm:text-sm">{payment.payment_status}</span>
-                    </Badge>
+                    <div className="flex flex-col items-end gap-2">
+                      <Badge className="bg-green-100 text-green-800 border-green-200 self-start sm:self-auto">
+                        <CheckCircle className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
+                        <span className="text-xs sm:text-sm">{payment.payment_status}</span>
+                      </Badge>
+                      {(payment as any).gratuity && parseFloat((payment as any).gratuity) > 0 && (
+                        <div className="text-right">
+                          <p className="text-xs text-purple-600 font-medium">
+                            Total: {formatCurrency((payment.total_amount || payment.amount || 0) + parseFloat((payment as any).gratuity))}
+                          </p>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>

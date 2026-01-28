@@ -21,7 +21,9 @@ import {
   Download,
   Mail,
   Eye,
-  RefreshCw
+  RefreshCw,
+  Shield,
+  X
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -88,6 +90,12 @@ export default function InvoicesDashboard() {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [dateFilter, setDateFilter] = useState('all');
+  
+  // Payment validation
+  const [showValidationModal, setShowValidationModal] = useState(false);
+  const [validationLoading, setValidationLoading] = useState(false);
+  const [paymentIssues, setPaymentIssues] = useState<any>(null);
+  const [fixingInvoice, setFixingInvoice] = useState<string | null>(null);
 
   useEffect(() => {
     checkUser();
@@ -648,6 +656,59 @@ export default function InvoicesDashboard() {
     });
   };
 
+  const validatePayments = async () => {
+    setValidationLoading(true);
+    try {
+      const response = await fetch('/api/admin/invoices/validate-payments');
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to validate payments');
+      }
+      
+      setPaymentIssues(data);
+      setShowValidationModal(true);
+    } catch (error: any) {
+      console.error('Error validating payments:', error);
+      alert(`Error: ${error.message}`);
+    } finally {
+      setValidationLoading(false);
+    }
+  };
+
+  const fixInvoice = async (invoiceId: string, action: 'revert_to_unpaid' | 'set_status', newStatus?: string) => {
+    setFixingInvoice(invoiceId);
+    try {
+      const response = await fetch('/api/admin/invoices/validate-payments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          invoice_id: invoiceId,
+          fix_action: action,
+          new_status: newStatus
+        })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to fix invoice');
+      }
+
+      // Refresh validation results
+      await validatePayments();
+      // Refresh invoices list
+      await fetchInvoices();
+      
+      alert(`Invoice fixed: ${data.message}`);
+    } catch (error: any) {
+      console.error('Error fixing invoice:', error);
+      alert(`Error: ${error.message}`);
+    } finally {
+      setFixingInvoice(null);
+    }
+  };
+
   return (
     <PageLoadingWrapper isLoading={loading} message="Loading invoices...">
       <div className="min-h-screen bg-gray-50 py-8">
@@ -659,6 +720,15 @@ export default function InvoicesDashboard() {
             <p className="text-gray-600">Manage all your invoices and billing</p>
           </div>
           <div className="flex items-center gap-2">
+            <Button
+              onClick={validatePayments}
+              variant="outline"
+              className="flex items-center gap-2"
+              disabled={validationLoading}
+            >
+              <Shield className={`h-4 w-4 ${validationLoading ? 'animate-pulse' : ''}`} />
+              {validationLoading ? 'Validating...' : 'Validate Payments'}
+            </Button>
             <Button
               onClick={() => {
                 console.log('🔄 Manually refreshing invoices...');
@@ -901,8 +971,162 @@ export default function InvoicesDashboard() {
             </div>
           )}
         </div>
+        </div>
       </div>
-    </div>
+
+      {/* Payment Validation Modal */}
+      {showValidationModal && paymentIssues && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+            <div className="p-6 border-b border-gray-200 flex items-center justify-between">
+              <div>
+                <h2 className="text-2xl font-bold text-gray-900">Payment Validation Results</h2>
+                <p className="text-sm text-gray-600 mt-1">
+                  Found {paymentIssues.summary.totalIssues} invoice(s) with payment issues
+                </p>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowValidationModal(false)}
+              >
+                <X className="h-5 w-5" />
+              </Button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-6">
+              {/* Paid Without Payments */}
+              {paymentIssues.issues.paidWithoutPayments.length > 0 && (
+                <div className="mb-6">
+                  <h3 className="text-lg font-semibold text-red-900 mb-3 flex items-center gap-2">
+                    <AlertCircle className="h-5 w-5" />
+                    Paid Invoices Without Payment Records ({paymentIssues.issues.paidWithoutPayments.length})
+                  </h3>
+                  <div className="space-y-3">
+                    {paymentIssues.issues.paidWithoutPayments.map((invoice: any) => (
+                      <div key={invoice.id} className="border border-red-200 rounded-lg p-4 bg-red-50">
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-2">
+                              <span className="font-semibold text-gray-900">{invoice.invoice_number}</span>
+                              {invoice.contact && (
+                                <span className="text-sm text-gray-600">
+                                  - {invoice.contact.name} ({invoice.contact.email})
+                                </span>
+                              )}
+                            </div>
+                            <div className="grid grid-cols-2 gap-4 text-sm">
+                              <div>
+                                <span className="text-gray-600">Total Amount:</span>
+                                <span className="font-semibold ml-2">{formatCurrency(invoice.total_amount)}</span>
+                              </div>
+                              <div>
+                                <span className="text-gray-600">Amount Paid:</span>
+                                <span className="font-semibold ml-2 text-green-600">{formatCurrency(invoice.amount_paid)}</span>
+                              </div>
+                            </div>
+                            {invoice.paid_date && (
+                              <p className="text-xs text-gray-500 mt-2">
+                                Marked as paid on: {formatDate(invoice.paid_date)}
+                              </p>
+                            )}
+                          </div>
+                          <div className="flex flex-col gap-2 ml-4">
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              onClick={() => fixInvoice(invoice.id, 'revert_to_unpaid')}
+                              disabled={fixingInvoice === invoice.id}
+                            >
+                              {fixingInvoice === invoice.id ? 'Fixing...' : 'Revert to Unpaid'}
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => router.push(`/admin/invoices/${invoice.id}`)}
+                            >
+                              View Invoice
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Mismatched Amounts */}
+              {paymentIssues.issues.mismatchedAmounts.length > 0 && (
+                <div>
+                  <h3 className="text-lg font-semibold text-yellow-900 mb-3 flex items-center gap-2">
+                    <AlertCircle className="h-5 w-5" />
+                    Invoices with Mismatched Amounts ({paymentIssues.issues.mismatchedAmounts.length})
+                  </h3>
+                  <div className="space-y-3">
+                    {paymentIssues.issues.mismatchedAmounts.map((invoice: any) => (
+                      <div key={invoice.id} className="border border-yellow-200 rounded-lg p-4 bg-yellow-50">
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-2">
+                              <span className="font-semibold text-gray-900">{invoice.invoice_number}</span>
+                              {invoice.contact && (
+                                <span className="text-sm text-gray-600">
+                                  - {invoice.contact.name} ({invoice.contact.email})
+                                </span>
+                              )}
+                            </div>
+                            <div className="grid grid-cols-2 gap-4 text-sm">
+                              <div>
+                                <span className="text-gray-600">Invoice Total:</span>
+                                <span className="font-semibold ml-2">{formatCurrency(invoice.total_amount)}</span>
+                              </div>
+                              <div>
+                                <span className="text-gray-600">Invoice Amount Paid:</span>
+                                <span className="font-semibold ml-2">{formatCurrency(invoice.amount_paid)}</span>
+                              </div>
+                              <div>
+                                <span className="text-gray-600">Payment Records Total:</span>
+                                <span className="font-semibold ml-2">{formatCurrency(invoice.payment_total)}</span>
+                              </div>
+                              <div>
+                                <span className="text-gray-600">Balance Due:</span>
+                                <span className="font-semibold ml-2 text-red-600">{formatCurrency(invoice.balance_due)}</span>
+                              </div>
+                            </div>
+                          </div>
+                          <div className="flex flex-col gap-2 ml-4">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => router.push(`/admin/invoices/${invoice.id}`)}
+                            >
+                              View Invoice
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {paymentIssues.summary.totalIssues === 0 && (
+                <div className="text-center py-12">
+                  <CheckCircle className="h-16 w-16 text-green-500 mx-auto mb-4" />
+                  <h3 className="text-xl font-semibold text-gray-900 mb-2">All Invoices Look Good!</h3>
+                  <p className="text-gray-600">No payment issues found.</p>
+                </div>
+              )}
+            </div>
+
+            <div className="p-6 border-t border-gray-200 flex justify-end">
+              <Button onClick={() => setShowValidationModal(false)}>
+                Close
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </PageLoadingWrapper>
   );
 }
