@@ -27,7 +27,8 @@ import {
   Eye,
   Send,
   TestTube,
-  CheckCircle2
+  CheckCircle2,
+  RefreshCw
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -68,6 +69,8 @@ interface InvoiceDetail {
   last_payment_date: string;
   days_overdue: number;
   notes: string;
+  stripe_session_id?: string | null;
+  stripe_payment_intent?: string | null;
 }
 
 interface InvoiceLineItem {
@@ -1645,6 +1648,7 @@ export default function InvoiceDetailPage() {
   const [leadData, setLeadData] = useState<any>(null);
   const [downloading, setDownloading] = useState(false);
   const [updatingStatus, setUpdatingStatus] = useState(false);
+  const [syncingStripe, setSyncingStripe] = useState(false);
   const [editingEmail, setEditingEmail] = useState(false);
   const [emailValue, setEmailValue] = useState('');
   const [savingEmail, setSavingEmail] = useState(false);
@@ -1711,12 +1715,6 @@ export default function InvoiceDetailPage() {
             line_items_type: typeof invoice.line_items,
             line_items_value: invoice.line_items
           });
-          
-          if (isMountedRef.current) {
-            setInvoice(invoice);
-            // Initialize email value for editing
-            setEmailValue(invoice.email_address || '');
-          }
 
           // Fetch email tracking data for this invoice
           if (invoice.contact_id) {
@@ -1747,15 +1745,18 @@ export default function InvoiceDetailPage() {
           // Note: invoice_line_items table doesn't exist - invoices use line_items JSONB column
           let finalLineItems: InvoiceLineItem[] = [];
           
-          // Fetch invoice directly to get line_items JSONB field
+          // Fetch invoice directly to get line_items JSONB field and Stripe IDs
           // Note: PostgREST requires at least one scalar column, so we select id along with line_items
           // Handle 406 errors gracefully (may occur with certain RLS policies or query formats)
+          let directInvoiceData: { line_items?: any; stripe_session_id?: string | null; stripe_payment_intent?: string | null } | null = null;
           try {
-            const { data: directInvoiceData, error: directInvoiceError } = await supabase
+            const { data: invoiceDirectData, error: directInvoiceError } = await supabase
               .from('invoices')
-              .select('id, line_items')
+              .select('id, line_items, stripe_session_id, stripe_payment_intent')
               .eq('id', id)
               .single();
+            
+            directInvoiceData = invoiceDirectData;
             
             // Type assertion for the invoice data
             const lineItemsData = directInvoiceData as { line_items?: any } | null;
@@ -1815,8 +1816,17 @@ export default function InvoiceDetailPage() {
             }
           }
       
+      // Merge Stripe fields from direct invoice query if available
+      if (directInvoiceData && invoice) {
+        invoice.stripe_session_id = directInvoiceData.stripe_session_id;
+        invoice.stripe_payment_intent = directInvoiceData.stripe_payment_intent;
+      }
+
       if (isMountedRef.current) {
         setLineItems(finalLineItems);
+        setInvoice(invoice);
+        // Initialize email value for editing
+        setEmailValue(invoice.email_address || '');
       }
       console.log('📦 Invoice line items (final):', {
         count: finalLineItems?.length || 0,
@@ -2259,6 +2269,45 @@ export default function InvoiceDetailPage() {
     }
   };
 
+  const handleSyncWithStripe = async () => {
+    if (!invoice || syncingStripe) return;
+
+    setSyncingStripe(true);
+    try {
+      // Call the sync validation endpoint for this specific invoice
+      const response = await fetch(`/api/cron/validate-invoice-stripe-sync?invoice_id=${invoice.id}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        throw new Error(errorData.error || `Sync failed: ${response.status}`);
+      }
+
+      const data = await response.json();
+
+      toast({
+        title: 'Sync Complete',
+        description: data.message || 'Invoice synced with Stripe successfully',
+      });
+
+      // Refresh invoice details to show updated status
+      await fetchInvoiceDetails();
+    } catch (error: any) {
+      console.error('Error syncing with Stripe:', error);
+      toast({
+        title: 'Sync Error',
+        description: error.message || 'Failed to sync with Stripe. Please try again.',
+        variant: 'destructive'
+      });
+    } finally {
+      setSyncingStripe(false);
+    }
+  };
+
   const handleDownloadPDF = async (e?: React.MouseEvent) => {
     if (e) {
       e.preventDefault();
@@ -2505,6 +2554,19 @@ export default function InvoiceDetailPage() {
               <p className="text-base sm:text-lg text-gray-600">{invoice.invoice_title}</p>
             </div>
             <div className="flex items-center gap-3 w-full sm:w-auto">
+              {(invoice.stripe_session_id || invoice.stripe_payment_intent) && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleSyncWithStripe}
+                  disabled={syncingStripe}
+                  className="flex items-center gap-2"
+                  title="Sync invoice status with Stripe payment"
+                >
+                  <RefreshCw className={`h-4 w-4 ${syncingStripe ? 'animate-spin' : ''}`} />
+                  <span className="hidden sm:inline">Sync Stripe</span>
+                </Button>
+              )}
               <Select
                 value={invoice.invoice_status}
                 onValueChange={handleStatusChange}
