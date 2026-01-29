@@ -145,6 +145,11 @@ export async function createInvoiceFromCrowdRequest(requestId, paymentIntent, su
       return { success: false, error: 'Crowd request not found' };
     }
 
+    // Song requests should NOT create invoices (they are tips/requests, not billable invoices)
+    if (crowdRequest.request_type === 'song_request') {
+      return { success: true, created: false, skip_reason: 'song_request' };
+    }
+
     // Check if invoice already exists for this request
     if (crowdRequest.invoice_id) {
       const { data: existingInvoice } = await supabase

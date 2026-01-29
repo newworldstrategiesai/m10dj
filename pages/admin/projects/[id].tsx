@@ -452,10 +452,21 @@ export default function ProjectDetailPage() {
                 </Button>
               </Link>
               <div className="min-w-0">
-                <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 truncate">
+                <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 dark:text-gray-100 truncate">
                   {id === 'new' ? 'New Project' : (project?.event_name || 'Project')}
                 </h1>
-                <p className="text-sm text-gray-600">Project Details</p>
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-gray-600 dark:text-gray-400">
+                  <span>Project Details</span>
+                  {invoices.length > 0 && (
+                    <Link
+                      href={`/admin/invoices/${invoices[0].id}`}
+                      className="font-medium text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 hover:underline inline-flex items-center gap-1"
+                    >
+                      <FileText className="h-4 w-4 flex-shrink-0" />
+                      Invoice {invoices[0].invoice_number}
+                    </Link>
+                  )}
+                </div>
               </div>
             </div>
             <div className="flex gap-2 sm:flex-shrink-0">

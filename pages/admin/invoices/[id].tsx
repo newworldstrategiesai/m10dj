@@ -71,6 +71,7 @@ interface InvoiceDetail {
   last_payment_date: string;
   days_overdue: number;
   notes: string;
+  internal_notes?: string | null;
   stripe_session_id?: string | null;
   stripe_payment_intent?: string | null;
 }
@@ -1669,6 +1670,7 @@ export default function InvoiceDetailPage() {
   }>>([]);
   const [stripeDetailsLoading, setStripeDetailsLoading] = useState(false);
   const [sendingReceipt, setSendingReceipt] = useState(false);
+  const [syncingTotals, setSyncingTotals] = useState(false);
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -1761,11 +1763,11 @@ export default function InvoiceDetailPage() {
           // Fetch invoice directly to get line_items JSONB field and Stripe IDs
           // Note: PostgREST requires at least one scalar column, so we select id along with line_items
           // Handle 406 errors gracefully (may occur with certain RLS policies or query formats)
-          let directInvoiceData: { line_items?: any; stripe_session_id?: string | null; stripe_payment_intent?: string | null } | null = null;
+          let directInvoiceData: { line_items?: any; stripe_session_id?: string | null; stripe_payment_intent?: string | null; internal_notes?: string | null } | null = null;
           try {
             const { data: invoiceDirectData, error: directInvoiceError } = await supabase
               .from('invoices')
-              .select('id, line_items, stripe_session_id, stripe_payment_intent')
+              .select('id, line_items, stripe_session_id, stripe_payment_intent, internal_notes')
               .eq('id', id)
               .single();
             
@@ -1829,10 +1831,11 @@ export default function InvoiceDetailPage() {
             }
           }
       
-      // Merge Stripe fields from direct invoice query if available
+      // Merge Stripe and internal_notes from direct invoice query if available
       if (directInvoiceData && invoice) {
         invoice.stripe_session_id = directInvoiceData.stripe_session_id;
         invoice.stripe_payment_intent = directInvoiceData.stripe_payment_intent;
+        invoice.internal_notes = directInvoiceData.internal_notes;
       }
 
       if (isMountedRef.current) {
@@ -1851,28 +1854,32 @@ export default function InvoiceDetailPage() {
       let paymentData = null;
       let hasPayment = false;
 
-      // First check if this invoice is associated with a quote_selection
+      // First check if this invoice is associated with a quote_selection (need lead_id for payments API)
       let quoteSelectionId: string | null = null;
+      let quoteLeadId: string | null = null;
       if (invoice && invoice.id) {
         try {
           const { data: quoteSelection } = await supabase
             .from('quote_selections')
-            .select('id')
+            .select('id, lead_id')
             .eq('invoice_id', invoice.id)
             .single();
 
           if (quoteSelection && (quoteSelection as any)?.id) {
             quoteSelectionId = (quoteSelection as any).id;
+            quoteLeadId = (quoteSelection as any).lead_id || null;
           }
         } catch (error) {
           console.log('No quote selection found for this invoice, skipping quote-related fetches');
         }
       }
 
-      if (invoice && quoteSelectionId) {
+      // Fetch payments: use lead_id (contact) so deposits/payments linked by contact show
+      if (invoice && (quoteLeadId || quoteSelectionId)) {
+        const paymentsApiId = quoteLeadId || quoteSelectionId;
         try {
           const timestamp = new Date().getTime();
-          const paymentsResponse = await fetch(`/api/quote/${quoteSelectionId}/payments?_t=${timestamp}`, {
+          const paymentsResponse = await fetch(`/api/quote/${paymentsApiId}/payments?_t=${timestamp}`, {
             cache: 'no-store'
           });
           
@@ -1931,7 +1938,32 @@ export default function InvoiceDetailPage() {
           }
         }
       }
-      
+
+      // If still no payments but invoice has contact_id, fetch by contact (e.g. deposit linked to contact)
+      if (invoice && (!paymentData || paymentsData.length === 0) && invoice.contact_id) {
+        try {
+          const { data: contactPayments, error: contactPayError } = await supabase
+            .from('payments')
+            .select('*')
+            .eq('contact_id', invoice.contact_id)
+            .in('payment_status', ['Paid', 'paid'])
+            .order('transaction_date', { ascending: false });
+
+          if (!contactPayError && contactPayments && contactPayments.length > 0) {
+            paymentsData = contactPayments.map((p: any) => ({
+              ...p,
+              payment_date: p.transaction_date || p.payment_date
+            }));
+            const totalPaid = paymentsData.reduce((sum: number, p: any) =>
+              sum + (parseFloat(p.total_amount?.toString() || p.amount?.toString() || '0') || 0), 0);
+            paymentData = { totalPaid, payments: paymentsData };
+            hasPayment = totalPaid > 0;
+          }
+        } catch (e) {
+          console.warn('Error fetching payments by contact:', e);
+        }
+      }
+
       setPayments(paymentsData);
       setPaymentData(paymentData);
       setHasPayment(hasPayment);
@@ -2383,6 +2415,36 @@ export default function InvoiceDetailPage() {
     }
   };
 
+  const handleSyncTotals = async () => {
+    if (!invoice || syncingTotals) return;
+    setSyncingTotals(true);
+    try {
+      const response = await fetch(`/api/admin/invoices/${invoice.id}/sync-totals`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(data.error || data.message || `Sync failed: ${response.status}`);
+      }
+      toast({
+        title: 'Totals synced',
+        description: data.payments_linked
+          ? `Linked ${data.payments_linked} payment(s). Amount paid: $${data.amount_paid?.toFixed(2) ?? '0.00'}`
+          : 'Invoice totals updated from payments.',
+      });
+      await fetchInvoiceDetails();
+    } catch (error: any) {
+      toast({
+        title: 'Sync failed',
+        description: error.message || 'Could not sync invoice with payments.',
+        variant: 'destructive',
+      });
+    } finally {
+      setSyncingTotals(false);
+    }
+  };
+
   const handleDownloadPDF = async (e?: React.MouseEvent) => {
     if (e) {
       e.preventDefault();
@@ -2629,6 +2691,19 @@ export default function InvoiceDetailPage() {
               <p className="text-base sm:text-lg text-gray-600">{invoice.invoice_title}</p>
             </div>
             <div className="flex items-center gap-3 w-full sm:w-auto">
+              {invoice.contact_id && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleSyncTotals}
+                  disabled={syncingTotals}
+                  className="flex items-center gap-2"
+                  title="Link contact payments to this invoice and recalc totals"
+                >
+                  <RefreshCw className={`h-4 w-4 ${syncingTotals ? 'animate-spin' : ''}`} />
+                  <span className="hidden sm:inline">Sync totals</span>
+                </Button>
+              )}
               {(invoice.stripe_session_id || invoice.stripe_payment_intent) && (
                 <Button
                   variant="outline"
@@ -2898,15 +2973,19 @@ export default function InvoiceDetailPage() {
                     <span className="font-medium text-gray-900">{invoice.venue_name}</span>
                   </div>
                 )}
-                {invoice.project_name && (
+                {(invoice.project_name || invoice.project_id) && (
                   <div className="flex justify-between">
-                    <span className="text-gray-600">Project:</span>
-                    <Link 
-                      href={`/admin/contacts/${invoice.contact_id}`}
-                      className="font-medium text-blue-600 hover:text-blue-800"
-                    >
-                      {invoice.project_name}
-                    </Link>
+                    <span className="text-gray-600 dark:text-gray-400">Project:</span>
+                    {invoice.project_id ? (
+                      <Link
+                        href={`/admin/projects/${invoice.project_id}`}
+                        className="font-medium text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 hover:underline"
+                      >
+                        {invoice.project_name || 'View project'}
+                      </Link>
+                    ) : (
+                      <span className="font-medium text-gray-900 dark:text-gray-100">{invoice.project_name}</span>
+                    )}
                   </div>
                 )}
               </div>
@@ -3595,9 +3674,18 @@ export default function InvoiceDetailPage() {
 
         {/* Notes */}
         {invoice.notes && (
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6 mb-4 sm:mb-6">
-            <h3 className="text-base sm:text-lg font-bold text-gray-900 mb-3">Notes</h3>
-            <p className="text-sm sm:text-base text-gray-700 whitespace-pre-wrap">{invoice.notes}</p>
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-4 sm:p-6 mb-4 sm:mb-6">
+            <h3 className="text-base sm:text-lg font-bold text-gray-900 dark:text-gray-100 mb-3">Notes</h3>
+            <p className="text-sm sm:text-base text-gray-700 dark:text-gray-300 whitespace-pre-wrap">{invoice.notes}</p>
+          </div>
+        )}
+
+        {/* Internal Notes (private, admin only) */}
+        {invoice.internal_notes && (
+          <div className="bg-amber-50 dark:bg-amber-950/30 rounded-xl shadow-sm border border-amber-200 dark:border-amber-800 p-4 sm:p-6 mb-4 sm:mb-6">
+            <h3 className="text-base sm:text-lg font-bold text-amber-900 dark:text-amber-200 mb-1">Internal Notes</h3>
+            <p className="text-xs text-amber-700 dark:text-amber-300 mb-3">Private — not visible to client</p>
+            <p className="text-sm sm:text-base text-gray-800 dark:text-gray-200 whitespace-pre-wrap font-mono">{invoice.internal_notes}</p>
           </div>
         )}
       </div>

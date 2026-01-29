@@ -86,10 +86,11 @@ export default function InvoicesDashboard() {
     pendingCount: 0
   });
   
-  // Filters
+  // Filters (hide cancelled by default so song-request invoices don't clutter the list)
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [dateFilter, setDateFilter] = useState('all');
+  const [hideCancelled, setHideCancelled] = useState(true);
   
   // Payment validation
   const [showValidationModal, setShowValidationModal] = useState(false);
@@ -109,7 +110,7 @@ export default function InvoicesDashboard() {
 
   useEffect(() => {
     applyFilters();
-  }, [invoices, searchQuery, statusFilter, dateFilter]);
+  }, [invoices, searchQuery, statusFilter, dateFilter, hideCancelled]);
 
   const checkUser = async () => {
     const { data: { user }, error } = await supabase.auth.getUser();
@@ -603,6 +604,11 @@ export default function InvoicesDashboard() {
         return invoiceDate >= startOfMonth && invoiceDate <= endOfMonth;
       });
     }
+
+    // Hide cancelled by default (e.g. song-request invoices)
+    if (hideCancelled) {
+      filtered = filtered.filter(inv => inv.invoice_status !== 'Cancelled');
+    }
     
     setFilteredInvoices(filtered);
   };
@@ -620,6 +626,8 @@ export default function InvoicesDashboard() {
         return 'bg-blue-100 text-blue-800 border-blue-200';
       case 'draft':
         return 'bg-gray-100 text-gray-800 border-gray-200';
+      case 'cancelled':
+        return 'bg-gray-100 text-gray-500 border-gray-200';
       default:
         return 'bg-gray-100 text-gray-600 border-gray-200';
     }
@@ -825,6 +833,7 @@ export default function InvoicesDashboard() {
                 <SelectItem value="Partial">Partial Payment</SelectItem>
                 <SelectItem value="Sent">Sent</SelectItem>
                 <SelectItem value="Draft">Draft</SelectItem>
+                <SelectItem value="Cancelled">Cancelled</SelectItem>
               </SelectContent>
             </Select>
 
@@ -842,24 +851,38 @@ export default function InvoicesDashboard() {
             </Select>
           </div>
 
-          <div className="mt-4 flex items-center justify-between">
-            <p className="text-sm text-gray-600">
-              Showing <span className="font-semibold">{filteredInvoices.length}</span> of{' '}
-              <span className="font-semibold">{invoices.length}</span> invoices
-            </p>
-            {(searchQuery || statusFilter !== 'all' || dateFilter !== 'all') && (
-              <Button
-                onClick={() => {
-                  setSearchQuery('');
-                  setStatusFilter('all');
-                  setDateFilter('all');
-                }}
-                variant="slim"
-                className="text-sm"
-              >
-                Clear Filters
-              </Button>
-            )}
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-4">
+              <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={hideCancelled}
+                  onChange={(e) => setHideCancelled(e.target.checked)}
+                  className="rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
+                />
+                <span>Hide cancelled</span>
+              </label>
+            </div>
+            <div className="flex items-center gap-2">
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                Showing <span className="font-semibold">{filteredInvoices.length}</span> of{' '}
+                <span className="font-semibold">{invoices.length}</span> invoices
+              </p>
+              {(searchQuery || statusFilter !== 'all' || dateFilter !== 'all' || !hideCancelled) && (
+                <Button
+                  onClick={() => {
+                    setSearchQuery('');
+                    setStatusFilter('all');
+                    setDateFilter('all');
+                    setHideCancelled(true);
+                  }}
+                  variant="slim"
+                  className="text-sm"
+                >
+                  Clear Filters
+                </Button>
+              )}
+            </div>
           </div>
         </div>
 
