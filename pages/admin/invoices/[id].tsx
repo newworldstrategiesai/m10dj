@@ -28,7 +28,9 @@ import {
   Send,
   TestTube,
   CheckCircle2,
-  RefreshCw
+  RefreshCw,
+  Receipt,
+  ExternalLink
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -1656,6 +1658,17 @@ export default function InvoiceDetailPage() {
   const [editingAmountPaid, setEditingAmountPaid] = useState(false);
   const [amountPaidValue, setAmountPaidValue] = useState('');
   const [savingAmounts, setSavingAmounts] = useState(false);
+  const [stripePaymentDetails, setStripePaymentDetails] = useState<Array<{
+    charge_id: string;
+    amount: number;
+    currency: string;
+    paid_at: string | null;
+    receipt_url: string | null;
+    payment_method: string;
+    status: string;
+  }>>([]);
+  const [stripeDetailsLoading, setStripeDetailsLoading] = useState(false);
+  const [sendingReceipt, setSendingReceipt] = useState(false);
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -2068,6 +2081,28 @@ export default function InvoiceDetailPage() {
     }
   }, [id, fetchInvoiceDetails, router]);
 
+  // Fetch Stripe payment details when invoice has payments or Stripe IDs
+  useEffect(() => {
+    if (!id || id === 'new' || !invoice?.id) return;
+    const hasStripeIds = invoice.stripe_session_id || invoice.stripe_payment_intent;
+    if (!hasPayment && !hasStripeIds) return;
+
+    let cancelled = false;
+    setStripeDetailsLoading(true);
+    fetch(`/api/invoices/${invoice.id}/stripe-payment-details`, { method: 'GET' })
+      .then((res) => (res.ok ? res.json() : Promise.reject(new Error('Failed to load Stripe details'))))
+      .then((data) => {
+        if (!cancelled && data?.payments) setStripePaymentDetails(data.payments);
+      })
+      .catch(() => {
+        if (!cancelled) setStripePaymentDetails([]);
+      })
+      .finally(() => {
+        if (!cancelled) setStripeDetailsLoading(false);
+      });
+    return () => { cancelled = true; };
+  }, [id, invoice?.id, invoice?.stripe_session_id, invoice?.stripe_payment_intent, hasPayment]);
+
   const getStatusColor = (status: string) => {
     switch (status?.toLowerCase()) {
       case 'paid':
@@ -2305,6 +2340,46 @@ export default function InvoiceDetailPage() {
       });
     } finally {
       setSyncingStripe(false);
+    }
+  };
+
+  const handleSendReceipt = async () => {
+    if (!invoice || sendingReceipt) return;
+
+    setSendingReceipt(true);
+    try {
+      const response = await fetch(`/api/invoices/${invoice.id}/send-receipt`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      });
+
+      const contentType = response.headers.get('content-type');
+      let data: { success?: boolean; error?: string; message?: string; sent_to?: string } = {};
+      if (contentType?.includes('application/json')) {
+        data = await response.json();
+      } else {
+        const text = await response.text();
+        throw new Error(text || `Request failed: ${response.status}`);
+      }
+
+      if (!response.ok) {
+        throw new Error(data.error || data.message || `Failed to send receipt (${response.status})`);
+      }
+
+      toast({
+        title: 'Receipt sent',
+        description: data.sent_to ? `Payment receipt sent to ${data.sent_to}` : 'Payment receipt sent successfully.',
+      });
+    } catch (error: any) {
+      console.error('Error sending receipt:', error);
+      toast({
+        title: 'Could not send receipt',
+        description: error.message || 'Failed to send receipt. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setSendingReceipt(false);
     }
   };
 
@@ -3142,10 +3217,32 @@ export default function InvoiceDetailPage() {
                           </div>
                         )}
                         
+                        {/* Send receipt button - when full or partial payment */}
+                        {hasPayment && (invoice.stripe_session_id || invoice.stripe_payment_intent || stripePaymentDetails.length > 0) && (
+                          <div className="mt-3 flex flex-wrap items-center gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={handleSendReceipt}
+                              disabled={sendingReceipt || !invoice.email_address}
+                              className="flex items-center gap-2"
+                              title={!invoice.email_address ? 'Add contact email to send receipt' : 'Send Stripe payment receipt to customer'}
+                            >
+                              <Receipt className={`h-4 w-4 ${sendingReceipt ? 'animate-pulse' : ''}`} />
+                              {sendingReceipt ? 'Sending...' : 'Send receipt'}
+                            </Button>
+                            {!invoice.email_address && (
+                              <span className="text-xs text-amber-700 dark:text-amber-400">
+                                Add contact email to send receipt
+                              </span>
+                            )}
+                          </div>
+                        )}
+
                         {/* Payment History - Show individual payments (same as quote page) */}
                         {paymentData?.payments && paymentData.payments.length > 0 && (
-                          <div className="mt-4 p-3 sm:p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                            <h4 className="font-semibold text-xs sm:text-sm text-blue-900 mb-2">
+                          <div className="mt-4 p-3 sm:p-4 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg">
+                            <h4 className="font-semibold text-xs sm:text-sm text-blue-900 dark:text-blue-100 mb-2">
                               Payment History
                             </h4>
                             <div className="space-y-2">
@@ -3193,9 +3290,52 @@ export default function InvoiceDetailPage() {
                             </div>
                           </div>
                         )}
+
+                        {/* Stripe payment details - time, amount, receipt link */}
+                        {(stripeDetailsLoading || stripePaymentDetails.length > 0) && (
+                          <div className="mt-4 p-3 sm:p-4 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg">
+                            <h4 className="font-semibold text-xs sm:text-sm text-slate-900 dark:text-slate-100 mb-2 flex items-center gap-2">
+                              <CreditCard className="h-4 w-4" />
+                              Stripe payment details
+                            </h4>
+                            {stripeDetailsLoading ? (
+                              <p className="text-sm text-slate-600 dark:text-slate-400">Loading...</p>
+                            ) : (
+                              <div className="space-y-3">
+                                {stripePaymentDetails.map((p: any, idx: number) => (
+                                  <div key={p.charge_id || idx} className="flex flex-wrap items-start justify-between gap-2 py-2 border-b border-slate-200 dark:border-slate-700 last:border-b-0">
+                                    <div className="space-y-1">
+                                      <p className="text-sm font-medium text-slate-900 dark:text-slate-100">
+                                        {formatCurrency(p.amount)}
+                                        {p.paid_at && (
+                                          <span className="text-slate-500 dark:text-slate-400 font-normal ml-2">
+                                            {formatDateTime(String(p.paid_at))}
+                                          </span>
+                                        )}
+                                      </p>
+                                      {p.payment_method && (
+                                        <p className="text-xs text-slate-600 dark:text-slate-400">{p.payment_method}</p>
+                                      )}
+                                    </div>
+                                    {p.receipt_url && (
+                                      <a
+                                        href={p.receipt_url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="inline-flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400 hover:underline"
+                                      >
+                                        View receipt <ExternalLink className="h-3 w-3" />
+                                      </a>
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        )}
                         
                         {isFullyPaid && (
-                          <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg">
+                          <div className="mt-3 p-3 bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-lg">
                             <div className="flex items-center gap-2 text-green-800">
                               <CheckCircle className="w-5 h-5 flex-shrink-0" />
                               <span className="font-semibold text-sm">Invoice Paid in Full</span>
