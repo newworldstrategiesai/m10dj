@@ -74,6 +74,7 @@ interface InvoiceDetail {
   internal_notes?: string | null;
   stripe_session_id?: string | null;
   stripe_payment_intent?: string | null;
+  admin_pricing_adjusted_at?: string | null;
 }
 
 interface InvoiceLineItem {
@@ -1671,6 +1672,7 @@ export default function InvoiceDetailPage() {
   const [stripeDetailsLoading, setStripeDetailsLoading] = useState(false);
   const [sendingReceipt, setSendingReceipt] = useState(false);
   const [syncingTotals, setSyncingTotals] = useState(false);
+  const [syncingFromQuote, setSyncingFromQuote] = useState(false);
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -1763,11 +1765,11 @@ export default function InvoiceDetailPage() {
           // Fetch invoice directly to get line_items JSONB field and Stripe IDs
           // Note: PostgREST requires at least one scalar column, so we select id along with line_items
           // Handle 406 errors gracefully (may occur with certain RLS policies or query formats)
-          let directInvoiceData: { line_items?: any; stripe_session_id?: string | null; stripe_payment_intent?: string | null; internal_notes?: string | null } | null = null;
+          let directInvoiceData: { line_items?: any; stripe_session_id?: string | null; stripe_payment_intent?: string | null; internal_notes?: string | null; admin_pricing_adjusted_at?: string | null } | null = null;
           try {
             const { data: invoiceDirectData, error: directInvoiceError } = await supabase
               .from('invoices')
-              .select('id, line_items, stripe_session_id, stripe_payment_intent, internal_notes')
+              .select('id, line_items, stripe_session_id, stripe_payment_intent, internal_notes, admin_pricing_adjusted_at')
               .eq('id', id)
               .single();
             
@@ -1836,6 +1838,7 @@ export default function InvoiceDetailPage() {
         invoice.stripe_session_id = directInvoiceData.stripe_session_id;
         invoice.stripe_payment_intent = directInvoiceData.stripe_payment_intent;
         invoice.internal_notes = directInvoiceData.internal_notes;
+        invoice.admin_pricing_adjusted_at = directInvoiceData.admin_pricing_adjusted_at;
       }
 
       if (isMountedRef.current) {
@@ -1878,7 +1881,7 @@ export default function InvoiceDetailPage() {
         }
       }
 
-      // First check if this invoice is associated with a quote_selection (need lead_id for payments API)
+      // Quote API expects lead_id (contact_id), not quote_selections.id. Get lead_id for API and for line-item fallback.
       let quoteSelectionId: string | null = null;
       let quoteLeadId: string | null = null;
       if (invoice && invoice.id) {
@@ -1887,14 +1890,18 @@ export default function InvoiceDetailPage() {
             .from('quote_selections')
             .select('id, lead_id')
             .eq('invoice_id', invoice.id)
-            .single();
+            .maybeSingle();
 
           if (quoteSelection && (quoteSelection as any)?.id) {
             quoteSelectionId = (quoteSelection as any).id;
             quoteLeadId = (quoteSelection as any).lead_id || null;
           }
         } catch (error) {
-          console.log('No quote selection found for this invoice, skipping quote-related fetches');
+          console.log('No quote selection found by invoice_id');
+        }
+        // Fallback: quote API uses lead_id; contact_id is the lead for this invoice
+        if (!quoteLeadId && invoice.contact_id) {
+          quoteLeadId = invoice.contact_id;
         }
       }
 
@@ -1995,10 +2002,10 @@ export default function InvoiceDetailPage() {
 
       // Fetch lead/contact data using the same API endpoint as the quote page
       // This ensures we get the accurate event date (same as quote page)
-      if (invoice && quoteSelectionId) {
+      if (invoice && quoteLeadId) {
         try {
           const timestamp = new Date().getTime();
-          const leadResponse = await fetch(`/api/leads/get-lead?id=${quoteSelectionId}&_t=${timestamp}`, {
+          const leadResponse = await fetch(`/api/leads/get-lead?id=${quoteLeadId}&_t=${timestamp}`, {
             cache: 'no-store'
           });
           
@@ -2020,11 +2027,11 @@ export default function InvoiceDetailPage() {
       // This ensures consistency and handles all the same parsing logic
       let quoteData = null;
 
-      if (invoice && quoteSelectionId) {
-        console.log('🔍 Fetching quote data for quote_selection_id:', quoteSelectionId);
+      if (invoice && quoteLeadId) {
+        console.log('🔍 Fetching quote data for lead_id:', quoteLeadId);
         try {
           const timestamp = new Date().getTime();
-          const quoteResponse = await fetch(`/api/quote/${quoteSelectionId}?_t=${timestamp}`, { 
+          const quoteResponse = await fetch(`/api/quote/${quoteLeadId}?_t=${timestamp}`, { 
             cache: 'no-store' 
           });
           
@@ -2469,6 +2476,35 @@ export default function InvoiceDetailPage() {
     }
   };
 
+  const handleSyncFromQuote = async () => {
+    if (!invoice || syncingFromQuote) return;
+    setSyncingFromQuote(true);
+    try {
+      const response = await fetch(`/api/invoices/${invoice.id}/update-status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ clear_pricing_lock: true }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(data.error || data.details || `Sync failed: ${response.status}`);
+      }
+      toast({
+        title: 'Pricing unlocked',
+        description: 'Invoice will sync from quote. Refreshing…',
+      });
+      await fetchInvoiceDetails();
+    } catch (error: any) {
+      toast({
+        title: 'Sync from quote failed',
+        description: error.message || 'Could not clear custom pricing lock.',
+        variant: 'destructive',
+      });
+    } finally {
+      setSyncingFromQuote(false);
+    }
+  };
+
   const handleDownloadPDF = async (e?: React.MouseEvent) => {
     if (e) {
       e.preventDefault();
@@ -2714,7 +2750,12 @@ export default function InvoiceDetailPage() {
               <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">{invoice.invoice_number}</h1>
               <p className="text-base sm:text-lg text-gray-600">{invoice.invoice_title}</p>
             </div>
-            <div className="flex items-center gap-3 w-full sm:w-auto">
+            <div className="flex items-center gap-3 w-full sm:w-auto flex-wrap">
+              {(invoice as any).admin_pricing_adjusted_at && (
+                <Badge variant="secondary" className="bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-200 border border-amber-300 dark:border-amber-700">
+                  Custom pricing
+                </Badge>
+              )}
               {invoice.contact_id && (
                 <Button
                   variant="outline"
@@ -2726,6 +2767,19 @@ export default function InvoiceDetailPage() {
                 >
                   <RefreshCw className={`h-4 w-4 ${syncingTotals ? 'animate-spin' : ''}`} />
                   <span className="hidden sm:inline">Sync totals</span>
+                </Button>
+              )}
+              {(invoice as any).admin_pricing_adjusted_at && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleSyncFromQuote}
+                  disabled={syncingFromQuote}
+                  className="flex items-center gap-2"
+                  title="Clear custom pricing lock and overwrite invoice with quote totals"
+                >
+                  <RefreshCw className={`h-4 w-4 ${syncingFromQuote ? 'animate-spin' : ''}`} />
+                  <span className="hidden sm:inline">Sync from quote</span>
                 </Button>
               )}
               {(invoice.stripe_session_id || invoice.stripe_payment_intent) && (

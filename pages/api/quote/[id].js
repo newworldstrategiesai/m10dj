@@ -32,8 +32,9 @@ export default async function handler(req, res) {
     if (error) {
       // When no quote_selection exists, fallback: find invoice by contact_id so /quote/[id]/invoice can still load
       if (error.code === 'PGRST116') {
-        console.log('⚠️ No quote found for lead_id:', id, '- checking for invoice by contact_id');
-        const { data: invoiceByContact, error: invError } = await supabaseAdmin
+        console.log('⚠️ No quote found for lead_id:', id, '- checking for invoice by contact_id or payment');
+        let invoiceByContact = null;
+        const { data: invByContact, error: invError } = await supabaseAdmin
           .from('invoices')
           .select('id, invoice_number, total_amount, invoice_title, contact_id')
           .eq('contact_id', id)
@@ -41,7 +42,27 @@ export default async function handler(req, res) {
           .order('created_at', { ascending: false })
           .limit(1)
           .maybeSingle();
-        if (!invError && invoiceByContact) {
+        if (!invError && invByContact) invoiceByContact = invByContact;
+        if (!invoiceByContact) {
+          const { data: paymentRow } = await supabaseAdmin
+            .from('payments')
+            .select('invoice_id')
+            .eq('contact_id', id)
+            .not('invoice_id', 'is', null)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+          if (paymentRow?.invoice_id) {
+            const { data: invByPayment } = await supabaseAdmin
+              .from('invoices')
+              .select('id, invoice_number, total_amount, invoice_title, contact_id')
+              .eq('id', paymentRow.invoice_id)
+              .neq('invoice_status', 'Cancelled')
+              .maybeSingle();
+            if (invByPayment) invoiceByContact = invByPayment;
+          }
+        }
+        if (invoiceByContact) {
           const syntheticQuote = {
             id: null,
             lead_id: id,

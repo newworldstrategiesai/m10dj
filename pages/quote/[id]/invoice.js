@@ -325,8 +325,30 @@ export default function InvoicePage() {
           setPaymentData(null);
         }
       } else {
-        // Quote not found, but we can still show invoice based on lead data
-        console.log('Quote not found, will display invoice from lead data');
+        // Quote API returned 404 - try loading invoice directly (invoice-data finds by contact_id or payment)
+        console.log('Quote not found, trying invoice-data for lead_id:', id);
+        try {
+          const invoiceDataResponse = await fetch(`/api/quote/${id}/invoice-data?_t=${timestamp}`, { cache: 'no-store' });
+          if (invoiceDataResponse.ok) {
+            const invoice = await invoiceDataResponse.json();
+            setInvoiceData(invoice);
+            setQuoteData({
+              id: null,
+              lead_id: id,
+              invoice_id: invoice.id,
+              invoice_number: invoice.invoice_number,
+              package_id: 'package_2',
+              package_name: invoice.invoice_title || 'Package',
+              package_price: parseFloat(invoice.total_amount) || 0,
+              total_price: parseFloat(invoice.total_amount) || 0,
+              addons: [],
+              status: 'invoiced',
+              payment_status: 'partial',
+            });
+          }
+        } catch (e) {
+          console.warn('Could not load invoice via invoice-data:', e);
+        }
       }
     } catch (error) {
       console.error('Error fetching data:', error);

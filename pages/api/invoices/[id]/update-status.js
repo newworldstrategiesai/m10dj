@@ -22,7 +22,15 @@ export default async function handler(req, res) {
   }
 
   const { id: invoiceId } = req.query;
-  const { invoice_status, amount_paid, balance_due, paid_date } = req.body;
+  const {
+    invoice_status,
+    amount_paid,
+    balance_due,
+    paid_date,
+    total_amount,
+    line_items,
+    clear_pricing_lock,
+  } = req.body;
 
   if (!invoiceId) {
     return res.status(400).json({ error: 'Invoice ID is required' });
@@ -46,6 +54,11 @@ export default async function handler(req, res) {
     const updateData = {
       updated_at: new Date().toISOString()
     };
+
+    // Clear admin pricing lock when requested (allows quote sync to overwrite again)
+    if (clear_pricing_lock === true) {
+      updateData.admin_pricing_adjusted_at = null;
+    }
 
     // Update invoice status if provided
     if (invoice_status !== undefined) {
@@ -112,6 +125,25 @@ export default async function handler(req, res) {
       updateData.paid_date = paid_date;
     }
 
+    // Allow manual override of total_amount and line_items (negotiated/custom pricing)
+    if (total_amount !== undefined && clear_pricing_lock !== true) {
+      const parsed = parseFloat(total_amount);
+      if (!isNaN(parsed) && parsed >= 0) {
+        updateData.total_amount = parsed;
+        updateData.subtotal = parsed;
+        updateData.admin_pricing_adjusted_at = new Date().toISOString();
+      }
+    }
+    if (line_items !== undefined && Array.isArray(line_items) && clear_pricing_lock !== true) {
+      updateData.line_items = line_items;
+      updateData.admin_pricing_adjusted_at = updateData.admin_pricing_adjusted_at || new Date().toISOString();
+    }
+
+    // When admin changes amount_paid (manual correction), mark pricing as adjusted so quote sync won't overwrite
+    if (amount_paid !== undefined && clear_pricing_lock !== true) {
+      updateData.admin_pricing_adjusted_at = updateData.admin_pricing_adjusted_at || new Date().toISOString();
+    }
+
     // Update invoice
     const { data: updatedInvoice, error: updateError } = await supabaseAdmin
       .from('invoices')
@@ -122,16 +154,52 @@ export default async function handler(req, res) {
 
     if (updateError) {
       console.error('Error updating invoice status:', updateError);
-      return res.status(500).json({ 
+      return res.status(500).json({
         error: 'Failed to update invoice status',
         details: updateError.message
       });
     }
 
+    // When admin set custom pricing, keep quote in sync so client pages show correct total
+    if (updateData.admin_pricing_adjusted_at && (total_amount !== undefined || amount_paid !== undefined)) {
+      const { data: quoteForSync } = await supabaseAdmin
+        .from('quote_selections')
+        .select('id')
+        .eq('invoice_id', invoiceId)
+        .maybeSingle();
+      if (quoteForSync && updatedInvoice?.total_amount != null) {
+        await supabaseAdmin
+          .from('quote_selections')
+          .update({
+            updated_at: new Date().toISOString(),
+            is_custom_price: true,
+            total_price: parseFloat(updatedInvoice.total_amount),
+          })
+          .eq('id', quoteForSync.id);
+      }
+    }
+
+    // When clearing pricing lock, trigger quote->invoice sync by touching the quote row
+    if (clear_pricing_lock === true) {
+      const { data: quoteRow } = await supabaseAdmin
+        .from('quote_selections')
+        .select('id')
+        .eq('invoice_id', invoiceId)
+        .maybeSingle();
+      if (quoteRow) {
+        await supabaseAdmin
+          .from('quote_selections')
+          .update({ updated_at: new Date().toISOString() })
+          .eq('id', quoteRow.id);
+      }
+    }
+
     res.status(200).json({
       success: true,
       invoice: updatedInvoice,
-      message: `Invoice status updated to ${invoice_status}`
+      message: updateData.admin_pricing_adjusted_at
+        ? 'Invoice updated; custom pricing is locked from quote overwrites.'
+        : `Invoice status updated to ${invoice_status || 'saved'}`
     });
   } catch (error) {
     console.error('Error updating invoice status:', error);

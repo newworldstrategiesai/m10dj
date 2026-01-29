@@ -64,6 +64,7 @@ interface Invoice {
   amount_paid: number;
   balance_due: number;
   contact_id: string;
+  internal_notes?: string | null;
 }
 
 export default function ProjectDetailPage() {
@@ -94,33 +95,30 @@ export default function ProjectDetailPage() {
       
       if (invoiceError) {
         console.error('Error fetching invoices:', invoiceError);
-        // Fallback: try querying invoices table directly
-        const { data: directInvoices, error: directError } = await supabase
-          .from('invoices')
-          .select('*')
-          .eq('project_id', id)
-          .order('invoice_date', { ascending: false });
-        
-        if (!directError && directInvoices) {
-          // Transform to match Invoice interface
-          const transformed = (directInvoices as any[]).map(inv => ({
-            id: inv.id,
-            invoice_number: inv.invoice_number,
-            invoice_status: inv.invoice_status,
-            invoice_title: inv.invoice_title || '',
-            invoice_date: inv.invoice_date,
-            due_date: inv.due_date,
-            total_amount: parseFloat(inv.total_amount) || 0,
-            amount_paid: parseFloat(inv.amount_paid) || 0,
-            balance_due: parseFloat(inv.balance_due) || 0,
-            contact_id: inv.contact_id
-          }));
-          setInvoices(transformed);
-        } else {
-          setInvoices([]);
-        }
-      } else {
-        // Transform invoice_summary data to Invoice interface
+      }
+      // Prefer invoices table so we get internal_notes; fallback to invoice_summary
+      const { data: directInvoices, error: directError } = await supabase
+        .from('invoices')
+        .select('id, invoice_number, invoice_status, invoice_title, invoice_date, due_date, total_amount, amount_paid, balance_due, contact_id, internal_notes')
+        .eq('project_id', id)
+        .order('invoice_date', { ascending: false });
+
+      if (!directError && directInvoices && directInvoices.length > 0) {
+        const transformed = (directInvoices as any[]).map(inv => ({
+          id: inv.id,
+          invoice_number: inv.invoice_number,
+          invoice_status: inv.invoice_status,
+          invoice_title: inv.invoice_title || '',
+          invoice_date: inv.invoice_date,
+          due_date: inv.due_date,
+          total_amount: parseFloat(inv.total_amount) || 0,
+          amount_paid: parseFloat(inv.amount_paid) || 0,
+          balance_due: parseFloat(inv.balance_due) || 0,
+          contact_id: inv.contact_id,
+          internal_notes: inv.internal_notes ?? null
+        }));
+        setInvoices(transformed);
+      } else if (!invoiceError && invoiceData && (invoiceData as any[]).length > 0) {
         const transformed = ((invoiceData || []) as any[]).map(inv => ({
           id: inv.id,
           invoice_number: inv.invoice_number,
@@ -131,9 +129,12 @@ export default function ProjectDetailPage() {
           total_amount: parseFloat(inv.total_amount) || 0,
           amount_paid: parseFloat(inv.amount_paid) || 0,
           balance_due: parseFloat(inv.balance_due) || 0,
-          contact_id: inv.contact_id
+          contact_id: inv.contact_id,
+          internal_notes: null as string | null
         }));
         setInvoices(transformed);
+      } else {
+        setInvoices([]);
       }
     } catch (error) {
       console.error('Error fetching invoices:', error);
@@ -764,13 +765,14 @@ export default function ProjectDetailPage() {
                     return (
                       <div
                         key={invoice.id}
-                        className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+                        className="flex flex-col gap-3 p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
                       >
+                        <div className="flex items-center justify-between">
                         <div className="flex-1">
                           <div className="flex items-center gap-3 mb-2">
                             <Link
                               href={`/admin/invoices/${invoice.id}`}
-                              className="font-semibold text-blue-600 hover:text-blue-800 hover:underline"
+                              className="font-semibold text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 hover:underline"
                             >
                               {invoice.invoice_number}
                             </Link>
@@ -798,6 +800,13 @@ export default function ProjectDetailPage() {
                             <ExternalLink className="h-5 w-5" />
                           </Link>
                         </div>
+                        </div>
+                        {invoice.internal_notes && (
+                          <div className="bg-amber-50 dark:bg-amber-950/30 rounded-lg border border-amber-200 dark:border-amber-800 p-3 text-sm">
+                            <p className="font-semibold text-amber-900 dark:text-amber-200 mb-1">Internal notes (invoice)</p>
+                            <p className="text-gray-800 dark:text-gray-200 whitespace-pre-wrap font-mono text-xs">{invoice.internal_notes}</p>
+                          </div>
+                        )}
                       </div>
                     );
                   })}

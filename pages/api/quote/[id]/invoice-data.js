@@ -44,6 +44,18 @@ export default async function handler(req, res) {
         .maybeSingle();
       invoiceId = invByContact?.id;
     }
+    if (!invoiceId) {
+      // 3) Fallback: invoice from payment (payment.contact_id = id, payment.invoice_id set)
+      const { data: paymentRow } = await supabaseAdmin
+        .from('payments')
+        .select('invoice_id')
+        .eq('contact_id', id)
+        .not('invoice_id', 'is', null)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (paymentRow?.invoice_id) invoiceId = paymentRow.invoice_id;
+    }
 
     if (!invoiceId) {
       return res.status(404).json({ error: 'Invoice not found' });
