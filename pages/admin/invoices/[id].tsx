@@ -1697,28 +1697,75 @@ export default function InvoiceDetailPage() {
             throw new Error('Invalid invoice ID format');
           }
           
-          // Fetch invoice summary
-          const { data: invoiceData, error: invoiceError } = await supabase
+          // Fetch invoice summary (view with contact/project/payment stats)
+          let invoiceData: any = null;
+          let invoiceError: any = null;
+          const { data: summaryData, error: summaryError } = await supabase
             .from('invoice_summary')
             .select('*')
             .eq('id', id)
             .single();
-          
+          invoiceData = summaryData;
+          invoiceError = summaryError;
+
+          // Fallback: if view returns no row (RLS, missing join, etc.), load from invoices + contact
+          if (invoiceError?.code === 'PGRST116' || !invoiceData) {
+            const { data: directData, error: directError } = await supabase
+              .from('invoices')
+              .select('id, invoice_number, invoice_status, invoice_title, invoice_date, due_date, sent_date, paid_date, total_amount, amount_paid, balance_due, contact_id, project_id, organization_id')
+              .eq('id', id)
+              .single();
+            if (!directError && directData) {
+              let contactData: any = null;
+              if (directData.contact_id) {
+                const { data: c } = await supabase
+                  .from('contacts')
+                  .select('first_name, last_name, email_address, phone, event_type, event_date')
+                  .eq('id', directData.contact_id)
+                  .single();
+                contactData = c;
+              }
+              let projectName: string | null = null;
+              if (directData.project_id) {
+                const { data: proj } = await supabase
+                  .from('events')
+                  .select('event_name')
+                  .eq('id', directData.project_id)
+                  .single();
+                projectName = proj?.event_name ?? null;
+              }
+              invoiceData = {
+                ...directData,
+                first_name: contactData?.first_name ?? null,
+                last_name: contactData?.last_name ?? null,
+                email_address: contactData?.email_address ?? null,
+                phone: contactData?.phone ?? null,
+                event_type: contactData?.event_type ?? null,
+                event_date: contactData?.event_date ?? null,
+                project_name: projectName,
+                payment_count: 0,
+                last_payment_date: null,
+                status_color: directData.invoice_status === 'Paid' ? 'success' : directData.invoice_status === 'Overdue' ? 'danger' : directData.invoice_status === 'Partial' ? 'warning' : 'default',
+                days_overdue: 0
+              };
+              invoiceError = null;
+            }
+          }
+
           if (!isMountedRef.current) return;
 
           if (invoiceError) {
-            // Handle AbortError gracefully
             if (invoiceError.name === 'AbortError' || invoiceError.message?.includes('aborted')) {
               return;
             }
             console.error('Error fetching invoice:', invoiceError);
             throw invoiceError;
           }
-          
+
           if (!invoiceData) {
             throw new Error('Invoice not found');
           }
-          
+
           if (!isMountedRef.current) return;
 
           const invoice = invoiceData as any;

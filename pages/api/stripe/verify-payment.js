@@ -35,6 +35,9 @@ export default async function handler(req, res) {
 
     const metadata = session?.metadata || paymentIntent?.metadata || {};
     const invoiceId = metadata.invoice_id;
+    const gratuityAmount = metadata.gratuity_amount ? parseFloat(metadata.gratuity_amount) : null;
+    const gratuityType = metadata.gratuity_type || null;
+    const gratuityPercentage = metadata.gratuity_percentage ? parseFloat(metadata.gratuity_percentage) : null;
     
     // Get invoice and contract information
     let invoiceData = null;
@@ -98,7 +101,10 @@ export default async function handler(req, res) {
       invoice_id: invoiceId,
       invoice_number: invoiceData?.invoice_number || metadata.invoice_number,
       invoice: invoiceData,
-      contract: contractData
+      contract: contractData,
+      gratuity_amount: gratuityAmount,
+      gratuity_type: gratuityType,
+      gratuity_percentage: gratuityPercentage
     });
   } catch (error) {
     console.error('❌ Error verifying payment:', error);

@@ -67,23 +67,49 @@ export default function PaymentPage() {
     }
   }, [token]);
 
+  // Refetch when user returns to this tab (e.g. after paying in Stripe) so status updates to Paid
+  useEffect(() => {
+    if (!token || typeof token !== 'string') return;
+    const onVisible = () => {
+      if (document.visibilityState === 'visible' && invoice?.status !== 'paid') {
+        fetchInvoice();
+      }
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+  }, [token, invoice?.status]);
+
   const fetchInvoice = async () => {
     if (!token || typeof token !== 'string') return;
     
     try {
-      const response = await fetch(`/api/invoices/get-by-token?token=${token}`);
+      const response = await fetch(`/api/invoices/get-by-token?token=${token}&_t=${Date.now()}`, {
+        cache: 'no-store',
+        headers: { Pragma: 'no-cache', 'Cache-Control': 'no-cache' }
+      });
       
       if (!response.ok) {
         throw new Error('Invoice not found or link expired');
       }
 
       const data = await response.json();
-      
-      if (data.invoice.status === 'paid') {
-        setError('This invoice has already been paid');
+      const inv = data.invoice;
+      if (!inv) {
+        setInvoice(null);
+        setLoading(false);
+        return;
       }
-      
-      setInvoice(data.invoice);
+      // Normalize status: show "Paid" when DB says Paid or when fully paid (amount_paid >= total)
+      const rawStatus = (inv.invoice_status || inv.status || '').toString();
+      const total = Number(inv.total_amount) || 0;
+      const paid = Number((inv as any).amount_paid) ?? 0;
+      const isPaid = rawStatus.toLowerCase() === 'paid' || (total > 0 && paid >= total);
+      if (isPaid) {
+        inv.status = 'paid';
+      } else {
+        inv.status = rawStatus || 'pending';
+      }
+      setInvoice(inv);
     } catch (err: any) {
       setError(err.message || 'Failed to load invoice');
     } finally {
@@ -474,13 +500,28 @@ export default function PaymentPage() {
 
       <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 py-8 sm:py-12 lg:py-16 px-4 sm:px-6 lg:px-8 xl:px-12">
         <div className="max-w-7xl mx-auto">
+          {/* Already paid banner - show when client revisits pay link after paying */}
+          {invoice.status === 'paid' && (
+            <div className="mb-6 sm:mb-8 rounded-2xl bg-gradient-to-r from-green-500 to-emerald-600 p-5 sm:p-6 text-center shadow-lg border-2 border-green-400 dark:border-green-500">
+              <div className="inline-flex items-center justify-center w-12 h-12 sm:w-14 sm:h-14 bg-white/20 rounded-full mb-3">
+                <CheckCircle className="w-7 h-7 sm:w-8 sm:h-8 text-white" />
+              </div>
+              <h2 className="text-xl sm:text-2xl font-bold text-white mb-1">Thank you — payment received</h2>
+              <p className="text-green-100 text-sm sm:text-base">This invoice has been paid. A receipt was sent to your email.</p>
+            </div>
+          )}
+
           {/* Header */}
           <div className="text-center mb-8 sm:mb-10 lg:mb-12">
             <div className="inline-flex items-center justify-center w-16 h-16 sm:w-20 sm:h-20 lg:w-24 lg:h-24 bg-gradient-to-br from-[#fcba00] to-[#e5a800] rounded-2xl mb-4 sm:mb-6 shadow-lg transform transition-transform hover:scale-105 active:scale-95">
               <FileText className="w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 text-black" />
             </div>
-            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-gray-900 dark:text-white mb-2 sm:mb-3">Invoice Payment</h1>
-            <p className="text-gray-600 dark:text-gray-300 text-base sm:text-lg lg:text-xl">Complete your payment securely with Stripe</p>
+            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-gray-900 dark:text-white mb-2 sm:mb-3">
+              {invoice.status === 'paid' ? 'Invoice Paid' : 'Invoice Payment'}
+            </h1>
+            <p className="text-gray-600 dark:text-gray-300 text-base sm:text-lg lg:text-xl">
+              {invoice.status === 'paid' ? 'This invoice has been paid in full' : 'Complete your payment securely with Stripe'}
+            </p>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-5 xl:grid-cols-12 gap-6 sm:gap-8 lg:gap-10">

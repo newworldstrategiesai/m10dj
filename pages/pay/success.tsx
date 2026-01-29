@@ -290,10 +290,23 @@ export default function PaymentSuccess() {
                           <span className="font-semibold text-gray-900">{paymentDetails.invoice_number}</span>
                         </div>
                       )}
-                      {paymentDetails?.amount ? (
+                      {paymentDetails?.amount != null && paymentDetails.amount > 0 ? (
+                        <div className="pt-3 pb-3 border-t border-gray-200 border-b border-gray-200 space-y-2">
+                          <div className="flex justify-between items-center">
+                            <span className="text-gray-600 font-medium text-base">Amount Paid:</span>
+                            <span className="font-bold text-green-600 text-3xl">${Number(paymentDetails.amount).toFixed(2)}</span>
+                          </div>
+                          {paymentDetails?.gratuity_amount != null && paymentDetails.gratuity_amount > 0 && (
+                            <div className="flex justify-between items-center text-sm">
+                              <span className="text-gray-500">Includes gratuity:</span>
+                              <span className="font-semibold text-gray-700">${Number(paymentDetails.gratuity_amount).toFixed(2)}{paymentDetails.gratuity_percentage ? ` (${paymentDetails.gratuity_percentage}%)` : ''}</span>
+                            </div>
+                          )}
+                        </div>
+                      ) : paymentDetails?.amount === 0 ? (
                         <div className="flex justify-between items-center pt-3 pb-3 border-t border-gray-200 border-b border-gray-200">
                           <span className="text-gray-600 font-medium text-base">Amount Paid:</span>
-                          <span className="font-bold text-green-600 text-3xl">${paymentDetails.amount.toFixed(2)}</span>
+                          <span className="font-bold text-green-600 text-2xl">$0.00</span>
                         </div>
                       ) : (
                         <div className="flex items-center justify-center py-6 pt-3 pb-3 border-t border-gray-200 border-b border-gray-200">

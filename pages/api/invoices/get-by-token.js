@@ -158,11 +158,13 @@ export default async function handler(req, res) {
       total: item.total || item.amount || (item.rate || item.unit_price || 0) * (item.quantity || 1)
     }));
 
-    // Don't send sensitive data
+    // Don't send sensitive data (include amount_paid so pay page can show Paid when fully paid)
     const safeInvoice = {
       id: invoice.id,
       invoice_number: invoice.invoice_number,
       total_amount: invoice.total_amount,
+      amount_paid: invoice.amount_paid ?? 0,
+      balance_due: invoice.balance_due ?? 0,
       subtotal: invoice.subtotal,
       tax: invoice.tax_amount || invoice.tax || 0,
       tax_rate: invoice.tax_rate || null,
