@@ -23,38 +23,35 @@ export default async function handler(req, res) {
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
 
     // 1) Try quote_selections.invoice_id for this lead_id
-    const { data: qs } = await supabaseAdmin
+    const { data: qsList } = await supabaseAdmin
       .from('quote_selections')
       .select('invoice_id')
       .eq('lead_id', id)
       .not('invoice_id', 'is', null)
-      .limit(1)
-      .maybeSingle();
+      .limit(1);
 
-    let invoiceId = qs?.invoice_id;
+    let invoiceId = qsList?.[0]?.invoice_id;
     if (!invoiceId) {
       // 2) Fallback: invoice by contact_id (lead_id is often contact_id)
-      const { data: invByContact } = await supabaseAdmin
+      const { data: invList } = await supabaseAdmin
         .from('invoices')
         .select('id')
         .eq('contact_id', id)
         .neq('invoice_status', 'Cancelled')
         .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      invoiceId = invByContact?.id;
+        .limit(1);
+      invoiceId = invList?.[0]?.id;
     }
     if (!invoiceId) {
       // 3) Fallback: invoice from payment (payment.contact_id = id, payment.invoice_id set)
-      const { data: paymentRow } = await supabaseAdmin
+      const { data: paymentRows } = await supabaseAdmin
         .from('payments')
         .select('invoice_id')
         .eq('contact_id', id)
         .not('invoice_id', 'is', null)
         .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      if (paymentRow?.invoice_id) invoiceId = paymentRow.invoice_id;
+        .limit(1);
+      if (paymentRows?.[0]?.invoice_id) invoiceId = paymentRows[0].invoice_id;
     }
 
     if (!invoiceId) {

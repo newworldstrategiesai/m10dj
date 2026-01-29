@@ -24,24 +24,23 @@ export default async function handler(req, res) {
     // 2. A contacts.id directly
     let contactId = null;
     
-    // First, check if lead_id is a contact_submission_id and get its contact_id
+    // Resolve lead_id to contact_id: may be contact_submissions.id or contacts.id (UUID)
     const { data: submission } = await supabaseAdmin
       .from('contact_submissions')
       .select('contact_id')
       .eq('id', id)
-      .single();
-    
+      .limit(1)
+      .maybeSingle();
+
     if (submission?.contact_id) {
       contactId = submission.contact_id;
     } else {
-      // If not found in contact_submissions, check if it's already a contact_id
-      const { data: contact } = await supabaseAdmin
+      const { data: contactList } = await supabaseAdmin
         .from('contacts')
         .select('id')
         .eq('id', id)
-        .single();
-      
-      if (contact) {
+        .limit(1);
+      if (contactList?.[0]) {
         contactId = id;
       }
     }
