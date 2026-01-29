@@ -253,10 +253,10 @@ export default function InvoicePage() {
         // Set quote data after discount is initialized
         setQuoteData(quote);
         
-        // If quote has invoice_id, fetch invoice details
+        // If quote has invoice_id, fetch invoice details (use public quote endpoint so clients can view without auth)
         if (quote.invoice_id) {
           try {
-            const invoiceResponse = await fetch(`/api/invoices/${quote.invoice_id}`);
+            const invoiceResponse = await fetch(`/api/quote/${id}/invoice-data?_t=${timestamp}`, { cache: 'no-store' });
             if (invoiceResponse.ok) {
               const invoice = await invoiceResponse.json();
               setInvoiceData(invoice);

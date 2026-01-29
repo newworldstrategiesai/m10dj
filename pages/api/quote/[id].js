@@ -30,17 +30,44 @@ export default async function handler(req, res) {
       .single();
 
     if (error) {
+      // When no quote_selection exists, fallback: find invoice by contact_id so /quote/[id]/invoice can still load
+      if (error.code === 'PGRST116') {
+        console.log('⚠️ No quote found for lead_id:', id, '- checking for invoice by contact_id');
+        const { data: invoiceByContact, error: invError } = await supabaseAdmin
+          .from('invoices')
+          .select('id, invoice_number, total_amount, invoice_title, contact_id')
+          .eq('contact_id', id)
+          .neq('invoice_status', 'Cancelled')
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (!invError && invoiceByContact) {
+          const syntheticQuote = {
+            id: null,
+            lead_id: id,
+            invoice_id: invoiceByContact.id,
+            package_id: 'package_2',
+            package_name: invoiceByContact.invoice_title || 'Package',
+            package_price: parseFloat(invoiceByContact.total_amount) || 0,
+            total_price: parseFloat(invoiceByContact.total_amount) || 0,
+            addons: [],
+            status: 'invoiced',
+            payment_status: 'partial',
+            payment_intent_id: null,
+            deposit_amount: null,
+            paid_at: null,
+            contract_id: null,
+            invoice_number: invoiceByContact.invoice_number,
+          };
+          res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+          res.setHeader('Pragma', 'no-cache');
+          res.setHeader('Expires', '0');
+          return res.status(200).json(syntheticQuote);
+        }
+      }
       console.error('❌ Error fetching quote:', error);
       console.error('Error code:', error.code);
       console.error('Error message:', error.message);
-      console.error('Error details:', error.details);
-      
-      // Check if it's a "not found" error or something else
-      if (error.code === 'PGRST116') {
-        // No rows returned
-        console.log('⚠️ No quote found for lead_id:', id);
-      }
-      
       return res.status(404).json({ error: 'Quote not found', details: error.message });
     }
     

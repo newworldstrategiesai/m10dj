@@ -1850,9 +1850,33 @@ export default function InvoiceDetailPage() {
       });
 
       // Fetch payments - use same API endpoint as quote page for consistency
-      let paymentsData = [];
-      let paymentData = null;
+      let paymentsData: any[] = [];
+      let paymentData: { totalPaid: number; payments: any[] } | null = null;
       let hasPayment = false;
+
+      // Always try payments linked to this invoice first (so deposit section shows even without quote_selection)
+      if (invoice && invoice.id) {
+        try {
+          const { data: invoicePayments, error: invoicePayError } = await supabase
+            .from('payments')
+            .select('*')
+            .eq('invoice_id', invoice.id)
+            .in('payment_status', ['Paid', 'paid'])
+            .order('transaction_date', { ascending: false });
+          if (!invoicePayError && invoicePayments && invoicePayments.length > 0) {
+            paymentsData = invoicePayments.map((p: any) => ({
+              ...p,
+              payment_date: p.transaction_date || p.payment_date
+            }));
+            const totalPaid = paymentsData.reduce((sum: number, p: any) =>
+              sum + (parseFloat(p.total_amount?.toString() || p.amount?.toString() || '0') || 0), 0);
+            paymentData = { totalPaid, payments: paymentsData };
+            hasPayment = true;
+          }
+        } catch (e) {
+          console.warn('Error fetching payments by invoice_id:', e);
+        }
+      }
 
       // First check if this invoice is associated with a quote_selection (need lead_id for payments API)
       let quoteSelectionId: string | null = null;
@@ -1874,8 +1898,8 @@ export default function InvoiceDetailPage() {
         }
       }
 
-      // Fetch payments: use lead_id (contact) so deposits/payments linked by contact show
-      if (invoice && (quoteLeadId || quoteSelectionId)) {
+      // Fetch payments by contact (quote API or contact_id) so deposits not yet linked to invoice also show
+      if (invoice && (quoteLeadId || quoteSelectionId) && (!paymentData || paymentsData.length === 0)) {
         const paymentsApiId = quoteLeadId || quoteSelectionId;
         try {
           const timestamp = new Date().getTime();
