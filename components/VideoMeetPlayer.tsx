@@ -8,7 +8,8 @@
  *
  * Based on LiveKit Meet template: https://github.com/livekit-examples/meet
  */
-import { LiveKitRoom, VideoConference, RoomAudioRenderer } from '@livekit/components-react';
+import { LiveKitRoom } from '@livekit/components-react';
+import { MeetingGridLayout } from '@/components/MeetingGridLayout';
 
 interface VideoMeetPlayerProps {
   roomName: string;
@@ -39,10 +40,16 @@ export function VideoMeetPlayer({
       connect={true}
       className="h-full w-full"
       style={{ minHeight: '100%' }}
+      options={{
+        adaptiveStream: true,
+        dynacast: true,
+      }}
+      connectOptions={{
+        autoSubscribe: true,
+      }}
     >
       <div className="flex flex-col h-full w-full bg-gray-950 dark:bg-gray-950">
-        <VideoConference />
-        <RoomAudioRenderer />
+        <MeetingGridLayout />
       </div>
     </LiveKitRoom>
   );

@@ -22,6 +22,7 @@ const FloatingAdminAssistant = dynamic(
 import { Analytics } from '@vercel/analytics/next';
 
 import 'styles/main.css';
+import '@livekit/components-styles';
 
 const title = 'M10 DJ Company - Professional Event Entertainment in Memphis';
 const description = 'Memphis premier DJ and entertainment services for weddings, corporate events, birthday parties, and special occasions. Professional sound, lighting, and MC services with transparent pricing. Call (901) 410-2020 for your free quote!';
