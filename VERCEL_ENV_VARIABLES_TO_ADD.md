@@ -41,11 +41,28 @@
 
 ---
 
+## LiveKit (Voice / Dialer / Ben agent)
+
+Add these for the Dialer, outbound calls, and Ben voice agent. Use the same values in **.env.local** (local) and **Vercel** → Settings → Environment Variables.
+
+| Variable | Where to get it | Required? |
+|----------|-----------------|-----------|
+| **LIVEKIT_URL** | [LiveKit Cloud](https://cloud.livekit.io) → your project → **Settings** (or **Project Settings**) → **Keys** → **WebSocket URL** (e.g. `wss://your-project.livekit.cloud`) | Yes (Dialer, tokens, webhook) |
+| **LIVEKIT_API_KEY** | Same page → **API Key** | Yes |
+| **LIVEKIT_API_SECRET** | Same page → **API Secret** | Yes |
+| **LIVEKIT_SIP_OUTBOUND_TRUNK_ID** | LiveKit Cloud → **SIP** / **Telephony** → **Outbound trunk** → copy the trunk ID. Or CLI: `lk sip outbound list` | Yes for real outbound phone calls |
+| **M10DJ_TWILIO_PHONE_NUMBER** | Your Twilio number in E.164 (e.g. `+19015551234`) for outbound caller ID | Optional |
+| **LIVEKIT_AGENT_CONFIG_TOKEN** | You generate this: any long random string (e.g. `openssl rand -hex 32`). Set the **same** value in Vercel and in the Python agent env so the agent can call `GET /api/livekit/agent-config` | Optional (only if Ben agent loads config from your app) |
+
+**Environment**: ✅ Production, ✅ Preview, ✅ Development (for LiveKit vars)
+
+---
+
 ## Variable 1: DOWNLOAD_SERVER_URL
 
 **Key**: `DOWNLOAD_SERVER_URL`
 
-**Value**: `https://m10dj.onrender.com`
+**Value**: `https://m10dja.onrender.com`
 
 **Environment**: 
 - ✅ Production

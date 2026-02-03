@@ -29,7 +29,22 @@ Until Phase 1 is done, the Dialer will create rooms and return tokens, but **no 
 - **Dispatch rule (inbound):** When an inbound call hits the inbound trunk, create a room and attach the SIP participant. **Important:** Room names **must** start with `inbound-` (e.g. `inbound-{caller_id}-{timestamp}` or `inbound-{timestamp}`). The app uses this prefix to create `voice_calls` rows and show the “Incoming call” overlay.
 - **Trunk IDs:** Note the **outbound trunk ID** (and inbound if separate). You will put these in env (see §3).
 
-### 1.4 References
+### 1.4 CLI / script setup (Twilio side only)
+
+If you already have **TWILIO_ACCOUNT_SID** and **TWILIO_AUTH_TOKEN** in `.env.local`, you can create the Twilio Elastic SIP trunk, credential list, origination URL, and phone-number association in one go:
+
+```bash
+node scripts/setup-twilio-livekit-sip.js
+```
+
+**Required in `.env.local`:** `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`  
+**Optional:** `LIVEKIT_URL` or `LIVEKIT_SIP_URI` (script derives LiveKit SIP URI from `LIVEKIT_URL` if not set), `M10DJ_TWILIO_PHONE_NUMBER` (E.164; script will associate it with the trunk), `TWILIO_SIP_USERNAME` / `TWILIO_SIP_PASSWORD` (script generates if missing; Twilio requires the password to be ≥12 chars with uppercase, lowercase, digits), `TWILIO_TRUNK_DOMAIN` (override if the default domain already exists).
+
+The script prints the **address**, **numbers**, **auth username**, and **auth password** to use when creating the **LiveKit outbound trunk** (step 1.3). After creating that trunk in LiveKit Cloud (Telephony → SIP trunks → Create new trunk → Outbound), set `LIVEKIT_SIP_OUTBOUND_TRUNK_ID` in `.env.local`.
+
+**LiveKit side (still manual):** Create the outbound trunk and optionally the inbound trunk + dispatch rule in [LiveKit Cloud](https://cloud.livekit.io) → Telephony → SIP trunks / Dispatch rules, or via [LiveKit CLI](https://docs.livekit.io/reference/cli/) if you use it (`lk sip outbound create` etc.).
+
+### 1.5 References
 
 - [LiveKit – Create and configure a Twilio SIP trunk](https://docs.livekit.io/sip/quickstarts/configuring-twilio-trunk)
 - [LiveKit SIP – Accepting calls / Dispatch rule](https://docs.livekit.io/sip/accepting-calls), [Dispatch rule](https://docs.livekit.io/sip/dispatch-rule)
