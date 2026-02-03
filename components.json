@@ -12,5 +12,8 @@
   "aliases": {
     "components": "@/components",
     "utils": "@/utils/cn"
+  },
+  "registries": {
+    "@agents-ui": "https://livekit.io/ui/r/{name}.json"
   }
 }

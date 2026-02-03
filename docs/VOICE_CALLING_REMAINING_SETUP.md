@@ -1,5 +1,7 @@
 The# Voice Calling – What’s Left on Your End
 
+> ✅ **Update (2026-02-03):** Outbound SIP trunk `ST_R6R8v78LomfQ` is live and wired to the M10 DJ Company Twilio trunk. The dialer now places real PSTN calls whenever `LIVEKIT_SIP_OUTBOUND_TRUNK_ID` is present. Keep this trunk scoped to M10 campaigns only—DJDash.net and TipJar flows must never reuse it without separate brand gating.
+
 This doc lists **everything you still need to do** to get LiveKit + Twilio voice calling working end-to-end. All app code (Phases 2–4, Calls hub, Egress, call history) is implemented and pushed; the rest is **configuration, credentials, and optional features**.
 
 ---
@@ -28,6 +30,7 @@ Until Phase 1 is done, the Dialer will create rooms and return tokens, but **no 
   - **Outbound trunk** – Points to Twilio’s SIP URI with the credentials from step 1.2 so LiveKit can dial out.
 - **Dispatch rule (inbound):** When an inbound call hits the inbound trunk, create a room and attach the SIP participant. **Important:** Room names **must** start with `inbound-` (e.g. `inbound-{caller_id}-{timestamp}` or `inbound-{timestamp}`). The app uses this prefix to create `voice_calls` rows and show the “Incoming call” overlay.
 - **Trunk IDs:** Note the **outbound trunk ID** (and inbound if separate). You will put these in env (see §3).
+  - Current outbound trunk in production: `ST_R6R8v78LomfQ` → Twilio domain `m10dj-livekit.pstn.twilio.com` (caller ID `+1 901-410-2020`). If you rotate credentials, update both LiveKit and `.env.local` immediately.
 
 ### 1.4 CLI / script setup (Twilio side only)
 
@@ -40,7 +43,7 @@ node scripts/setup-twilio-livekit-sip.js
 **Required in `.env.local`:** `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`  
 **Optional:** `LIVEKIT_URL` or `LIVEKIT_SIP_URI` (script derives LiveKit SIP URI from `LIVEKIT_URL` if not set), `M10DJ_TWILIO_PHONE_NUMBER` (E.164; script will associate it with the trunk), `TWILIO_SIP_USERNAME` / `TWILIO_SIP_PASSWORD` (script generates if missing; Twilio requires the password to be ≥12 chars with uppercase, lowercase, digits), `TWILIO_TRUNK_DOMAIN` (override if the default domain already exists).
 
-The script prints the **address**, **numbers**, **auth username**, and **auth password** to use when creating the **LiveKit outbound trunk** (step 1.3). After creating that trunk in LiveKit Cloud (Telephony → SIP trunks → Create new trunk → Outbound), set `LIVEKIT_SIP_OUTBOUND_TRUNK_ID` in `.env.local`.
+The script prints the **address**, **numbers**, **auth username**, and **auth password** to use when creating the **LiveKit outbound trunk** (step 1.3). After creating that trunk in LiveKit Cloud (Telephony → SIP trunks → Create new trunk → Outbound), set `LIVEKIT_SIP_OUTBOUND_TRUNK_ID` in `.env.local`. (Current value committed locally: `LIVEKIT_SIP_OUTBOUND_TRUNK_ID=ST_R6R8v78LomfQ`.)
 
 **LiveKit side (still manual):** Create the outbound trunk and optionally the inbound trunk + dispatch rule in [LiveKit Cloud](https://cloud.livekit.io) → Telephony → SIP trunks / Dispatch rules, or via [LiveKit CLI](https://docs.livekit.io/reference/cli/) if you use it (`lk sip outbound create` etc.).
 
@@ -85,7 +88,7 @@ Set these in your deployment (Vercel, etc.) and in `.env.local` for local runs.
 | `LIVEKIT_URL` | LiveKit WebSocket URL (wss) | `wss://your-project.livekit.cloud` |
 | `LIVEKIT_API_KEY` | LiveKit API key | From LiveKit Cloud |
 | `LIVEKIT_API_SECRET` | LiveKit API secret | From LiveKit Cloud |
-| `LIVEKIT_SIP_OUTBOUND_TRUNK_ID` | Outbound SIP trunk ID from LiveKit | Required for Dialer to place real calls |
+| `LIVEKIT_SIP_OUTBOUND_TRUNK_ID` | Outbound SIP trunk ID from LiveKit | Required for Dialer to place real calls (currently `ST_R6R8v78LomfQ` for M10 DJ Company) |
 
 ### 3.2 Optional but Recommended
 
