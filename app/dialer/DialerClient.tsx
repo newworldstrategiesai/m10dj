@@ -20,7 +20,14 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog';
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from '@/components/ui/sheet';
 import { Label } from '@/components/ui/label';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Textarea } from '@/components/ui/textarea';
 import {
   Phone,
@@ -35,7 +42,12 @@ import {
   LayoutGrid,
   PhoneCall,
   Check,
+  Mail,
+  Zap,
+  Loader2,
+  Settings,
 } from 'lucide-react';
+import { VoiceAgentSettingsForm, type VoiceAgentSettingsFormData } from '@/components/admin/VoiceAgentSettingsForm';
 import { useToast } from '@/hooks/use-toast';
 import { parsePhoneNumberFromString } from 'libphonenumber-js';
 import { cn } from '@/lib/utils';
@@ -47,6 +59,7 @@ interface Contact {
   phone: string;
   user_id: string;
   email?: string;
+  email_address?: string;
   notes?: string;
 }
 
@@ -99,6 +112,8 @@ export default function DialerClient({ userId, userEmail }: DialerClientProps) {
   const [addContactPhone, setAddContactPhone] = useState('');
   const [addContactEmail, setAddContactEmail] = useState('');
   const [addContactSubmitting, setAddContactSubmitting] = useState(false);
+  const [showContactDetails, setShowContactDetails] = useState(false);
+  const [detailsContact, setDetailsContact] = useState<Contact | null>(null);
 
   const [activeCall, setActiveCall] = useState<{
     roomName: string;
@@ -108,10 +123,31 @@ export default function DialerClient({ userId, userEmail }: DialerClientProps) {
   } | null>(null);
 
   const [agentSettings, setAgentSettings] = useState<AgentSettings>({
-    agentName: 'AI Assistant',
-    role: 'Customer Service Representative',
+    agentName: 'Ben',
+    role: 'Voice Assistant',
     companyName: 'M10 DJ Company',
-    prompt: 'You are a friendly and professional customer service representative.',
+    prompt: 'You are a friendly and professional voice assistant for M10 DJ Company.',
+  });
+
+  const [isAgentSettingsSheetOpen, setIsAgentSettingsSheetOpen] = useState(false);
+  const [agentSettingsFormLoading, setAgentSettingsFormLoading] = useState(false);
+  const [agentSettingsFormSaving, setAgentSettingsFormSaving] = useState(false);
+  const [agentSettingsFormData, setAgentSettingsFormData] = useState<VoiceAgentSettingsFormData>({
+    agent_name: 'Ben',
+    instructions: null,
+    greeting_text: 'Greet the caller and say you\'re with M10 DJ Company. Ask how you can help.',
+    stt_model: 'assemblyai/universal-streaming',
+    stt_language: 'en',
+    llm_model: 'openai/gpt-4.1-mini',
+    tts_model: 'elevenlabs/eleven_turbo_v2',
+    tts_voice_id: 'iP95p4xoKVk53GoZ742B',
+    tts_language: 'en',
+    background_audio_clip: 'crowded_room',
+    background_audio_volume: 0.3,
+    role: 'Voice Assistant',
+    company_name: 'M10 DJ Company',
+    prompt: null,
+    first_message_template: null,
   });
 
   const formatPhoneNumber = (phoneNumber: string | undefined): string => {
@@ -157,26 +193,20 @@ export default function DialerClient({ userId, userEmail }: DialerClientProps) {
 
   const fetchAgentSettings = useCallback(async () => {
     try {
-      const { data, error } = await supabase
-        .from('agents')
-        .select('*')
-        .eq('user_id', userId)
-        .eq('is_active', true)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .single();
-      if (!error && data) {
-        setAgentSettings({
-          agentName: data.agent_name || 'AI Assistant',
-          role: data.role || 'Customer Service Representative',
-          companyName: data.company_name || 'M10 DJ Company',
-          prompt: data.prompt || 'You are a friendly and professional customer service representative.',
-        });
-      }
+      const res = await fetch('/api/livekit/agent-settings');
+      if (!res.ok) return;
+      const data = await res.json();
+      setAgentSettings({
+        agentName: data.agent_name ?? 'Ben',
+        role: data.role ?? 'Voice Assistant',
+        companyName: data.company_name ?? 'M10 DJ Company',
+        prompt: data.prompt ?? 'You are a friendly and professional voice assistant.',
+        firstMessage: data.first_message_template ?? undefined,
+      });
     } catch (e) {
       console.error(e);
     }
-  }, [userId, supabase]);
+  }, []);
 
   useEffect(() => {
     fetchContacts();
@@ -186,6 +216,89 @@ export default function DialerClient({ userId, userEmail }: DialerClientProps) {
   useEffect(() => {
     if (isRedialModalOpen) fetchRecentCalls();
   }, [isRedialModalOpen, fetchRecentCalls]);
+
+  const fetchAgentSettingsForm = useCallback(async () => {
+    setAgentSettingsFormLoading(true);
+    try {
+      const res = await fetch('/api/livekit/agent-settings');
+      if (!res.ok) return;
+      const data = await res.json();
+      setAgentSettingsFormData({
+        agent_name: data.agent_name ?? 'Ben',
+        instructions: data.instructions ?? null,
+        greeting_text: data.greeting_text ?? null,
+        stt_model: data.stt_model ?? 'assemblyai/universal-streaming',
+        stt_language: data.stt_language ?? 'en',
+        llm_model: data.llm_model ?? 'openai/gpt-4.1-mini',
+        tts_model: data.tts_model ?? 'elevenlabs/eleven_turbo_v2',
+        tts_voice_id: data.tts_voice_id ?? null,
+        tts_language: data.tts_language ?? 'en',
+        background_audio_clip: data.background_audio_clip ?? 'crowded_room',
+        background_audio_volume: typeof data.background_audio_volume === 'number' ? data.background_audio_volume : 0.3,
+        role: data.role ?? 'Voice Assistant',
+        company_name: data.company_name ?? 'M10 DJ Company',
+        prompt: data.prompt ?? null,
+        first_message_template: data.first_message_template ?? null,
+        extra: data.extra,
+        id: data.id,
+        updated_at: data.updated_at,
+      });
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setAgentSettingsFormLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (isAgentSettingsSheetOpen) fetchAgentSettingsForm();
+  }, [isAgentSettingsSheetOpen, fetchAgentSettingsForm]);
+
+  const handleAgentSettingsSave = async () => {
+    setAgentSettingsFormSaving(true);
+    try {
+      const res = await fetch('/api/livekit/agent-settings', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          agent_name: agentSettingsFormData.agent_name,
+          instructions: agentSettingsFormData.instructions || null,
+          greeting_text: agentSettingsFormData.greeting_text || null,
+          stt_model: agentSettingsFormData.stt_model,
+          stt_language: agentSettingsFormData.stt_language,
+          llm_model: agentSettingsFormData.llm_model,
+          tts_model: agentSettingsFormData.tts_model,
+          tts_voice_id: agentSettingsFormData.tts_voice_id || null,
+          tts_language: agentSettingsFormData.tts_language,
+          background_audio_clip: agentSettingsFormData.background_audio_clip,
+          background_audio_volume: agentSettingsFormData.background_audio_volume,
+          role: agentSettingsFormData.role,
+          company_name: agentSettingsFormData.company_name,
+          prompt: agentSettingsFormData.prompt || null,
+          first_message_template: agentSettingsFormData.first_message_template || null,
+        }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || data.message || 'Failed to save');
+      }
+      const data = await res.json();
+      if (data.updated_at) setAgentSettingsFormData((s) => ({ ...s, updated_at: data.updated_at }));
+      setAgentSettings({
+        agentName: agentSettingsFormData.agent_name,
+        role: agentSettingsFormData.role,
+        companyName: agentSettingsFormData.company_name,
+        prompt: agentSettingsFormData.prompt ?? '',
+        firstMessage: agentSettingsFormData.first_message_template ?? undefined,
+      });
+      toast({ title: 'Saved', description: 'Agent settings updated. They apply to the next call.' });
+    } catch (e) {
+      console.error(e);
+      toast({ title: 'Error', description: e instanceof Error ? e.message : 'Failed to save', variant: 'destructive' });
+    } finally {
+      setAgentSettingsFormSaving(false);
+    }
+  };
 
   const handleAddContactSubmit = async () => {
     const first = addContactFirstName.trim();
@@ -277,21 +390,33 @@ export default function DialerClient({ userId, userEmail }: DialerClientProps) {
   };
 
   const handleContactClick = (contact: Contact) => {
+    if (!contact?.phone) return;
     if (isMultiSelectMode) {
       setSelectedContacts((prev) =>
         prev.some((c) => c.id === contact.id) ? prev.filter((c) => c.id !== contact.id) : [...prev, contact]
       );
       return;
     }
-    setInput(contact.phone);
+    const formattedNumber = formatPhoneNumber(contact.phone);
+    setInput(formattedNumber || contact.phone);
     setSelectedContact(contact);
-    setIsCallModalOpen(true);
+    if (typeof window !== 'undefined' && window.innerWidth >= 768) {
+      setShowContactDetails(true);
+      setTimeout(() => setDetailsContact(contact), 50);
+    } else {
+      setShowContactDetails(false);
+      setDetailsContact(null);
+    }
   };
 
   const handleModalSubmit = async () => {
     const formatted = formatPhoneNumber(input);
     if (!formatted) {
       toast({ title: 'Invalid Phone Number', variant: 'destructive' });
+      return;
+    }
+    if (!callReason.trim()) {
+      toast({ title: 'Call Reason Required', description: 'Please provide a reason for this call.', variant: 'destructive' });
       return;
     }
     try {
@@ -525,6 +650,20 @@ export default function DialerClient({ userId, userEmail }: DialerClientProps) {
             </div>
           )}
 
+          {/* Agent settings – open modal from Dialer */}
+          <div className="mb-2">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => setIsAgentSettingsSheetOpen(true)}
+              className="gap-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
+            >
+              <Settings className="h-4 w-4" />
+              Agent settings
+            </Button>
+          </div>
+
           {/* Phone number display / input */}
           <div className="w-64 mb-4">
             {selectedContacts.length > 0 ? (
@@ -634,50 +773,97 @@ export default function DialerClient({ userId, userEmail }: DialerClientProps) {
         </Link>
       </div>
 
-      {/* Call confirmation modal */}
-      <Dialog open={isCallModalOpen} onOpenChange={setIsCallModalOpen}>
-        <DialogContent className="sm:max-w-[500px] bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800">
-          <DialogHeader className="space-y-3 pb-3 border-b border-gray-200 dark:border-gray-800">
-            <div className="flex items-center gap-3">
-              <div className="bg-blue-500/10 dark:bg-blue-500/20 rounded-full p-2">
-                <Phone className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-              </div>
-              <div>
-                <DialogTitle className="text-xl font-bold text-gray-900 dark:text-white">Confirm Call</DialogTitle>
-                <DialogDescription className="text-gray-500 dark:text-gray-400 mt-1">
-                  {contactNameForModal ? `Calling ${contactNameForModal}` : `Calling ${formatPhoneNumber(input)}`}
-                </DialogDescription>
-              </div>
+      {/* Call confirmation modal – ClickSetGo style */}
+      <Dialog open={isCallModalOpen} onOpenChange={(open) => !loading && !open && setIsCallModalOpen(false)}>
+        <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto w-[95vw] p-4 sm:p-6 data-[state=open]:duration-300 rounded-2xl bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800">
+          <div className="absolute inset-0 rounded-2xl bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-gray-100/50 to-transparent dark:from-gray-900/30 dark:to-transparent pointer-events-none" />
+          <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-purple-500 via-indigo-500 to-blue-500 rounded-t-2xl" />
+          <DialogHeader className="relative z-10">
+            <div className="flex items-center space-x-2 mb-1">
+              <div className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
+              <div className="text-xs text-green-600 dark:text-green-500 font-mono tracking-wider">SYSTEM READY</div>
             </div>
+            <DialogTitle className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600">
+              ESTABLISHING CONNECTION :: {contactNameForModal || formatPhoneNumber(input) || 'Unknown'}
+            </DialogTitle>
+            <DialogDescription className="text-gray-600 dark:text-gray-400">
+              <span className="font-mono text-xs tracking-wide">CONFIGURING AGENT PARAMETERS FOR COMMUNICATION</span>
+            </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div>
-              <Label htmlFor="reason">Call Reason (Optional)</Label>
-              <Textarea
-                id="reason"
-                value={callReason}
-                onChange={(e) => setCallReason(e.target.value)}
-                placeholder="Why are you calling?"
-                className="mt-2"
-              />
+          <div className="space-y-4 mt-6 relative z-10">
+            <div className="space-y-1">
+              <Label htmlFor="reason" className="text-xs font-mono text-blue-600 dark:text-indigo-400 uppercase tracking-wider mb-1 block">
+                Reason for Call
+              </Label>
+              <div className="relative">
+                <Textarea
+                  id="reason"
+                  rows={2}
+                  value={callReason}
+                  onChange={(e) => setCallReason(e.target.value)}
+                  className="resize-none bg-gray-50 dark:bg-gray-800/50 border border-gray-300 dark:border-gray-700 text-gray-800 dark:text-white focus:border-blue-500 dark:focus:border-indigo-500 focus:ring-blue-500/20 dark:focus:ring-indigo-500/20 pl-3 rounded-md"
+                  placeholder="Enter reason for call"
+                />
+                <div className="absolute top-0 bottom-0 left-0 w-1 bg-blue-500 dark:bg-indigo-500/50 rounded-l" />
+              </div>
             </div>
-            <div>
-              <Label htmlFor="message">First Message (Optional)</Label>
-              <Textarea
-                id="message"
-                value={firstMessage}
-                onChange={(e) => setFirstMessage(e.target.value)}
-                placeholder="Optional message to start the conversation"
-                className="mt-2"
-              />
+            <div className="space-y-1">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="message" className="text-xs font-mono text-blue-600 dark:text-indigo-400 uppercase tracking-wider block">
+                  First Message
+                </Label>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 text-xs font-mono text-blue-600 dark:text-indigo-400 border border-blue-200 dark:border-indigo-500/20 hover:bg-blue-50 dark:hover:bg-indigo-500/10 transition-colors"
+                  onClick={() => {
+                    const firstName = contactNameForModal ? contactNameForModal.trim().split(' ')[0] || '' : '';
+                    setFirstMessage(`Hey this is ${agentSettings.agentName} with ${agentSettings.companyName}. Am I speaking with ${firstName || 'there'}?`);
+                  }}
+                >
+                  <span className="mr-1 text-green-600 dark:text-green-500">{'>'}</span> SET DEFAULT
+                </Button>
+              </div>
+              <div className="relative overflow-hidden rounded-md">
+                <Textarea
+                  id="message"
+                  value={firstMessage}
+                  onChange={(e) => setFirstMessage(e.target.value)}
+                  placeholder="Hey this is [Agent Name] with [Company Name]. Am I speaking with [Customer Name]?"
+                  rows={4}
+                  className="bg-gray-50 dark:bg-gray-800/50 border border-gray-300 dark:border-gray-700 text-gray-800 dark:text-white focus:border-blue-500 dark:focus:border-indigo-500 focus:ring-blue-500/20 dark:focus:ring-indigo-500/20 resize-none rounded-md"
+                />
+                <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-500/50 via-indigo-500/50 to-purple-500/50" />
+              </div>
+              <p className="text-xs text-gray-500 dark:text-gray-400 font-mono mt-1">
+                USE <span className="text-blue-600 dark:text-blue-400">{`{firstName}`}</span> TO DYNAMICALLY INSERT CONTACT NAME
+              </p>
             </div>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsCallModalOpen(false)} disabled={loading}>
-              Cancel
+          <DialogFooter className="mt-8 pt-4 border-t border-gray-200 dark:border-gray-800 relative z-10">
+            <Button variant="outline" onClick={() => setIsCallModalOpen(false)} disabled={loading} className="border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800">
+              CANCEL
             </Button>
-            <Button onClick={handleModalSubmit} disabled={loading} className="bg-green-600 hover:bg-green-700">
-              {loading ? 'Initiating...' : 'Start Call'}
+            <Button
+              onClick={handleModalSubmit}
+              disabled={loading || !callReason.trim()}
+              className="relative overflow-hidden group border-0 text-white"
+            >
+              <span className="absolute inset-0 bg-gradient-to-r from-blue-600 to-indigo-600 group-hover:from-blue-500 group-hover:to-indigo-500 transition-all duration-300" />
+              <span className="relative flex items-center justify-center gap-2">
+                {loading ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span>CONNECTING...</span>
+                  </>
+                ) : (
+                  <>
+                    <Zap className="h-4 w-4" />
+                    <span>INITIATE CALL</span>
+                  </>
+                )}
+              </span>
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -748,6 +934,113 @@ export default function DialerClient({ userId, userEmail }: DialerClientProps) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Agent settings Sheet – full form from Dialer */}
+      <Sheet open={isAgentSettingsSheetOpen} onOpenChange={setIsAgentSettingsSheetOpen}>
+        <SheetContent
+          side="right"
+          className="w-full sm:max-w-lg overflow-y-auto border-l border-slate-200 dark:border-slate-800 bg-white dark:bg-gray-900"
+        >
+          <SheetHeader className="pb-2">
+            <SheetTitle className="text-gray-900 dark:text-white">Voice agent settings</SheetTitle>
+            <p className="text-sm text-muted-foreground">
+              Configure the default M10 agent (Ben). All fields are saved to the DB and used on the next call.
+            </p>
+          </SheetHeader>
+          <div className="mt-4">
+            {agentSettingsFormLoading ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+              </div>
+            ) : (
+              <VoiceAgentSettingsForm
+                settings={agentSettingsFormData}
+                setSettings={setAgentSettingsFormData}
+                onSave={handleAgentSettingsSave}
+                saving={agentSettingsFormSaving}
+                showLinkToFullPage
+                compact
+              />
+            )}
+          </div>
+        </SheetContent>
+      </Sheet>
+
+      {/* Contact details Sheet (right-side, mirrors ClickSetGo ContactDetailsPanel) */}
+      <Sheet
+        open={showContactDetails && !!detailsContact}
+        onOpenChange={(open) => {
+          if (!open) {
+            setShowContactDetails(false);
+            setDetailsContact(null);
+          }
+        }}
+      >
+        <SheetContent
+          side="right"
+          className="w-full sm:max-w-md border-l border-slate-200 dark:border-slate-800 bg-white dark:bg-gray-900"
+        >
+          <SheetHeader className="pb-4">
+            <SheetTitle className="text-gray-900 dark:text-white">Contact Details</SheetTitle>
+          </SheetHeader>
+          {detailsContact && (
+            <div className="mt-6 space-y-6 overflow-y-auto max-h-[calc(100vh-120px)]">
+              <div className="flex flex-col items-center space-y-4">
+                <Avatar className="h-24 w-24">
+                  <AvatarFallback className="text-xl bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300">
+                    {(detailsContact.first_name || '?').charAt(0).toUpperCase()}
+                    {(detailsContact.last_name || '').charAt(0).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="text-center">
+                  <Link
+                    href={`/admin/contacts/${detailsContact.id}`}
+                    className="text-2xl font-semibold text-gray-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400 hover:underline"
+                  >
+                    {detailsContact.first_name} {detailsContact.last_name}
+                  </Link>
+                </div>
+              </div>
+              <div className="space-y-4">
+                <h3 className="text-sm font-medium text-gray-900 dark:text-white">Contact Information</h3>
+                {detailsContact.phone && (
+                  <div className="flex items-center space-x-2">
+                    <Phone className="h-4 w-4 text-gray-500 dark:text-gray-400 flex-shrink-0" />
+                    <span className="text-gray-900 dark:text-white">{detailsContact.phone}</span>
+                  </div>
+                )}
+                {(detailsContact.email ?? detailsContact.email_address) && (
+                  <div className="flex items-center space-x-2">
+                    <Mail className="h-4 w-4 text-gray-500 dark:text-gray-400 flex-shrink-0" />
+                    <span className="text-gray-900 dark:text-white">
+                      {detailsContact.email ?? detailsContact.email_address}
+                    </span>
+                  </div>
+                )}
+              </div>
+              <div className="flex flex-col gap-2 pt-2">
+                <Link href={`/admin/contacts/${detailsContact.id}`} className="block">
+                  <Button variant="outline" className="w-full justify-start">
+                    View full profile
+                  </Button>
+                </Link>
+                <Button
+                  className="w-full bg-green-600 hover:bg-green-700 text-white"
+                  onClick={() => {
+                    setSelectedContact(detailsContact);
+                    setShowContactDetails(false);
+                    setDetailsContact(null);
+                    setIsCallModalOpen(true);
+                  }}
+                >
+                  <Phone className="h-4 w-4 mr-2" />
+                  Call
+                </Button>
+              </div>
+            </div>
+          )}
+        </SheetContent>
+      </Sheet>
 
       {/* Recent calls (redial) modal */}
       <Dialog open={isRedialModalOpen} onOpenChange={(open) => !open && setIsRedialModalOpen(false)}>

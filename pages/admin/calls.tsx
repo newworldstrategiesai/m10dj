@@ -11,7 +11,7 @@ import Link from 'next/link';
 import { createClient } from '@/utils/supabase/client';
 import AdminLayout from '@/components/layouts/AdminLayout';
 import PageLoadingWrapper from '@/components/ui/PageLoadingWrapper';
-import { Phone, PhoneCall, History, ArrowRight } from 'lucide-react';
+import { Phone, PhoneCall, History, ArrowRight, Bot } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
 export default function AdminCallsHubPage() {
@@ -108,6 +108,26 @@ export default function AdminCallsHubPage() {
               <CardContent>
                 <p className="text-sm text-muted-foreground">
                   Browse inbound and outbound calls, transcripts, and recording links when Egress is enabled.
+                </p>
+              </CardContent>
+            </Card>
+          </Link>
+
+          <Link href="/admin/calls/agent-settings" className="block transition-opacity hover:opacity-90">
+            <Card className="h-full border-border bg-card text-card-foreground dark:border-border dark:bg-card">
+              <CardHeader className="flex flex-row items-center gap-3">
+                <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                  <Bot className="h-6 w-6" />
+                </div>
+                <div className="flex-1">
+                  <CardTitle className="text-lg">Voice agent settings</CardTitle>
+                  <CardDescription>Configure the default M10 agent (Ben)</CardDescription>
+                </div>
+                <ArrowRight className="h-5 w-5 shrink-0 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground">
+                  Edit instructions, greeting, STT/LLM/TTS, and display. Used by the Dialer and deployed agent.
                 </p>
               </CardContent>
             </Card>

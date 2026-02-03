@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { RoomServiceClient, AccessToken, SipClient } from 'livekit-server-sdk';
+import { RoomServiceClient, AccessToken, SipClient, AgentDispatchClient } from 'livekit-server-sdk';
 import { createClient } from '@supabase/supabase-js';
 import { createClient as createServerClient } from '@/utils/supabase/server';
 
@@ -10,6 +10,11 @@ const roomService = new RoomServiceClient(
   process.env.LIVEKIT_API_KEY!,
   process.env.LIVEKIT_API_SECRET!
 );
+
+function getAgentDispatchClient(): AgentDispatchClient | null {
+  if (!livekitHost || !process.env.LIVEKIT_API_KEY || !process.env.LIVEKIT_API_SECRET) return null;
+  return new AgentDispatchClient(livekitHost, process.env.LIVEKIT_API_KEY, process.env.LIVEKIT_API_SECRET);
+}
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -154,22 +159,30 @@ export async function POST(request: NextRequest) {
     const { startCallEgress } = await import('@/utils/livekit/egress');
     startCallEgress(roomName).catch((err) => console.error('[Egress] startCallEgress:', err));
 
-    // Start AI bot in background (non-blocking)
-    // Pass agent settings and call reason to the bot
-    if (contact) {
-      startAIVoiceBot(
-        roomName, 
-        botToken, 
-        contact, 
-        callType,
-        {
-          agentSettings,
-          callReason,
-          userId: userId || user.id,
-        }
-      ).catch((error) => {
-        console.error('Error starting AI bot:', error);
-      });
+    // Dispatch default M10 agent (Ben) to the room so the deployed agent joins
+    const { data: agentRow } = await supabase
+      .from('livekit_agent_settings')
+      .select('agent_name')
+      .is('organization_id', null)
+      .eq('name', 'default_m10')
+      .maybeSingle();
+    const agentName = (agentRow as { agent_name?: string } | null)?.agent_name ?? 'Ben';
+    const dispatchClient = getAgentDispatchClient();
+    if (dispatchClient) {
+      try {
+        await dispatchClient.createDispatch(roomName, agentName, {
+          metadata: JSON.stringify({
+            phone_number: targetPhone,
+            contact_id: contactId ?? undefined,
+            call_type: callType,
+            call_reason: callReason ?? undefined,
+            agent_settings: agentSettings ?? undefined,
+          }),
+        });
+      } catch (dispatchErr: unknown) {
+        console.error('Agent dispatch error:', dispatchErr);
+        // Continue: admin can still join; agent may not be deployed
+      }
     }
 
     // Admin token for joining the room (browser voice)

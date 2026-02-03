@@ -1,4 +1,4 @@
-# Voice Calling – What’s Left on Your End
+The# Voice Calling – What’s Left on Your End
 
 This doc lists **everything you still need to do** to get LiveKit + Twilio voice calling working end-to-end. All app code (Phases 2–4, Calls hub, Egress, call history) is implemented and pushed; the rest is **configuration, credentials, and optional features**.
 
@@ -199,7 +199,26 @@ After Phase 1 and webhook are configured:
 
 ---
 
-## 10. Quick Reference: “What’s Left” Summary
+## 10. LiveKit Agent Settings (Default M10 Agent “Ben”)
+
+**We have an admin page for controlling the default M10 voice agent.** The default agent is **Ben**; all settings are editable from the UI.
+
+| What | Where it’s configured |
+|------|------------------------|
+| **Agent name, instructions, greeting** | **Calls** → **Voice agent settings** (`/admin/calls/agent-settings`). Stored in `livekit_agent_settings` (platform default row). |
+| **STT / LLM / TTS models and voice** | Same page: STT model, STT language, LLM model, TTS model, TTS voice ID, TTS language, background audio clip/volume. |
+| **Display (role, company, prompt, first message)** | Same page: used by the Dialer and by the deployed agent when it fetches config. |
+| **Dispatch** | Outbound calls automatically dispatch the agent named in settings (default `Ben`) to the room via LiveKit Agent Dispatch API. |
+| **SIP trunk IDs** | Env: `LIVEKIT_SIP_OUTBOUND_TRUNK_ID`. Inbound trunk and SIP dispatch rules are in LiveKit Cloud. |
+| **Voicemail, hangup, transfer** | In agent code: tools and `hangup_call` / `transfer_sip_participant` as in [LiveKit Agents telephony](https://docs.livekit.io/frontends/telephony/agents). |
+
+**Admin UI:** **Calls** (`/admin/calls`) → **Dialer**, **Call history**, **Voice agent settings**. The agent settings page lets you change agent name, instructions, greeting, STT/LLM/TTS, and display. Changes apply to the next call and to the deployed Python agent when it loads config.
+
+**Config-driven Python agent:** Use `agents/ben_agent.py`. It fetches config from `GET /api/livekit/agent-config` (auth: `Authorization: Bearer LIVEKIT_AGENT_CONFIG_TOKEN`). Set in the Next.js app: `LIVEKIT_AGENT_CONFIG_TOKEN`. Set in the agent env: `LIVEKIT_AGENT_CONFIG_URL` (e.g. `https://m10djcompany.com/api/livekit/agent-config`) and the same `LIVEKIT_AGENT_CONFIG_TOKEN`.
+
+---
+
+## 11. Quick Reference: “What’s Left” Summary
 
 | Item | Required? | Action |
 |------|-----------|--------|
