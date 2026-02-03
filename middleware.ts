@@ -207,8 +207,13 @@ export async function middleware(request: NextRequest) {
       // Keep live stream paths as-is (handled by app router)
       // Don't rewrite, let it fall through
     } else if (path.startsWith('/meet/')) {
-      // Keep meet paths as-is (handled by app router)
-      // Don't rewrite, let it fall through
+      // Redirect /meet/@username -> /meet/username (@ can cause URL/link issues)
+      const meetMatch = path.match(/^\/meet\/@(.+)$/);
+      if (meetMatch) {
+        url.pathname = `/meet/${meetMatch[1]}`;
+        return NextResponse.redirect(url);
+      }
+      // Otherwise let it fall through to app router
     } else if (path.startsWith('/dashboard/go-live')) {
       rewritePath = '/tipjar/dashboard/go-live';
     } else if (path.startsWith('/dashboard/')) {
@@ -476,6 +481,12 @@ export async function middleware(request: NextRequest) {
       const tipjarUrl = new URL('https://tipjar.live/dashboard/go-live');
       tipjarUrl.search = url.search;
       return NextResponse.redirect(tipjarUrl);
+    }
+    // Redirect /meet/@username -> /meet/username (@ can cause URL/link issues)
+    const mainMeetMatch = url.pathname.match(/^\/meet\/@(.+)$/);
+    if (mainMeetMatch) {
+      url.pathname = `/meet/${mainMeetMatch[1]}`;
+      return NextResponse.redirect(url);
     }
     // Meet: allow on m10djcompany.com (super admin only - enforced in pages/API)
     // Rewrite /dashboard/meet -> /tipjar/dashboard/meet so app router serves it

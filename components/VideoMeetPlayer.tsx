@@ -15,6 +15,9 @@ interface VideoMeetPlayerProps {
   token: string;
   serverUrl: string;
   onDisconnected?: () => void;
+  /** From PreJoin - whether to start with video/audio enabled */
+  videoEnabled?: boolean;
+  audioEnabled?: boolean;
 }
 
 export function VideoMeetPlayer({
@@ -22,11 +25,13 @@ export function VideoMeetPlayer({
   token,
   serverUrl,
   onDisconnected,
+  videoEnabled = true,
+  audioEnabled = true,
 }: VideoMeetPlayerProps) {
   return (
     <LiveKitRoom
-      video={true}
-      audio={true}
+      video={videoEnabled}
+      audio={audioEnabled}
       token={token}
       serverUrl={serverUrl}
       data-lk-theme="default"

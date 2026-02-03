@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import { createClient } from '@/utils/supabase/client';
 import { VideoMeetPlayer } from '@/components/VideoMeetPlayer';
 import { Button } from '@/components/ui/button';
@@ -140,7 +141,7 @@ export default function MeetPage() {
     setRoom({ ...room, is_active: true, title });
     setInMeeting(true);
     await getMeetToken(room.room_name);
-    const meetUrl = `https://tipjar.live/meet/@${room.username}`;
+    const meetUrl = `https://tipjar.live/meet/${room.username}`;
     navigator.clipboard.writeText(meetUrl);
     setUrlCopied(true);
     setTimeout(() => setUrlCopied(false), 3000);
@@ -166,8 +167,8 @@ export default function MeetPage() {
   function handleCopyUrl() {
     if (!room) return;
     const meetUrl = typeof window !== 'undefined'
-      ? `${window.location.origin}/meet/@${room.username}`
-      : `https://tipjar.live/meet/@${room.username}`;
+      ? `${window.location.origin}/meet/${room.username}`
+      : `https://tipjar.live/meet/${room.username}`;
     navigator.clipboard.writeText(meetUrl);
     setUrlCopied(true);
     setTimeout(() => setUrlCopied(false), 3000);
@@ -176,14 +177,14 @@ export default function MeetPage() {
   async function handleShare() {
     if (!room) return;
     const meetUrl = typeof window !== 'undefined'
-      ? `${window.location.origin}/meet/@${room.username}`
-      : `https://tipjar.live/meet/@${room.username}`;
+      ? `${window.location.origin}/meet/${room.username}`
+      : `https://tipjar.live/meet/${room.username}`;
 
     if (navigator.share) {
       try {
         await navigator.share({
           title: room.title || `${room.username}'s Meeting`,
-          text: `Join my video meeting on TipJar.live`,
+          text: isM10Domain ? 'Join my video meeting' : 'Join my video meeting on TipJar.live',
           url: meetUrl,
         });
       } catch (err) {
@@ -194,11 +195,17 @@ export default function MeetPage() {
     }
   }
 
+  const isM10Domain = typeof window !== 'undefined' && window.location.hostname.includes('m10djcompany.com');
+
   if (loading) {
     return (
       <div className="fixed inset-0 bg-black flex items-center justify-center z-50">
         <div className="flex flex-col items-center text-white">
-          <TipJarAnimatedLoader size={128} className="mb-4" />
+          {isM10Domain ? (
+            <Image src="/M10-Rotating-Logo.gif" alt="M10" width={128} height={128} className="mb-4" />
+          ) : (
+            <TipJarAnimatedLoader size={128} className="mb-4" />
+          )}
           <p className="text-lg">Loading...</p>
         </div>
       </div>
@@ -222,11 +229,16 @@ export default function MeetPage() {
     <div className="fixed inset-0 bg-black text-white overflow-hidden">
       {!inMeeting ? (
         <div className="h-full flex flex-col">
-          <div className="px-4 pt-safe-top pb-4 border-b border-gray-800">
-            <h1 className="text-2xl font-bold">Video Meeting</h1>
+          <div className="px-4 pt-safe-top pb-4 border-b border-gray-800 flex items-center gap-3">
+            {isM10Domain && (
+              <Image src="/M10-Rotating-Logo.gif" alt="M10" width={40} height={40} className="flex-shrink-0" />
+            )}
+            <div>
+              <h1 className="text-2xl font-bold">Video Meeting</h1>
             <p className="text-gray-400 text-sm mt-1">
               Start a video call with your audience using LiveKit&apos;s premade conferencing UI
             </p>
+            </div>
           </div>
 
           <div className="flex-1 overflow-y-auto px-4 py-6 space-y-6">
@@ -258,6 +270,9 @@ export default function MeetPage() {
         <div className="h-full flex flex-col">
           <div className="px-4 pt-safe-top pb-3 border-b border-gray-800 bg-black/95 backdrop-blur-sm flex items-center justify-between">
             <div className="flex items-center gap-2">
+              {isM10Domain && (
+                <Image src="/M10-Rotating-Logo.gif" alt="M10" width={32} height={32} className="flex-shrink-0" />
+              )}
               <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
               <span className="text-emerald-500 font-bold text-sm">IN MEETING</span>
             </div>
@@ -290,7 +305,7 @@ export default function MeetPage() {
           <div className="px-4 py-4 border-t border-gray-800 bg-black/95 backdrop-blur-sm pb-safe-bottom">
             <div className="flex gap-2">
               <Input
-                value={typeof window !== 'undefined' ? `${window.location.origin}/meet/@${room.username}` : `tipjar.live/meet/@${room.username}`}
+                value={typeof window !== 'undefined' ? `${window.location.origin}/meet/${room.username}` : `tipjar.live/meet/${room.username}`}
                 readOnly
                 className="bg-gray-900 border-gray-700 text-white text-sm font-mono flex-1"
               />
@@ -311,6 +326,9 @@ export default function MeetPage() {
               <Share2 className="h-4 w-4 mr-2" />
               Share Meeting Link
             </Button>
+            {isM10Domain && (
+              <div className="mt-2 text-center text-xs text-gray-500">M10 Video Meeting</div>
+            )}
           </div>
         </div>
       )}

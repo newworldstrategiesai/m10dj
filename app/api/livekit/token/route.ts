@@ -124,14 +124,6 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      // Meet requires authentication (video conferencing - know who's in the room)
-      if (authError || !user) {
-        return NextResponse.json(
-          { error: 'Please sign in to join the meeting' },
-          { status: 401 }
-        );
-      }
-
       const apiKey = process.env.LIVEKIT_API_KEY;
       const apiSecret = process.env.LIVEKIT_API_SECRET;
 
@@ -142,8 +134,17 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      const participantId = participantIdentity || user.id;
+      // Meet supports anonymous users via PreJoin (username entry)
+      // Logged-in users use their identity; anonymous use participantName + generated identity
       const participantDisplayName = participantName || user?.email?.split('@')[0] || 'Guest';
+      const participantId = participantIdentity || user?.id || `anon-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
+
+      if (!participantDisplayName || participantDisplayName.trim() === '') {
+        return NextResponse.json(
+          { error: 'Display name is required to join the meeting' },
+          { status: 400 }
+        );
+      }
 
       const at = new AccessToken(apiKey, apiSecret, {
         identity: participantId,
