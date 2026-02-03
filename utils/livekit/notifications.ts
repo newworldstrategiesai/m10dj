@@ -18,7 +18,7 @@ const supabase = createClient(
 );
 
 export interface AdminNotification {
-  type: 'new_lead' | 'payment' | 'contract_signed' | 'status_change' | 'message' | 'reminder';
+  type: 'new_lead' | 'payment' | 'contract_signed' | 'status_change' | 'message' | 'reminder' | 'incoming_call';
   title: string;
   message: string;
   data?: {
@@ -26,6 +26,12 @@ export interface AdminNotification {
     quoteId?: string;
     invoiceId?: string;
     amount?: number;
+    /** Inbound voice call: room to join when admin answers */
+    roomName?: string;
+    /** Caller phone number (E.164 or display) */
+    phoneNumber?: string;
+    /** Caller identity from LiveKit participant */
+    callerId?: string;
     [key: string]: any;
   };
   timestamp?: string;

@@ -1,8 +1,7 @@
-'use client';
-
 import { useState, useEffect } from 'react';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import AdminLayout from '@/components/layouts/AdminLayout';
+import { GetServerSideProps } from 'next';
 import {
   Calendar,
   Clock,
@@ -63,6 +62,11 @@ const DAYS_OF_WEEK = [
   { value: 5, label: 'Friday' },
   { value: 6, label: 'Saturday' }
 ];
+
+export const getServerSideProps: GetServerSideProps = async ({ res }) => {
+  res.setHeader('Cache-Control', 'private, no-store, max-age=0');
+  return { props: {} };
+};
 
 export default function AdminAvailabilityPage() {
   const supabase = createClientComponentClient();

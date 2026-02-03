@@ -2,6 +2,8 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { LiveKitRoom } from '@livekit/components-react';
+import { VoiceCallControls } from '@/components/livekit/VoiceCallControls';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -54,6 +56,13 @@ export default function DialerClient({ userId, userEmail }: DialerClientProps) {
   const [loading, setLoading] = useState(false);
   const [callReason, setCallReason] = useState('');
   const [firstMessage, setFirstMessage] = useState('');
+  /** Active voice call: join room and show in-call UI */
+  const [activeCall, setActiveCall] = useState<{
+    roomName: string;
+    token: string;
+    serverUrl: string;
+    displayName: string;
+  } | null>(null);
   
   // Agent settings
   const [agentSettings, setAgentSettings] = useState<AgentSettings>({
@@ -251,10 +260,30 @@ export default function DialerClient({ userId, userEmail }: DialerClientProps) {
         throw new Error(data.error || 'Failed to initiate call');
       }
 
-      toast({
-        title: 'Success',
-        description: 'Call initiated successfully!',
-      });
+      const displayName = selectedContact
+        ? `${selectedContact.first_name} ${selectedContact.last_name}`
+        : formatPhoneNumber(input) || 'Unknown';
+
+      if (data.token && data.serverUrl) {
+        setActiveCall({
+          roomName: data.roomName,
+          token: data.token,
+          serverUrl: data.serverUrl,
+          displayName,
+        });
+        toast({
+          title: data.sipConfigured ? 'Calling...' : 'Room ready',
+          description: data.sipConfigured
+            ? 'Join to talk in your browser.'
+            : data.message,
+        });
+      } else {
+        toast({
+          title: 'Room created',
+          description: data.message,
+        });
+      }
+
       setIsCallModalOpen(false);
       setInput('');
       setCallReason('');
@@ -274,6 +303,36 @@ export default function DialerClient({ userId, userEmail }: DialerClientProps) {
 
   return (
     <div className="min-h-screen bg-white dark:bg-black text-gray-900 dark:text-white">
+      {/* Active call overlay: join LiveKit room and show mic + hang up */}
+      {activeCall && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 dark:bg-black/80">
+          <div className="bg-background border border-border rounded-xl shadow-xl p-6 max-w-sm w-full mx-4">
+            <LiveKitRoom
+              video={false}
+              audio={true}
+              token={activeCall.token}
+              serverUrl={activeCall.serverUrl}
+              connect={true}
+              onDisconnected={() => setActiveCall(null)}
+              onError={(err) => {
+                toast({
+                  title: 'Call error',
+                  description: err.message,
+                  variant: 'destructive',
+                });
+                setActiveCall(null);
+              }}
+              className="rounded-lg"
+            >
+              <VoiceCallControls
+                displayName={activeCall.displayName}
+                onHangUp={() => setActiveCall(null)}
+              />
+            </LiveKitRoom>
+          </div>
+        </div>
+      )}
+
       <div className="container mx-auto px-4 py-8 max-w-6xl">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Contacts Sidebar */}

@@ -9,6 +9,7 @@ import Link from 'next/link';
 import { Plus, ArrowLeft, Menu, X } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { getCurrentOrganization } from '@/utils/organization-helpers';
+import { IncomingCallOverlay } from '@/components/admin/IncomingCallOverlay';
 
 interface AdminLayoutProps {
   children: React.ReactNode;
@@ -323,6 +324,9 @@ export default function AdminLayout({ children, title, description, showPageTitl
             {children}
           </main>
         </div>
+
+        {/* Inbound voice call: Answer/Decline when client calls Twilio number (M10 / non-TipJar) */}
+        {effectiveProductContext !== 'tipjar' && <IncomingCallOverlay />}
       </div>
 
     </>

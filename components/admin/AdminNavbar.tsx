@@ -34,7 +34,8 @@ import {
   BookOpen,
   Sparkles,
   Mic,
-  UserPlus
+  UserPlus,
+  Phone
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -206,6 +207,7 @@ export default function AdminNavbar() {
       items: [
         { label: 'Chat', href: '/admin/chat', icon: <MessageSquare className="w-4 h-4" />, description: 'SMS messages' },
         { label: 'Email Client', href: '/admin/email-client', icon: <Mail className="w-4 h-4" />, description: 'Email inbox' },
+        { label: 'Calls', href: '/admin/calls', icon: <Phone className="w-4 h-4" />, description: 'Dialer & call history' },
         { label: 'Crowd Requests', href: '/admin/crowd-requests', icon: <QrCode className="w-4 h-4" />, description: 'Song requests' },
       ]
     },

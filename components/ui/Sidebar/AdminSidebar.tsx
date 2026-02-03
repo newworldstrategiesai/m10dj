@@ -27,7 +27,8 @@ import {
   Sun,
   CreditCard,
   UserPlus,
-  List
+  List,
+  Phone
 } from 'lucide-react';
 
 interface NavItem {
@@ -191,6 +192,7 @@ export default function AdminSidebar({ onSignOut, isMobileOpen: externalIsMobile
     { label: 'Financial', href: '/admin/financial', icon: <BarChart3 className="w-5 h-5" /> },
     { label: 'Email', href: '/admin/email', icon: <Mail className="w-5 h-5" /> },
     { label: 'Messages', href: '/admin/messages', icon: <MessageSquare className="w-5 h-5" /> },
+    { label: 'Calls', href: '/admin/calls', icon: <Phone className="w-5 h-5" /> },
     { label: 'Crowd Requests', href: '/admin/crowd-requests', icon: <QrCode className="w-5 h-5" /> },
     { label: 'Karaoke Queue', href: '/admin/karaoke', icon: <Mic className="w-5 h-5" /> },
     { label: 'Request Page', href: '/admin/requests-page', icon: <Music className="w-5 h-5" /> },

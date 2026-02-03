@@ -5,8 +5,7 @@
  * Connects to LiveKit rooms and provides intelligent voice assistance
  */
 
-import { defineAgent, JobContext, getJobContext } from '@livekit/agents';
-import { voice, llm, stt, tts, vad, turnDetection } from '@livekit/agents';
+import { defineAgent, JobContext, inference, voice } from '@livekit/agents';
 import { createClient } from '@supabase/supabase-js';
 import { z } from 'zod';
 import { EmailAssistant } from '../lib/email/email-assistant';
@@ -393,28 +392,20 @@ export default defineAgent({
       }
     }
 
-    // Create agent session
+    // Create agent session using LiveKit Inference (STT/LLM/TTS as model strings).
+    // TTS: ElevenLabs via LiveKit Inference. Use ELEVENLABS_VOICE_ID for any ElevenLabs voice
+    // (library or your own voice clone); model can include voice as "model:voice_id".
+    const elevenLabsModel = process.env.ELEVENLABS_TTS_MODEL || 'elevenlabs/eleven_flash_v2_5';
+    const elevenLabsVoiceId = process.env.ELEVENLABS_VOICE_ID; // Optional: library voice or your clone ID
+    const ttsModel = elevenLabsVoiceId
+      ? `${elevenLabsModel}:${elevenLabsVoiceId}`
+      : elevenLabsModel;
+
     const session = new voice.AgentSession({
-      stt: stt.STTManager.create({
-        provider: 'deepgram',
-        apiKey: process.env.DEEPGRAM_API_KEY,
-      }),
-      llm: llm.LLMManager.create({
-        provider: 'openai',
-        model: 'gpt-4o',
-        apiKey: OPENAI_API_KEY,
-      }),
-      tts: tts.TTSManager.create({
-        provider: 'elevenlabs',
-        apiKey: process.env.ELEVENLABS_API_KEY,
-        voiceId: process.env.ELEVENLABS_VOICE_ID || '21m00Tcm4TlvDq8ikWAM', // Default voice
-      }),
-      vad: vad.VADManager.create({
-        provider: 'silero',
-      }),
-      turnDetection: turnDetection.TurnDetectionManager.create({
-        provider: 'turn-detection',
-      }),
+      stt: 'deepgram/nova-3',
+      llm: 'openai/gpt-4o',
+      tts: ttsModel,
+      turnDetection: 'stt',
     });
 
     // Create agent instance with EmailAssistant

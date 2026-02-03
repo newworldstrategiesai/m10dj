@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/utils/supabase/server';
 import { getDJPricingInsight } from '@/utils/pricingEngine';
 
+export const dynamic = 'force-dynamic';
+
 /**
  * GET /api/pricing/dj?dj_profile_id=xxx&city=Memphis&event_type=wedding
  * Returns pricing insights for a DJ comparing their rates to market

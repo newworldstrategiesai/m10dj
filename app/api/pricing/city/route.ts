@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCityPricing, getCityPricingRange } from '@/utils/pricingEngine';
 
+export const dynamic = 'force-dynamic';
+
 /**
  * GET /api/pricing/city?city=Memphis&event_type=wedding&state=TN
  * Returns pricing statistics for a city and event type

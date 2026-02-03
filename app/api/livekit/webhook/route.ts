@@ -38,6 +38,10 @@ export async function POST(request: NextRequest) {
         // Update stream status to offline
         if (event.room) {
           await updateStreamStatus(event.room.name, false);
+          // Voice call end: update voice_calls for outbound-* / inbound-* rooms
+          if (event.room.name.startsWith('outbound-') || event.room.name.startsWith('inbound-')) {
+            await handleCallEnd(event.room.name);
+          }
         }
         break;
 
@@ -46,6 +50,10 @@ export async function POST(request: NextRequest) {
         if (event.room) {
           console.log(`Participant joined: ${event.participant?.identity} to room ${event.room.name}`);
           await broadcastViewerCount(event.room.name);
+          // Inbound SIP call: room name prefix "inbound-" (LiveKit SIP dispatch rule convention)
+          if (event.room.name.startsWith('inbound-') && event.participant) {
+            await handleInboundSipCall(event.room.name, event.participant as { identity?: string; metadata?: string });
+          }
         }
         break;
 
@@ -54,8 +62,26 @@ export async function POST(request: NextRequest) {
         if (event.room) {
           console.log(`Participant left: ${event.participant?.identity} from room ${event.room.name}`);
           await broadcastViewerCount(event.room.name);
+          // Optional: when SIP participant leaves, we could mark call ended here,
+          // but room_finished is the canonical signal when room is empty.
         }
         break;
+
+      case 'egress_ended': {
+        // Store recording URL in voice_calls when egress finishes (outbound-* / inbound-*)
+        const raw = event as {
+          egressInfo?: { roomName?: string; fileResults?: Array<{ location?: string }>; egressId?: string };
+          egress_info?: { room_name?: string; file_results?: Array<{ location?: string }>; egress_id?: string };
+        };
+        const info = (raw.egressInfo ?? raw.egress_info) as Record<string, unknown> | undefined;
+        const roomName = (info?.roomName ?? info?.room_name) as string | undefined;
+        const fileResults = (info?.fileResults ?? info?.file_results) as Array<{ location?: string }> | undefined;
+        const egressId = (info?.egressId ?? info?.egress_id) as string | undefined;
+        if (roomName && (roomName.startsWith('outbound-') || roomName.startsWith('inbound-'))) {
+          await handleEgressEnded({ roomName, egressId, fileResults });
+        }
+        break;
+      }
 
       default:
         // Handle transcription events (not in WebhookEventNames type yet)
@@ -102,10 +128,12 @@ async function handleCallTranscription(
   text: string,
   isFinal: boolean
 ) {
-  // Only process call rooms (not assistant rooms)
-  if (!roomName.startsWith('call-')) {
-    return;
-  }
+  // Process SIP call rooms: outbound-*, inbound-*, and legacy call-*
+  const isCallRoom =
+    roomName.startsWith('outbound-') ||
+    roomName.startsWith('inbound-') ||
+    roomName.startsWith('call-');
+  if (!isCallRoom) return;
 
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -157,6 +185,122 @@ async function handleCallTranscription(
   } catch (error) {
     console.error('Error handling call transcription:', error);
   }
+}
+
+/** Handle inbound SIP call: create voice_calls row and notify admins to answer in browser */
+async function handleInboundSipCall(
+  roomName: string,
+  participant: { identity?: string; metadata?: string }
+) {
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
+
+  const { data: existing } = await supabase
+    .from('voice_calls')
+    .select('id')
+    .eq('room_name', roomName)
+    .limit(1)
+    .single();
+
+  if (existing) return;
+
+  let phoneNumber = participant.identity ?? roomName;
+  if (participant.metadata) {
+    try {
+      const meta = JSON.parse(participant.metadata);
+      if (meta.phoneNumber || meta.phone) phoneNumber = meta.phoneNumber || meta.phone;
+    } catch {
+      // ignore
+    }
+  }
+
+  await supabase.from('voice_calls').insert({
+    room_name: roomName,
+    contact_id: null,
+    client_phone: phoneNumber,
+    admin_phone: null,
+    direction: 'inbound',
+    call_type: 'inbound',
+    status: 'ringing',
+    started_at: new Date().toISOString(),
+  });
+
+  // Optional: start room egress (audio recording) when LIVEKIT_EGRESS_ENABLED and S3 are set
+  const { startCallEgress } = await import('@/utils/livekit/egress');
+  startCallEgress(roomName).catch((err) => console.error('[Egress] startCallEgress:', err));
+
+  const { broadcastToAllAdmins } = await import('@/utils/livekit/notifications');
+  await broadcastToAllAdmins({
+    type: 'incoming_call',
+    title: 'Incoming call',
+    message: `Call from ${phoneNumber}`,
+    data: { roomName, phoneNumber, callerId: participant.identity },
+    priority: 'high',
+  });
+}
+
+/** Store recording URL in voice_calls when LiveKit egress ends (egress_ended webhook). */
+async function handleEgressEnded(egressInfo: {
+  roomName?: string;
+  egressId?: string;
+  fileResults?: Array<{ location?: string; filename?: string }>;
+}) {
+  const roomName = egressInfo.roomName;
+  if (!roomName) return;
+
+  const fileResults = egressInfo.fileResults ?? [];
+  const firstFile = fileResults[0];
+  const recordingUrl = firstFile?.location;
+  if (!recordingUrl && !egressInfo.egressId) return;
+
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
+
+  const update: { recording_url?: string; egress_id?: string; updated_at: string } = {
+    updated_at: new Date().toISOString(),
+  };
+  if (recordingUrl) update.recording_url = recordingUrl;
+  if (egressInfo.egressId) update.egress_id = egressInfo.egressId;
+
+  await supabase
+    .from('voice_calls')
+    .update(update)
+    .eq('room_name', roomName);
+}
+
+/** Update voice_calls when a call room ends (room_finished for outbound-* / inbound-*). */
+async function handleCallEnd(roomName: string) {
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
+
+  const { data: call, error: fetchError } = await supabase
+    .from('voice_calls')
+    .select('id, started_at, status')
+    .eq('room_name', roomName)
+    .maybeSingle();
+
+  if (fetchError || !call) return;
+  if (call.status === 'completed' || call.status === 'failed' || call.status === 'missed') return;
+
+  const endedAt = new Date();
+  const startedAt = call.started_at ? new Date(call.started_at) : endedAt;
+  const durationSeconds = Math.max(0, Math.floor((endedAt.getTime() - startedAt.getTime()) / 1000));
+
+  await supabase
+    .from('voice_calls')
+    .update({
+      status: 'completed',
+      ended_at: endedAt.toISOString(),
+      duration_seconds: durationSeconds,
+      updated_at: endedAt.toISOString(),
+    })
+    .eq('room_name', roomName);
 }
 
 async function broadcastViewerCount(roomName: string) {

@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { RoomServiceClient, AccessToken } from 'livekit-server-sdk';
+import { RoomServiceClient, AccessToken, SipClient } from 'livekit-server-sdk';
 import { createClient } from '@supabase/supabase-js';
 import { createClient as createServerClient } from '@/utils/supabase/server';
 
+const livekitHost = process.env.LIVEKIT_URL?.replace('wss://', 'https://').replace('ws://', 'http://') ?? '';
+
 const roomService = new RoomServiceClient(
-  process.env.LIVEKIT_URL!.replace('wss://', 'https://'),
+  livekitHost,
   process.env.LIVEKIT_API_KEY!,
   process.env.LIVEKIT_API_SECRET!
 );
@@ -13,6 +15,11 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
+
+function getSipClient(): SipClient | null {
+  if (!livekitHost || !process.env.LIVEKIT_API_KEY || !process.env.LIVEKIT_API_SECRET) return null;
+  return new SipClient(livekitHost, process.env.LIVEKIT_API_KEY, process.env.LIVEKIT_API_SECRET);
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -78,7 +85,7 @@ export async function POST(request: NextRequest) {
       await roomService.createRoom({
         name: roomName,
         emptyTimeout: 300, // 5 minutes
-        maxParticipants: 2,
+        maxParticipants: 4, // admin + SIP participant + optional bot
       });
     } catch (roomError: any) {
       // Room might already exist, that's okay
@@ -87,7 +94,32 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Generate token for AI bot
+    // Initiate SIP outbound call if trunk is configured
+    const sipTrunkId = process.env.LIVEKIT_SIP_OUTBOUND_TRUNK_ID;
+    const fromNumber = process.env.M10DJ_TWILIO_PHONE_NUMBER || undefined;
+    if (sipTrunkId) {
+      const sipClient = getSipClient();
+      if (sipClient) {
+        try {
+          await sipClient.createSipParticipant(
+            sipTrunkId,
+            targetPhone,
+            roomName,
+            {
+              participantName: contact ? `${contact.first_name} ${contact.last_name}` : targetPhone,
+              participantIdentity: `sip-${contactId || 'unknown'}-${Date.now()}`,
+              fromNumber: fromNumber || undefined,
+              playDialtone: true,
+            }
+          );
+        } catch (sipError: any) {
+          console.error('SIP createSipParticipant error:', sipError);
+          // Continue: admin can still join room; call may be unreachable
+        }
+      }
+    }
+
+    // Generate token for AI bot (optional, for future agent)
     const botToken = await generateBotToken(roomName);
 
     // Store call record with additional metadata
@@ -118,6 +150,10 @@ export async function POST(request: NextRequest) {
       // Continue anyway - call record is not critical
     }
 
+    // Optional: start room egress (audio recording) when LIVEKIT_EGRESS_ENABLED and S3 are set
+    const { startCallEgress } = await import('@/utils/livekit/egress');
+    startCallEgress(roomName).catch((err) => console.error('[Egress] startCallEgress:', err));
+
     // Start AI bot in background (non-blocking)
     // Pass agent settings and call reason to the bot
     if (contact) {
@@ -136,16 +172,19 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Note: Actual SIP call initiation requires LiveKit SIP configuration
-    // For now, we'll return the room info
-    // In production, you'd call: await initiateSIPCall(roomName, targetPhone);
+    // Admin token for joining the room (browser voice)
+    const adminToken = await generateAdminToken(roomName, user);
 
     return NextResponse.json({
       success: true,
       roomName,
+      token: adminToken,
+      serverUrl: process.env.LIVEKIT_URL ?? '',
       status: 'initiated',
-      message: 'Call room created. AI bot will join when call connects.',
-      note: 'SIP calling requires LiveKit SIP gateway configuration',
+      message: sipTrunkId
+        ? 'Call initiated. Join to talk in your browser.'
+        : 'Room created. Configure LIVEKIT_SIP_OUTBOUND_TRUNK_ID to place real phone calls.',
+      sipConfigured: !!sipTrunkId,
     });
   } catch (error) {
     console.error('Error initiating outbound call:', error);
@@ -157,6 +196,27 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
+}
+
+async function generateAdminToken(roomName: string, user: { id: string; email?: string | null }): Promise<string> {
+  const apiKey = process.env.LIVEKIT_API_KEY!;
+  const apiSecret = process.env.LIVEKIT_API_SECRET!;
+
+  const at = new AccessToken(apiKey, apiSecret, {
+    identity: `admin-${user.id}`,
+    name: user.email ?? 'Admin',
+    ttl: '1h',
+  });
+
+  at.addGrant({
+    room: roomName,
+    roomJoin: true,
+    canPublish: true,
+    canSubscribe: true,
+    canPublishData: true,
+  });
+
+  return await at.toJwt();
 }
 
 async function generateBotToken(roomName: string): Promise<string> {
