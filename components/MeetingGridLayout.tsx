@@ -17,8 +17,14 @@ import {
   ConnectionStateToast,
   LayoutContextProvider,
   useCreateLayoutContext,
+  usePinnedTracks,
+  useMaybeLayoutContext,
+  FocusLayoutContainer,
+  FocusLayout,
+  CarouselLayout,
   Chat,
 } from '@livekit/components-react';
+import { isEqualTrackRef, isTrackReference } from '@livekit/components-core';
 import type { WidgetState } from '@livekit/components-core';
 import { RoomEvent, Track } from 'livekit-client';
 import * as React from 'react';
@@ -49,13 +55,7 @@ function useOptimalGrid(trackCount: number) {
   return { cols, rows, fillMode: trackCount <= 6 };
 }
 
-export function MeetingGridLayout() {
-  const [widgetState, setWidgetState] = React.useState<WidgetState>({
-    showChat: false,
-    unreadMessages: 0,
-    showSettings: false,
-  });
-
+function MeetingGridInner() {
   const tracks = useTracks(
     [
       { source: Track.Source.Camera, withPlaceholder: true },
@@ -65,7 +65,25 @@ export function MeetingGridLayout() {
   );
 
   const { cols, rows, fillMode } = useOptimalGrid(tracks.length);
-  const layoutContext = useCreateLayoutContext();
+  const layoutContext = useMaybeLayoutContext();
+  const focusTrack = usePinnedTracks()?.[0];
+  const carouselTracks = tracks.filter((t) => !focusTrack || !isEqualTrackRef(t, focusTrack));
+
+  const screenShareTracks = tracks.filter(
+    (t) => isTrackReference(t) && t.publication?.source === Track.Source.ScreenShare
+  );
+  const lastScreenShareRef = React.useRef<typeof tracks[0] | null>(null);
+  React.useEffect(() => {
+    if (!layoutContext?.pin?.dispatch) return;
+    const activeScreenShare = screenShareTracks.find((t) => isTrackReference(t) && t.publication?.isSubscribed);
+    if (activeScreenShare && lastScreenShareRef.current !== activeScreenShare) {
+      lastScreenShareRef.current = activeScreenShare;
+      layoutContext.pin.dispatch({ msg: 'set_pin', trackReference: activeScreenShare });
+    } else if (!activeScreenShare && lastScreenShareRef.current) {
+      lastScreenShareRef.current = null;
+      layoutContext.pin.dispatch({ msg: 'clear_pin' });
+    }
+  }, [screenShareTracks, layoutContext?.pin]);
 
   const gridStyle: React.CSSProperties = fillMode
     ? {
@@ -78,10 +96,21 @@ export function MeetingGridLayout() {
       };
 
   return (
-    <LayoutContextProvider value={layoutContext} onWidgetChange={setWidgetState}>
-      <div className="lk-video-conference h-full w-full">
-        <div className="lk-video-conference-inner flex-1 min-w-0 flex flex-col min-h-0">
-          <div className={`lk-grid-layout flex-1 min-h-0 p-1 ${fillMode ? 'overflow-hidden' : 'overflow-auto'}`}>
+    <div className="lk-video-conference h-full w-full">
+      <div className="lk-video-conference-inner flex-1 min-w-0 flex flex-col min-h-0">
+        <div className={`lk-grid-layout flex-1 min-h-0 p-1 ${!focusTrack && fillMode ? 'overflow-hidden' : 'overflow-auto'}`}>
+          {focusTrack ? (
+            <div className="lk-focus-layout-wrapper flex-1 min-h-0 w-full">
+              <FocusLayoutContainer className="h-full w-full">
+                <CarouselLayout tracks={carouselTracks}>
+                  <ParticipantTile />
+                </CarouselLayout>
+                {focusTrack && isTrackReference(focusTrack) && (
+                  <FocusLayout trackRef={focusTrack} />
+                )}
+              </FocusLayoutContainer>
+            </div>
+          ) : (
             <div className="grid gap-1 w-full h-full min-h-0" style={gridStyle}>
               <TrackLoop tracks={tracks}>
                 <div className="min-w-0 min-h-0 w-full h-full overflow-hidden [&>div]:!h-full [&>div]:!min-h-0">
@@ -89,11 +118,26 @@ export function MeetingGridLayout() {
                 </div>
               </TrackLoop>
             </div>
-          </div>
-          <ControlBar controls={{ chat: true, settings: false }} />
+          )}
         </div>
-        <Chat style={{ display: widgetState.showChat ? 'grid' : 'none' }} />
+        <ControlBar controls={{ chat: true, settings: false, camera: true, microphone: true, screenShare: true }} saveUserChoices={false} />
       </div>
+    </div>
+  );
+}
+
+export function MeetingGridLayout() {
+  const [widgetState, setWidgetState] = React.useState<WidgetState>({
+    showChat: false,
+    unreadMessages: 0,
+    showSettings: false,
+  });
+  const layoutContext = useCreateLayoutContext();
+
+  return (
+    <LayoutContextProvider value={layoutContext} onWidgetChange={setWidgetState}>
+      <MeetingGridInner />
+      <Chat style={{ display: widgetState.showChat ? 'grid' : 'none' }} />
       <RoomAudioRenderer />
       <ConnectionStateToast />
     </LayoutContextProvider>

@@ -202,3 +202,40 @@ input[type="number"] {
     font-size: 16px; /* Prevents zoom on iOS when focusing */
   }
 }
+
+/* LiveKit meet: fix device dropdown menus on mobile */
+[data-lk-theme] .lk-control-bar {
+  overflow: visible;
+}
+[data-lk-theme] .lk-button-group {
+  overflow: visible;
+  position: relative;
+}
+[data-lk-theme] .lk-button-group-menu {
+  overflow: visible;
+  position: relative;
+}
+[data-lk-theme] .lk-device-menu {
+  z-index: 99999;
+  position: fixed !important;
+  touch-action: manipulation;
+}
+[data-lk-theme] .lk-button-menu {
+  min-width: 44px;
+  min-height: 44px;
+  touch-action: manipulation;
+}
+@media (max-width: 768px) {
+  [data-lk-theme] .lk-device-menu li .lk-button {
+    min-height: 44px;
+    padding: 0.75rem 1rem;
+  }
+}
+
+/* LiveKit meet: expand button hidden by default (opacity:0), only shown on hover.
+   On touch devices there's no hover, so make it always visible. */
+@media (hover: none) {
+  [data-lk-theme] .lk-participant-tile .lk-focus-toggle-button {
+    opacity: 1;
+  }
+}
