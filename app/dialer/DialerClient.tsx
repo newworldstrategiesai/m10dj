@@ -148,6 +148,8 @@ export default function DialerClient({ userId, userEmail }: DialerClientProps) {
     company_name: 'M10 DJ Company',
     prompt: null,
     first_message_template: null,
+    auto_answer_enabled: true,
+    auto_answer_delay_seconds: 20,
   });
 
   const formatPhoneNumber = (phoneNumber: string | undefined): string => {
@@ -242,6 +244,11 @@ export default function DialerClient({ userId, userEmail }: DialerClientProps) {
         extra: data.extra,
         id: data.id,
         updated_at: data.updated_at,
+        auto_answer_enabled: data.auto_answer_enabled ?? true,
+        auto_answer_delay_seconds:
+          typeof data.auto_answer_delay_seconds === 'number' && data.auto_answer_delay_seconds > 0
+            ? data.auto_answer_delay_seconds
+            : 20,
       });
     } catch (e) {
       console.error(e);
@@ -276,6 +283,8 @@ export default function DialerClient({ userId, userEmail }: DialerClientProps) {
           company_name: agentSettingsFormData.company_name,
           prompt: agentSettingsFormData.prompt || null,
           first_message_template: agentSettingsFormData.first_message_template || null,
+          auto_answer_enabled: agentSettingsFormData.auto_answer_enabled,
+          auto_answer_delay_seconds: agentSettingsFormData.auto_answer_delay_seconds,
         }),
       });
       if (!res.ok) {

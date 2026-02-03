@@ -10,6 +10,9 @@ const receiver = new WebhookReceiver(
   process.env.LIVEKIT_API_SECRET!
 );
 
+const livekitHost =
+  process.env.LIVEKIT_URL?.replace('wss://', 'https://').replace('ws://', 'http://') ?? '';
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.text();
@@ -52,7 +55,14 @@ export async function POST(request: NextRequest) {
           await broadcastViewerCount(event.room.name);
           // Inbound SIP call: room name prefix "inbound-" (LiveKit SIP dispatch rule convention)
           if (event.room.name.startsWith('inbound-') && event.participant) {
-            await handleInboundSipCall(event.room.name, event.participant as { identity?: string; metadata?: string });
+            await handleInboundSipCall(
+              event.room.name,
+              event.participant as { identity?: string; metadata?: string; kind?: string }
+            );
+          }
+
+          if (event.room.name.startsWith('inbound-') && event.participant && !isSipParticipant(event.participant)) {
+            await markCallConnected(event.room.name);
           }
         }
         break;
@@ -190,7 +200,7 @@ async function handleCallTranscription(
 /** Handle inbound SIP call: create voice_calls row and notify admins to answer in browser */
 async function handleInboundSipCall(
   roomName: string,
-  participant: { identity?: string; metadata?: string }
+  participant: { identity?: string; metadata?: string; kind?: string }
 ) {
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -239,6 +249,8 @@ async function handleInboundSipCall(
     data: { roomName, phoneNumber, callerId: participant.identity },
     priority: 'high',
   });
+
+  scheduleAutoAnswer(roomName).catch((err) => console.error('Auto-answer schedule error:', err));
 }
 
 /** Store recording URL in voice_calls when LiveKit egress ends (egress_ended webhook). */
@@ -301,6 +313,109 @@ async function handleCallEnd(roomName: string) {
       updated_at: endedAt.toISOString(),
     })
     .eq('room_name', roomName);
+}
+
+function isSipParticipant(participant: any): boolean {
+  if (!participant) return false;
+  if (participant.kind && typeof participant.kind === 'string') {
+    return participant.kind.toUpperCase().includes('SIP');
+  }
+  if (participant.identity && typeof participant.identity === 'string') {
+    return participant.identity.toLowerCase().startsWith('sip');
+  }
+  return false;
+}
+
+async function markCallConnected(roomName: string) {
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
+
+  await supabase
+    .from('voice_calls')
+    .update({
+      status: 'connected',
+      updated_at: new Date().toISOString(),
+    })
+    .eq('room_name', roomName)
+    .eq('status', 'ringing');
+}
+
+async function scheduleAutoAnswer(roomName: string) {
+  try {
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    );
+
+    const { data: settingsRow } = await supabase
+      .from('livekit_agent_settings')
+      .select('agent_name, auto_answer_enabled, auto_answer_delay_seconds')
+      .is('organization_id', null)
+      .eq('name', 'default_m10')
+      .maybeSingle();
+
+    const autoAnswerEnabled =
+      (settingsRow as { auto_answer_enabled?: boolean } | null)?.auto_answer_enabled ?? true;
+    if (!autoAnswerEnabled) return;
+
+    const delaySecondsRaw =
+      (settingsRow as { auto_answer_delay_seconds?: number } | null)?.auto_answer_delay_seconds ?? 20;
+    const delaySeconds = Number.isFinite(delaySecondsRaw) && delaySecondsRaw > 0 ? delaySecondsRaw : 20;
+
+    await new Promise((resolve) => setTimeout(resolve, delaySeconds * 1000));
+
+    const { data: call } = await supabase
+      .from('voice_calls')
+      .select('status')
+      .eq('room_name', roomName)
+      .maybeSingle();
+    if (!call || call.status !== 'ringing') return;
+
+    if (!livekitHost || !process.env.LIVEKIT_API_KEY || !process.env.LIVEKIT_API_SECRET) {
+      console.warn('LiveKit credentials missing; cannot auto-answer');
+      return;
+    }
+
+    const { RoomServiceClient, AgentDispatchClient } = await import('livekit-server-sdk');
+    const roomService = new RoomServiceClient(
+      livekitHost,
+      process.env.LIVEKIT_API_KEY!,
+      process.env.LIVEKIT_API_SECRET!
+    );
+
+    let participants: Array<any> = [];
+    try {
+      participants = await roomService.listParticipants(roomName);
+    } catch (err) {
+      console.error('Auto-answer listParticipants error:', err);
+      return;
+    }
+
+    const hasNonSipParticipant = participants.some((p) => !isSipParticipant(p));
+    if (hasNonSipParticipant) return;
+
+    const agentName = (settingsRow as { agent_name?: string } | null)?.agent_name ?? 'Ben';
+    const dispatchClient = new AgentDispatchClient(
+      livekitHost,
+      process.env.LIVEKIT_API_KEY!,
+      process.env.LIVEKIT_API_SECRET!
+    );
+
+    try {
+      await dispatchClient.createDispatch(roomName, agentName, {
+        metadata: JSON.stringify({
+          auto_answer: true,
+          triggered_at: new Date().toISOString(),
+        }),
+      });
+    } catch (err) {
+      console.error('Auto-answer dispatch error:', err);
+    }
+  } catch (err) {
+    console.error('Auto-answer unexpected error:', err);
+  }
 }
 
 async function broadcastViewerCount(roomName: string) {

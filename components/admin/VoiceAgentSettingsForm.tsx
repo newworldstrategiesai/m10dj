@@ -13,7 +13,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Bot, Mic, MessageSquare, Volume2, Save, Loader2 } from 'lucide-react';
+import { Bot, Mic, MessageSquare, Volume2, Save, Loader2, PhoneCall } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
 
 export type VoiceAgentSettingsFormData = {
   id?: string;
@@ -34,6 +35,8 @@ export type VoiceAgentSettingsFormData = {
   first_message_template: string | null;
   extra?: Record<string, unknown>;
   updated_at?: string;
+  auto_answer_enabled: boolean;
+  auto_answer_delay_seconds: number;
 };
 
 interface VoiceAgentSettingsFormProps {
@@ -305,6 +308,60 @@ export function VoiceAgentSettingsForm({
                 onChange={(e) => setSettings((s) => ({ ...s, background_audio_volume: parseFloat(e.target.value) || 0.3 }))}
               />
             </div>
+          </div>
+        </CardContent>
+      </CardWrapper>
+
+      <CardWrapper {...cardProps}>
+        {!compact && (
+          <CardHeader {...headerProps}>
+            <CardTitle className="flex items-center gap-2">
+              <PhoneCall className="h-5 w-5" />
+              Auto-answer fallback
+            </CardTitle>
+            <CardDescription>
+              Let Ben pick up inbound calls automatically if no admin answers in time.
+            </CardDescription>
+          </CardHeader>
+        )}
+        <CardContent className={compact ? 'p-0 space-y-4' : 'space-y-4'}>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="space-y-1">
+              <Label htmlFor="vas-auto-answer">Enable auto-answer fallback</Label>
+              <p className="text-xs text-muted-foreground">
+                When enabled, Ben joins inbound calls after the delay below if no admin has answered yet.
+              </p>
+            </div>
+            <Switch
+              id="vas-auto-answer"
+              checked={settings.auto_answer_enabled}
+              onCheckedChange={(checked) => setSettings((s) => ({ ...s, auto_answer_enabled: checked }))}
+            />
+          </div>
+          <div className="space-y-2 sm:max-w-xs">
+            <Label htmlFor="vas-auto-answer-delay">Delay before Ben joins (seconds)</Label>
+            <Input
+              id="vas-auto-answer-delay"
+              type="number"
+              min={5}
+              max={120}
+              step={1}
+              value={settings.auto_answer_delay_seconds}
+              onChange={(e) => {
+                const parsed = parseInt(e.target.value || '0', 10);
+                const safeValue = Number.isFinite(parsed) ? Math.min(Math.max(parsed, 5), 120) : 5;
+                setSettings((s) => ({
+                  ...s,
+                  auto_answer_delay_seconds: safeValue,
+                }));
+              }}
+              disabled={!settings.auto_answer_enabled}
+            />
+            {!compact && (
+              <p className="text-xs text-muted-foreground">
+                Ben will join the call after this many seconds if no team member has answered. Minimum 5 seconds.
+              </p>
+            )}
           </div>
         </CardContent>
       </CardWrapper>

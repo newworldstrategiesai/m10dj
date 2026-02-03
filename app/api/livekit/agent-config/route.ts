@@ -49,6 +49,8 @@ export async function GET(request: NextRequest) {
       background_audio_clip: 'crowded_room',
       background_audio_volume: 0.3,
       extra: {},
+      auto_answer_enabled: true,
+      auto_answer_delay_seconds: 20,
     });
   }
 
@@ -70,5 +72,10 @@ export async function GET(request: NextRequest) {
     prompt: row.prompt ?? null,
     first_message_template: row.first_message_template ?? null,
     extra: row.extra ?? {},
+    auto_answer_enabled: row.auto_answer_enabled ?? true,
+    auto_answer_delay_seconds:
+      row.auto_answer_delay_seconds !== null && row.auto_answer_delay_seconds !== undefined && row.auto_answer_delay_seconds > 0
+        ? row.auto_answer_delay_seconds
+        : 20,
   });
 }

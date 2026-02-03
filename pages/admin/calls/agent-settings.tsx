@@ -32,6 +32,8 @@ const defaultSettings: VoiceAgentSettingsFormData = {
   company_name: 'M10 DJ Company',
   prompt: null,
   first_message_template: null,
+  auto_answer_enabled: true,
+  auto_answer_delay_seconds: 20,
 };
 
 export default function VoiceAgentSettingsPage() {
@@ -71,6 +73,11 @@ export default function VoiceAgentSettingsPage() {
         extra: data.extra,
         id: data.id,
         updated_at: data.updated_at,
+        auto_answer_enabled: data.auto_answer_enabled ?? true,
+        auto_answer_delay_seconds:
+          typeof data.auto_answer_delay_seconds === 'number' && data.auto_answer_delay_seconds > 0
+            ? data.auto_answer_delay_seconds
+            : defaultSettings.auto_answer_delay_seconds,
       });
     } catch (e) {
       console.error(e);
@@ -106,6 +113,8 @@ export default function VoiceAgentSettingsPage() {
           company_name: settings.company_name,
           prompt: settings.prompt || null,
           first_message_template: settings.first_message_template || null,
+          auto_answer_enabled: settings.auto_answer_enabled,
+          auto_answer_delay_seconds: settings.auto_answer_delay_seconds,
         }),
       });
       if (!res.ok) {

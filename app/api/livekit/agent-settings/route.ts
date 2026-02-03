@@ -29,6 +29,8 @@ type AgentSettingsRow = {
   extra: Record<string, unknown> | null;
   created_at: string;
   updated_at: string;
+  auto_answer_enabled: boolean | null;
+  auto_answer_delay_seconds: number | null;
 };
 
 /** GET: return platform default M10 agent settings (for admin UI and Dialer). */
@@ -74,6 +76,8 @@ export async function GET(request: NextRequest) {
         background_audio_volume: 0.3,
         first_message_template: null,
         extra: {},
+      auto_answer_enabled: true,
+      auto_answer_delay_seconds: 20,
       });
     }
 
@@ -100,6 +104,11 @@ export async function GET(request: NextRequest) {
       extra: row.extra ?? {},
       created_at: row.created_at,
       updated_at: row.updated_at,
+      auto_answer_enabled: row.auto_answer_enabled ?? true,
+      auto_answer_delay_seconds:
+        row.auto_answer_delay_seconds !== null && row.auto_answer_delay_seconds !== undefined && row.auto_answer_delay_seconds > 0
+          ? row.auto_answer_delay_seconds
+          : 20,
     });
   } catch (e) {
     console.error('agent-settings GET:', e);
@@ -138,6 +147,8 @@ export async function PATCH(request: NextRequest) {
       prompt,
       first_message_template,
       extra,
+      auto_answer_enabled,
+      auto_answer_delay_seconds,
     } = body;
 
     const updates: Record<string, unknown> = { updated_at: new Date().toISOString() };
@@ -157,6 +168,14 @@ export async function PATCH(request: NextRequest) {
     if (prompt !== undefined) updates.prompt = prompt;
     if (first_message_template !== undefined) updates.first_message_template = first_message_template;
     if (extra !== undefined) updates.extra = extra;
+    if (auto_answer_enabled !== undefined) updates.auto_answer_enabled = !!auto_answer_enabled;
+    if (auto_answer_delay_seconds !== undefined) {
+      const delay =
+        typeof auto_answer_delay_seconds === 'number'
+          ? auto_answer_delay_seconds
+          : parseInt(auto_answer_delay_seconds, 10);
+      updates.auto_answer_delay_seconds = Number.isFinite(delay) && delay > 0 ? delay : 20;
+    }
 
     const { data, error } = await supabaseService
       .from('livekit_agent_settings')
@@ -194,6 +213,11 @@ export async function PATCH(request: NextRequest) {
       first_message_template: row.first_message_template,
       extra: row.extra,
       updated_at: row.updated_at,
+      auto_answer_enabled: row.auto_answer_enabled ?? true,
+      auto_answer_delay_seconds:
+        row.auto_answer_delay_seconds !== null && row.auto_answer_delay_seconds !== undefined && row.auto_answer_delay_seconds > 0
+          ? row.auto_answer_delay_seconds
+          : 20,
     });
   } catch (e) {
     console.error('agent-settings PATCH:', e);
