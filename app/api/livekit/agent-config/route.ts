@@ -55,6 +55,20 @@ export async function GET(request: NextRequest) {
   }
 
   const row = data as Record<string, unknown>;
+
+  const autoAnswerEnabled =
+    typeof row.auto_answer_enabled === 'boolean' ? row.auto_answer_enabled : true;
+  let autoAnswerDelay = 20;
+  const rawDelay = (row as { auto_answer_delay_seconds?: unknown }).auto_answer_delay_seconds;
+  if (typeof rawDelay === 'number' && rawDelay > 0) {
+    autoAnswerDelay = rawDelay;
+  } else if (typeof rawDelay === 'string') {
+    const parsed = parseInt(rawDelay, 10);
+    if (Number.isFinite(parsed) && parsed > 0) {
+      autoAnswerDelay = parsed;
+    }
+  }
+
   return NextResponse.json({
     agent_name: row.agent_name ?? 'Ben',
     instructions: row.instructions ?? null,
@@ -72,10 +86,7 @@ export async function GET(request: NextRequest) {
     prompt: row.prompt ?? null,
     first_message_template: row.first_message_template ?? null,
     extra: row.extra ?? {},
-    auto_answer_enabled: row.auto_answer_enabled ?? true,
-    auto_answer_delay_seconds:
-      row.auto_answer_delay_seconds !== null && row.auto_answer_delay_seconds !== undefined && row.auto_answer_delay_seconds > 0
-        ? row.auto_answer_delay_seconds
-        : 20,
+    auto_answer_enabled: autoAnswerEnabled,
+    auto_answer_delay_seconds: autoAnswerDelay,
   });
 }

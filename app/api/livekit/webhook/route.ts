@@ -13,6 +13,12 @@ const receiver = new WebhookReceiver(
 const livekitHost =
   process.env.LIVEKIT_URL?.replace('wss://', 'https://').replace('ws://', 'http://') ?? '';
 
+type MinimalParticipant = {
+  identity?: string;
+  metadata?: string;
+  kind?: string | number;
+};
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.text();
@@ -55,13 +61,15 @@ export async function POST(request: NextRequest) {
           await broadcastViewerCount(event.room.name);
           // Inbound SIP call: room name prefix "inbound-" (LiveKit SIP dispatch rule convention)
           if (event.room.name.startsWith('inbound-') && event.participant) {
-            await handleInboundSipCall(
-              event.room.name,
-              event.participant as { identity?: string; metadata?: string; kind?: string }
-            );
+            const participantInfo = event.participant as unknown as MinimalParticipant;
+            await handleInboundSipCall(event.room.name, participantInfo);
           }
 
-          if (event.room.name.startsWith('inbound-') && event.participant && !isSipParticipant(event.participant)) {
+          if (
+            event.room.name.startsWith('inbound-') &&
+            event.participant &&
+            !isSipParticipant(event.participant as unknown as MinimalParticipant)
+          ) {
             await markCallConnected(event.room.name);
           }
         }
@@ -198,10 +206,7 @@ async function handleCallTranscription(
 }
 
 /** Handle inbound SIP call: create voice_calls row and notify admins to answer in browser */
-async function handleInboundSipCall(
-  roomName: string,
-  participant: { identity?: string; metadata?: string; kind?: string }
-) {
+async function handleInboundSipCall(roomName: string, participant: MinimalParticipant) {
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -315,13 +320,17 @@ async function handleCallEnd(roomName: string) {
     .eq('room_name', roomName);
 }
 
-function isSipParticipant(participant: any): boolean {
+function isSipParticipant(participant: MinimalParticipant | null | undefined): boolean {
   if (!participant) return false;
+  if (participant.identity && typeof participant.identity === 'string') {
+    if (participant.identity.toLowerCase().startsWith('sip')) return true;
+  }
   if (participant.kind && typeof participant.kind === 'string') {
     return participant.kind.toUpperCase().includes('SIP');
   }
-  if (participant.identity && typeof participant.identity === 'string') {
-    return participant.identity.toLowerCase().startsWith('sip');
+  if (typeof participant.kind === 'number') {
+    // LiveKit enum: 0 = STANDARD, 1 = SIP (value may change; treat >0 as SIP fallback)
+    return participant.kind > 0;
   }
   return false;
 }
@@ -393,7 +402,9 @@ async function scheduleAutoAnswer(roomName: string) {
       return;
     }
 
-    const hasNonSipParticipant = participants.some((p) => !isSipParticipant(p));
+    const hasNonSipParticipant = participants.some((p) =>
+      !isSipParticipant(p as MinimalParticipant)
+    );
     if (hasNonSipParticipant) return;
 
     const agentName = (settingsRow as { agent_name?: string } | null)?.agent_name ?? 'Ben';
