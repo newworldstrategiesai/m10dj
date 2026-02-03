@@ -141,10 +141,10 @@ export default function MeetPage() {
     setRoom({ ...room, is_active: true, title });
     setInMeeting(true);
     await getMeetToken(room.room_name);
-    const meetUrl = `https://tipjar.live/meet/${room.username}`;
-    navigator.clipboard.writeText(meetUrl);
-    setUrlCopied(true);
-    setTimeout(() => setUrlCopied(false), 3000);
+    copyToClipboard(getMeetUrl()).then((ok) => {
+      setUrlCopied(ok);
+      setTimeout(() => setUrlCopied(false), 3000);
+    });
   }
 
   async function handleEndMeeting() {
@@ -164,21 +164,46 @@ export default function MeetPage() {
     }
   }
 
-  function handleCopyUrl() {
-    if (!room) return;
-    const meetUrl = typeof window !== 'undefined'
+  function getMeetUrl() {
+    if (!room) return '';
+    return typeof window !== 'undefined'
       ? `${window.location.origin}/meet/${room.username}`
       : `https://tipjar.live/meet/${room.username}`;
-    navigator.clipboard.writeText(meetUrl);
-    setUrlCopied(true);
-    setTimeout(() => setUrlCopied(false), 3000);
+  }
+
+  async function copyToClipboard(text: string) {
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(text);
+        return true;
+      }
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.left = '-9999px';
+      ta.style.top = '0';
+      document.body.appendChild(ta);
+      ta.focus();
+      ta.select();
+      const ok = document.execCommand('copy');
+      document.body.removeChild(ta);
+      return ok;
+    } catch {
+      return false;
+    }
+  }
+
+  function handleCopyUrl() {
+    if (!room) return;
+    copyToClipboard(getMeetUrl()).then((ok) => {
+      setUrlCopied(ok);
+      setTimeout(() => setUrlCopied(false), 3000);
+    });
   }
 
   async function handleShare() {
     if (!room) return;
-    const meetUrl = typeof window !== 'undefined'
-      ? `${window.location.origin}/meet/${room.username}`
-      : `https://tipjar.live/meet/${room.username}`;
+    const meetUrl = getMeetUrl();
 
     if (navigator.share) {
       try {
@@ -307,20 +332,42 @@ export default function MeetPage() {
           </div>
 
           <div className="px-4 py-4 border-t border-gray-800 bg-black/95 backdrop-blur-sm pb-safe-bottom">
-            <div className="flex gap-2">
-              <Input
-                value={typeof window !== 'undefined' ? `${window.location.origin}/meet/${room.username}` : `tipjar.live/meet/${room.username}`}
-                readOnly
-                className="bg-gray-900 border-gray-700 text-white text-sm font-mono flex-1"
-              />
-              <Button
-                onClick={handleCopyUrl}
-                variant="outline"
-                size="icon"
-                className={isM10Domain ? 'border-[#fcba00]/50 text-white hover:bg-[#fcba00]/20 hover:border-[#fcba00]' : 'border-gray-700 text-white hover:bg-gray-800'}
-              >
-                {urlCopied ? <Check className={`h-4 w-4 ${isM10Domain ? 'text-[#fcba00]' : 'text-green-400'}`} /> : <Copy className="h-4 w-4" />}
-              </Button>
+            <div className="flex gap-3 items-start">
+              <div className="flex-shrink-0 bg-white p-1.5 rounded-lg">
+                <img
+                  src={`https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent(getMeetUrl())}`}
+                  alt="Scan to join meeting"
+                  width={100}
+                  height={100}
+                  className="block"
+                />
+              </div>
+              <div className="flex-1 min-w-0 flex flex-col gap-2">
+                <div className="flex gap-2">
+                  <input
+                    readOnly
+                    value={getMeetUrl()}
+                    className="flex-1 min-w-0 bg-gray-900 border border-gray-700 rounded-md px-3 py-2 text-white text-sm font-mono select-text"
+                    onClick={(e) => (e.target as HTMLInputElement).select()}
+                  />
+                  <Button
+                    onClick={handleCopyUrl}
+                    variant="outline"
+                    size="icon"
+                    className={`flex-shrink-0 ${isM10Domain ? 'border-[#fcba00]/50 text-white hover:bg-[#fcba00]/20 hover:border-[#fcba00]' : 'border-gray-700 text-white hover:bg-gray-800'}`}
+                  >
+                    {urlCopied ? <Check className={`h-4 w-4 ${isM10Domain ? 'text-[#fcba00]' : 'text-green-400'}`} /> : <Copy className="h-4 w-4" />}
+                  </Button>
+                </div>
+                <a
+                  href={getMeetUrl()}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sm text-blue-400 hover:text-blue-300 underline break-all"
+                >
+                  Open link
+                </a>
+              </div>
             </div>
             <Button
               onClick={handleShare}

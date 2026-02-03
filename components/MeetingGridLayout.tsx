@@ -2,12 +2,11 @@
 
 /**
  * MeetingGridLayout - Responsive grid for video meeting participants.
- * - Mobile: 2 cols (8+ tiles with scroll)
- * - Tablet (sm): 3 cols
- * - md: 4 cols, lg: 5 cols, xl: 6 cols, 2xl: 8 cols, 1800px+: 10 cols
- * - Laptop/tablet/desktop show more than 8 tiles
- * - Grid scrolls when participants exceed visible area
- * - Includes chat UI (same as LiveKit VideoConference prebuild)
+ * Dynamic layout based on participant count and screen size:
+ * - 2 users: 2 cols, fills screen (50% each)
+ * - 3-4: 2 cols, 5-6: 3 cols
+ * - 7+: more cols, scrollable
+ * - Fewer participants = larger tiles, better space use
  */
 import {
   useTracks,
@@ -24,6 +23,32 @@ import type { WidgetState } from '@livekit/components-core';
 import { RoomEvent, Track } from 'livekit-client';
 import * as React from 'react';
 
+function useOptimalGrid(trackCount: number) {
+  const [cols, setCols] = React.useState(2);
+  const [rows, setRows] = React.useState(1);
+
+  const update = React.useCallback(() => {
+    if (typeof window === 'undefined') return;
+    const n = Math.max(1, trackCount);
+    const w = window.innerWidth;
+
+    const colsForCount = n <= 1 ? 1 : n <= 2 ? 2 : n <= 4 ? 2 : n <= 9 ? 3 : n <= 16 ? 4 : 5;
+    const maxCols = w < 640 ? 2 : w < 1024 ? 3 : w < 1536 ? 5 : 6;
+    const c = Math.min(colsForCount, maxCols);
+    const r = Math.ceil(n / c);
+    setCols(c);
+    setRows(r);
+  }, [trackCount]);
+
+  React.useEffect(() => {
+    update();
+    window.addEventListener('resize', update);
+    return () => window.removeEventListener('resize', update);
+  }, [update]);
+
+  return { cols, rows, fillMode: trackCount <= 6 };
+}
+
 export function MeetingGridLayout() {
   const [widgetState, setWidgetState] = React.useState<WidgetState>({
     showChat: false,
@@ -39,16 +64,27 @@ export function MeetingGridLayout() {
     { updateOnlyOn: [RoomEvent.ActiveSpeakersChanged], onlySubscribed: false },
   );
 
+  const { cols, rows, fillMode } = useOptimalGrid(tracks.length);
   const layoutContext = useCreateLayoutContext();
+
+  const gridStyle: React.CSSProperties = fillMode
+    ? {
+        gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`,
+        gridTemplateRows: `repeat(${rows}, minmax(0, 1fr))`,
+      }
+    : {
+        gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`,
+        gridAutoRows: 'minmax(140px, 1fr)',
+      };
 
   return (
     <LayoutContextProvider value={layoutContext} onWidgetChange={setWidgetState}>
       <div className="lk-video-conference h-full w-full">
         <div className="lk-video-conference-inner flex-1 min-w-0 flex flex-col min-h-0">
-          <div className="lk-grid-layout flex-1 min-h-0 overflow-auto p-1">
-            <div className="grid gap-1 w-full grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 min-[1800px]:grid-cols-10">
+          <div className={`lk-grid-layout flex-1 min-h-0 p-1 ${fillMode ? 'overflow-hidden' : 'overflow-auto'}`}>
+            <div className="grid gap-1 w-full h-full min-h-0" style={gridStyle}>
               <TrackLoop tracks={tracks}>
-                <div className="aspect-square min-w-0 min-h-0 overflow-hidden [&>div]:!h-full [&>div]:!min-h-0">
+                <div className="min-w-0 min-h-0 w-full h-full overflow-hidden [&>div]:!h-full [&>div]:!min-h-0">
                   <ParticipantTile className="!h-full !w-full !min-h-0" />
                 </div>
               </TrackLoop>

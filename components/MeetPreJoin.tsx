@@ -50,7 +50,9 @@ function MeetPreJoinInner({
     const track = videoTrackRef.publication?.track;
     if (track) {
       track.attach(videoEl.current);
-      return () => track.detach(videoEl.current!);
+      return () => {
+        track.detach(videoEl.current!);
+      };
     }
   }, [videoTrackRef]);
 
@@ -63,8 +65,8 @@ function MeetPreJoinInner({
       username: trimmed,
       audioEnabled,
       videoEnabled,
-      audioDeviceId: undefined,
-      videoDeviceId: undefined,
+      audioDeviceId: '',
+      videoDeviceId: '',
     });
   };
 
