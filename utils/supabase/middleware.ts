@@ -66,9 +66,12 @@ const AUTH_CHECK_THROTTLE = 30000; // 30 seconds - increased to prevent excessiv
 
 export const updateSession = async (request: NextRequest) => {
   try {
-    // Skip auth middleware entirely for admin pages during development
+    // Skip auth middleware for admin pages (avoids extra getUser)
     if (request.nextUrl.pathname.startsWith('/admin')) {
-      console.log('🚫 Skipping auth middleware for admin page');
+      return NextResponse.next();
+    }
+    // Skip auth middleware for sign-in pages to avoid rate limiting when testing login
+    if (request.nextUrl.pathname.startsWith('/signin') || request.nextUrl.pathname.startsWith('/tipjar/signin')) {
       return NextResponse.next();
     }
 

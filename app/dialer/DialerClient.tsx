@@ -1,6 +1,12 @@
 'use client';
 
+/**
+ * Dialer UI – matches ClickSetGo layout and styling.
+ * Call engine remains LiveKit (POST /api/livekit/outbound-call).
+ */
+
 import React, { useState, useEffect, useCallback } from 'react';
+import Link from 'next/link';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { LiveKitRoom } from '@livekit/components-react';
 import { VoiceCallControls } from '@/components/livekit/VoiceCallControls';
@@ -16,9 +22,23 @@ import {
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Phone, User, Search, X } from 'lucide-react';
+import {
+  Phone,
+  User,
+  Search,
+  X,
+  MessageSquare,
+  ChevronLeft,
+  ChevronRight,
+  Star,
+  Clock,
+  LayoutGrid,
+  PhoneCall,
+  Check,
+} from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { parsePhoneNumberFromString } from 'libphonenumber-js';
+import { cn } from '@/lib/utils';
 
 interface Contact {
   id: string;
@@ -28,6 +48,17 @@ interface Contact {
   user_id: string;
   email?: string;
   notes?: string;
+}
+
+interface RecentCall {
+  id: string;
+  client_phone: string | null;
+  direction: string;
+  status: string;
+  started_at: string | null;
+  created_at: string;
+  contact_id: string | null;
+  contacts?: { first_name?: string | null; last_name?: string | null } | null;
 }
 
 interface AgentSettings {
@@ -46,25 +77,36 @@ interface DialerClientProps {
 export default function DialerClient({ userId, userEmail }: DialerClientProps) {
   const supabase = createClientComponentClient();
   const { toast } = useToast();
-  
-  // State
-  const [input, setInput] = useState<string>('');
+
+  const [input, setInput] = useState('');
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
+  const [selectedContacts, setSelectedContacts] = useState<Contact[]>([]);
+  const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [isCallModalOpen, setIsCallModalOpen] = useState(false);
+  const [isRedialModalOpen, setIsRedialModalOpen] = useState(false);
+  const [recentCalls, setRecentCalls] = useState<RecentCall[]>([]);
+  const [loadingRecentCalls, setLoadingRecentCalls] = useState(false);
   const [loading, setLoading] = useState(false);
   const [callReason, setCallReason] = useState('');
   const [firstMessage, setFirstMessage] = useState('');
-  /** Active voice call: join room and show in-call UI */
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+
+  const [isAddContactOpen, setIsAddContactOpen] = useState(false);
+  const [addContactFirstName, setAddContactFirstName] = useState('');
+  const [addContactLastName, setAddContactLastName] = useState('');
+  const [addContactPhone, setAddContactPhone] = useState('');
+  const [addContactEmail, setAddContactEmail] = useState('');
+  const [addContactSubmitting, setAddContactSubmitting] = useState(false);
+
   const [activeCall, setActiveCall] = useState<{
     roomName: string;
     token: string;
     serverUrl: string;
     displayName: string;
   } | null>(null);
-  
-  // Agent settings
+
   const [agentSettings, setAgentSettings] = useState<AgentSettings>({
     agentName: 'AI Assistant',
     role: 'Customer Service Representative',
@@ -72,40 +114,17 @@ export default function DialerClient({ userId, userEmail }: DialerClientProps) {
     prompt: 'You are a friendly and professional customer service representative.',
   });
 
-  // Format phone number to E.164
   const formatPhoneNumber = (phoneNumber: string | undefined): string => {
-    if (!phoneNumber || typeof phoneNumber !== 'string') {
-      return '';
-    }
-    
-    const phoneNumberObject = parsePhoneNumberFromString(phoneNumber);
-    if (phoneNumberObject) {
-      return phoneNumberObject.format('E.164');
-    }
-    
-    const digitsOnly = phoneNumber.replace(/\D/g, '');
-    if (!digitsOnly) {
-      return '';
-    }
-    
-    if (digitsOnly.length === 10) {
-      return `+1${digitsOnly}`;
-    } else if (digitsOnly.length === 11 && digitsOnly.startsWith('1')) {
-      return `+${digitsOnly}`;
-    } else if (digitsOnly.length > 8) {
-      if (phoneNumber.startsWith('+')) {
-        return phoneNumber;
-      } else if (phoneNumber.startsWith('00')) {
-        return '+' + phoneNumber.substring(2);
-      } else {
-        return `+${digitsOnly}`;
-      }
-    }
-    
-    return phoneNumber.startsWith('+') ? phoneNumber : `+${phoneNumber}`;
+    if (!phoneNumber || typeof phoneNumber !== 'string') return '';
+    const parsed = parsePhoneNumberFromString(phoneNumber);
+    if (parsed) return parsed.format('E.164');
+    const digits = phoneNumber.replace(/\D/g, '');
+    if (!digits) return '';
+    if (digits.length === 10) return `+1${digits}`;
+    if (digits.length === 11 && digits.startsWith('1')) return `+${digits}`;
+    return phoneNumber.startsWith('+') ? phoneNumber : `+${digits}`;
   };
 
-  // Fetch contacts
   const fetchContacts = useCallback(async () => {
     try {
       const { data, error } = await supabase
@@ -113,23 +132,29 @@ export default function DialerClient({ userId, userEmail }: DialerClientProps) {
         .select('*')
         .eq('user_id', userId)
         .order('first_name', { ascending: true });
-      
-      if (error) {
-        console.error('Error fetching contacts:', error);
-      } else {
-        setContacts(data || []);
-      }
-    } catch (error) {
-      console.error('Error fetching contacts:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to fetch contacts',
-        variant: 'destructive',
-      });
+      if (!error) setContacts(data || []);
+    } catch (e) {
+      console.error(e);
+      toast({ title: 'Error', description: 'Failed to fetch contacts', variant: 'destructive' });
     }
   }, [userId, supabase, toast]);
 
-  // Fetch agent settings from database if available
+  const fetchRecentCalls = useCallback(async () => {
+    setLoadingRecentCalls(true);
+    try {
+      const { data, error } = await supabase
+        .from('voice_calls')
+        .select('id, client_phone, direction, status, started_at, created_at, contact_id, contacts ( first_name, last_name )')
+        .order('created_at', { ascending: false })
+        .limit(20);
+      if (!error) setRecentCalls((data as unknown as RecentCall[]) || []);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoadingRecentCalls(false);
+    }
+  }, [supabase]);
+
   const fetchAgentSettings = useCallback(async () => {
     try {
       const { data, error } = await supabase
@@ -140,7 +165,6 @@ export default function DialerClient({ userId, userEmail }: DialerClientProps) {
         .order('created_at', { ascending: false })
         .limit(1)
         .single();
-      
       if (!error && data) {
         setAgentSettings({
           agentName: data.agent_name || 'AI Assistant',
@@ -149,9 +173,8 @@ export default function DialerClient({ userId, userEmail }: DialerClientProps) {
           prompt: data.prompt || 'You are a friendly and professional customer service representative.',
         });
       }
-    } catch (error) {
-      console.error('Error fetching agent settings:', error);
-      // Use defaults if fetch fails
+    } catch (e) {
+      console.error(e);
     }
   }, [userId, supabase]);
 
@@ -160,80 +183,123 @@ export default function DialerClient({ userId, userEmail }: DialerClientProps) {
     fetchAgentSettings();
   }, [fetchContacts, fetchAgentSettings]);
 
-  // Filter contacts by search query
-  const filteredContacts = contacts.filter(contact => {
+  useEffect(() => {
+    if (isRedialModalOpen) fetchRecentCalls();
+  }, [isRedialModalOpen, fetchRecentCalls]);
+
+  const handleAddContactSubmit = async () => {
+    const first = addContactFirstName.trim();
+    const last = addContactLastName.trim();
+    if (!first || !last) {
+      toast({ title: 'Required fields', description: 'First name and last name are required', variant: 'destructive' });
+      return;
+    }
+    setAddContactSubmitting(true);
+    try {
+      const res = await fetch('/api/contacts/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          first_name: first,
+          last_name: last,
+          phone: addContactPhone.trim() || null,
+          email_address: addContactEmail.trim() || null,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        toast({
+          title: 'Could not add contact',
+          description: data?.error || data?.details || res.statusText,
+          variant: 'destructive',
+        });
+        return;
+      }
+      toast({ title: 'Contact added', description: `${first} ${last} has been added.` });
+      setIsAddContactOpen(false);
+      await fetchContacts();
+      const newContact = data?.contact;
+      if (newContact?.phone) {
+        const c: Contact = {
+          id: newContact.id,
+          first_name: newContact.first_name,
+          last_name: newContact.last_name,
+          phone: newContact.phone,
+          user_id: newContact.user_id,
+          email: newContact.email_address,
+          notes: newContact.notes,
+        };
+        setInput(formatPhoneNumber(newContact.phone));
+        setSelectedContact(c);
+      }
+    } catch (e) {
+      console.error(e);
+      toast({ title: 'Error', description: 'Failed to add contact', variant: 'destructive' });
+    } finally {
+      setAddContactSubmitting(false);
+    }
+  };
+
+  const filteredContacts = contacts.filter((c) => {
     if (!searchQuery) return true;
-    const query = searchQuery.toLowerCase();
+    const q = searchQuery.toLowerCase();
     return (
-      contact.first_name.toLowerCase().includes(query) ||
-      contact.last_name.toLowerCase().includes(query) ||
-      contact.phone.includes(query) ||
-      `${contact.first_name} ${contact.last_name}`.toLowerCase().includes(query)
+      (c.first_name || '').toLowerCase().includes(q) ||
+      (c.last_name || '').toLowerCase().includes(q) ||
+      (c.phone || '').includes(q) ||
+      `${c.first_name} ${c.last_name}`.toLowerCase().includes(q)
     );
   });
 
-  // Handle dial pad button clicks
   const handleButtonClick = (value: string) => {
     setInput((prev) => (prev ? prev + value : value));
   };
 
-  // Handle backspace
   const handleBackspace = () => {
     setInput((prev) => prev.slice(0, -1));
   };
 
-  // Handle call button click
-  const handleCall = async () => {
-    const formattedNumber = formatPhoneNumber(input);
-    
-    if (!formattedNumber || formattedNumber.length < 10) {
-      toast({
-        title: 'Invalid Phone Number',
-        description: 'Please enter a valid phone number',
-        variant: 'destructive',
-      });
+  const handleCall = () => {
+    if (selectedContacts.length > 0) {
+      setInput(formatPhoneNumber(selectedContacts[0].phone));
+      setSelectedContact(selectedContacts[0]);
+      setIsCallModalOpen(true);
       return;
     }
-
-    // Check if contact exists
-    const contact = contacts.find(
-      (c) => formatPhoneNumber(c.phone) === formattedNumber
-    );
-
-    if (contact) {
-      setSelectedContact(contact);
-    } else {
-      setSelectedContact(null);
+    const formatted = formatPhoneNumber(input);
+    if (!formatted || formatted.length < 10) {
+      toast({ title: 'Invalid Phone Number', description: 'Please enter a valid phone number', variant: 'destructive' });
+      return;
     }
-
+    const contact = contacts.find((c) => formatPhoneNumber(c.phone) === formatted);
+    setSelectedContact(contact || null);
     setIsCallModalOpen(true);
   };
 
-  // Handle contact click
   const handleContactClick = (contact: Contact) => {
+    if (isMultiSelectMode) {
+      setSelectedContacts((prev) =>
+        prev.some((c) => c.id === contact.id) ? prev.filter((c) => c.id !== contact.id) : [...prev, contact]
+      );
+      return;
+    }
     setInput(contact.phone);
     setSelectedContact(contact);
     setIsCallModalOpen(true);
   };
 
-  // Handle modal submit (initiate call)
   const handleModalSubmit = async () => {
+    const formatted = formatPhoneNumber(input);
+    if (!formatted) {
+      toast({ title: 'Invalid Phone Number', variant: 'destructive' });
+      return;
+    }
     try {
       setLoading(true);
-      
-      const formattedNumber = formatPhoneNumber(input);
-      if (!formattedNumber) {
-        toast({
-          title: 'Invalid Phone Number',
-          description: 'Please enter a valid phone number',
-          variant: 'destructive',
-        });
-        return;
-      }
-
+      const contact = selectedContact || contacts.find((c) => formatPhoneNumber(c.phone) === formatted);
       const payload = {
-        contactId: selectedContact?.id || null,
-        phoneNumber: formattedNumber,
+        contactId: contact?.id || null,
+        phoneNumber: formatted,
         callType: 'outbound',
         callReason: callReason || 'General inquiry',
         agentSettings: {
@@ -245,25 +311,14 @@ export default function DialerClient({ userId, userEmail }: DialerClientProps) {
         },
         userId,
       };
-
       const response = await fetch('/api/livekit/outbound-call', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
-
       const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to initiate call');
-      }
-
-      const displayName = selectedContact
-        ? `${selectedContact.first_name} ${selectedContact.last_name}`
-        : formatPhoneNumber(input) || 'Unknown';
-
+      if (!response.ok) throw new Error(data.error || 'Failed to initiate call');
+      const displayName = contact ? `${contact.first_name} ${contact.last_name}` : formatted || 'Unknown';
       if (data.token && data.serverUrl) {
         setActiveCall({
           roomName: data.roomName,
@@ -271,39 +326,39 @@ export default function DialerClient({ userId, userEmail }: DialerClientProps) {
           serverUrl: data.serverUrl,
           displayName,
         });
-        toast({
-          title: data.sipConfigured ? 'Calling...' : 'Room ready',
-          description: data.sipConfigured
-            ? 'Join to talk in your browser.'
-            : data.message,
-        });
+        toast({ title: data.sipConfigured ? 'Calling...' : 'Room ready', description: data.sipConfigured ? 'Join to talk.' : data.message });
       } else {
-        toast({
-          title: 'Room created',
-          description: data.message,
-        });
+        toast({ title: 'Room created', description: data.message });
       }
-
       setIsCallModalOpen(false);
       setInput('');
       setCallReason('');
       setFirstMessage('');
       setSelectedContact(null);
-    } catch (error) {
-      console.error('Error initiating call:', error);
-      toast({
-        title: 'Error',
-        description: error instanceof Error ? error.message : 'Failed to initiate call',
-        variant: 'destructive',
-      });
+    } catch (err) {
+      console.error(err);
+      toast({ title: 'Error', description: err instanceof Error ? err.message : 'Failed to initiate call', variant: 'destructive' });
     } finally {
       setLoading(false);
     }
   };
 
+  const contactNameForModal = selectedContact
+    ? `${selectedContact.first_name} ${selectedContact.last_name}`
+    : selectedContacts.length > 0
+      ? `${selectedContacts[0].first_name} ${selectedContacts[0].last_name}`
+      : formatPhoneNumber(input) || '';
+
+  const getRecentCallDisplayName = (call: RecentCall) => {
+    const c = call.contacts;
+    if (c && typeof c === 'object' && !Array.isArray(c) && (c.first_name || c.last_name))
+      return [c.first_name, c.last_name].filter(Boolean).join(' ');
+    return call.client_phone || 'Unknown';
+  };
+
   return (
-    <div className="min-h-screen bg-white dark:bg-black text-gray-900 dark:text-white">
-      {/* Active call overlay: join LiveKit room and show mic + hang up */}
+    <section className="min-h-screen bg-white dark:bg-black text-gray-900 dark:text-white">
+      {/* Active call overlay */}
       {activeCall && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 dark:bg-black/80">
           <div className="bg-background border border-border rounded-xl shadow-xl p-6 max-w-sm w-full mx-4">
@@ -315,180 +370,286 @@ export default function DialerClient({ userId, userEmail }: DialerClientProps) {
               connect={true}
               onDisconnected={() => setActiveCall(null)}
               onError={(err) => {
-                toast({
-                  title: 'Call error',
-                  description: err.message,
-                  variant: 'destructive',
-                });
+                toast({ title: 'Call error', description: err.message, variant: 'destructive' });
                 setActiveCall(null);
               }}
               className="rounded-lg"
             >
-              <VoiceCallControls
-                displayName={activeCall.displayName}
-                onHangUp={() => setActiveCall(null)}
-              />
+              <VoiceCallControls displayName={activeCall.displayName} onHangUp={() => setActiveCall(null)} />
             </LiveKitRoom>
           </div>
         </div>
       )}
 
-      <div className="container mx-auto px-4 py-8 max-w-6xl">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Contacts Sidebar */}
-          <div className="lg:col-span-1">
-            <div className="bg-white dark:bg-gray-900 rounded-lg shadow-lg p-4">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-semibold">Contacts</h2>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    // TODO: Add new contact functionality
-                    toast({
-                      title: 'Coming Soon',
-                      description: 'Add contact functionality coming soon',
-                    });
-                  }}
-                >
-                  <User className="h-4 w-4 mr-2" />
-                  Add
-                </Button>
+      <div className="relative z-20 w-full flex">
+        {/* Left sidebar – Contacts (desktop) */}
+        <div
+          className={cn(
+            'hidden md:flex flex-col p-4 bg-white dark:bg-black h-[calc(100vh-4rem)] overflow-y-auto transition-[width] duration-300 fixed top-16 pb-24',
+            sidebarCollapsed ? 'w-16' : 'w-1/3 max-w-sm'
+          )}
+        >
+          <div className="flex items-center justify-between mb-4">
+            {!sidebarCollapsed && (
+              <div className="flex items-center justify-between w-full gap-2">
+                <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Contacts</h2>
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsMultiSelectMode(!isMultiSelectMode);
+                      if (!isMultiSelectMode) setSelectedContacts([]);
+                    }}
+                    className="p-2 rounded-lg text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
+                    aria-label="Multi-select"
+                  >
+                    <User className="h-5 w-5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAddContactFirstName('');
+                      setAddContactLastName('');
+                      setAddContactPhone('');
+                      setAddContactEmail('');
+                      setIsAddContactOpen(true);
+                    }}
+                    className="p-2 rounded-lg text-blue-500 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950"
+                    aria-label="Add contact"
+                  >
+                    <span className="text-xl leading-none">+</span>
+                  </button>
+                </div>
               </div>
-              
-              {/* Search */}
+            )}
+            <button
+              type="button"
+              onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+              className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-white rounded"
+              aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            >
+              {sidebarCollapsed ? <ChevronRight className="h-5 w-5" /> : <ChevronLeft className="h-5 w-5" />}
+            </button>
+          </div>
+
+          {!sidebarCollapsed && (
+            <>
               <div className="relative mb-4">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                <Input
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <input
                   type="text"
-                  placeholder="Search contacts..."
+                  placeholder="Search contacts"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10"
+                  className="w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-black text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  aria-label="Search contacts"
                 />
               </div>
 
-              {/* Contacts List */}
-              <div className="space-y-2 max-h-[600px] overflow-y-auto">
+              <div className="space-y-2 flex-1 min-h-0 overflow-y-auto">
                 {filteredContacts.length > 0 ? (
-                  filteredContacts.map((contact) => (
-                    <div
-                      key={contact.id}
-                      onClick={() => handleContactClick(contact)}
-                      className="flex items-center p-3 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer transition-colors"
-                    >
-                      <div className="flex-shrink-0 w-10 h-10 rounded-full bg-blue-500 text-white flex items-center justify-center font-medium mr-3">
-                        {contact.first_name.charAt(0).toUpperCase()}
-                        {contact.last_name.charAt(0).toUpperCase()}
+                  filteredContacts.map((contact) => {
+                    const isSelected = isMultiSelectMode && selectedContacts.some((c) => c.id === contact.id);
+                    return (
+                      <div
+                        key={contact.id}
+                        onClick={() => handleContactClick(contact)}
+                        className={cn(
+                          'flex items-center gap-3 p-2 rounded-lg cursor-pointer transition-colors',
+                          isSelected ? 'bg-blue-500/20 dark:bg-blue-500/20' : 'hover:bg-gray-100 dark:hover:bg-gray-800'
+                        )}
+                      >
+                        {isMultiSelectMode && (
+                          <div
+                            className={cn(
+                              'w-5 h-5 rounded border flex items-center justify-center flex-shrink-0',
+                              isSelected ? 'bg-blue-500 border-blue-500 text-white' : 'border-gray-400 dark:border-gray-500'
+                            )}
+                          >
+                            {isSelected && <Check className="h-3 w-3" />}
+                          </div>
+                        )}
+                        <div className="w-10 h-10 rounded-full bg-blue-500 text-white flex items-center justify-center font-medium flex-shrink-0">
+                          {(contact.first_name || '?').charAt(0).toUpperCase()}
+                          {(contact.last_name || '').charAt(0).toUpperCase()}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="font-medium truncate">{contact.first_name} {contact.last_name}</p>
+                          <p className="text-sm text-gray-500 dark:text-gray-400 truncate">{contact.phone}</p>
+                        </div>
+                        <Link
+                          href={`/admin/contacts/${contact.id}`}
+                          onClick={(e) => e.stopPropagation()}
+                          className="text-sm text-blue-500 dark:text-blue-400 hover:underline flex-shrink-0"
+                        >
+                          View
+                        </Link>
                       </div>
-                      <div className="flex-grow">
-                        <p className="font-medium">
-                          {contact.first_name} {contact.last_name}
-                        </p>
-                        <p className="text-sm text-gray-500 dark:text-gray-400">
-                          {contact.phone}
-                        </p>
-                      </div>
-                    </div>
-                  ))
+                    );
+                  })
                 ) : (
-                  <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+                  <div className="py-8 text-center text-gray-500 dark:text-gray-400">
                     {searchQuery ? 'No contacts found' : 'No contacts yet'}
                   </div>
                 )}
               </div>
-            </div>
-          </div>
+            </>
+          )}
+        </div>
 
-          {/* Dialer */}
-          <div className="lg:col-span-2">
-            <div className="bg-white dark:bg-gray-900 rounded-lg shadow-lg p-8">
-              <h1 className="text-2xl font-bold mb-6">Dialer</h1>
-              
-              {/* Phone Number Input */}
-              <div className="mb-8">
-                <Label htmlFor="phone">Phone Number</Label>
-                <Input
-                  id="phone"
-                  type="tel"
-                  placeholder="Enter phone number (e.g., +1234567890)"
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  className="mt-2 text-lg"
-                />
-                {input && (
-                  <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
-                    {formatPhoneNumber(input) || 'Invalid phone number format'}
-                  </p>
+        {/* Right panel – Keypad (ClickSetGo style) */}
+        <div
+          className={cn(
+            'flex-grow flex flex-col items-center justify-center w-full pt-16 pb-32 bg-white dark:bg-black',
+            sidebarCollapsed ? 'md:pl-16' : 'md:pl-72'
+          )}
+        >
+          {/* Selected contact pills */}
+          {selectedContacts.length > 0 && (
+            <div className="mt-4 flex flex-wrap gap-2 justify-center max-w-md px-4">
+              {selectedContacts.map((contact) => (
+                <div
+                  key={contact.id}
+                  className="flex items-center bg-blue-500/10 text-blue-700 dark:text-blue-400 px-3 py-1 rounded-full text-sm"
+                >
+                  <span>{contact.first_name} {contact.last_name}</span>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedContacts((prev) => prev.filter((c) => c.id !== contact.id))}
+                    className="ml-2 hover:text-blue-800 dark:hover:text-blue-300"
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Phone number display / input */}
+          <div className="w-64 mb-4">
+            {selectedContacts.length > 0 ? (
+              <div className="text-center">
+                <div className="text-lg font-semibold text-gray-900 dark:text-white">
+                  {formatPhoneNumber(selectedContacts[0].phone)}
+                </div>
+                {selectedContacts.length > 1 && (
+                  <div className="text-sm text-gray-400">&amp; {selectedContacts.length - 1} other{selectedContacts.length > 2 ? 's' : ''}</div>
                 )}
               </div>
+            ) : (
+              <Input
+                type="tel"
+                placeholder="Enter phone number"
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                className="text-center text-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-black"
+              />
+            )}
+          </div>
 
-              {/* Dial Pad */}
-              <div className="grid grid-cols-3 gap-4 max-w-md mx-auto mb-8">
-                {[
-                  { value: '1', letters: '' },
-                  { value: '2', letters: 'ABC' },
-                  { value: '3', letters: 'DEF' },
-                  { value: '4', letters: 'GHI' },
-                  { value: '5', letters: 'JKL' },
-                  { value: '6', letters: 'MNO' },
-                  { value: '7', letters: 'PQRS' },
-                  { value: '8', letters: 'TUV' },
-                  { value: '9', letters: 'WXYZ' },
-                  { value: '*', letters: '' },
-                  { value: '0', letters: '+' },
-                  { value: '#', letters: '' },
-                ].map((button) => (
-                  <button
-                    key={button.value}
-                    onClick={() => handleButtonClick(button.value)}
-                    className="flex flex-col items-center justify-center h-20 bg-gray-100 dark:bg-gray-800 rounded-lg text-2xl font-semibold hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
-                  >
-                    {button.value}
-                    {button.letters && (
-                      <span className="text-xs text-gray-500 dark:text-gray-400">
-                        {button.letters}
-                      </span>
-                    )}
-                  </button>
-                ))}
-                <button
-                  onClick={handleBackspace}
-                  className="flex items-center justify-center h-20 bg-gray-100 dark:bg-gray-800 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
-                >
-                  <X className="h-6 w-6" />
-                </button>
-              </div>
-
-              {/* Call Button */}
-              <div className="flex justify-center">
-                <Button
-                  onClick={handleCall}
-                  size="lg"
-                  className="bg-green-600 hover:bg-green-700 text-white px-8 py-6 text-lg"
-                  disabled={!input || loading}
-                >
-                  <Phone className="h-6 w-6 mr-2" />
-                  {loading ? 'Calling...' : 'Call'}
-                </Button>
-              </div>
-            </div>
+          {/* Circular dial pad – ClickSetGo style */}
+          <div className="grid grid-cols-3 gap-4 w-64 mb-6">
+            {[
+              { value: '1', letters: '' },
+              { value: '2', letters: 'ABC' },
+              { value: '3', letters: 'DEF' },
+              { value: '4', letters: 'GHI' },
+              { value: '5', letters: 'JKL' },
+              { value: '6', letters: 'MNO' },
+              { value: '7', letters: 'PQRS' },
+              { value: '8', letters: 'TUV' },
+              { value: '9', letters: 'WXYZ' },
+              { value: '*', letters: '' },
+              { value: '0', letters: '+' },
+              { value: '#', letters: '' },
+            ].map(({ value, letters }) => (
+              <button
+                key={value}
+                type="button"
+                onClick={() => handleButtonClick(value)}
+                className="flex flex-col items-center justify-center h-20 w-20 rounded-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-black text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-800 text-3xl font-normal transition-colors"
+                aria-label={`Dial ${value}`}
+              >
+                {value}
+                {letters && <span className="text-xs text-gray-500 dark:text-gray-400">{letters}</span>}
+              </button>
+            ))}
+            <button
+              type="button"
+              onClick={handleBackspace}
+              className="flex flex-col items-center justify-center h-20 w-20 rounded-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-black text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-800 text-xl transition-colors"
+              aria-label="Backspace"
+            >
+              ⌫
+            </button>
+            <button
+              type="button"
+              onClick={() => setIsRedialModalOpen(true)}
+              className="flex items-center justify-center h-20 w-20 rounded-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-black text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+              aria-label="Recent calls"
+            >
+              <Clock className="h-6 w-6 text-gray-500 dark:text-gray-400" />
+            </button>
+            <button
+              type="button"
+              onClick={handleCall}
+              disabled={loading || (!input && selectedContacts.length === 0)}
+              className="flex items-center justify-center h-20 w-20 rounded-full bg-green-600 hover:bg-green-500 disabled:opacity-50 disabled:pointer-events-none text-white text-3xl transition-colors"
+              aria-label="Call"
+            >
+              <Phone className="h-8 w-8" />
+            </button>
           </div>
         </div>
       </div>
 
-      {/* Call Confirmation Modal */}
+      {/* Bottom nav – ClickSetGo style */}
+      <div className="fixed bottom-0 left-0 w-full bg-white dark:bg-black border-t border-gray-300 dark:border-gray-800 flex justify-around py-4 text-gray-900 dark:text-white z-40 px-4">
+        <Link href="/admin/calls" className="flex flex-col items-center gap-1 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white">
+          <Star className="h-6 w-6" />
+          <span className="text-xs">Favorites</span>
+        </Link>
+        <Link href="/admin/calls" className="flex flex-col items-center gap-1 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white">
+          <Clock className="h-6 w-6" />
+          <span className="text-xs">Scheduled</span>
+        </Link>
+        <button
+          type="button"
+          onClick={() => {
+            setIsMultiSelectMode(!isMultiSelectMode);
+            if (!isMultiSelectMode) setSelectedContacts([]);
+          }}
+          className="flex flex-col items-center gap-1 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
+        >
+          <User className="h-6 w-6" />
+          <span className="text-xs">Contacts</span>
+        </button>
+        <span className="flex flex-col items-center gap-1 text-blue-500 dark:text-blue-400">
+          <LayoutGrid className="h-6 w-6" />
+          <span className="text-xs">Keypad</span>
+        </span>
+        <Link href="/admin/calls/history" className="flex flex-col items-center gap-1 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white">
+          <PhoneCall className="h-6 w-6" />
+          <span className="text-xs">Calls</span>
+        </Link>
+      </div>
+
+      {/* Call confirmation modal */}
       <Dialog open={isCallModalOpen} onOpenChange={setIsCallModalOpen}>
-        <DialogContent className="sm:max-w-[500px]">
-          <DialogHeader>
-            <DialogTitle>Confirm Call</DialogTitle>
-            <DialogDescription>
-              {selectedContact
-                ? `Calling ${selectedContact.first_name} ${selectedContact.last_name}`
-                : `Calling ${formatPhoneNumber(input)}`}
-            </DialogDescription>
+        <DialogContent className="sm:max-w-[500px] bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800">
+          <DialogHeader className="space-y-3 pb-3 border-b border-gray-200 dark:border-gray-800">
+            <div className="flex items-center gap-3">
+              <div className="bg-blue-500/10 dark:bg-blue-500/20 rounded-full p-2">
+                <Phone className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+              </div>
+              <div>
+                <DialogTitle className="text-xl font-bold text-gray-900 dark:text-white">Confirm Call</DialogTitle>
+                <DialogDescription className="text-gray-500 dark:text-gray-400 mt-1">
+                  {contactNameForModal ? `Calling ${contactNameForModal}` : `Calling ${formatPhoneNumber(input)}`}
+                </DialogDescription>
+              </div>
+            </div>
           </DialogHeader>
-          
           <div className="space-y-4 py-4">
             <div>
               <Label htmlFor="reason">Call Reason (Optional)</Label>
@@ -500,7 +661,6 @@ export default function DialerClient({ userId, userEmail }: DialerClientProps) {
                 className="mt-2"
               />
             </div>
-            
             <div>
               <Label htmlFor="message">First Message (Optional)</Label>
               <Textarea
@@ -512,26 +672,163 @@ export default function DialerClient({ userId, userEmail }: DialerClientProps) {
               />
             </div>
           </div>
-
           <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setIsCallModalOpen(false)}
-              disabled={loading}
-            >
+            <Button variant="outline" onClick={() => setIsCallModalOpen(false)} disabled={loading}>
               Cancel
             </Button>
-            <Button
-              onClick={handleModalSubmit}
-              disabled={loading}
-              className="bg-green-600 hover:bg-green-700"
-            >
+            <Button onClick={handleModalSubmit} disabled={loading} className="bg-green-600 hover:bg-green-700">
               {loading ? 'Initiating...' : 'Start Call'}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+
+      {/* Add contact modal */}
+      <Dialog open={isAddContactOpen} onOpenChange={setIsAddContactOpen}>
+        <DialogContent className="sm:max-w-[420px] bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800">
+          <DialogHeader>
+            <DialogTitle className="text-gray-900 dark:text-white">Add contact</DialogTitle>
+            <DialogDescription className="text-gray-500 dark:text-gray-400">
+              Add a new contact to your list. First and last name are required.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="add-first-name">First name</Label>
+                <Input
+                  id="add-first-name"
+                  value={addContactFirstName}
+                  onChange={(e) => setAddContactFirstName(e.target.value)}
+                  placeholder="First name"
+                  className="mt-1.5 border-gray-300 dark:border-gray-700 bg-white dark:bg-black"
+                />
+              </div>
+              <div>
+                <Label htmlFor="add-last-name">Last name</Label>
+                <Input
+                  id="add-last-name"
+                  value={addContactLastName}
+                  onChange={(e) => setAddContactLastName(e.target.value)}
+                  placeholder="Last name"
+                  className="mt-1.5 border-gray-300 dark:border-gray-700 bg-white dark:bg-black"
+                />
+              </div>
+            </div>
+            <div>
+              <Label htmlFor="add-phone">Phone (optional)</Label>
+              <Input
+                id="add-phone"
+                type="tel"
+                value={addContactPhone}
+                onChange={(e) => setAddContactPhone(e.target.value)}
+                placeholder="+1 234 567 8900"
+                className="mt-1.5 border-gray-300 dark:border-gray-700 bg-white dark:bg-black"
+              />
+            </div>
+            <div>
+              <Label htmlFor="add-email">Email (optional)</Label>
+              <Input
+                id="add-email"
+                type="email"
+                value={addContactEmail}
+                onChange={(e) => setAddContactEmail(e.target.value)}
+                placeholder="email@example.com"
+                className="mt-1.5 border-gray-300 dark:border-gray-700 bg-white dark:bg-black"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsAddContactOpen(false)} disabled={addContactSubmitting}>
+              Cancel
+            </Button>
+            <Button onClick={handleAddContactSubmit} disabled={addContactSubmitting} className="bg-blue-600 hover:bg-blue-700">
+              {addContactSubmitting ? 'Adding...' : 'Add contact'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Recent calls (redial) modal */}
+      <Dialog open={isRedialModalOpen} onOpenChange={(open) => !open && setIsRedialModalOpen(false)}>
+        <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800">
+          <DialogHeader className="space-y-3 pb-3 border-b border-gray-200 dark:border-gray-800">
+            <div className="flex items-center gap-3">
+              <div className="bg-blue-500/10 dark:bg-blue-500/20 rounded-full p-2">
+                <Phone className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+              </div>
+              <div>
+                <DialogTitle className="text-xl font-bold text-gray-900 dark:text-white">Recent Calls</DialogTitle>
+                <DialogDescription className="text-gray-500 dark:text-gray-400 mt-1">Select a contact to redial</DialogDescription>
+              </div>
+            </div>
+          </DialogHeader>
+          <div className="flex flex-col gap-2 py-4">
+            {loadingRecentCalls ? (
+              <div className="flex flex-col items-center justify-center py-8">
+                <div className="w-10 h-10 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+                <p className="text-gray-500 dark:text-gray-400 mt-4">Loading recent calls...</p>
+              </div>
+            ) : recentCalls.length > 0 ? (
+              recentCalls.map((call) => {
+                const phone = call.client_phone || '';
+                const name = getRecentCallDisplayName(call);
+                const callDate = new Date(call.started_at || call.created_at);
+                const isOutgoing = call.direction === 'outbound';
+                return (
+                  <button
+                    key={call.id}
+                    type="button"
+                    onClick={() => {
+                      if (phone) {
+                        setInput(phone);
+                        const contact = contacts.find((c) => formatPhoneNumber(c.phone) === formatPhoneNumber(phone));
+                        setSelectedContact(contact || null);
+                        setIsRedialModalOpen(false);
+                      }
+                    }}
+                    className="w-full flex items-start justify-between p-4 rounded-xl border border-gray-200 dark:border-gray-800 hover:border-blue-300 dark:hover:border-blue-700 hover:shadow-md text-left transition-all bg-white dark:bg-gray-900"
+                  >
+                    <div className="flex gap-3">
+                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white flex-shrink-0">
+                        {name.charAt(0).toUpperCase()}
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="font-semibold text-gray-900 dark:text-white">{name}</span>
+                        <span className="text-sm text-gray-500 dark:text-gray-400">{phone}</span>
+                        <span className="text-xs text-gray-400 dark:text-gray-500 capitalize mt-0.5">{call.status}</span>
+                      </div>
+                    </div>
+                    <div className="flex flex-col items-end text-right">
+                      <span className="text-xs text-gray-500 dark:text-gray-400">
+                        {isOutgoing ? 'Outgoing' : 'Incoming'}
+                      </span>
+                      <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">
+                        {callDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} at {callDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                    </div>
+                  </button>
+                );
+              })
+            ) : (
+              <div className="flex flex-col items-center justify-center py-8 px-4">
+                <div className="rounded-full p-4 bg-gray-100 dark:bg-gray-800 mb-4">
+                  <Phone className="h-8 w-8 text-blue-600 dark:text-blue-400" />
+                </div>
+                <p className="text-lg font-medium text-gray-800 dark:text-gray-200 text-center">No recent calls found</p>
+                <p className="text-gray-500 dark:text-gray-400 text-center mt-2 max-w-xs">
+                  Your recent outgoing calls will appear here after you make your first call.
+                </p>
+              </div>
+            )}
+          </div>
+          <div className="pt-2 border-t border-gray-200 dark:border-gray-800">
+            <Button onClick={() => setIsRedialModalOpen(false)} className="w-full bg-blue-600 hover:bg-blue-700 text-white">
+              Close
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </section>
   );
 }
-

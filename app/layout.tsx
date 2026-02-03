@@ -109,6 +109,7 @@ export default async function RootLayout({ children }: PropsWithChildren) {
   const isChatPage = pathname.startsWith('/chat');
   const isAdminRoute = pathname.startsWith('/admin') || pathname.startsWith('/chat');
   const isLivePage = pathname.startsWith('/live/');
+  const isDialerPage = pathname.startsWith('/dialer');
   
   // Hide M10 navbar/footer on marketing sites (tipjar, djdash)
   // These sites have their own headers/footers
@@ -116,8 +117,8 @@ export default async function RootLayout({ children }: PropsWithChildren) {
   const isMarketingSite = product === 'tipjar' || product === 'djdash' || 
                           pathname.startsWith('/tipjar') || pathname.startsWith('/djdash');
   
-  const hideNavbar = isSignInPage || isChatPage || isMarketingSite || isLivePage;
-  const hideFooter = isSignInPage || isChatPage || isMarketingSite || isLivePage;
+  const hideNavbar = isSignInPage || isChatPage || isMarketingSite || isLivePage || isDialerPage;
+  const hideFooter = isSignInPage || isChatPage || isMarketingSite || isLivePage || isDialerPage;
   
   // Homepage uses generateStructuredData which includes LocalBusiness schema
   // Only show layout schema on non-homepage pages to avoid duplication

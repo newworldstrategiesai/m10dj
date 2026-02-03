@@ -54,48 +54,30 @@ export default async function SignIn({
     redirect(`/signin/${viewProp}${redirectParam}`);
   }
 
-  // Check if the user is already logged in and redirect to the account page if so
+  // Check if the user is already logged in and redirect to the account page if so.
+  // Use getSession() instead of getUser() to avoid hitting Supabase rate limits
+  // (getSession reads from cookies; getUser validates with the server every time).
   let user = null;
   try {
     const supabase = createClient();
-    
-    // Add timeout to prevent hanging on getUser() - reduced timeout for faster failure
-    // This helps with browsers that may have different cookie/session handling
-    const getUserPromise = supabase.auth.getUser().catch((err) => {
-      // Catch any errors from getUser() and return them as part of the result
-      return { data: { user: null }, error: err };
-    });
-    
-    const timeoutPromise = new Promise<{ data: { user: null }, error: { message: string } }>((resolve) => 
-      setTimeout(() => resolve({ data: { user: null }, error: { message: 'Timeout' } }), 2000)
-    );
-    
-    const result = await Promise.race([getUserPromise, timeoutPromise]);
-    
-    const {
-      data: { user: authUser },
-      error
-    } = result || { data: { user: null }, error: null };
-    
+    const { data: { session }, error } = await supabase.auth.getSession();
+    const authUser = session?.user ?? null;
+
     // If we get a refresh token error, ignore it and continue to sign in page
-    if (error && (error?.message?.includes('refresh_token_not_found') || 
-                  error?.message?.includes('Invalid Refresh Token') || 
-                  error?.message === 'Timeout' ||
-                  !error)) {
-      // Clear invalid session and continue to sign in (only if not timeout)
-      if (error?.message && error.message !== 'Timeout') {
-        try {
-          await supabase.auth.signOut();
-        } catch (signOutError) {
-          // Ignore sign out errors
-        }
+    if (error && (error?.message?.includes('refresh_token_not_found') ||
+                  error?.message?.includes('Invalid Refresh Token'))) {
+      try {
+        await supabase.auth.signOut();
+      } catch (signOutError) {
+        // Ignore sign out errors
       }
       user = null;
-    } else {
+    } else if (authUser) {
       user = authUser;
+    } else {
+      user = null;
     }
   } catch (error) {
-    // If there's any other error, just continue to sign in page
     console.warn('Error checking user session (continuing to sign in page):', error);
     user = null;
   }

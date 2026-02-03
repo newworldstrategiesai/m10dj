@@ -2,103 +2,86 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { createClient } from '@/utils/supabase/client';
-import { isRateLimited, setRateLimited, getRemainingCooldown } from '@/utils/supabase/rate-limiter';
-import { User } from '@supabase/supabase-js';
+import {
+  isRateLimited,
+  setRateLimited,
+  getRemainingCooldown,
+  shouldThrottleAuthCall,
+  recordAuthCall,
+} from '@/utils/supabase/rate-limiter';
+import { User, AuthChangeEvent, Session } from '@supabase/supabase-js';
 
 export function useUser() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  
-  // Use singleton client to prevent multiple instances
+
   const supabase = useMemo(() => createClient(), []);
 
   useEffect(() => {
     let isMounted = true;
     let subscription: { unsubscribe: () => void } | null = null;
 
-    // Get initial user
-    const getUser = async () => {
-      // Check global rate limiter first
+    const loadUser = async () => {
       if (isRateLimited()) {
-        console.log(`⏳ Skipping auth check - rate limited (${getRemainingCooldown()}s remaining)`);
         if (isMounted) {
           setUser(null);
           setLoading(false);
         }
         return;
       }
+      if (shouldThrottleAuthCall()) {
+        if (isMounted) setLoading(false);
+        return;
+      }
 
       try {
-        const { data: { user }, error } = await supabase.auth.getUser();
-
-        // Don't update state if component unmounted
+        const { data: { session }, error } = await supabase.auth.getSession();
+        recordAuthCall();
         if (!isMounted) return;
 
-        // Handle rate limiting globally
+        if (error && (error.message?.includes('refresh_token_not_found') || error.message?.includes('Invalid Refresh Token'))) {
+          setUser(null);
+          setLoading(false);
+          return;
+        }
         if (error?.message?.includes('over_request_rate_limit') || error?.status === 429) {
           setRateLimited();
           setUser(null);
+          setLoading(false);
           return;
         }
-
-        // Ignore refresh token errors - they'll be handled by middleware
-        if (error && (error.message.includes('refresh_token_not_found') ||
-                      error.message.includes('Invalid Refresh Token'))) {
-          // Just set user to null and continue
-          setUser(null);
-        } else if (!error) {
-          setUser(user);
+        if (!error && session?.user) {
+          setUser(session.user);
         } else {
           setUser(null);
         }
-      } catch (error: any) {
-        // Handle AbortError gracefully (component unmounted or request cancelled)
-        if (error?.name === 'AbortError') {
-          return; // Don't update state if request was aborted
-        }
-
-        // Handle rate limiting in catch block too
-        if (error?.message?.includes('over_request_rate_limit') || error?.status === 429) {
-          setRateLimited();
-        }
-
-        // Handle any other errors gracefully
-        if (isMounted) {
-          setUser(null);
-        }
+      } catch (err: any) {
+        recordAuthCall();
+        if (!isMounted) return;
+        if (err?.message?.includes('over_request_rate_limit') || err?.status === 429) setRateLimited();
+        setUser(null);
       } finally {
-        if (isMounted) {
-          setLoading(false);
-        }
+        if (isMounted) setLoading(false);
       }
     };
 
-    getUser();
+    loadUser();
 
-    // Listen for auth changes
     try {
-      const {
-        data: { subscription: authSubscription },
-      } = supabase.auth.onAuthStateChange((event: any, session: any) => {
+      const { data: { subscription: authSubscription } } = supabase.auth.onAuthStateChange((_event: AuthChangeEvent, session: Session | null) => {
         if (isMounted) {
           setUser(session?.user ?? null);
           setLoading(false);
         }
       });
-      
       subscription = authSubscription;
-    } catch (error: any) {
-      // Handle errors in subscription setup
-      if (error?.name !== 'AbortError' && isMounted) {
-        console.error('Error setting up auth subscription:', error);
-      }
+    } catch (_err) {
+      if (isMounted) setLoading(false);
     }
 
     return () => {
       isMounted = false;
-      if (subscription) {
-        subscription.unsubscribe();
-      }
+      subscription?.unsubscribe();
     };
   }, [supabase]);
 

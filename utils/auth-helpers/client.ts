@@ -3,7 +3,6 @@
 import { createClient } from '@/utils/supabase/client';
 import { type Provider } from '@supabase/supabase-js';
 import { getURL } from '@/utils/helpers';
-import { redirectToPath } from './server';
 import { AppRouterInstance } from 'next/dist/shared/lib/app-router-context.shared-runtime';
 
 export async function handleRequest(
@@ -15,14 +14,26 @@ export async function handleRequest(
   e.preventDefault();
 
   const formData = new FormData(e.currentTarget);
-  const redirectUrl: string = await requestFunc(formData);
+  let redirectUrl: string | undefined;
+  try {
+    redirectUrl = await requestFunc(formData);
+  } catch (err) {
+    console.error('Auth request failed:', err);
+    redirectUrl = undefined;
+  }
+
+  const safeUrl =
+    typeof redirectUrl === 'string' && redirectUrl.trim().length > 0
+      ? redirectUrl.trim()
+      : '/signin/password_signin';
 
   if (router) {
-    // If client-side router is provided, use it to redirect
-    return router.push(redirectUrl);
-  } else {
-    // Otherwise, redirect server-side
-    return await redirectToPath(redirectUrl);
+    return router.push(safeUrl);
+  }
+  // Server-side redirect path: use full navigation to avoid importing server
+  // module in client bundle (prevents "reading 'call'" during page generation).
+  if (typeof window !== 'undefined') {
+    window.location.href = safeUrl;
   }
 }
 
