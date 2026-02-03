@@ -206,6 +206,9 @@ export async function middleware(request: NextRequest) {
     } else if (path.startsWith('/live/')) {
       // Keep live stream paths as-is (handled by app router)
       // Don't rewrite, let it fall through
+    } else if (path.startsWith('/meet/')) {
+      // Keep meet paths as-is (handled by app router)
+      // Don't rewrite, let it fall through
     } else if (path.startsWith('/dashboard/go-live')) {
       rewritePath = '/tipjar/dashboard/go-live';
     } else if (path.startsWith('/dashboard/')) {
@@ -468,12 +471,27 @@ export async function middleware(request: NextRequest) {
   // If this is the main domain, let Pages Router handle it (pages/index.js)
   // Make sure we're not matching tipjar or djdash domains
   if (isMainDomain && !isTipJarDomain && !isDJDashDomain) {
-    // Block go-live page on main domain - redirect to tipjar.live
+    // Go-live: redirect to tipjar.live (TipJar-only)
     if (url.pathname.startsWith('/dashboard/go-live')) {
       const tipjarUrl = new URL('https://tipjar.live/dashboard/go-live');
-      // Preserve query params if any
       tipjarUrl.search = url.search;
       return NextResponse.redirect(tipjarUrl);
+    }
+    // Meet: allow on m10djcompany.com (super admin only - enforced in pages/API)
+    // Rewrite /dashboard/meet -> /tipjar/dashboard/meet so app router serves it
+    if (url.pathname.startsWith('/dashboard/meet')) {
+      url.pathname = url.pathname.replace('/dashboard/meet', '/tipjar/dashboard/meet');
+      const response = await updateSession(request);
+      const rewriteResponse = NextResponse.rewrite(url);
+      rewriteResponse.headers.set('x-pathname', request.nextUrl.pathname);
+      rewriteResponse.headers.set('x-product', 'tipjar');
+      rewriteResponse.headers.set('x-domain', 'm10djcompany');
+      response.headers.forEach((value, key) => {
+        if (key.startsWith('x-') || key === 'set-cookie') {
+          rewriteResponse.headers.set(key, value);
+        }
+      });
+      return rewriteResponse;
     }
     
     // Note: /onboarding/* pages will handle domain redirects client-side

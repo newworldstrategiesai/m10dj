@@ -93,6 +93,89 @@ export async function POST(request: NextRequest) {
       });
     }
 
+    // Handle meet room type (TipJar video conferencing - everyone can publish)
+    if (roomType === 'meet') {
+      if (!roomName) {
+        return NextResponse.json(
+          { error: 'roomName is required for meet' },
+          { status: 400 }
+        );
+      }
+
+      const { data: meetRoom, error: meetError } = await supabase
+        .from('meet_rooms')
+        .select('id, user_id, username, is_active')
+        .eq('room_name', roomName)
+        .single();
+
+      if (meetError || !meetRoom) {
+        return NextResponse.json(
+          { error: 'Meeting not found' },
+          { status: 404 }
+        );
+      }
+
+      const typedMeet = meetRoom as { id: string; user_id: string; username: string; is_active: boolean };
+
+      if (!typedMeet.is_active) {
+        return NextResponse.json(
+          { error: 'Meeting is not active' },
+          { status: 404 }
+        );
+      }
+
+      // Meet requires authentication (video conferencing - know who's in the room)
+      if (authError || !user) {
+        return NextResponse.json(
+          { error: 'Please sign in to join the meeting' },
+          { status: 401 }
+        );
+      }
+
+      const apiKey = process.env.LIVEKIT_API_KEY;
+      const apiSecret = process.env.LIVEKIT_API_SECRET;
+
+      if (!apiKey || !apiSecret) {
+        return NextResponse.json(
+          { error: 'LiveKit not configured' },
+          { status: 500 }
+        );
+      }
+
+      const participantId = participantIdentity || user.id;
+      const participantDisplayName = participantName || user?.email?.split('@')[0] || 'Guest';
+
+      const at = new AccessToken(apiKey, apiSecret, {
+        identity: participantId,
+        name: participantDisplayName,
+        ttl: '2h',
+      });
+
+      // Meet: everyone can publish (video conferencing - full premade UI)
+      at.addGrant({
+        room: roomName,
+        roomJoin: true,
+        canPublish: true,
+        canSubscribe: true,
+        canPublishData: true,
+        roomCreate: false,
+      });
+
+      const token = await at.toJwt();
+
+      return NextResponse.json({
+        token,
+        url: process.env.LIVEKIT_URL,
+        roomName,
+      }, {
+        headers: {
+          'X-RateLimit-Limit': '10',
+          'X-RateLimit-Remaining': rateLimit.remaining.toString(),
+          'X-RateLimit-Reset': rateLimit.resetAt.toString(),
+        }
+      });
+    }
+
     // Original logic for live stream rooms
     if (!roomName) {
       return NextResponse.json(

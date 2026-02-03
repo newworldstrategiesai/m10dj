@@ -866,6 +866,12 @@ export default function AdminDashboard() {
                 </div>
                 <span className="text-xs font-semibold text-gray-900 dark:text-white text-center">Go Live</span>
               </Link>
+              <Link href="/tipjar/dashboard/meet" className="group flex flex-col items-center gap-1.5 sm:gap-2 p-2 sm:p-3 rounded-lg border-2 border-emerald-500 dark:border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20 hover:border-emerald-600 dark:hover:border-emerald-600 hover:bg-emerald-100 dark:hover:bg-emerald-900/30 transition-all duration-200 hover:shadow-sm min-h-[70px] sm:min-h-[90px]">
+                <div className="p-1.5 sm:p-2 bg-emerald-100 dark:bg-emerald-900/40 rounded-lg group-hover:scale-110 transition-transform">
+                  <Users className="h-4 w-4 sm:h-5 sm:w-5 text-emerald-600 dark:text-emerald-400" />
+                </div>
+                <span className="text-xs font-semibold text-gray-900 dark:text-white text-center">Meet</span>
+              </Link>
             </div>
           </div>
 
