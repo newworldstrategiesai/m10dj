@@ -4,8 +4,8 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
 import { VideoMeetPlayer } from '@/components/VideoMeetPlayer';
-import { PreJoin } from '@livekit/components-react';
-import type { LocalUserChoices } from '@livekit/components-react';
+import { MeetPreJoin } from '@/components/MeetPreJoin';
+import type { LocalUserChoices } from '@livekit/components-core';
 import TipJarAnimatedLoader from '@/components/ui/TipJarAnimatedLoader';
 import Image from 'next/image';
 
@@ -145,20 +145,17 @@ export default function MeetPage() {
     );
   }
 
-  // PreJoin: full-screen, no header/footer - just the LiveKit PreJoin UI
+  // PreJoin: blurred current broadcast + modal for username
   if (!token || !serverUrl) {
     return (
-      <div className="fixed inset-0 bg-black flex items-center justify-center">
-        <PreJoin
-          onError={(e) => setError(e.message)}
-          onSubmit={handlePreJoinSubmit}
-          defaults={{ username: '', videoEnabled: true, audioEnabled: true }}
-          persistUserChoices={false}
-          joinLabel="Join Meeting"
-          userLabel="Your name"
-          className="w-full h-full max-w-4xl max-h-[90vh]"
-        />
-      </div>
+      <MeetPreJoin
+        roomName={room!.room_name}
+        onSubmit={handlePreJoinSubmit}
+        onError={(e) => setError(e.message)}
+        meetingTitle={room?.title ? `Join: ${room.title}` : `Join ${room?.username || username}'s meeting`}
+        joinLabel="Join Meeting"
+        userLabel="Your name"
+      />
     );
   }
 

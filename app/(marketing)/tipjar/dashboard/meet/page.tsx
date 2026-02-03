@@ -202,7 +202,7 @@ export default function MeetPage() {
       <div className="fixed inset-0 bg-black flex items-center justify-center z-50">
         <div className="flex flex-col items-center text-white">
           {isM10Domain ? (
-            <Image src="/M10-Rotating-Logo.gif" alt="M10" width={128} height={128} className="mb-4" />
+            <Image src="/assets/m10 dj company logo white.gif" alt="M10" width={128} height={128} className="mb-4" />
           ) : (
             <TipJarAnimatedLoader size={128} className="mb-4" />
           )}
@@ -231,7 +231,7 @@ export default function MeetPage() {
         <div className="h-full flex flex-col">
           <div className="px-4 pt-safe-top pb-4 border-b border-gray-800 flex items-center gap-3">
             {isM10Domain && (
-              <Image src="/M10-Rotating-Logo.gif" alt="M10" width={40} height={40} className="flex-shrink-0" />
+              <Image src="/assets/m10 dj company logo white.gif" alt="M10" width={40} height={40} className="flex-shrink-0" />
             )}
             <div>
               <h1 className="text-2xl font-bold">Video Meeting</h1>
@@ -258,7 +258,11 @@ export default function MeetPage() {
               <Button
                 onClick={handleStartMeeting}
                 size="lg"
-                className="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white text-lg font-semibold py-6 rounded-xl"
+                className={`w-full text-lg font-semibold py-6 rounded-xl ${
+                  isM10Domain
+                    ? 'bg-[#fcba00] hover:bg-[#e5a800] text-black'
+                    : 'bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white'
+                }`}
               >
                 <Video className="h-6 w-6 mr-2" />
                 Start Meeting
@@ -271,10 +275,10 @@ export default function MeetPage() {
           <div className="px-4 pt-safe-top pb-3 border-b border-gray-800 bg-black/95 backdrop-blur-sm flex items-center justify-between">
             <div className="flex items-center gap-2">
               {isM10Domain && (
-                <Image src="/M10-Rotating-Logo.gif" alt="M10" width={32} height={32} className="flex-shrink-0" />
+                <Image src="/assets/m10 dj company logo white.gif" alt="M10" width={32} height={32} className="flex-shrink-0" />
               )}
-              <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
-              <span className="text-emerald-500 font-bold text-sm">IN MEETING</span>
+              <div className={`w-2 h-2 rounded-full animate-pulse ${isM10Domain ? 'bg-[#fcba00]' : 'bg-emerald-500'}`} />
+              <span className={`font-bold text-sm ${isM10Domain ? 'text-[#fcba00]' : 'text-emerald-500'}`}>IN MEETING</span>
             </div>
             <Button
               onClick={handleEndMeeting}
@@ -313,21 +317,21 @@ export default function MeetPage() {
                 onClick={handleCopyUrl}
                 variant="outline"
                 size="icon"
-                className="border-gray-700 text-white hover:bg-gray-800"
+                className={isM10Domain ? 'border-[#fcba00]/50 text-white hover:bg-[#fcba00]/20 hover:border-[#fcba00]' : 'border-gray-700 text-white hover:bg-gray-800'}
               >
-                {urlCopied ? <Check className="h-4 w-4 text-green-400" /> : <Copy className="h-4 w-4" />}
+                {urlCopied ? <Check className={`h-4 w-4 ${isM10Domain ? 'text-[#fcba00]' : 'text-green-400'}`} /> : <Copy className="h-4 w-4" />}
               </Button>
             </div>
             <Button
               onClick={handleShare}
               variant="outline"
-              className="w-full mt-3 border-gray-700 text-white hover:bg-gray-800"
+              className={`w-full mt-3 text-white ${isM10Domain ? 'border-[#fcba00]/50 hover:bg-[#fcba00]/20 hover:border-[#fcba00]' : 'border-gray-700 hover:bg-gray-800'}`}
             >
               <Share2 className="h-4 w-4 mr-2" />
               Share Meeting Link
             </Button>
             {isM10Domain && (
-              <div className="mt-2 text-center text-xs text-gray-500">M10 Video Meeting</div>
+              <div className="mt-2 text-center text-xs text-[#fcba00]/80">M10 Video Meeting</div>
             )}
           </div>
         </div>
