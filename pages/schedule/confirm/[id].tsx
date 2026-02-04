@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import Head from 'next/head';
 import { useRouter } from 'next/router';
 import { Calendar, Clock, User, Mail, Phone, CheckCircle, Download, ArrowLeft, MessageSquare, Video } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -8,6 +9,7 @@ import { Card } from '@/components/ui/card';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import Header from '../../../components/company/Header';
 import Footer from '../../../components/company/Footer';
+import { getURL } from '@/utils/helpers';
 
 interface Booking {
   id: string;
@@ -160,6 +162,19 @@ export default function BookingConfirmation() {
 
   return (
     <>
+      <Head>
+        <title>Booking Confirmed | M10 DJ Company</title>
+        <meta name="description" content="Your consultation has been scheduled successfully. Join your video meeting at the scheduled time." />
+        <meta property="og:title" content="Booking Confirmed | M10 DJ Company" />
+        <meta property="og:description" content="Your consultation has been scheduled successfully. Join your video meeting at the scheduled time." />
+        <meta property="og:type" content="website" />
+        <meta property="og:image" content={getURL('assets/meet-og.png')} />
+        <meta property="og:image:width" content="1200" />
+        <meta property="og:image:height" content="630" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content="Booking Confirmed | M10 DJ Company" />
+        <meta name="twitter:image" content={getURL('assets/meet-og.png')} />
+      </Head>
       <Header />
       <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 py-12 px-4">
         <div className="max-w-3xl mx-auto">

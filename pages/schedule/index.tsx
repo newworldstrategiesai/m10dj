@@ -1,8 +1,10 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import Head from 'next/head';
 import { useRouter } from 'next/router';
 import { Calendar as CalendarIcon, Clock, CheckCircle, User, Mail, Phone, MessageSquare } from 'lucide-react';
+import { getURL } from '@/utils/helpers';
 import { Calendar } from '@/components/ui/calendar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -284,6 +286,21 @@ export default function SchedulePage() {
   const hasEventInfo = formData.eventType || formData.eventDate || formData.venueName;
 
   return (
+    <>
+      <Head>
+        <title>Schedule a Meeting | M10 DJ Company</title>
+        <meta name="description" content="Book a time to discuss your event. Schedule a video or phone consultation with M10 DJ Company." />
+        <meta property="og:title" content="Schedule a Meeting | M10 DJ Company" />
+        <meta property="og:description" content="Book a time to discuss your event. Schedule a video or phone consultation with M10 DJ Company." />
+        <meta property="og:type" content="website" />
+        <meta property="og:image" content={getURL('assets/meet-og.png')} />
+        <meta property="og:image:width" content="1200" />
+        <meta property="og:image:height" content="630" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content="Schedule a Meeting | M10 DJ Company" />
+        <meta name="twitter:description" content="Book a time to discuss your event. Schedule a video or phone consultation with M10 DJ Company." />
+        <meta name="twitter:image" content={getURL('assets/meet-og.png')} />
+      </Head>
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-6xl mx-auto">
         {/* Header */}
@@ -540,6 +557,7 @@ export default function SchedulePage() {
         </div>
       </div>
     </div>
+    </>
   );
 }
 
