@@ -17,6 +17,7 @@ interface MeetRoom {
   room_name: string;
   title: string | null;
   is_active: boolean;
+  started_at?: string | null;
   request_a_song_enabled?: boolean | null;
 }
 
@@ -421,6 +422,7 @@ export default function MeetPage() {
           requestASongEnabled={!!(room?.request_a_song_enabled && requestASongOrg)}
           organizationId={requestASongOrg?.id ?? null}
           organizationData={requestASongOrg ?? null}
+          startedAt={room?.started_at ? new Date(room.started_at).getTime() : undefined}
         />
       </div>
     </div>

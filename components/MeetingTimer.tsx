@@ -2,8 +2,8 @@
 
 /**
  * Master meeting timer - visible to all participants.
- * Uses room metadata (startedAt) set by webhook when room starts.
- * Small, non-intrusive, readable.
+ * Uses startedAt (from meet_rooms) so everyone sees total stream time, including
+ * after re-join. Falls back to room metadata or local join time if not provided.
  */
 import * as React from 'react';
 import { useRoomInfo } from '@livekit/components-react';
@@ -19,14 +19,19 @@ function formatElapsed(ms: number): string {
   return `${minutes}:${seconds.toString().padStart(2, '0')}`;
 }
 
-export function MeetingTimer() {
+export interface MeetingTimerProps {
+  /** Master stream start time (ms). All participants see elapsed from this. */
+  startedAt?: number;
+}
+
+export function MeetingTimer({ startedAt: startedAtProp }: MeetingTimerProps) {
   const { metadata } = useRoomInfo();
   const [elapsed, setElapsed] = React.useState(0);
   const startTimeRef = React.useRef<number | null>(null);
 
   React.useEffect(() => {
-    let startedAt: number | null = null;
-    if (metadata) {
+    let startedAt: number | null = startedAtProp ?? null;
+    if (startedAt == null && metadata) {
       try {
         const parsed = JSON.parse(metadata) as { startedAt?: number };
         if (typeof parsed.startedAt === 'number') {
@@ -36,7 +41,7 @@ export function MeetingTimer() {
         // ignore
       }
     }
-    if (!startedAt) {
+    if (startedAt == null) {
       startedAt = startTimeRef.current ?? Date.now();
       startTimeRef.current = startedAt;
     }
@@ -47,7 +52,7 @@ export function MeetingTimer() {
     tick();
     const id = setInterval(tick, 1000);
     return () => clearInterval(id);
-  }, [metadata]);
+  }, [startedAtProp, metadata]);
 
   return (
     <div

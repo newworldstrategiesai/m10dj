@@ -40,8 +40,23 @@ import {
 import { MeetingTimer } from '@/components/MeetingTimer';
 import { isEqualTrackRef, isTrackReference } from '@livekit/components-core';
 import type { WidgetState } from '@livekit/components-core';
+import type { TrackReferenceOrPlaceholder } from '@livekit/components-core';
 import { RoomEvent, Track } from 'livekit-client';
 import * as React from 'react';
+
+/** Stable key for a track ref (participant + source) for drag-and-drop order. */
+function getTrackKey(t: TrackReferenceOrPlaceholder): string {
+  const identity = (t as { participant?: { identity: string } }).participant?.identity ?? '';
+  const source = (t as { publication?: { source: Track.Source }; source?: Track.Source }).publication?.source ?? (t as { source?: Track.Source }).source ?? '';
+  return `${identity}:${source}`;
+}
+
+function reorder<T>(arr: T[], fromIndex: number, toIndex: number): T[] {
+  const a = [...arr];
+  const [removed] = a.splice(fromIndex, 1);
+  a.splice(toIndex, 0, removed);
+  return a;
+}
 import dynamic from 'next/dynamic';
 
 const GeneralRequestsPage = dynamic(
@@ -342,6 +357,7 @@ function MeetingGridInner({
   requestASongEnabled,
   onRequestSongClick,
   onViewParticipant,
+  startedAt,
 }: {
   isSuperAdmin: boolean;
   isHost?: boolean;
@@ -357,6 +373,7 @@ function MeetingGridInner({
   requestASongEnabled?: boolean;
   onRequestSongClick?: () => void;
   onViewParticipant?: (identity: string) => void;
+  startedAt?: number;
 }) {
   const tracks = useTracks(
     [
@@ -373,21 +390,46 @@ function MeetingGridInner({
   const focusTrack = usePinnedTracks()?.[0];
   const carouselTracks = tracks.filter((t) => !focusTrack || !isEqualTrackRef(t, focusTrack));
 
+  // Drag-and-drop order for grid tiles (snap to slots). Synced when tracks change.
+  const [slotOrder, setSlotOrder] = React.useState<string[]>([]);
+  const [dragOverSlotIndex, setDragOverSlotIndex] = React.useState<number | null>(null);
+  React.useEffect(() => {
+    const keys = tracks.map(getTrackKey);
+    setSlotOrder((prev) => {
+      const next = prev.filter((k) => keys.includes(k));
+      for (const k of keys) if (!next.includes(k)) next.push(k);
+      return next;
+    });
+  }, [tracks]);
+  const orderedTracks = React.useMemo(() => {
+    const keyToTrack = new Map(tracks.map((t) => [getTrackKey(t), t]));
+    return slotOrder.map((k) => keyToTrack.get(k)).filter((t): t is TrackReferenceOrPlaceholder => t != null);
+  }, [tracks, slotOrder]);
+
   const screenShareTracks = tracks.filter(
     (t) => isTrackReference(t) && t.publication?.source === Track.Source.ScreenShare
   );
-  const lastScreenShareRef = React.useRef<typeof tracks[0] | null>(null);
+  const activeScreenShare = screenShareTracks.find((t) => isTrackReference(t) && t.publication?.isSubscribed);
+  const activeScreenShareKey = activeScreenShare ? getTrackKey(activeScreenShare) : null;
+  const lastScreenShareRef = React.useRef<string | null>(null);
   React.useEffect(() => {
     if (!layoutContext?.pin?.dispatch) return;
-    const activeScreenShare = screenShareTracks.find((t) => isTrackReference(t) && t.publication?.isSubscribed);
-    if (activeScreenShare && lastScreenShareRef.current !== activeScreenShare) {
-      lastScreenShareRef.current = activeScreenShare;
-      layoutContext.pin.dispatch({ msg: 'set_pin', trackReference: activeScreenShare });
-    } else if (!activeScreenShare && lastScreenShareRef.current) {
-      lastScreenShareRef.current = null;
-      layoutContext.pin.dispatch({ msg: 'clear_pin' });
+    if (activeScreenShare) {
+      if (lastScreenShareRef.current !== activeScreenShareKey) {
+        lastScreenShareRef.current = activeScreenShareKey;
+        layoutContext.pin.dispatch({ msg: 'set_pin', trackReference: activeScreenShare });
+      }
+    } else {
+      if (lastScreenShareRef.current !== null) {
+        const wasPinnedScreenShareKey = lastScreenShareRef.current;
+        lastScreenShareRef.current = null;
+        const currentPinnedKey = focusTrack ? getTrackKey(focusTrack) : null;
+        if (currentPinnedKey === wasPinnedScreenShareKey) {
+          layoutContext.pin.dispatch({ msg: 'clear_pin' });
+        }
+      }
     }
-  }, [screenShareTracks, layoutContext?.pin]);
+  }, [activeScreenShareKey, activeScreenShare, focusTrack, layoutContext?.pin]);
 
   const gridStyle: React.CSSProperties = fillMode
     ? {
@@ -401,7 +443,7 @@ function MeetingGridInner({
 
   return (
     <div className="lk-video-conference h-full w-full relative">
-      <MeetingTimer />
+      <MeetingTimer startedAt={startedAt} />
       <div className="lk-video-conference-inner flex-1 min-w-0 flex flex-col min-h-0">
         <div className={`lk-grid-layout flex-1 min-h-0 p-1 ${!focusTrack && fillMode ? 'overflow-hidden' : 'overflow-auto'}`}>
           {focusTrack ? (
@@ -453,21 +495,58 @@ function MeetingGridInner({
             </div>
           ) : (
             <div className="grid gap-1 w-full h-full min-h-0" style={gridStyle}>
-              <TrackLoop tracks={tracks}>
-                <div className="relative min-w-0 min-h-0 w-full h-full overflow-hidden [&>div]:!h-full [&>div]:!min-h-0 [&>.lk-participant-tile]:!h-full [&>.lk-participant-tile]:!min-h-0">
-                  <ParticipantTile className="!h-full !w-full !min-h-0" />
-                  {(isSuperAdmin || isHost) && roomName && (
-                    <MeetParticipantControls
-                      roomName={roomName}
-                      isSuperAdmin={isSuperAdmin}
-                      isHost={isHost}
-                      onViewParticipant={onViewParticipant}
-                      soloedIdentity={soloedIdentity}
-                      onSoloChange={onSoloChange}
-                    />
-                  )}
-                </div>
-              </TrackLoop>
+              {orderedTracks.map((trackRef, slotIndex) => {
+                const trackKey = getTrackKey(trackRef);
+                const isDropTarget = dragOverSlotIndex === slotIndex;
+                return (
+                  <div
+                    key={trackKey}
+                    className={`relative min-w-0 min-h-0 w-full h-full overflow-hidden rounded-lg transition-[box-shadow,background-color] ${
+                      isDropTarget ? 'ring-2 ring-emerald-500 ring-inset bg-emerald-500/10 dark:bg-emerald-500/10' : ''
+                    }`}
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      e.dataTransfer.dropEffect = 'move';
+                      setDragOverSlotIndex(slotIndex);
+                    }}
+                    onDragLeave={() => setDragOverSlotIndex((i) => (i === slotIndex ? null : i))}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      setDragOverSlotIndex(null);
+                      const key = e.dataTransfer.getData('application/x-meet-track-key');
+                      if (!key || key === trackKey) return;
+                      const fromIndex = slotOrder.indexOf(key);
+                      if (fromIndex === -1) return;
+                      setSlotOrder((prev) => reorder(prev, fromIndex, slotIndex));
+                    }}
+                  >
+                    <div
+                      draggable
+                      onDragStart={(e) => {
+                        e.dataTransfer.setData('application/x-meet-track-key', trackKey);
+                        e.dataTransfer.effectAllowed = 'move';
+                        e.dataTransfer.setDragImage?.(e.currentTarget, 0, 0);
+                      }}
+                      onDragEnd={() => setDragOverSlotIndex(null)}
+                      className="relative min-w-0 min-h-0 w-full h-full cursor-grab active:cursor-grabbing [&>div]:!h-full [&>div]:!min-h-0 [&>.lk-participant-tile]:!h-full [&>.lk-participant-tile]:!min-h-0"
+                    >
+                      <TrackRefContext.Provider value={trackRef}>
+                        <ParticipantTile className="!h-full !w-full !min-h-0" />
+                        {(isSuperAdmin || isHost) && roomName && (
+                          <MeetParticipantControls
+                            roomName={roomName}
+                            isSuperAdmin={isSuperAdmin}
+                            isHost={isHost}
+                            onViewParticipant={onViewParticipant}
+                            soloedIdentity={soloedIdentity}
+                            onSoloChange={onSoloChange}
+                          />
+                        )}
+                      </TrackRefContext.Provider>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>
@@ -552,6 +631,7 @@ export function MeetingGridLayout({
   requestASongEnabled = false,
   organizationId,
   organizationData,
+  startedAt,
 }: {
   isSuperAdmin?: boolean;
   isHost?: boolean;
@@ -559,6 +639,7 @@ export function MeetingGridLayout({
   requestASongEnabled?: boolean;
   organizationId?: string;
   organizationData?: Record<string, unknown>;
+  startedAt?: number;
 }) {
   const isDesktop = useIsDesktop();
   const defaultShowChat = isSuperAdmin && isDesktop;
@@ -655,6 +736,7 @@ export function MeetingGridLayout({
             requestASongEnabled={requestASongEnabled}
             onRequestSongClick={onRequestSongClick}
             onViewParticipant={onViewParticipant}
+            startedAt={startedAt}
           />
         </div>
         {widgetState.showChat ? (

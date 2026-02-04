@@ -22,6 +22,7 @@ interface MeetRoom {
   room_name: string;
   title: string | null;
   is_active: boolean;
+  started_at?: string | null;
   recording_url?: string | null;
   banned_identities?: string[] | null;
   banned_names?: string[] | null;
@@ -234,15 +235,17 @@ export default function MeetPage() {
       return;
     }
 
+    const startedAtIso = room.started_at || new Date().toISOString();
     await (supabase.from('meet_rooms') as any)
       .update({
         title: title || null,
         is_active: true,
+        started_at: startedAtIso,
         updated_at: new Date().toISOString(),
       })
       .eq('id', room.id);
 
-    setRoom({ ...room, is_active: true, title });
+    setRoom({ ...room, is_active: true, title, started_at: startedAtIso });
     setInMeeting(true);
     await getMeetToken(room.room_name);
     copyToClipboard(getMeetUrl()).then((ok) => {
@@ -259,11 +262,12 @@ export default function MeetPage() {
       return;
     }
 
+    const startedAtIso = r.started_at || new Date().toISOString();
     await (supabase.from('meet_rooms') as any)
-      .update({ is_active: true, updated_at: new Date().toISOString() })
+      .update({ is_active: true, started_at: startedAtIso, updated_at: new Date().toISOString() })
       .eq('id', r.id);
 
-    setRoom({ ...r, is_active: true });
+    setRoom({ ...r, is_active: true, started_at: startedAtIso });
     setTitle(r.title || `Meet with @${r.username}`);
     setInMeeting(true);
     await getMeetToken(r.room_name, r);
@@ -284,11 +288,11 @@ export default function MeetPage() {
     }
 
     const { error } = await (supabase.from('meet_rooms') as any)
-      .update({ is_active: false, updated_at: new Date().toISOString() })
+      .update({ is_active: false, started_at: null, updated_at: new Date().toISOString() })
       .eq('id', room.id);
 
     if (!error) {
-      setRoom({ ...room, is_active: false });
+      setRoom({ ...room, is_active: false, started_at: null });
       setInMeeting(false);
       setToken(null);
       setServerUrl(null);
@@ -826,6 +830,7 @@ export default function MeetPage() {
                 onDisconnected={handleEndMeeting}
                 isSuperAdmin={isM10Domain}
                 isHost={true}
+                startedAt={room.started_at ? new Date(room.started_at).getTime() : undefined}
               />
             ) : (
               <div className="h-full flex items-center justify-center text-gray-500">

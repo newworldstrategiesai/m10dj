@@ -27,6 +27,8 @@ interface VideoMeetPlayerProps {
   requestASongEnabled?: boolean;
   organizationId?: string | null;
   organizationData?: Record<string, unknown> | null;
+  /** Master timer: stream start time (ms). All participants see elapsed from this. */
+  startedAt?: number;
 }
 
 export function VideoMeetPlayer({
@@ -41,6 +43,7 @@ export function VideoMeetPlayer({
   requestASongEnabled = false,
   organizationId = null,
   organizationData = null,
+  startedAt,
 }: VideoMeetPlayerProps) {
   return (
     <LiveKitRoom
@@ -69,6 +72,7 @@ export function VideoMeetPlayer({
           requestASongEnabled={requestASongEnabled}
           organizationId={organizationId ?? undefined}
           organizationData={organizationData ?? undefined}
+          startedAt={startedAt}
         />
       </div>
     </LiveKitRoom>
