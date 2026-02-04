@@ -21,6 +21,12 @@ interface VideoMeetPlayerProps {
   audioEnabled?: boolean;
   /** Super admin: chat sidebar always visible on desktop, collapsible */
   isSuperAdmin?: boolean;
+  /** When true (host view), can click a participant tile to view their email/display name */
+  isHost?: boolean;
+  /** When true, guests see "Request a Song" button that opens requests form in chat panel */
+  requestASongEnabled?: boolean;
+  organizationId?: string | null;
+  organizationData?: Record<string, unknown> | null;
 }
 
 export function VideoMeetPlayer({
@@ -31,6 +37,10 @@ export function VideoMeetPlayer({
   videoEnabled = true,
   audioEnabled = true,
   isSuperAdmin = false,
+  isHost = false,
+  requestASongEnabled = false,
+  organizationId = null,
+  organizationData = null,
 }: VideoMeetPlayerProps) {
   return (
     <LiveKitRoom
@@ -52,7 +62,14 @@ export function VideoMeetPlayer({
       }}
     >
       <div className="flex flex-col h-full w-full bg-gray-950 dark:bg-gray-950">
-        <MeetingGridLayout isSuperAdmin={isSuperAdmin} roomName={roomName} />
+        <MeetingGridLayout
+          isSuperAdmin={isSuperAdmin}
+          isHost={isHost}
+          roomName={roomName}
+          requestASongEnabled={requestASongEnabled}
+          organizationId={organizationId ?? undefined}
+          organizationData={organizationData ?? undefined}
+        />
       </div>
     </LiveKitRoom>
   );

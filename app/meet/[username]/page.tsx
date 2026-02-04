@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
 import { VideoMeetPlayer } from '@/components/VideoMeetPlayer';
-import { MeetPreJoin } from '@/components/MeetPreJoin';
+import { MeetPreJoin, saveStoredPrefs, type MeetPreJoinSubmitPayload } from '@/components/MeetPreJoin';
 import type { LocalUserChoices } from '@livekit/components-core';
 import TipJarAnimatedLoader from '@/components/ui/TipJarAnimatedLoader';
 import Image from 'next/image';
@@ -16,6 +16,7 @@ interface MeetRoom {
   room_name: string;
   title: string | null;
   is_active: boolean;
+  request_a_song_enabled?: boolean | null;
 }
 
 export default function MeetPage() {
@@ -34,6 +35,7 @@ export default function MeetPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [meetingEnded, setMeetingEnded] = useState(false);
+  const [requestASongOrg, setRequestASongOrg] = useState<{ id: string; name?: string; [key: string]: unknown } | null>(null);
   const supabase = createClient();
 
   function handleDisconnected() {
@@ -75,6 +77,18 @@ export default function MeetPage() {
         }
 
         setRoom(typedMeet);
+
+        if (typedMeet.request_a_song_enabled) {
+          try {
+            const res = await fetch(`/api/meet/room-organization?roomName=${encodeURIComponent(typedMeet.room_name)}`);
+            if (res.ok) {
+              const data = await res.json();
+              if (data.organization) setRequestASongOrg(data.organization);
+            }
+          } catch {
+            // ignore
+          }
+        }
       } catch (err) {
         console.error('Error loading meet:', err);
         setError('Failed to load meeting');
@@ -86,12 +100,32 @@ export default function MeetPage() {
     loadMeet();
   }, [username, supabase]);
 
-  async function handlePreJoinSubmit(values: LocalUserChoices) {
+  async function hashEmailForIdentity(email: string): Promise<string> {
+    if (typeof crypto !== 'undefined' && crypto.subtle) {
+      const data = new TextEncoder().encode(email.trim().toLowerCase());
+      const buf = await crypto.subtle.digest('SHA-256', data);
+      const hex = Array.from(new Uint8Array(buf))
+        .map((b) => b.toString(16).padStart(2, '0'))
+        .join('');
+      return hex.slice(0, 16);
+    }
+    return `email-${email.trim().toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 12)}`;
+  }
+
+  async function handlePreJoinSubmit(payload: MeetPreJoinSubmitPayload) {
     if (!room) return;
 
+    const { values, email } = payload;
     setUserChoices(values);
 
+    saveStoredPrefs(email, {
+      displayName: values.username?.trim() || '',
+      audioEnabled: values.audioEnabled ?? true,
+      videoEnabled: values.videoEnabled ?? true,
+    });
+
     const { data: { user } } = await supabase.auth.getUser();
+    const stableIdentity = user?.id ?? `email-${await hashEmailForIdentity(email)}`;
 
     const tokenResponse = await fetch('/api/livekit/token', {
       method: 'POST',
@@ -99,7 +133,7 @@ export default function MeetPage() {
       body: JSON.stringify({
         roomName: room.room_name,
         participantName: values.username?.trim() || 'Guest',
-        participantIdentity: user?.id,
+        participantIdentity: stableIdentity,
         roomType: 'meet',
       }),
     });
@@ -115,6 +149,18 @@ export default function MeetPage() {
     setToken(t);
     setServerUrl(url);
     setError(null);
+
+    // Register participant (email/display name) for host-only lookup; fire-and-forget
+    fetch('/api/meet/participant-register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        roomName: room.room_name,
+        participantIdentity: stableIdentity,
+        participantName: values.username?.trim() || 'Guest',
+        email,
+      }),
+    }).catch(() => {});
   }
 
   if (loading) {
@@ -217,7 +263,8 @@ export default function MeetPage() {
         onError={(e) => setError(e.message)}
         meetingTitle={room?.title ? `Join: ${room.title}` : `Join ${room?.username || username}'s meeting`}
         joinLabel="Join Meeting"
-        userLabel="Your name"
+        emailLabel="Email address"
+        displayNameLabel="Display name"
       />
     );
   }
@@ -232,6 +279,9 @@ export default function MeetPage() {
           videoEnabled={userChoices?.videoEnabled ?? true}
           audioEnabled={userChoices?.audioEnabled ?? true}
           onDisconnected={handleDisconnected}
+          requestASongEnabled={!!(room?.request_a_song_enabled && requestASongOrg)}
+          organizationId={requestASongOrg?.id ?? null}
+          organizationData={requestASongOrg ?? null}
         />
       </div>
     </div>

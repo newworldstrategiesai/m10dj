@@ -2,7 +2,8 @@
 
 /**
  * MeetPreJoin - Blurred current meeting broadcast (host/other participants' feed)
- * behind a modal that collects username and device preferences before joining.
+ * behind a modal that collects email, display name, and device preferences before joining.
+ * Preferences are remembered per email (localStorage); known users matched by email get their settings back.
  */
 import * as React from 'react';
 import { LiveKitRoom, useTracks } from '@livekit/components-react';
@@ -14,25 +15,94 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/utils/cn';
 import { Mic, MicOff, Video, VideoOff } from 'lucide-react';
 
+const MEET_PREFS_KEY = 'meet_guest_prefs_';
+
+function normalizeEmail(email: string): string {
+  return email.trim().toLowerCase();
+}
+
+function loadStoredPrefs(email: string): { displayName: string; audioEnabled: boolean; videoEnabled: boolean } | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const key = MEET_PREFS_KEY + normalizeEmail(email);
+    const raw = localStorage.getItem(key);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as { displayName?: string; audioEnabled?: boolean; videoEnabled?: boolean };
+    return {
+      displayName: typeof parsed.displayName === 'string' ? parsed.displayName : '',
+      audioEnabled: typeof parsed.audioEnabled === 'boolean' ? parsed.audioEnabled : true,
+      videoEnabled: typeof parsed.videoEnabled === 'boolean' ? parsed.videoEnabled : true,
+    };
+  } catch {
+    return null;
+  }
+}
+
+/** Persist preferences for a given email so they can be restored next time. */
+export function saveStoredPrefs(
+  email: string,
+  prefs: { displayName: string; audioEnabled: boolean; videoEnabled: boolean },
+): void {
+  if (typeof window === 'undefined') return;
+  try {
+    const key = MEET_PREFS_KEY + normalizeEmail(email);
+    localStorage.setItem(key, JSON.stringify(prefs));
+  } catch {
+    // ignore
+  }
+}
+
+export type MeetPreJoinSubmitPayload = { values: LocalUserChoices; email: string };
+
 export interface MeetPreJoinProps {
   roomName: string;
-  onSubmit: (values: LocalUserChoices) => void;
+  /** Called with user choices and email. Parent should save prefs and request token. */
+  onSubmit: (payload: MeetPreJoinSubmitPayload) => void;
   onError?: (error: Error) => void;
   meetingTitle?: string;
   joinLabel?: string;
-  userLabel?: string;
+  emailLabel?: string;
+  displayNameLabel?: string;
+}
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+function looksLikeEmail(s: string): boolean {
+  return EMAIL_RE.test(s.trim());
 }
 
 function MeetPreJoinInner({
   meetingTitle,
   joinLabel,
-  userLabel,
+  emailLabel,
+  displayNameLabel,
   onSubmit,
-}: Pick<MeetPreJoinProps, 'meetingTitle' | 'joinLabel' | 'userLabel' | 'onSubmit'>) {
+}: Pick<MeetPreJoinProps, 'meetingTitle' | 'joinLabel' | 'emailLabel' | 'displayNameLabel' | 'onSubmit'>) {
   const videoEl = React.useRef<HTMLVideoElement>(null);
-  const [username, setUsername] = React.useState('');
+  const [email, setEmail] = React.useState('');
+  const [displayName, setDisplayName] = React.useState('');
   const [audioEnabled, setAudioEnabled] = React.useState(true);
   const [videoEnabled, setVideoEnabled] = React.useState(true);
+  const [prefsLoadedFor, setPrefsLoadedFor] = React.useState<string | null>(null);
+
+  const loadPrefsForEmail = React.useCallback((e: string) => {
+    const normalized = normalizeEmail(e);
+    if (!normalized || prefsLoadedFor === normalized) return;
+    const prefs = loadStoredPrefs(e);
+    if (prefs) {
+      setDisplayName(prefs.displayName);
+      setAudioEnabled(prefs.audioEnabled);
+      setVideoEnabled(prefs.videoEnabled);
+      setPrefsLoadedFor(normalized);
+    }
+  }, [prefsLoadedFor]);
+
+  const handleEmailBlur = () => {
+    if (looksLikeEmail(email)) loadPrefsForEmail(email);
+  };
+  const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setEmail(e.target.value);
+    if (looksLikeEmail(e.target.value)) loadPrefsForEmail(e.target.value);
+  };
 
   const tracks = useTracks(
     [Track.Source.Camera, Track.Source.ScreenShare],
@@ -46,31 +116,36 @@ function MeetPreJoinInner({
   }, [tracks]);
 
   React.useEffect(() => {
-    if (!videoEl.current || !videoTrackRef || !isTrackReference(videoTrackRef)) return;
+    const el = videoEl.current;
+    if (!el || !videoTrackRef || !isTrackReference(videoTrackRef)) return;
     const track = videoTrackRef.publication?.track;
     if (track) {
-      track.attach(videoEl.current);
+      track.attach(el);
       return () => {
-        track.detach(videoEl.current!);
+        track.detach(el);
       };
     }
   }, [videoTrackRef]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const trimmed = username.trim();
-    if (!trimmed) return;
+    const trimmedEmail = email.trim();
+    const trimmedName = displayName.trim();
+    if (!looksLikeEmail(trimmedEmail) || !trimmedName) return;
 
     onSubmit({
-      username: trimmed,
-      audioEnabled,
-      videoEnabled,
-      audioDeviceId: '',
-      videoDeviceId: '',
+      values: {
+        username: trimmedName,
+        audioEnabled,
+        videoEnabled,
+        audioDeviceId: '',
+        videoDeviceId: '',
+      },
+      email: normalizeEmail(trimmedEmail),
     });
   };
 
-  const isValid = username.trim().length > 0;
+  const isValid = looksLikeEmail(email.trim()) && displayName.trim().length > 0;
   const hasRemoteVideo = !!videoTrackRef && isTrackReference(videoTrackRef) && !!videoTrackRef.publication?.track;
 
   return (
@@ -110,23 +185,42 @@ function MeetPreJoinInner({
               {meetingTitle}
             </h1>
             <p className="mt-1 text-sm text-white/60">
-              Enter your name to join
+              Enter your email and display name to join
             </p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
-              <label htmlFor="meet-username" className="sr-only">
-                {userLabel}
+              <label htmlFor="meet-email" className="sr-only">
+                {emailLabel}
               </label>
               <Input
-                id="meet-username"
-                type="text"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                placeholder={userLabel}
-                autoComplete="off"
+                id="meet-email"
+                type="email"
+                value={email}
+                onChange={handleEmailChange}
+                onBlur={handleEmailBlur}
+                placeholder={emailLabel}
+                autoComplete="email"
                 autoFocus
+                className={cn(
+                  'h-12 rounded-xl border-white/20 bg-white/10 text-white placeholder:text-white/50',
+                  'focus:border-emerald-400/50 focus:ring-emerald-400/30',
+                  'dark:border-white/20 dark:bg-white/10',
+                )}
+              />
+            </div>
+            <div>
+              <label htmlFor="meet-display-name" className="sr-only">
+                {displayNameLabel}
+              </label>
+              <Input
+                id="meet-display-name"
+                type="text"
+                value={displayName}
+                onChange={(e) => setDisplayName(e.target.value)}
+                placeholder={displayNameLabel}
+                autoComplete="name"
                 className={cn(
                   'h-12 rounded-xl border-white/20 bg-white/10 text-white placeholder:text-white/50',
                   'focus:border-emerald-400/50 focus:ring-emerald-400/30',
@@ -188,7 +282,8 @@ export function MeetPreJoin({
   onError,
   meetingTitle = 'Join the meeting',
   joinLabel = 'Join Meeting',
-  userLabel = 'Your name',
+  emailLabel = 'Email address',
+  displayNameLabel = 'Display name',
 }: MeetPreJoinProps) {
   const [previewCreds, setPreviewCreds] = React.useState<{ token: string; url: string } | null>(null);
   const [tokenError, setTokenError] = React.useState<string | null>(null);
@@ -255,7 +350,8 @@ export function MeetPreJoin({
       <MeetPreJoinInner
         meetingTitle={meetingTitle}
         joinLabel={joinLabel}
-        userLabel={userLabel}
+        emailLabel={emailLabel}
+        displayNameLabel={displayNameLabel}
         onSubmit={onSubmit}
       />
     </LiveKitRoom>

@@ -7,10 +7,16 @@
 import * as React from 'react';
 import { useMaybeTrackRefContext } from '@livekit/components-react';
 import { isTrackReference } from '@livekit/components-core';
-import { Mic, MicOff, Headphones, UserMinus, Ban } from 'lucide-react';
+import { Mic, MicOff, Headphones, UserMinus, Ban, User } from 'lucide-react';
 
 interface MeetParticipantControlsProps {
   roomName: string;
+  /** When true, show "View" button to open participant email/display name (host-only) */
+  isHost?: boolean;
+  /** When true, show Mute/Solo/Kick/Ban (super admin only) */
+  isSuperAdmin?: boolean;
+  /** Called when host clicks View to open participant detail sheet */
+  onViewParticipant?: (identity: string) => void;
   onMuteError?: (msg: string) => void;
   onSoloError?: (msg: string) => void;
   onKickError?: (msg: string) => void;
@@ -21,6 +27,9 @@ interface MeetParticipantControlsProps {
 
 export function MeetParticipantControls({
   roomName,
+  isHost,
+  isSuperAdmin,
+  onViewParticipant,
   onMuteError,
   onSoloError,
   onKickError,
@@ -152,50 +161,64 @@ export function MeetParticipantControls({
 
   return (
     <div className="absolute bottom-2 left-2 right-2 flex flex-wrap justify-center gap-1 opacity-0 hover:opacity-100 transition-opacity bg-black/50 rounded-lg py-1">
-      <button
-        type="button"
-        onClick={handleMute}
-        disabled={loading}
-        className={`p-1.5 rounded-md text-xs font-medium transition-colors ${
-          muted
-            ? 'bg-red-600 hover:bg-red-700 text-white'
-            : 'bg-gray-700 hover:bg-gray-600 text-white'
-        }`}
-        title={muted ? 'Unmute' : 'Mute'}
-      >
-        {muted ? <MicOff className="h-3.5 w-3.5" /> : <Mic className="h-3.5 w-3.5" />}
-      </button>
-      <button
-        type="button"
-        onClick={handleSolo}
-        disabled={loading}
-        className={`p-1.5 rounded-md text-xs font-medium transition-colors ${
-          isSoloed
-            ? 'bg-amber-600 hover:bg-amber-700 text-white'
-            : 'bg-gray-700 hover:bg-gray-600 text-white'
-        }`}
-        title={isSoloed ? 'Clear solo' : 'Solo (only this audio)'}
-      >
-        <Headphones className="h-3.5 w-3.5" />
-      </button>
-      <button
-        type="button"
-        onClick={handleKick}
-        disabled={loading}
-        className="p-1.5 rounded-md text-xs font-medium transition-colors bg-orange-700 hover:bg-orange-600 text-white"
-        title="Kick (remove from meeting)"
-      >
-        <UserMinus className="h-3.5 w-3.5" />
-      </button>
-      <button
-        type="button"
-        onClick={handleBan}
-        disabled={loading}
-        className="p-1.5 rounded-md text-xs font-medium transition-colors bg-red-700 hover:bg-red-600 text-white"
-        title="Ban (kick and block rejoin)"
-      >
-        <Ban className="h-3.5 w-3.5" />
-      </button>
+      {isHost && onViewParticipant && (
+        <button
+          type="button"
+          onClick={() => onViewParticipant(identity)}
+          className="p-1.5 rounded-md text-xs font-medium transition-colors bg-emerald-700 hover:bg-emerald-600 text-white"
+          title="View participant (email & details)"
+        >
+          <User className="h-3.5 w-3.5" />
+        </button>
+      )}
+      {isSuperAdmin && roomName && (
+        <>
+          <button
+            type="button"
+            onClick={handleMute}
+            disabled={loading}
+            className={`p-1.5 rounded-md text-xs font-medium transition-colors ${
+              muted
+                ? 'bg-red-600 hover:bg-red-700 text-white'
+                : 'bg-gray-700 hover:bg-gray-600 text-white'
+            }`}
+            title={muted ? 'Unmute' : 'Mute'}
+          >
+            {muted ? <MicOff className="h-3.5 w-3.5" /> : <Mic className="h-3.5 w-3.5" />}
+          </button>
+          <button
+            type="button"
+            onClick={handleSolo}
+            disabled={loading}
+            className={`p-1.5 rounded-md text-xs font-medium transition-colors ${
+              isSoloed
+                ? 'bg-amber-600 hover:bg-amber-700 text-white'
+                : 'bg-gray-700 hover:bg-gray-600 text-white'
+            }`}
+            title={isSoloed ? 'Clear solo' : 'Solo (only this audio)'}
+          >
+            <Headphones className="h-3.5 w-3.5" />
+          </button>
+          <button
+            type="button"
+            onClick={handleKick}
+            disabled={loading}
+            className="p-1.5 rounded-md text-xs font-medium transition-colors bg-orange-700 hover:bg-orange-600 text-white"
+            title="Kick (remove from meeting)"
+          >
+            <UserMinus className="h-3.5 w-3.5" />
+          </button>
+          <button
+            type="button"
+            onClick={handleBan}
+            disabled={loading}
+            className="p-1.5 rounded-md text-xs font-medium transition-colors bg-red-700 hover:bg-red-600 text-white"
+            title="Ban (kick and block rejoin)"
+          >
+            <Ban className="h-3.5 w-3.5" />
+          </button>
+        </>
+      )}
     </div>
   );
 }

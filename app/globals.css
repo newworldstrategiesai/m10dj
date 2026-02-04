@@ -203,6 +203,95 @@ input[type="number"] {
   }
 }
 
+/* LiveKit meet: control bar - camera/screen/both, desktop + mobile */
+[data-lk-theme] .lk-meet-control-bar-wrap {
+  width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  touch-action: manipulation;
+}
+[data-lk-theme] .lk-meet-control-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  overflow: visible;
+  min-height: 44px;
+}
+[data-lk-theme] .lk-meet-control-bar .lk-meet-control-bar-hint {
+  width: 100%;
+  flex-basis: 100%;
+  margin: 0;
+  padding: 0.25rem 0.5rem 0 0.5rem;
+  font-size: 0.6875rem;
+  line-height: 1.2;
+  color: var(--lk-text-secondary, #94a3b8);
+  text-align: center;
+  order: 99;
+}
+[data-lk-theme] .lk-meet-control-bar .lk-meet-control-bar-unsupported {
+  color: var(--lk-text-tertiary, #64748b);
+  font-style: italic;
+}
+@media (min-width: 761px) {
+  [data-lk-theme] .lk-meet-control-bar .lk-meet-control-bar-hint {
+    flex-basis: auto;
+    width: auto;
+    order: 0;
+    margin-left: 0.5rem;
+  }
+}
+[data-lk-theme] .lk-meet-control-bar .lk-button,
+[data-lk-theme] .lk-meet-control-bar .lk-button-menu {
+  min-width: 44px;
+  min-height: 44px;
+  touch-action: manipulation;
+}
+
+/* Share music / app audio help (desktop + mobile limitation) */
+[data-lk-theme] .lk-meet-music-audio-help {
+  width: 100%;
+  flex-basis: 100%;
+  order: 98;
+  margin-top: 0.25rem;
+}
+[data-lk-theme] .lk-meet-music-audio-help-trigger {
+  appearance: none;
+  background: transparent;
+  border: none;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.6875rem;
+  line-height: 1.2;
+  color: var(--lk-text-secondary, #94a3b8);
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  touch-action: manipulation;
+  min-height: 44px;
+  min-width: 44px;
+}
+[data-lk-theme] .lk-meet-music-audio-help-trigger:hover {
+  color: var(--lk-text-primary, #f1f5f9);
+}
+[data-lk-theme] .lk-meet-music-audio-help-content {
+  padding: 0.5rem 0.75rem;
+  margin-top: 0.25rem;
+  font-size: 0.75rem;
+  line-height: 1.4;
+  color: var(--lk-text-secondary, #94a3b8);
+  background: var(--lk-bg2, rgba(30 41 59 / 0.6));
+  border-radius: 0.5rem;
+  border: 1px solid var(--lk-border, rgba(255 255 255 / 0.1));
+}
+[data-lk-theme] .lk-meet-music-audio-help-content p {
+  margin: 0 0 0.5rem 0;
+}
+[data-lk-theme] .lk-meet-music-audio-help-content p:last-child {
+  margin-bottom: 0;
+}
+
 /* LiveKit meet: fix device dropdown menus on mobile */
 [data-lk-theme] .lk-control-bar {
   overflow: visible;

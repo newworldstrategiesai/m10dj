@@ -261,7 +261,8 @@ export function GeneralRequestsPage({
   isOwner = false,
   forceBiddingMode = false, // Force bidding mode regardless of organization setting
   allowedRequestTypes = null, // Array of allowed request types (e.g., ['song_request']). If null, all types allowed.
-  minimalHeader = false // Use minimal header (for bid page)
+  minimalHeader = false, // Use minimal header (for bid page)
+  meetPanel = false // When true, render inside meet sidebar: no Head, single scrollable wrapper
 } = {}) {
   
   // State for tab visibility settings
@@ -2569,6 +2570,7 @@ export function GeneralRequestsPage({
 
   return (
     <>
+      {!meetPanel && (
       <Head>
         <title>{pageTitle}</title>
         {googleFontLinks.length > 0 && (
@@ -2725,6 +2727,7 @@ export function GeneralRequestsPage({
           }
         `}} />
       </Head>
+      )}
 
       {/* Accent Color CSS Variables - Available to all users */}
       <style 
@@ -3042,7 +3045,7 @@ export function GeneralRequestsPage({
       >
         {/* Desktop Video Sidebar - Fixed position, stays stationary while content scrolls */}
         {/* Shows video only if no custom cover photo is set, otherwise shows the cover photo */}
-        {!embedMode && !showPaymentMethods && (
+        {!embedMode && !showPaymentMethods && !meetPanel && (
           <div className="hidden md:block desktop-video-sidebar md:fixed md:left-0 md:top-0 md:w-[400px] lg:w-[450px] xl:w-[500px] md:h-screen md:overflow-hidden bg-black z-40">
             {showVideo && !videoFailed ? (
               <video
@@ -3362,7 +3365,7 @@ export function GeneralRequestsPage({
         {/* Main Content Area - Centered on desktop with animated background */}
         <div className="flex-1 min-w-0 relative desktop-content-wrapper">
           {/* Header - Inside content wrapper so it appears in iPhone frame on desktop */}
-          {!embedMode && !showPaymentMethods && !minimalHeader && (
+          {!embedMode && !showPaymentMethods && !minimalHeader && !meetPanel && (
             <>
               <style jsx global>{`
                 /* Override Header positioning on desktop for requests page */
@@ -4442,8 +4445,8 @@ export function GeneralRequestsPage({
           </div>
         )}
         
-        <main className={`section-container relative z-10 ${showPaymentMethods ? 'py-4 sm:py-6 md:py-8' : 'py-2 sm:py-3 md:py-4'} px-3 sm:px-4 md:px-8 lg:px-12 overflow-x-hidden`} style={{ minHeight: embedMode ? '100vh' : (showPaymentMethods ? '100vh' : 'auto'), display: 'flex', flexDirection: 'column', maxWidth: '100vw', height: embedMode ? '100vh' : (showPaymentMethods ? '100vh' : '100%'), maxHeight: embedMode ? '100vh' : (showPaymentMethods ? '100vh' : '100%') }}>
-          <div className={`${showPaymentMethods ? 'max-w-lg' : 'max-w-xl md:max-w-2xl lg:max-w-3xl'} mx-auto w-full flex-1 flex flex-col overflow-x-hidden ${showPaymentMethods ? 'overflow-y-auto' : ''}`} style={{ minHeight: 0, maxHeight: '100%', overflow: showPaymentMethods ? 'auto' : 'hidden' }}>
+        <main className={`section-container relative z-10 ${showPaymentMethods ? 'py-4 sm:py-6 md:py-8' : 'py-2 sm:py-3 md:py-4'} px-3 sm:px-4 md:px-8 lg:px-12 overflow-x-hidden ${meetPanel ? 'h-full overflow-y-auto meet-panel-requests' : ''}`} style={{ minHeight: meetPanel ? '100%' : (embedMode ? '100vh' : (showPaymentMethods ? '100vh' : 'auto')), display: 'flex', flexDirection: 'column', maxWidth: '100vw', height: meetPanel ? '100%' : (embedMode ? '100vh' : (showPaymentMethods ? '100vh' : '100%')), maxHeight: meetPanel ? '100%' : (embedMode ? '100vh' : (showPaymentMethods ? '100vh' : '100%')) }}>
+          <div className={`${showPaymentMethods ? 'max-w-lg' : 'max-w-xl md:max-w-2xl lg:max-w-3xl'} mx-auto w-full flex-1 flex flex-col overflow-x-hidden ${showPaymentMethods || meetPanel ? 'overflow-y-auto' : ''}`} style={{ minHeight: 0, maxHeight: '100%', overflow: showPaymentMethods || meetPanel ? 'auto' : 'hidden' }}>
             {/* Header - Compact for no-scroll design - Hide when hero image is shown */}
             {false && (
               <div className="text-center mb-2 sm:mb-3">

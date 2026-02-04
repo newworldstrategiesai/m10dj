@@ -5,8 +5,14 @@ import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
 import { createClient } from '@/utils/supabase/client';
-import { Button } from '@/components/ui/button';
-import { ArrowLeft, Play, Download, Video, Mic, Calendar } from 'lucide-react';
+import { ArrowLeft, Play, Download, Video, Mic, Calendar, Share2, Link2, Facebook, Instagram } from 'lucide-react';
+import { useToast } from '@/components/ui/Toasts/use-toast';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { isSuperAdminEmail } from '@/utils/auth-helpers/super-admin';
 
 interface Recording {
@@ -21,12 +27,42 @@ interface Recording {
   durationSeconds?: number;
 }
 
+/** Extract raw UUID from list id (meet-<uuid> or voice-<uuid>) */
+function recordingRawId(listId: string, type: 'meet' | 'voice'): string {
+  const prefix = type === 'meet' ? 'meet-' : 'voice-';
+  return listId.startsWith(prefix) ? listId.slice(prefix.length) : listId;
+}
+
 export default function RecordingsPage() {
   const [recordings, setRecordings] = useState<Recording[]>([]);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
+  const { toast } = useToast();
 
   const isM10Domain = typeof window !== 'undefined' && window.location.hostname.includes('m10djcompany.com');
+
+  function handleCopyLink(url: string) {
+    navigator.clipboard.writeText(url).then(
+      () => toast({ title: 'Link copied', description: 'Paste it anywhere to share.' }),
+      () => toast({ title: 'Copy failed', description: 'Please copy the link manually.', variant: 'destructive' })
+    );
+  }
+
+  function openShareUrl(platform: 'facebook' | 'instagram' | 'tiktok', url: string) {
+    const encoded = encodeURIComponent(url);
+    const urls: Record<string, string> = {
+      facebook: `https://www.facebook.com/sharer/sharer.php?u=${encoded}`,
+      instagram: 'https://www.instagram.com/',
+      tiktok: 'https://www.tiktok.com/upload',
+    };
+    window.open(urls[platform], '_blank', 'noopener,noreferrer');
+    if (platform !== 'facebook') {
+      toast({
+        title: 'Opened ' + (platform === 'instagram' ? 'Instagram' : 'TikTok'),
+        description: 'Paste the link or upload the file after downloading.',
+      });
+    }
+  }
 
   useEffect(() => {
     async function load() {
@@ -168,7 +204,7 @@ export default function RecordingsPage() {
                       )}
                     </div>
                   </div>
-                  <div className="flex items-center gap-2 flex-shrink-0">
+                  <div className="flex flex-wrap items-center gap-2 flex-shrink-0">
                     <a
                       href={r.url}
                       target="_blank"
@@ -183,13 +219,63 @@ export default function RecordingsPage() {
                       Play
                     </a>
                     <a
-                      href={r.url}
-                      download
-                      className="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium bg-gray-700 text-gray-200 hover:bg-gray-600 transition-colors"
+                      href={`/api/livekit/recordings/download?type=${r.type}&id=${recordingRawId(r.id, r.type)}`}
+                      className="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium bg-gray-700 text-gray-200 hover:bg-gray-600 transition-colors dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
                     >
                       <Download className="h-4 w-4" />
                       Download
                     </a>
+                    <button
+                      type="button"
+                      onClick={() => handleCopyLink(r.url)}
+                      className="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium bg-gray-700 text-gray-200 hover:bg-gray-600 transition-colors dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
+                      title="Copy link"
+                    >
+                      <Link2 className="h-4 w-4" />
+                      Copy link
+                    </button>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <button
+                          type="button"
+                          className="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium bg-gray-700 text-gray-200 hover:bg-gray-600 transition-colors dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
+                          title="Share"
+                        >
+                          <Share2 className="h-4 w-4" />
+                          Share
+                        </button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="bg-zinc-900 border-zinc-800">
+                        <DropdownMenuItem
+                          className="text-zinc-100 focus:bg-zinc-800 focus:text-zinc-100"
+                          onClick={() => handleCopyLink(r.url)}
+                        >
+                          <Link2 className="h-4 w-4 mr-2" />
+                          Copy link
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          className="text-zinc-100 focus:bg-zinc-800 focus:text-zinc-100"
+                          onClick={() => openShareUrl('facebook', r.url)}
+                        >
+                          <Facebook className="h-4 w-4 mr-2" />
+                          Open Facebook to share
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          className="text-zinc-100 focus:bg-zinc-800 focus:text-zinc-100"
+                          onClick={() => openShareUrl('instagram', r.url)}
+                        >
+                          <Instagram className="h-4 w-4 mr-2" />
+                          Open Instagram
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          className="text-zinc-100 focus:bg-zinc-800 focus:text-zinc-100"
+                          onClick={() => openShareUrl('tiktok', r.url)}
+                        >
+                          <Share2 className="h-4 w-4 mr-2" />
+                          Open TikTok upload
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
                 </div>
               </div>

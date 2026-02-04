@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import Link from 'next/link';
-import { Copy, Video, Share2, Check, Square, Play, Download, Users, Ban, UserX, ArrowLeft, LogIn, Film, FileText } from 'lucide-react';
+import { Copy, Video, Share2, Check, Square, Play, Download, Users, Ban, UserX, ArrowLeft, LogIn, Film, FileText, Music } from 'lucide-react';
 import TipJarAnimatedLoader from '@/components/ui/TipJarAnimatedLoader';
 import { Switch } from '@/components/ui/switch';
 import { isSuperAdminEmail } from '@/utils/auth-helpers/super-admin';
@@ -26,6 +26,7 @@ interface MeetRoom {
   banned_names?: string[] | null;
   transcription_enabled?: boolean | null;
   transcript?: string | null;
+  request_a_song_enabled?: boolean | null;
 }
 
 export default function MeetPage() {
@@ -449,6 +450,33 @@ export default function MeetPage() {
             </div>
 
             <div>
+              <div className="flex items-center justify-between gap-4 mb-2">
+                <div className="flex items-center gap-2">
+                  <Music className="h-4 w-4 text-gray-400" />
+                  <Label htmlFor="request-a-song" className="text-white">Request a Song</Label>
+                </div>
+                <Switch
+                  id="request-a-song"
+                  checked={room.request_a_song_enabled ?? false}
+                  onCheckedChange={async (checked) => {
+                    const { error } = await (supabase.from('meet_rooms') as any)
+                      .update({ request_a_song_enabled: checked, updated_at: new Date().toISOString() })
+                      .eq('id', room.id);
+                    if (!error) setRoom({ ...room, request_a_song_enabled: checked });
+                  }}
+                  className={
+                    isM10Domain
+                      ? 'data-[state=checked]:bg-[#fcba00] data-[state=checked]:dark:bg-[#fcba00]'
+                      : 'data-[state=checked]:bg-emerald-600 data-[state=checked]:dark:bg-emerald-600'
+                  }
+                />
+              </div>
+              <p className="text-gray-500 text-xs mt-1">
+                When on, guests see a &quot;Request a Song&quot; button that opens the requests form in the chat panel (desktop and mobile).
+              </p>
+            </div>
+
+            <div>
               <Label className="text-white mb-2 block">Public Meeting Link</Label>
               <div className="flex gap-2 items-center">
                 <div className="flex-shrink-0 bg-white p-1.5 rounded-lg">
@@ -676,6 +704,7 @@ export default function MeetPage() {
                 serverUrl={serverUrl}
                 onDisconnected={handleEndMeeting}
                 isSuperAdmin={isM10Domain}
+                isHost={true}
               />
             ) : (
               <div className="h-full flex items-center justify-center text-gray-500">
