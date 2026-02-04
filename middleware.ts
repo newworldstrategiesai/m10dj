@@ -504,6 +504,22 @@ export async function middleware(request: NextRequest) {
       });
       return rewriteResponse;
     }
+    // Recordings: allow on m10djcompany.com (super admin only - enforced in page)
+    if (url.pathname.startsWith('/dashboard/recordings')) {
+      url.pathname = url.pathname.replace('/dashboard/recordings', '/tipjar/dashboard/recordings');
+      const response = await updateSession(request);
+      const rewriteResponse = NextResponse.rewrite(url);
+      rewriteResponse.headers.set('x-pathname', request.nextUrl.pathname);
+      rewriteResponse.headers.set('x-product', 'tipjar');
+      rewriteResponse.headers.set('x-domain', 'm10djcompany');
+      response.headers.forEach((value, key) => {
+        if (key.startsWith('x-') || key === 'set-cookie') {
+          rewriteResponse.headers.set(key, value);
+        }
+      });
+      return rewriteResponse;
+    }
+    
     
     // Note: /onboarding/* pages will handle domain redirects client-side
     // based on user product_context (see pages/onboarding/stripe-complete.tsx)

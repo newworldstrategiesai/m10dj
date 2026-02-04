@@ -28,7 +28,9 @@ import {
   CreditCard,
   UserPlus,
   List,
-  Phone
+  Phone,
+  Video,
+  Film
 } from 'lucide-react';
 
 interface NavItem {
@@ -182,6 +184,8 @@ export default function AdminSidebar({ onSignOut, isMobileOpen: externalIsMobile
   // Base navigation items
   const allNavItems: NavItem[] = [
     { label: 'Dashboard', href: '/admin/dashboard', icon: <Home className="w-5 h-5" /> },
+    { label: 'Meet', href: '/dashboard/meet', icon: <Video className="w-5 h-5" /> },
+    { label: 'Recordings', href: '/dashboard/recordings', icon: <Film className="w-5 h-5" /> },
     { label: 'Projects', href: '/admin/projects', icon: <Briefcase className="w-5 h-5" /> },
     { label: 'Contacts', href: '/admin/contacts', icon: <Users className="w-5 h-5" /> },
     { label: 'Form Submissions', href: '/admin/form-submissions', icon: <ClipboardList className="w-5 h-5" /> },

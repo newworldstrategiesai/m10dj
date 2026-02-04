@@ -25,9 +25,11 @@ import {
   CarouselLayout,
   Chat,
   TrackRefContext,
+  useTranscriptions,
 } from '@livekit/components-react';
-import { ChevronLeft, ChevronRight, MessageSquare, Circle, Power } from 'lucide-react';
+import { ChevronLeft, ChevronRight, MessageSquare, Circle, Power, FileText } from 'lucide-react';
 import { MeetParticipantControls } from '@/components/MeetParticipantControls';
+import { MeetingTimer } from '@/components/MeetingTimer';
 import { isEqualTrackRef, isTrackReference } from '@livekit/components-core';
 import type { WidgetState } from '@livekit/components-core';
 import { RoomEvent, Track } from 'livekit-client';
@@ -59,6 +61,39 @@ function useOptimalGrid(trackCount: number) {
   return { cols, rows, fillMode: trackCount <= 6 };
 }
 
+function MeetTranscriptStrip() {
+  const transcriptions = useTranscriptions();
+  const [expanded, setExpanded] = React.useState(false);
+  if (transcriptions.length === 0) return null;
+  return (
+    <div className="flex flex-col flex-shrink-0 w-full border-t border-gray-800 bg-gray-900/80 dark:bg-gray-950/80">
+      <button
+        type="button"
+        onClick={() => setExpanded((e) => !e)}
+        className="flex items-center gap-2 px-3 py-2 text-left text-sm text-gray-300 hover:text-white hover:bg-gray-800/50 transition-colors"
+      >
+        <FileText className="h-4 w-4 text-gray-400" />
+        <span>Live transcript</span>
+        <span className="text-xs text-gray-500">({transcriptions.length})</span>
+      </button>
+      {expanded && (
+        <div className="max-h-32 overflow-y-auto px-3 pb-2 space-y-1 text-xs text-gray-400">
+          {transcriptions.map((t, i) => (
+            <div key={i} className="flex gap-2">
+              <span className="flex-shrink-0 font-medium text-gray-500">
+                {(t as { participantInfo?: { name?: string; identity?: string } }).participantInfo?.name ??
+                  (t as { participantInfo?: { identity?: string } }).participantInfo?.identity ??
+                  'Speaker'}:
+              </span>
+              <span className="text-gray-300">{(t as { text?: string }).text ?? ''}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function MeetingGridInner({
   isSuperAdmin,
   roomName,
@@ -68,6 +103,8 @@ function MeetingGridInner({
   onSoloChange,
   onStartRecording,
   onStopRecording,
+  recordMode,
+  onRecordModeChange,
 }: {
   isSuperAdmin: boolean;
   roomName?: string;
@@ -75,8 +112,10 @@ function MeetingGridInner({
   recordError: string | null;
   soloedIdentity: string | null;
   onSoloChange: (identity: string | null) => void;
-  onStartRecording: () => void;
+  onStartRecording: (audioOnly: boolean) => void;
   onStopRecording: () => void;
+  recordMode: 'video' | 'audio';
+  onRecordModeChange: (mode: 'video' | 'audio') => void;
 }) {
   const tracks = useTracks(
     [
@@ -118,7 +157,8 @@ function MeetingGridInner({
       };
 
   return (
-    <div className="lk-video-conference h-full w-full">
+    <div className="lk-video-conference h-full w-full relative">
+      <MeetingTimer />
       <div className="lk-video-conference-inner flex-1 min-w-0 flex flex-col min-h-0">
         <div className={`lk-grid-layout flex-1 min-h-0 p-1 ${!focusTrack && fillMode ? 'overflow-hidden' : 'overflow-auto'}`}>
           {focusTrack ? (
@@ -169,6 +209,7 @@ function MeetingGridInner({
             </div>
           )}
         </div>
+        <MeetTranscriptStrip />
         <div className="flex items-center gap-2 w-full">
           <DisconnectButton
             className="flex-shrink-0 order-first mr-auto lk-disconnect-button !rounded-lg !px-3 !py-2"
@@ -177,28 +218,41 @@ function MeetingGridInner({
             <Power className="h-4 w-4" strokeWidth={2} />
           </DisconnectButton>
           {isSuperAdmin && roomName && (
-            <button
-              type="button"
-              onClick={isRecording ? onStopRecording : onStartRecording}
-              className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                isRecording
-                  ? 'bg-red-600 hover:bg-red-700 text-white'
-                  : 'bg-gray-700 hover:bg-gray-600 text-white'
-              }`}
-              title={isRecording ? 'Stop recording' : 'Start recording'}
-            >
-              {isRecording ? (
-                <>
-                  <span className="w-2 h-2 rounded-full bg-white animate-pulse" />
-                  Stop
-                </>
-              ) : (
-                <>
-                  <Circle className="h-3 w-3 fill-current" />
-                  Record
-                </>
+            <div className="flex items-center gap-2">
+              {!isRecording && (
+                <select
+                  value={recordMode}
+                  onChange={(e) => onRecordModeChange(e.target.value as 'video' | 'audio')}
+                  className="px-2 py-1.5 rounded-lg text-sm bg-gray-800 text-gray-200 border border-gray-600 focus:border-gray-500 focus:outline-none"
+                  aria-label="Recording type"
+                >
+                  <option value="video">Video</option>
+                  <option value="audio">Audio only</option>
+                </select>
               )}
-            </button>
+              <button
+                type="button"
+                onClick={isRecording ? onStopRecording : () => onStartRecording(recordMode === 'audio')}
+                className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  isRecording
+                    ? 'bg-red-600 hover:bg-red-700 text-white'
+                    : 'bg-gray-700 hover:bg-gray-600 text-white'
+                }`}
+                title={isRecording ? 'Stop recording' : `Start ${recordMode} recording`}
+              >
+                {isRecording ? (
+                  <>
+                    <span className="w-2 h-2 rounded-full bg-white animate-pulse" />
+                    Stop
+                  </>
+                ) : (
+                  <>
+                    <Circle className="h-3 w-3 fill-current" />
+                    Record
+                  </>
+                )}
+              </button>
+            </div>
           )}
           <div className="flex-1 flex flex-col items-center gap-1 min-w-0">
             <div className="flex justify-center w-full">
@@ -237,6 +291,7 @@ export function MeetingGridLayout({ isSuperAdmin = false, roomName }: { isSuperA
   const [isRecording, setIsRecording] = React.useState(false);
   const [egressId, setEgressId] = React.useState<string | null>(null);
   const [recordError, setRecordError] = React.useState<string | null>(null);
+  const [recordMode, setRecordMode] = React.useState<'video' | 'audio'>('video');
   const [soloedIdentity, setSoloedIdentity] = React.useState<string | null>(null);
   const layoutContext = useCreateLayoutContext();
   const hasInitializedChat = React.useRef(false);
@@ -303,6 +358,8 @@ export function MeetingGridLayout({ isSuperAdmin = false, roomName }: { isSuperA
             onSoloChange={setSoloedIdentity}
             onStartRecording={handleStartRecording}
             onStopRecording={handleStopRecording}
+            recordMode={recordMode}
+            onRecordModeChange={setRecordMode}
           />
         </div>
         {widgetState.showChat ? (
@@ -319,7 +376,7 @@ export function MeetingGridLayout({ isSuperAdmin = false, roomName }: { isSuperA
             <ChevronLeft className="h-4 w-4 text-gray-500 mt-1" />
           </div>
         ) : (
-          <div className="relative flex flex-col flex-shrink-0 h-full border-l border-gray-700 bg-gray-900 min-w-0">
+          <div className="relative flex flex-col flex-shrink-0 h-full min-w-[280px] w-[320px] max-w-[90vw] border-l border-gray-700 bg-gray-900 min-h-0 overflow-hidden lk-meet-chat-sidebar">
             {isSuperAdmin && (
               <button
                 type="button"
@@ -330,7 +387,7 @@ export function MeetingGridLayout({ isSuperAdmin = false, roomName }: { isSuperA
                 <ChevronRight className="h-4 w-4" />
               </button>
             )}
-            <Chat style={{ display: 'grid', minWidth: 0, height: '100%' }} />
+            <Chat />
           </div>
         )
       ) : null}

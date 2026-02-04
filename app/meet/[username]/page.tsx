@@ -33,7 +33,14 @@ export default function MeetPage() {
   const [userChoices, setUserChoices] = useState<LocalUserChoices | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [meetingEnded, setMeetingEnded] = useState(false);
   const supabase = createClient();
+
+  function handleDisconnected() {
+    setMeetingEnded(true);
+    setToken(null);
+    setServerUrl(null);
+  }
 
   const isM10Domain = typeof window !== 'undefined' && window.location.hostname.includes('m10djcompany.com');
   const isTipJarDomain = typeof window !== 'undefined' &&
@@ -145,6 +152,62 @@ export default function MeetPage() {
     );
   }
 
+  // Meeting ended by host - beautiful notification for disconnected participants
+  if (meetingEnded) {
+    return (
+      <div className="fixed inset-0 bg-black flex items-center justify-center p-4 overflow-hidden">
+        {/* Subtle gradient background */}
+        <div
+          className="absolute inset-0 opacity-30"
+          style={{
+            background: isM10Domain
+              ? 'radial-gradient(ellipse 80% 50% at 50% 40%, rgba(252,186,0,0.15) 0%, transparent 60%)'
+              : 'radial-gradient(ellipse 80% 50% at 50% 40%, rgba(16,185,129,0.12) 0%, transparent 60%)',
+          }}
+        />
+        <div className="relative z-10 text-center text-white max-w-md w-full animate-in fade-in duration-500">
+          {/* Icon */}
+          <div
+            className={`mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full ${
+              isM10Domain ? 'bg-[#fcba00]/20' : 'bg-emerald-500/20'
+            }`}
+          >
+            <svg
+              className={`h-10 w-10 ${isM10Domain ? 'text-[#fcba00]' : 'text-emerald-400'}`}
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={1.5}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden
+            >
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+              <polyline points="7 10 12 15 17 10" />
+              <line x1="12" y1="15" x2="12" y2="3" />
+            </svg>
+          </div>
+          <h1 className="text-2xl md:text-3xl font-semibold tracking-tight mb-3">
+            The meeting has ended
+          </h1>
+          <p className="text-gray-400 text-base mb-8 max-w-sm mx-auto leading-relaxed">
+            The host has ended this meeting. Thanks for joining!
+          </p>
+          <a
+            href="/"
+            className={`inline-flex items-center justify-center gap-2 px-8 py-3.5 rounded-xl font-medium text-base transition-all hover:scale-[1.02] active:scale-[0.98] ${
+              isM10Domain
+                ? 'bg-[#fcba00] text-black hover:bg-[#e5a800] shadow-lg shadow-[#fcba00]/20'
+                : 'bg-emerald-600 text-white hover:bg-emerald-500 shadow-lg shadow-emerald-600/20'
+            }`}
+          >
+            Return home
+          </a>
+        </div>
+      </div>
+    );
+  }
+
   // PreJoin: blurred current broadcast + modal for username
   if (!token || !serverUrl) {
     return (
@@ -168,6 +231,7 @@ export default function MeetPage() {
           serverUrl={serverUrl}
           videoEnabled={userChoices?.videoEnabled ?? true}
           audioEnabled={userChoices?.audioEnabled ?? true}
+          onDisconnected={handleDisconnected}
         />
       </div>
     </div>

@@ -47,6 +47,96 @@ export async function kickMeetParticipant(
 }
 
 /**
+ * Unban a participant: remove from banned_identities and/or banned_names.
+ * Pass participantIdentity and/or participantName to unban.
+ */
+export async function unbanMeetParticipant(
+  roomName: string,
+  options: { participantIdentity?: string; participantName?: string }
+): Promise<{ ok: boolean; error?: string }> {
+  if (!roomName.startsWith('meet-')) {
+    return { ok: false, error: 'Invalid room' };
+  }
+  if (!options.participantIdentity && !options.participantName) {
+    return { ok: false, error: 'participantIdentity or participantName required' };
+  }
+
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return { ok: false, error: 'Database not configured' };
+
+  try {
+    const { data: room, error: fetchError } = await supabase
+      .from('meet_rooms')
+      .select('id, banned_identities, banned_names')
+      .eq('room_name', roomName)
+      .single();
+
+    if (fetchError || !room) {
+      return { ok: false, error: 'Room not found' };
+    }
+
+    let identities = (room.banned_identities ?? []) as string[];
+    let names = (room.banned_names ?? []) as string[];
+
+    if (options.participantIdentity) {
+      identities = identities.filter((id) => id !== options.participantIdentity);
+    }
+    if (options.participantName && options.participantName.trim()) {
+      const nameLower = options.participantName.trim().toLowerCase();
+      names = names.filter((n) => n.toLowerCase() !== nameLower);
+    }
+
+    const { error: updateError } = await supabase
+      .from('meet_rooms')
+      .update({
+        banned_identities: identities,
+        banned_names: names,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', room.id);
+
+    if (updateError) {
+      return { ok: false, error: updateError.message };
+    }
+    return { ok: true };
+  } catch (err) {
+    console.error('[MeetKick] unbanMeetParticipant error:', err);
+    return {
+      ok: false,
+      error: err instanceof Error ? err.message : 'Failed to unban participant',
+    };
+  }
+}
+
+/**
+ * Delete a LiveKit room (disconnects all participants). Use when host ends meeting.
+ */
+export async function endMeetRoom(roomName: string): Promise<{ ok: boolean; error?: string }> {
+  if (!roomName.startsWith('meet-')) {
+    return { ok: false, error: 'Invalid room' };
+  }
+
+  const client = getRoomService();
+  if (!client) return { ok: false, error: 'LiveKit not configured' };
+
+  try {
+    await client.deleteRoom(roomName);
+    return { ok: true };
+  } catch (err) {
+    // Room may already be deleted (last participant left)
+    const msg = err instanceof Error ? err.message : '';
+    if (msg.includes('not found') || msg.includes('already')) {
+      return { ok: true };
+    }
+    console.error('[MeetKick] endMeetRoom error:', err);
+    return {
+      ok: false,
+      error: err instanceof Error ? err.message : 'Failed to end meeting',
+    };
+  }
+}
+
+/**
  * Ban a participant: add to room ban list and kick them.
  * Uses participantName for banned_names (blocks anonymous rejoins with same display name).
  */

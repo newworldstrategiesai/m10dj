@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/utils/supabase/server';
 import { isSuperAdminEmail } from '@/utils/auth-helpers/super-admin';
-import { startMeetEgress } from '@/utils/livekit/egress';
+import { unbanMeetParticipant } from '@/utils/livekit/meet-kick';
 
 /**
- * POST /api/livekit/egress/meet
- * Start recording a meet room. Super admin only.
- * Body: { roomName: string, audioOnly?: boolean }
+ * POST /api/livekit/meet/unban-participant
+ * Unban a participant from a meet room. Super admin only.
+ * Body: { roomName: string; participantIdentity?: string; participantName?: string }
  */
 export async function POST(request: NextRequest) {
   try {
@@ -22,23 +22,27 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { roomName, audioOnly } = body;
+    const { roomName, participantIdentity, participantName } = body;
 
-    if (!roomName || typeof roomName !== 'string') {
+    if (!roomName) {
       return NextResponse.json({ error: 'roomName is required' }, { status: 400 });
     }
+    if (!participantIdentity && !participantName) {
+      return NextResponse.json({ error: 'participantIdentity or participantName is required' }, { status: 400 });
+    }
 
-    const result = await startMeetEgress(roomName, {
-      audioOnly: typeof audioOnly === 'boolean' ? audioOnly : false,
+    const result = await unbanMeetParticipant(roomName, {
+      participantIdentity,
+      participantName,
     });
 
-    if ('error' in result) {
+    if (!result.ok) {
       return NextResponse.json({ error: result.error }, { status: 400 });
     }
 
-    return NextResponse.json({ egressId: result.egressId });
+    return NextResponse.json({ ok: true });
   } catch (err) {
-    console.error('[Egress Meet] Error:', err);
+    console.error('[Meet Unban] Error:', err);
     return NextResponse.json(
       { error: err instanceof Error ? err.message : 'Internal error' },
       { status: 500 }

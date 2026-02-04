@@ -40,6 +40,23 @@ export async function POST(request: NextRequest) {
         // Update stream status to live
         if (event.room) {
           await updateStreamStatus(event.room.name, true);
+          // Meet rooms: set metadata with startedAt for master timer (visible to all participants)
+          if (event.room.name.startsWith('meet-')) {
+            try {
+              const { RoomServiceClient } = await import('livekit-server-sdk');
+              const roomService = new RoomServiceClient(
+                livekitHost,
+                process.env.LIVEKIT_API_KEY!,
+                process.env.LIVEKIT_API_SECRET!
+              );
+              await roomService.updateRoomMetadata(
+                event.room.name,
+                JSON.stringify({ startedAt: Date.now() })
+              );
+            } catch (err) {
+              console.error('[Webhook] Failed to set meet room metadata:', err);
+            }
+          }
         }
         break;
 
@@ -111,11 +128,12 @@ export async function POST(request: NextRequest) {
         if (eventType === 'transcription_received' || eventType === 'transcription_final') {
           const transcription = (event as any).transcription;
           if (transcription && event.room) {
-            await handleCallTranscription(
-              event.room.name,
-              transcription.text || '',
-              eventType === 'transcription_final'
-            );
+            const text = transcription.text || '';
+            const isFinal = eventType === 'transcription_final';
+            await handleCallTranscription(event.room.name, text, isFinal);
+            if (event.room.name.startsWith('meet-')) {
+              await handleMeetTranscription(event.room.name, text, isFinal);
+            }
           }
         } else {
           console.log(`Unhandled LiveKit event: ${eventType || event.event}`);
@@ -206,6 +224,46 @@ async function handleCallTranscription(
     }
   } catch (error) {
     console.error('Error handling call transcription:', error);
+  }
+}
+
+/** Store transcription for meet-* rooms when LiveKit sends transcription_received/transcription_final.
+ * Only appends when room has transcription_enabled and segment is final.
+ */
+async function handleMeetTranscription(
+  roomName: string,
+  text: string,
+  isFinal: boolean
+) {
+  if (!roomName.startsWith('meet-') || !isFinal || !text.trim()) return;
+
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
+
+  try {
+    const { data: meetRoom, error: fetchError } = await supabase
+      .from('meet_rooms')
+      .select('id, transcription_enabled, transcript')
+      .eq('room_name', roomName)
+      .single();
+
+    if (fetchError || !meetRoom) return;
+    if (!(meetRoom as { transcription_enabled?: boolean }).transcription_enabled) return;
+
+    const currentTranscript = (meetRoom as { transcript?: string | null }).transcript ?? '';
+    const updatedTranscript = (currentTranscript + ' ' + text.trim()).trim();
+
+    await supabase
+      .from('meet_rooms')
+      .update({
+        transcript: updatedTranscript,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('room_name', roomName);
+  } catch (error) {
+    console.error('Error handling meet transcription:', error);
   }
 }
 

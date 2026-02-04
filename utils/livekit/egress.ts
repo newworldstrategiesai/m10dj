@@ -29,13 +29,14 @@ function getS3Output(): EncodedFileOutput | null {
   if (!bucket || !accessKey || !secret) return null;
 
   const filepath = `${keyPrefix}/{room_name}-{time}`;
+  const endpoint = process.env.LIVEKIT_EGRESS_S3_ENDPOINT || '';
   const s3 = new S3Upload({
     accessKey,
     secret,
     region,
     bucket,
-    endpoint: process.env.LIVEKIT_EGRESS_S3_ENDPOINT || '',
-    forcePathStyle: false,
+    endpoint,
+    forcePathStyle: !!endpoint,
   });
 
   return new EncodedFileOutput({
@@ -72,7 +73,7 @@ export async function startCallEgress(roomName: string): Promise<{ egressId: str
   }
 }
 
-function getMeetS3Output(): EncodedFileOutput | null {
+function getMeetS3Output(audioOnly: boolean): EncodedFileOutput | null {
   const bucket = process.env.LIVEKIT_EGRESS_S3_BUCKET;
   const region = process.env.LIVEKIT_EGRESS_S3_REGION || 'us-east-1';
   const accessKey = process.env.LIVEKIT_EGRESS_S3_ACCESS_KEY;
@@ -82,41 +83,46 @@ function getMeetS3Output(): EncodedFileOutput | null {
   if (!bucket || !accessKey || !secret) return null;
 
   const filepath = `${keyPrefix}/{room_name}-{time}`;
+  const endpoint = process.env.LIVEKIT_EGRESS_S3_ENDPOINT || '';
   const s3 = new S3Upload({
     accessKey,
     secret,
     region,
     bucket,
-    endpoint: process.env.LIVEKIT_EGRESS_S3_ENDPOINT || '',
-    forcePathStyle: false,
+    endpoint,
+    forcePathStyle: !!endpoint,
   });
 
   return new EncodedFileOutput({
-    fileType: EncodedFileType.MP4,
+    fileType: audioOnly ? EncodedFileType.MP3 : EncodedFileType.MP4,
     filepath,
     output: { case: 's3', value: s3 },
   });
 }
 
 /**
- * Start room composite egress (video+audio) for a meet room.
+ * Start room composite egress for a meet room (video+audio or audio-only).
  * Super admin only. egress_ended webhook updates meet_rooms.recording_url.
  */
-export async function startMeetEgress(roomName: string): Promise<{ egressId: string } | { error: string }> {
+export async function startMeetEgress(
+  roomName: string,
+  options?: { audioOnly?: boolean }
+): Promise<{ egressId: string } | { error: string }> {
   if (!process.env.LIVEKIT_EGRESS_ENABLED || process.env.LIVEKIT_EGRESS_ENABLED !== 'true') {
     return { error: 'Egress is not enabled. Set LIVEKIT_EGRESS_ENABLED=true and S3 env vars.' };
   }
   const isMeetRoom = roomName.startsWith('meet-');
   if (!isMeetRoom) return { error: 'Invalid room: must be a meet room (meet-*)' };
 
+  const audioOnly = options?.audioOnly ?? false;
   const client = getEgressClient();
-  const output = getMeetS3Output();
+  const output = getMeetS3Output(audioOnly);
   if (!client) return { error: 'LiveKit API not configured' };
   if (!output) return { error: 'S3 storage not configured for meet recordings' };
 
   try {
     const info = await client.startRoomCompositeEgress(roomName, output, {
-      audioOnly: false,
+      audioOnly,
     });
     return info?.egressId ? { egressId: info.egressId } : { error: 'Failed to start egress' };
   } catch (err) {

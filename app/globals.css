@@ -239,3 +239,25 @@ input[type="number"] {
     opacity: 1;
   }
 }
+
+/* LiveKit meet: chat sidebar - ensure messages display and scroll correctly */
+.lk-meet-chat-sidebar {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.lk-meet-chat-sidebar .lk-chat {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  max-width: 100%;
+  align-self: stretch;
+}
+/* Critical: allow messages list to shrink and scroll (fixes overflow in nested flex/grid) */
+.lk-meet-chat-sidebar .lk-chat .lk-list.lk-chat-messages {
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  flex: 1;
+}

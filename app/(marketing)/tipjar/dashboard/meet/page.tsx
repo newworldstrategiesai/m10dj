@@ -8,8 +8,10 @@ import { VideoMeetPlayer } from '@/components/VideoMeetPlayer';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Copy, Video, Share2, Check, Square } from 'lucide-react';
+import Link from 'next/link';
+import { Copy, Video, Share2, Check, Square, Play, Download, Users, Ban, UserX, ArrowLeft, LogIn, Film, FileText } from 'lucide-react';
 import TipJarAnimatedLoader from '@/components/ui/TipJarAnimatedLoader';
+import { Switch } from '@/components/ui/switch';
 import { isSuperAdminEmail } from '@/utils/auth-helpers/super-admin';
 
 interface MeetRoom {
@@ -19,6 +21,11 @@ interface MeetRoom {
   room_name: string;
   title: string | null;
   is_active: boolean;
+  recording_url?: string | null;
+  banned_identities?: string[] | null;
+  banned_names?: string[] | null;
+  transcription_enabled?: boolean | null;
+  transcript?: string | null;
 }
 
 export default function MeetPage() {
@@ -30,6 +37,10 @@ export default function MeetPage() {
   const [inMeeting, setInMeeting] = useState(false);
   const [urlCopied, setUrlCopied] = useState(false);
   const [title, setTitle] = useState('');
+  const [participantCount, setParticipantCount] = useState<number | null>(null);
+  const [participants, setParticipants] = useState<{ identity: string; name: string }[]>([]);
+  const [bannedList, setBannedList] = useState<{ identities: string[]; names: string[] } | null>(null);
+  const [roomParticipantCounts, setRoomParticipantCounts] = useState<Record<string, number>>({});
 
   const router = useRouter();
   const supabase = createClient();
@@ -107,15 +118,88 @@ export default function MeetPage() {
     loadRoom();
   }, [supabase, router]);
 
-  async function getMeetToken(roomName: string) {
+  const isM10Domain = typeof window !== 'undefined' && window.location.hostname.includes('m10djcompany.com');
+
+  // Poll participants when in meeting; poll banned list for super admin
+  useEffect(() => {
+    if (!inMeeting || !room) return;
+    const roomName = room.room_name;
+
+    async function fetchParticipants() {
+      try {
+        const res = await fetch(`/api/livekit/meet/participants?roomName=${encodeURIComponent(roomName)}`);
+        if (res.ok) {
+          const data = await res.json();
+          const list = data.participants ?? [];
+          setParticipantCount(list.length);
+          setParticipants(list);
+        }
+      } catch {
+        // ignore
+      }
+    }
+
+    async function fetchBanned() {
+      if (!isM10Domain) return;
+      try {
+        const res = await fetch(`/api/livekit/meet/banned?roomName=${encodeURIComponent(roomName)}`);
+        if (res.ok) {
+          const data = await res.json();
+          setBannedList({ identities: data.bannedIdentities ?? [], names: data.bannedNames ?? [] });
+        }
+      } catch {
+        // ignore
+      }
+    }
+
+    fetchParticipants();
+    fetchBanned();
+    const t = setInterval(() => {
+      fetchParticipants();
+      fetchBanned();
+    }, 5000);
+    return () => clearInterval(t);
+  }, [inMeeting, room?.room_name, isM10Domain]);
+
+  // Poll participant counts for active rooms (super admin, pre-meeting) for All Meet Rooms
+  useEffect(() => {
+    if (!isM10Domain || inMeeting || allRooms.length === 0) return;
+    const activeRooms = allRooms.filter((r) => r.is_active);
+    if (activeRooms.length === 0) return;
+
+    async function fetchCounts() {
+      const counts: Record<string, number> = {};
+      await Promise.all(
+        activeRooms.map(async (r) => {
+          try {
+            const res = await fetch(`/api/livekit/meet/participants?roomName=${encodeURIComponent(r.room_name)}`);
+            if (res.ok) {
+              const data = await res.json();
+              counts[r.room_name] = data.participants?.length ?? 0;
+            }
+          } catch {
+            // ignore
+          }
+        })
+      );
+      setRoomParticipantCounts((prev) => ({ ...prev, ...counts }));
+    }
+
+    fetchCounts();
+    const t = setInterval(fetchCounts, 10000);
+    return () => clearInterval(t);
+  }, [isM10Domain, inMeeting, allRooms]);
+
+  async function getMeetToken(roomName: string, roomOverride?: MeetRoom) {
     try {
       const { data: { user } } = await supabase.auth.getUser();
+      const r = roomOverride ?? room;
       const response = await fetch('/api/livekit/token', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           roomName,
-          participantName: user?.email?.split('@')[0] || room?.username || 'Host',
+          participantName: user?.email?.split('@')[0] || r?.username || 'Host',
           participantIdentity: user?.id,
           roomType: 'meet',
         }),
@@ -158,8 +242,37 @@ export default function MeetPage() {
     });
   }
 
+  async function handleJoinOtherRoom(r: MeetRoom) {
+    try {
+      await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+    } catch (error) {
+      alert('Please allow camera and microphone access to join');
+      return;
+    }
+
+    await (supabase.from('meet_rooms') as any)
+      .update({ is_active: true, updated_at: new Date().toISOString() })
+      .eq('id', r.id);
+
+    setRoom({ ...r, is_active: true });
+    setTitle(r.title || `Meet with @${r.username}`);
+    setInMeeting(true);
+    await getMeetToken(r.room_name, r);
+  }
+
   async function handleEndMeeting() {
     if (!room) return;
+
+    // End LiveKit room first (disconnects all participants)
+    try {
+      await fetch('/api/livekit/meet/end-room', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ roomName: room.room_name }),
+      });
+    } catch {
+      // Continue even if API fails (room may already be empty)
+    }
 
     const { error } = await (supabase.from('meet_rooms') as any)
       .update({ is_active: false, updated_at: new Date().toISOString() })
@@ -170,6 +283,9 @@ export default function MeetPage() {
       setInMeeting(false);
       setToken(null);
       setServerUrl(null);
+      setParticipantCount(null);
+      setParticipants([]);
+      setBannedList(null);
     } else {
       alert('Failed to end meeting. Please try again.');
     }
@@ -231,8 +347,6 @@ export default function MeetPage() {
     }
   }
 
-  const isM10Domain = typeof window !== 'undefined' && window.location.hostname.includes('m10djcompany.com');
-
   if (loading) {
     return (
       <div className="fixed inset-0 bg-black flex items-center justify-center z-50">
@@ -265,15 +379,26 @@ export default function MeetPage() {
     <div className="fixed inset-0 bg-black text-white overflow-hidden">
       {!inMeeting ? (
         <div className="h-full flex flex-col">
-          <div className="px-4 pt-safe-top pb-4 border-b border-gray-800 flex items-center gap-3">
-            {isM10Domain && (
-              <Image src="/assets/m10 dj company logo white.gif" alt="M10" width={40} height={40} className="flex-shrink-0" />
-            )}
-            <div>
-              <h1 className="text-2xl font-bold">Video Meeting</h1>
-            <p className="text-gray-400 text-sm mt-1">
-              Start a video call with your audience using LiveKit&apos;s premade conferencing UI
-            </p>
+          <div className="px-4 pt-safe-top pb-4 border-b border-gray-800 flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3 min-w-0">
+              {isM10Domain && (
+                <Link
+                  href="/admin/dashboard"
+                  className="flex-shrink-0 p-2 rounded-lg hover:bg-gray-800 text-gray-400 hover:text-white transition-colors"
+                  title="Back to dashboard"
+                >
+                  <ArrowLeft className="h-5 w-5" />
+                </Link>
+              )}
+              {isM10Domain && (
+                <Image src="/assets/m10 dj company logo white.gif" alt="M10" width={40} height={40} className="flex-shrink-0" />
+              )}
+              <div className="min-w-0">
+                <h1 className="text-2xl font-bold">Video Meeting</h1>
+                <p className="text-gray-400 text-sm mt-1">
+                  Start a video call with your audience using LiveKit&apos;s premade conferencing UI
+                </p>
+              </div>
             </div>
           </div>
 
@@ -288,6 +413,39 @@ export default function MeetPage() {
                 className="bg-gray-900 border-gray-700 text-white placeholder:text-gray-500"
                 maxLength={100}
               />
+            </div>
+
+            <div>
+              <div className="flex items-center justify-between gap-4 mb-2">
+                <div className="flex items-center gap-2">
+                  <FileText className="h-4 w-4 text-gray-400" />
+                  <Label htmlFor="transcription" className="text-white">Transcription</Label>
+                </div>
+                <Switch
+                  id="transcription"
+                  checked={room.transcription_enabled ?? false}
+                  onCheckedChange={async (checked) => {
+                    const { error } = await (supabase.from('meet_rooms') as any)
+                      .update({ transcription_enabled: checked, updated_at: new Date().toISOString() })
+                      .eq('id', room.id);
+                    if (!error) setRoom({ ...room, transcription_enabled: checked });
+                  }}
+                  className={
+                    isM10Domain
+                      ? 'data-[state=checked]:bg-[#fcba00] data-[state=checked]:dark:bg-[#fcba00]'
+                      : 'data-[state=checked]:bg-emerald-600 data-[state=checked]:dark:bg-emerald-600'
+                  }
+                />
+              </div>
+              <p className="text-gray-500 text-xs mt-1">
+                When on, enable transcription in your LiveKit project so speech in this room is transcribed and saved below.
+              </p>
+              {room.transcript && room.transcript.trim() && (
+                <div className="mt-2 rounded-lg border border-gray-700 bg-gray-900/50 p-3 max-h-32 overflow-y-auto">
+                  <p className="text-xs text-gray-400 mb-1">Last saved transcript</p>
+                  <p className="text-sm text-gray-300 whitespace-pre-wrap">{room.transcript.trim()}</p>
+                </div>
+              )}
             </div>
 
             <div>
@@ -330,33 +488,130 @@ export default function MeetPage() {
               <p className="text-gray-500 text-xs mt-1">Share this link so others can join. Start the meeting when ready.</p>
             </div>
 
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <Label className="text-white">Recordings</Label>
+                <Link
+                  href={isM10Domain ? '/dashboard/recordings' : '/tipjar/dashboard/recordings'}
+                  className="flex items-center gap-1.5 text-xs font-medium text-gray-400 hover:text-white transition-colors"
+                >
+                  <Film className="h-3.5 w-3.5" />
+                  View all
+                </Link>
+              </div>
+            {(room.recording_url || (isM10Domain && allRooms.some((r) => (r as MeetRoom).recording_url))) ? (
+              <div className="rounded-lg border border-gray-700 bg-gray-900/50 space-y-2 p-3">
+                  {room.recording_url && (
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-sm text-gray-300 truncate flex-1">Your last recording</span>
+                      <div className="flex gap-2 flex-shrink-0">
+                        <a
+                          href={room.recording_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className={`inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium ${isM10Domain ? 'bg-[#fcba00]/20 text-[#fcba00] hover:bg-[#fcba00]/30' : 'bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30'}`}
+                        >
+                          <Play className="h-3 w-3" />
+                          Play
+                        </a>
+                        <a
+                          href={room.recording_url}
+                          download
+                          className={`inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium ${isM10Domain ? 'bg-[#fcba00]/20 text-[#fcba00] hover:bg-[#fcba00]/30' : 'bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30'}`}
+                        >
+                          <Download className="h-3 w-3" />
+                          Download
+                        </a>
+                      </div>
+                    </div>
+                  )}
+                  {isM10Domain &&
+                    allRooms
+                      .filter((r) => (r as MeetRoom).recording_url && r.id !== room.id)
+                      .map((r) => (
+                        <div key={r.id} className="flex items-center justify-between gap-2">
+                          <span className="text-sm text-gray-300 truncate flex-1">@{r.username}</span>
+                          <div className="flex gap-2 flex-shrink-0">
+                            <a
+                              href={(r as MeetRoom).recording_url!}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium bg-[#fcba00]/20 text-[#fcba00] hover:bg-[#fcba00]/30"
+                            >
+                              <Play className="h-3 w-3" />
+                              Play
+                            </a>
+                            <a
+                              href={(r as MeetRoom).recording_url!}
+                              download
+                              className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium bg-[#fcba00]/20 text-[#fcba00] hover:bg-[#fcba00]/30"
+                            >
+                              <Download className="h-3 w-3" />
+                              Download
+                            </a>
+                          </div>
+                        </div>
+                      ))}
+              </div>
+            ) : (
+              <div className="rounded-lg border border-dashed border-gray-700 bg-gray-900/30 p-4 text-center">
+                <p className="text-sm text-gray-500">No recordings yet. Start a meeting and click Record to capture.</p>
+                <Link
+                  href={isM10Domain ? '/dashboard/recordings' : '/tipjar/dashboard/recordings'}
+                  className="mt-2 inline-block text-xs text-gray-400 hover:text-white"
+                >
+                  View all recordings →
+                </Link>
+              </div>
+            )}
+            </div>
+
             {isM10Domain && allRooms.length > 0 && (
               <div>
                 <Label className="text-white mb-2 block">All Meet Rooms</Label>
                 <div className="rounded-lg border border-gray-700 bg-gray-900/50 max-h-48 overflow-y-auto">
-                  {allRooms.map((r) => (
-                    <div
-                      key={r.id}
-                      className="flex items-center justify-between px-3 py-2 border-b border-gray-800 last:border-0 hover:bg-gray-800/50"
-                    >
-                      <div>
-                        <span className="font-medium text-white">@{r.username}</span>
-                        {r.is_active && (
-                          <span className={`ml-2 text-xs px-1.5 py-0.5 rounded ${isM10Domain ? 'bg-[#fcba00]/20 text-[#fcba00]' : 'bg-emerald-500/20 text-emerald-400'}`}>
-                            Live
-                          </span>
-                        )}
-                      </div>
-                      <a
-                        href={`/meet/${r.username}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-sm text-blue-400 hover:text-blue-300"
+                  {allRooms.map((r) => {
+                    const count = r.is_active ? (roomParticipantCounts[r.room_name] ?? null) : null;
+                    return (
+                      <div
+                        key={r.id}
+                        className="flex items-center justify-between gap-2 px-3 py-2 border-b border-gray-800 last:border-0 hover:bg-gray-800/50"
                       >
-                        Open
-                      </a>
-                    </div>
-                  ))}
+                        <div className="min-w-0 flex-1">
+                          <span className="font-medium text-white">@{r.username}</span>
+                          {r.is_active && (
+                            <span className={`ml-2 text-xs px-1.5 py-0.5 rounded ${isM10Domain ? 'bg-[#fcba00]/20 text-[#fcba00]' : 'bg-emerald-500/20 text-emerald-400'}`}>
+                              Live
+                            </span>
+                          )}
+                          {count !== null && (
+                            <span className="ml-2 text-xs text-gray-500">
+                              ({count} in call)
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-1 flex-shrink-0">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-7 px-2 text-xs border-[#fcba00]/50 text-[#fcba00] hover:bg-[#fcba00]/20 hover:border-[#fcba00]"
+                            onClick={() => handleJoinOtherRoom(r)}
+                          >
+                            <LogIn className="h-3 w-3 mr-1" />
+                            Join
+                          </Button>
+                          <a
+                            href={`/meet/${r.username}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-sm text-blue-400 hover:text-blue-300 px-2"
+                          >
+                            Open
+                          </a>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             )}
@@ -379,13 +634,28 @@ export default function MeetPage() {
         </div>
       ) : (
         <div className="h-full flex flex-col">
-          <div className="px-4 pt-safe-top pb-3 border-b border-gray-800 bg-black/95 backdrop-blur-sm flex items-center justify-between">
-            <div className="flex items-center gap-2">
+          <div className="px-4 pt-safe-top pb-3 border-b border-gray-800 bg-black/95 backdrop-blur-sm flex items-center justify-between gap-2 flex-wrap">
+            <div className="flex items-center gap-2 flex-wrap">
+              {isM10Domain && (
+                <Link
+                  href="/admin/dashboard"
+                  className="flex-shrink-0 p-1.5 rounded-lg hover:bg-gray-800 text-gray-400 hover:text-white transition-colors"
+                  title="Back to dashboard"
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                </Link>
+              )}
               {isM10Domain && (
                 <Image src="/assets/m10 dj company logo white.gif" alt="M10" width={32} height={32} className="flex-shrink-0" />
               )}
               <div className={`w-2 h-2 rounded-full animate-pulse ${isM10Domain ? 'bg-[#fcba00]' : 'bg-emerald-500'}`} />
               <span className={`font-bold text-sm ${isM10Domain ? 'text-[#fcba00]' : 'text-emerald-500'}`}>IN MEETING</span>
+              {participantCount !== null && (
+                <span className="flex items-center gap-1 text-xs text-gray-400">
+                  <Users className="h-3.5 w-3.5" />
+                  {participantCount} participant{participantCount !== 1 ? 's' : ''}
+                </span>
+              )}
             </div>
             <Button
               onClick={handleEndMeeting}
@@ -455,11 +725,99 @@ export default function MeetPage() {
             <Button
               onClick={handleShare}
               variant="outline"
-              className={`w-full mt-3 text-white ${isM10Domain ? 'border-[#fcba00]/50 hover:bg-[#fcba00]/20 hover:border-[#fcba00]' : 'border-gray-700 hover:bg-gray-800'}`}
+              className={`w-full mt-3 font-medium text-gray-900 bg-gray-100 border-gray-300 hover:bg-gray-200 hover:border-gray-400 dark:text-white dark:bg-gray-800/80 dark:border-gray-600 dark:hover:bg-gray-700 dark:hover:border-gray-500 ${isM10Domain ? 'dark:!border-[#fcba00]/60 dark:hover:!bg-[#fcba00]/20 dark:hover:!border-[#fcba00]' : ''}`}
             >
-              <Share2 className="h-4 w-4 mr-2" />
+              <Share2 className="h-4 w-4 mr-2 shrink-0" />
               Share Meeting Link
             </Button>
+
+            {isM10Domain && participants.length > 0 && (
+              <div className="mt-4 pt-4 border-t border-gray-800">
+                <Label className="text-white mb-2 flex items-center gap-2">
+                  <Users className="h-4 w-4" />
+                  Participants ({participants.length})
+                </Label>
+                <div className="rounded-lg border border-gray-700 bg-gray-900/50 max-h-24 overflow-y-auto p-2 flex flex-wrap gap-1">
+                  {participants.map((p) => (
+                    <span
+                      key={p.identity}
+                      className="text-xs px-2 py-1 rounded bg-gray-800 text-gray-300"
+                      title={p.identity}
+                    >
+                      {p.name || p.identity}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {isM10Domain && bannedList && (bannedList.identities.length > 0 || bannedList.names.length > 0) && (
+              <div className="mt-4 pt-4 border-t border-gray-800">
+                <Label className="text-white mb-2 flex items-center gap-2">
+                  <Ban className="h-4 w-4" />
+                  Banned participants
+                </Label>
+                <div className="rounded-lg border border-gray-700 bg-gray-900/50 max-h-32 overflow-y-auto space-y-1 p-2">
+                  {bannedList.identities.map((id) => (
+                    <div key={id} className="flex items-center justify-between gap-2 text-sm">
+                      <span className="text-gray-300 truncate">{id}</span>
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          try {
+                            const res = await fetch('/api/livekit/meet/unban-participant', {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ roomName: room.room_name, participantIdentity: id }),
+                            });
+                            if (res.ok) {
+                              setBannedList((prev) =>
+                                prev ? { ...prev, identities: prev.identities.filter((x) => x !== id) } : null
+                              );
+                            }
+                          } catch {
+                            // ignore
+                          }
+                        }}
+                        className="flex-shrink-0 px-2 py-1 rounded text-xs bg-emerald-600/20 text-emerald-400 hover:bg-emerald-600/30"
+                      >
+                        <UserX className="h-3 w-3 inline mr-1" />
+                        Unban
+                      </button>
+                    </div>
+                  ))}
+                  {bannedList.names.map((name) => (
+                    <div key={name} className="flex items-center justify-between gap-2 text-sm">
+                      <span className="text-gray-300 truncate">{name} (name)</span>
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          try {
+                            const res = await fetch('/api/livekit/meet/unban-participant', {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ roomName: room.room_name, participantName: name }),
+                            });
+                            if (res.ok) {
+                              setBannedList((prev) =>
+                                prev ? { ...prev, names: prev.names.filter((n) => n !== name) } : null
+                              );
+                            }
+                          } catch {
+                            // ignore
+                          }
+                        }}
+                        className="flex-shrink-0 px-2 py-1 rounded text-xs bg-emerald-600/20 text-emerald-400 hover:bg-emerald-600/30"
+                      >
+                        <UserX className="h-3 w-3 inline mr-1" />
+                        Unban
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {isM10Domain && (
               <div className="mt-2 text-center text-xs text-[#fcba00]/80">M10 Video Meeting</div>
             )}
