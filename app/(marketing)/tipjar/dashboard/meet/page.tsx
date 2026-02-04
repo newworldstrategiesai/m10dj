@@ -23,6 +23,7 @@ interface MeetRoom {
 
 export default function MeetPage() {
   const [room, setRoom] = useState<MeetRoom | null>(null);
+  const [allRooms, setAllRooms] = useState<MeetRoom[]>([]);
   const [token, setToken] = useState<string | null>(null);
   const [serverUrl, setServerUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -59,6 +60,8 @@ export default function MeetPage() {
           .eq('user_id', user.id)
           .single();
 
+        const isM10Admin = isM10Domain && isSuperAdminEmail(user.email);
+
         if (existingRoom) {
           const typed = existingRoom as MeetRoom;
           setRoom(typed);
@@ -85,6 +88,14 @@ export default function MeetPage() {
             setRoom(typed);
             setTitle(typed.title || `Meet with @${newUsername}`);
           }
+        }
+
+        if (isM10Admin) {
+          const { data: rooms } = await supabase
+            .from('meet_rooms')
+            .select('*')
+            .order('updated_at', { ascending: false });
+          setAllRooms((rooms as MeetRoom[]) || []);
         }
       } catch (err) {
         console.error('Error loading meet room:', err);
@@ -279,6 +290,77 @@ export default function MeetPage() {
               />
             </div>
 
+            <div>
+              <Label className="text-white mb-2 block">Public Meeting Link</Label>
+              <div className="flex gap-2 items-center">
+                <div className="flex-shrink-0 bg-white p-1.5 rounded-lg">
+                  <img
+                    src={`https://api.qrserver.com/v1/create-qr-code/?size=80x80&data=${encodeURIComponent(getMeetUrl())}`}
+                    alt="Scan to join"
+                    width={80}
+                    height={80}
+                    className="block"
+                  />
+                </div>
+                <div className="flex-1 min-w-0 flex flex-col gap-1">
+                  <input
+                    readOnly
+                    value={getMeetUrl()}
+                    className="w-full bg-gray-900 border border-gray-700 rounded-md px-3 py-2 text-white text-sm font-mono select-text"
+                    onClick={(e) => (e.target as HTMLInputElement).select()}
+                  />
+                  <a
+                    href={getMeetUrl()}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm text-blue-400 hover:text-blue-300 underline break-all"
+                  >
+                    Open link
+                  </a>
+                </div>
+                <Button
+                  onClick={handleCopyUrl}
+                  variant="outline"
+                  size="icon"
+                  className={`flex-shrink-0 ${isM10Domain ? 'border-[#fcba00]/50 text-white hover:bg-[#fcba00]/20 hover:border-[#fcba00]' : 'border-gray-700 text-white hover:bg-gray-800'}`}
+                >
+                  {urlCopied ? <Check className={`h-4 w-4 ${isM10Domain ? 'text-[#fcba00]' : 'text-green-400'}`} /> : <Copy className="h-4 w-4" />}
+                </Button>
+              </div>
+              <p className="text-gray-500 text-xs mt-1">Share this link so others can join. Start the meeting when ready.</p>
+            </div>
+
+            {isM10Domain && allRooms.length > 0 && (
+              <div>
+                <Label className="text-white mb-2 block">All Meet Rooms</Label>
+                <div className="rounded-lg border border-gray-700 bg-gray-900/50 max-h-48 overflow-y-auto">
+                  {allRooms.map((r) => (
+                    <div
+                      key={r.id}
+                      className="flex items-center justify-between px-3 py-2 border-b border-gray-800 last:border-0 hover:bg-gray-800/50"
+                    >
+                      <div>
+                        <span className="font-medium text-white">@{r.username}</span>
+                        {r.is_active && (
+                          <span className={`ml-2 text-xs px-1.5 py-0.5 rounded ${isM10Domain ? 'bg-[#fcba00]/20 text-[#fcba00]' : 'bg-emerald-500/20 text-emerald-400'}`}>
+                            Live
+                          </span>
+                        )}
+                      </div>
+                      <a
+                        href={`/meet/${r.username}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-sm text-blue-400 hover:text-blue-300"
+                      >
+                        Open
+                      </a>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <div className="pb-safe-bottom pt-4">
               <Button
                 onClick={handleStartMeeting}
@@ -323,6 +405,7 @@ export default function MeetPage() {
                 token={token}
                 serverUrl={serverUrl}
                 onDisconnected={handleEndMeeting}
+                isSuperAdmin={isM10Domain}
               />
             ) : (
               <div className="h-full flex items-center justify-center text-gray-500">

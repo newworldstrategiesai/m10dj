@@ -95,8 +95,12 @@ export async function POST(request: NextRequest) {
         const roomName = (info?.roomName ?? info?.room_name) as string | undefined;
         const fileResults = (info?.fileResults ?? info?.file_results) as Array<{ location?: string }> | undefined;
         const egressId = (info?.egressId ?? info?.egress_id) as string | undefined;
-        if (roomName && (roomName.startsWith('outbound-') || roomName.startsWith('inbound-'))) {
-          await handleEgressEnded({ roomName, egressId, fileResults });
+        if (roomName) {
+          if (roomName.startsWith('outbound-') || roomName.startsWith('inbound-')) {
+            await handleEgressEnded({ roomName, egressId, fileResults });
+          } else if (roomName.startsWith('meet-')) {
+            await handleMeetEgressEnded({ roomName, egressId, fileResults });
+          }
         }
         break;
       }
@@ -285,6 +289,37 @@ async function handleEgressEnded(egressInfo: {
 
   await supabase
     .from('voice_calls')
+    .update(update)
+    .eq('room_name', roomName);
+}
+
+/** Store recording URL in meet_rooms when LiveKit meet egress ends. */
+async function handleMeetEgressEnded(egressInfo: {
+  roomName?: string;
+  egressId?: string;
+  fileResults?: Array<{ location?: string; filename?: string }>;
+}) {
+  const roomName = egressInfo.roomName;
+  if (!roomName || !roomName.startsWith('meet-')) return;
+
+  const fileResults = egressInfo.fileResults ?? [];
+  const firstFile = fileResults[0];
+  const recordingUrl = firstFile?.location;
+  if (!recordingUrl && !egressInfo.egressId) return;
+
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
+
+  const update: { recording_url?: string; egress_id?: string; updated_at: string } = {
+    updated_at: new Date().toISOString(),
+  };
+  if (recordingUrl) update.recording_url = recordingUrl;
+  if (egressInfo.egressId) update.egress_id = egressInfo.egressId;
+
+  await supabase
+    .from('meet_rooms')
     .update(update)
     .eq('room_name', roomName);
 }

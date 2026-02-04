@@ -13,6 +13,7 @@ import {
   TrackLoop,
   ParticipantTile,
   ControlBar,
+  DisconnectButton,
   RoomAudioRenderer,
   ConnectionStateToast,
   LayoutContextProvider,
@@ -24,6 +25,7 @@ import {
   CarouselLayout,
   Chat,
 } from '@livekit/components-react';
+import { ChevronLeft, ChevronRight, MessageSquare, Circle, Power } from 'lucide-react';
 import { isEqualTrackRef, isTrackReference } from '@livekit/components-core';
 import type { WidgetState } from '@livekit/components-core';
 import { RoomEvent, Track } from 'livekit-client';
@@ -55,7 +57,21 @@ function useOptimalGrid(trackCount: number) {
   return { cols, rows, fillMode: trackCount <= 6 };
 }
 
-function MeetingGridInner() {
+function MeetingGridInner({
+  isSuperAdmin,
+  roomName,
+  isRecording,
+  recordError,
+  onStartRecording,
+  onStopRecording,
+}: {
+  isSuperAdmin: boolean;
+  roomName?: string;
+  isRecording: boolean;
+  recordError: string | null;
+  onStartRecording: () => void;
+  onStopRecording: () => void;
+}) {
   const tracks = useTracks(
     [
       { source: Track.Source.Camera, withPlaceholder: true },
@@ -120,24 +136,169 @@ function MeetingGridInner() {
             </div>
           )}
         </div>
-        <ControlBar controls={{ chat: true, settings: false, camera: true, microphone: true, screenShare: true }} saveUserChoices={false} />
+        <div className="flex items-center gap-2 w-full">
+          <DisconnectButton
+            className="flex-shrink-0 order-first mr-auto lk-disconnect-button !rounded-lg !px-3 !py-2"
+            title="Leave meeting"
+          >
+            <Power className="h-4 w-4" strokeWidth={2} />
+          </DisconnectButton>
+          {isSuperAdmin && roomName && (
+            <button
+              type="button"
+              onClick={isRecording ? onStopRecording : onStartRecording}
+              className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                isRecording
+                  ? 'bg-red-600 hover:bg-red-700 text-white'
+                  : 'bg-gray-700 hover:bg-gray-600 text-white'
+              }`}
+              title={isRecording ? 'Stop recording' : 'Start recording'}
+            >
+              {isRecording ? (
+                <>
+                  <span className="w-2 h-2 rounded-full bg-white animate-pulse" />
+                  Stop
+                </>
+              ) : (
+                <>
+                  <Circle className="h-3 w-3 fill-current" />
+                  Record
+                </>
+              )}
+            </button>
+          )}
+          <div className="flex-1 flex flex-col items-center gap-1 min-w-0">
+            <div className="flex justify-center w-full">
+              <ControlBar controls={{ chat: true, settings: false, camera: true, microphone: true, screenShare: true, leave: false }} saveUserChoices={false} />
+            </div>
+            {recordError && (
+              <p className="text-xs text-red-400" role="alert">{recordError}</p>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );
 }
 
-export function MeetingGridLayout() {
+function useIsDesktop() {
+  const [isDesktop, setIsDesktop] = React.useState(false);
+  React.useEffect(() => {
+    const check = () => setIsDesktop(typeof window !== 'undefined' && window.innerWidth >= 1024);
+    check();
+    window.addEventListener('resize', check);
+    return () => window.removeEventListener('resize', check);
+  }, []);
+  return isDesktop;
+}
+
+export function MeetingGridLayout({ isSuperAdmin = false, roomName }: { isSuperAdmin?: boolean; roomName?: string }) {
+  const isDesktop = useIsDesktop();
+  const defaultShowChat = isSuperAdmin && isDesktop;
   const [widgetState, setWidgetState] = React.useState<WidgetState>({
-    showChat: false,
+    showChat: defaultShowChat,
     unreadMessages: 0,
     showSettings: false,
   });
+  const [chatCollapsed, setChatCollapsed] = React.useState(false);
+  const [isRecording, setIsRecording] = React.useState(false);
+  const [egressId, setEgressId] = React.useState<string | null>(null);
+  const [recordError, setRecordError] = React.useState<string | null>(null);
   const layoutContext = useCreateLayoutContext();
+  const hasInitializedChat = React.useRef(false);
+
+  React.useEffect(() => {
+    if (isSuperAdmin && isDesktop && !hasInitializedChat.current) {
+      hasInitializedChat.current = true;
+      setWidgetState((s) => ({ ...s, showChat: true }));
+    }
+  }, [isSuperAdmin, isDesktop]);
+
+  const handleStartRecording = React.useCallback(async () => {
+    if (!roomName) return;
+    setRecordError(null);
+    try {
+      const res = await fetch('/api/livekit/egress/meet', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ roomName }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setRecordError(data.error || 'Failed to start recording');
+        return;
+      }
+      setEgressId(data.egressId);
+      setIsRecording(true);
+    } catch (err) {
+      setRecordError(err instanceof Error ? err.message : 'Failed to start recording');
+    }
+  }, [roomName]);
+
+  const handleStopRecording = React.useCallback(async () => {
+    if (!egressId) return;
+    setRecordError(null);
+    try {
+      const res = await fetch('/api/livekit/egress/meet/stop', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ egressId }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setRecordError(data.error || 'Failed to stop recording');
+        return;
+      }
+      setEgressId(null);
+      setIsRecording(false);
+    } catch (err) {
+      setRecordError(err instanceof Error ? err.message : 'Failed to stop recording');
+    }
+  }, [egressId]);
 
   return (
     <LayoutContextProvider value={layoutContext} onWidgetChange={setWidgetState}>
-      <MeetingGridInner />
-      <Chat style={{ display: widgetState.showChat ? 'grid' : 'none' }} />
+      <div className="flex flex-row h-full w-full min-h-0">
+        <div className="flex-1 min-w-0 min-h-0 flex flex-col">
+          <MeetingGridInner
+            isSuperAdmin={isSuperAdmin}
+            roomName={roomName}
+            isRecording={isRecording}
+            recordError={recordError}
+            onStartRecording={handleStartRecording}
+            onStopRecording={handleStopRecording}
+          />
+        </div>
+        {widgetState.showChat ? (
+        chatCollapsed && isSuperAdmin ? (
+          <div
+            className="flex flex-col items-center justify-center w-12 flex-shrink-0 h-full bg-gray-900 border-l border-gray-700 cursor-pointer hover:bg-gray-800 transition-colors"
+            onClick={() => setChatCollapsed(false)}
+            title="Expand chat"
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => e.key === 'Enter' && setChatCollapsed(false)}
+          >
+            <MessageSquare className="h-5 w-5 text-gray-400" />
+            <ChevronLeft className="h-4 w-4 text-gray-500 mt-1" />
+          </div>
+        ) : (
+          <div className="relative flex flex-col flex-shrink-0 h-full border-l border-gray-700 bg-gray-900 min-w-0">
+            {isSuperAdmin && (
+              <button
+                type="button"
+                onClick={() => setChatCollapsed(true)}
+                className="absolute top-2 right-10 z-10 p-1 rounded hover:bg-gray-700 text-gray-400 hover:text-white transition-colors"
+                title="Minimize chat"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </button>
+            )}
+            <Chat style={{ display: 'grid', minWidth: 0, height: '100%' }} />
+          </div>
+        )
+      ) : null}
+      </div>
       <RoomAudioRenderer />
       <ConnectionStateToast />
     </LayoutContextProvider>

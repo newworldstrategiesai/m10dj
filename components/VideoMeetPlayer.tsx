@@ -19,6 +19,8 @@ interface VideoMeetPlayerProps {
   /** From PreJoin - whether to start with video/audio enabled */
   videoEnabled?: boolean;
   audioEnabled?: boolean;
+  /** Super admin: chat sidebar always visible on desktop, collapsible */
+  isSuperAdmin?: boolean;
 }
 
 export function VideoMeetPlayer({
@@ -28,6 +30,7 @@ export function VideoMeetPlayer({
   onDisconnected,
   videoEnabled = true,
   audioEnabled = true,
+  isSuperAdmin = false,
 }: VideoMeetPlayerProps) {
   return (
     <LiveKitRoom
@@ -49,7 +52,7 @@ export function VideoMeetPlayer({
       }}
     >
       <div className="flex flex-col h-full w-full bg-gray-950 dark:bg-gray-950">
-        <MeetingGridLayout />
+        <MeetingGridLayout isSuperAdmin={isSuperAdmin} roomName={roomName} />
       </div>
     </LiveKitRoom>
   );
