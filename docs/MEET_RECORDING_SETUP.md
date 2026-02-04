@@ -95,6 +95,27 @@ https://your-domain.com/api/livekit/webhook
 
 ---
 
+## Troubleshooting: Erratic speed in the recording (music speeds up/slows down)
+
+If the final file plays back with the music (or audio) speeding up and slowing down erratically, it’s usually due to **clock drift** or **variable delivery** between the source and the encoder:
+
+1. **Source timing**  
+   Room composite egress captures whatever is in the room (mics, screen share, etc.). If the *source* of the music is unstable (e.g. streaming from a browser tab, variable network, or system audio capture), the encoder receives irregular timing and the file can have speed variations.
+
+2. **Sample rate / clock mismatch**  
+   WebRTC and capture pipelines can use different clocks (e.g. 44.1 kHz vs 48 kHz). Small mismatches cause drift; the encoder may resample or stretch/squeeze, which shows up as speed changes. We now pass explicit encoding options (48 kHz audio, constant 30 fps for video) to reduce this.
+
+**What to try:**
+
+- **Audio-only recording** when you mainly care about music: use the “Recording type: Audio only” option in the meet UI. That avoids video/audio sync issues and often gives more stable playback.
+- **Stable playback source**: if you’re playing music (e.g. Spotify) into the meet, use a source with steady timing—e.g. a virtual audio device or a local file—instead of a heavily loaded browser tab or unstable stream.
+- **Re-encode the file**: if you already have a “wobbly” file, you can fix it by re-encoding with a constant frame rate and sample rate, e.g.:
+  ```bash
+  ffmpeg -i recording.mp4 -af "aresample=48000" -c:v libx264 -r 30 -c:a aac -b:a 128k output_fixed.mp4
+  ```
+
+---
+
 ## Meet transcription (optional)
 
 To have speech in meet rooms transcribed and stored:

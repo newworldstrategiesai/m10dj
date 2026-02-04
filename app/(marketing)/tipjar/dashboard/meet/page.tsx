@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { createClient } from '@/utils/supabase/client';
@@ -9,9 +9,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import Link from 'next/link';
-import { Copy, Video, Share2, Check, Square, Play, Download, Users, Ban, UserX, ArrowLeft, LogIn, Film, FileText, Music } from 'lucide-react';
+import { Copy, Video, Share2, Check, Square, Play, Download, Users, Ban, UserX, ArrowLeft, LogIn, Film, FileText, Music, Wrench, Mic } from 'lucide-react';
 import TipJarAnimatedLoader from '@/components/ui/TipJarAnimatedLoader';
 import { Switch } from '@/components/ui/switch';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { isSuperAdminEmail } from '@/utils/auth-helpers/super-admin';
 
 interface MeetRoom {
@@ -27,6 +28,7 @@ interface MeetRoom {
   transcription_enabled?: boolean | null;
   transcript?: string | null;
   request_a_song_enabled?: boolean | null;
+  updated_at?: string;
 }
 
 export default function MeetPage() {
@@ -42,6 +44,14 @@ export default function MeetPage() {
   const [participants, setParticipants] = useState<{ identity: string; name: string }[]>([]);
   const [bannedList, setBannedList] = useState<{ identities: string[]; names: string[] } | null>(null);
   const [roomParticipantCounts, setRoomParticipantCounts] = useState<Record<string, number>>({});
+  const [toolsOpen, setToolsOpen] = useState(false);
+  const [toolsBusy, setToolsBusy] = useState(false);
+  const [playingRecording, setPlayingRecording] = useState<{
+    url: string;
+    title: string;
+    transcript: string | null;
+    mediaType: 'video' | 'audio';
+  } | null>(null);
 
   const router = useRouter();
   const supabase = createClient();
@@ -78,10 +88,8 @@ export default function MeetPage() {
           const typed = existingRoom as MeetRoom;
           setRoom(typed);
           setTitle(typed.title || `Meet with @${typed.username}`);
-          setInMeeting(typed.is_active);
-          if (typed.is_active) {
-            await getMeetToken(typed.room_name);
-          }
+          // Do not auto-join: require user to click "Start Meeting" (Go live) before broadcast starts
+          setInMeeting(false);
         } else {
           const { data: newRoom } = await supabase
             .from('meet_rooms')
@@ -340,12 +348,90 @@ export default function MeetPage() {
           text: isM10Domain ? 'Join my video meeting' : 'Join my video meeting on TipJar.live',
           url: meetUrl,
         });
-      } catch (err) {
-        handleCopyUrl();
+} catch (err) {
+      handleCopyUrl();
       }
     } else {
       handleCopyUrl();
     }
+  }
+
+  async function toolsBulkUpdate(updates: Partial<MeetRoom>) {
+    if (!isM10Domain || allRooms.length === 0) return;
+    setToolsBusy(true);
+    try {
+      const ts = new Date().toISOString();
+      await Promise.all(
+        allRooms.map((r) =>
+          (supabase.from('meet_rooms') as any)
+            .update({ ...updates, updated_at: ts })
+            .eq('id', r.id)
+        )
+      );
+      setAllRooms((prev) => prev.map((r) => ({ ...r, ...updates })));
+      if (room && allRooms.some((r) => r.id === room.id)) {
+        setRoom((prev) => (prev ? { ...prev, ...updates } : null));
+      }
+    } catch (e) {
+      console.error('Tools bulk update failed:', e);
+      alert('Failed to apply action. Please try again.');
+    } finally {
+      setToolsBusy(false);
+    }
+  }
+
+  const recentRecordings = useMemo(() => {
+    const list: Array<{
+      id: string;
+      url: string;
+      title: string;
+      date: string;
+      transcript: string | null;
+      mediaType: 'video' | 'audio';
+      username: string;
+    }> = [];
+    if (room?.recording_url) {
+      const ext = room.recording_url.toLowerCase().endsWith('.mp4') ? 'video' : 'audio';
+      list.push({
+        id: room.id,
+        url: room.recording_url,
+        title: room.title || `Meet @${room.username}`,
+        date: room.updated_at || '',
+        transcript: room.transcript ?? null,
+        mediaType: ext as 'video' | 'audio',
+        username: room.username,
+      });
+    }
+    if (isM10Domain) {
+      for (const r of allRooms) {
+        if (r.recording_url && r.id !== room?.id) {
+          const ext = r.recording_url.toLowerCase().endsWith('.mp4') ? 'video' : 'audio';
+          list.push({
+            id: r.id,
+            url: r.recording_url,
+            title: r.title || `Meet @${r.username}`,
+            date: r.updated_at || '',
+            transcript: r.transcript ?? null,
+            mediaType: ext as 'video' | 'audio',
+            username: r.username,
+          });
+        }
+      }
+    }
+    list.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    return list.slice(0, 20);
+  }, [room, allRooms, isM10Domain]);
+
+  function formatRecordingDate(iso: string) {
+    if (!iso) return '';
+    const d = new Date(iso);
+    return d.toLocaleDateString(undefined, {
+      month: 'short',
+      day: 'numeric',
+      year: d.getFullYear() !== new Date().getFullYear() ? 'numeric' : undefined,
+      hour: '2-digit',
+      minute: '2-digit',
+    });
   }
 
   if (loading) {
@@ -401,6 +487,17 @@ export default function MeetPage() {
                 </p>
               </div>
             </div>
+            {isM10Domain && (
+              <Button
+                variant="outline"
+                size="icon"
+                className="flex-shrink-0 border-gray-600 bg-gray-900 text-gray-300 hover:bg-gray-800 hover:text-white hover:border-[#fcba00]/50"
+                onClick={() => setToolsOpen(true)}
+                title="Tools & quick actions"
+              >
+                <Wrench className="h-5 w-5" />
+              </Button>
+            )}
           </div>
 
           <div className="flex-1 overflow-y-auto px-4 py-6 space-y-6">
@@ -508,17 +605,18 @@ export default function MeetPage() {
                   onClick={handleCopyUrl}
                   variant="outline"
                   size="icon"
-                  className={`flex-shrink-0 ${isM10Domain ? 'border-[#fcba00]/50 text-white hover:bg-[#fcba00]/20 hover:border-[#fcba00]' : 'border-gray-700 text-white hover:bg-gray-800'}`}
+                  className={`flex-shrink-0 border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-800 hover:border-gray-400 dark:hover:border-gray-500 ${isM10Domain ? 'dark:border-[#fcba00]/50 dark:hover:bg-[#fcba00]/20 dark:hover:border-[#fcba00] dark:hover:text-[#fcba00]' : 'dark:hover:text-emerald-400'}`}
+                  title="Copy link"
                 >
-                  {urlCopied ? <Check className={`h-4 w-4 ${isM10Domain ? 'text-[#fcba00]' : 'text-green-400'}`} /> : <Copy className="h-4 w-4" />}
+                  {urlCopied ? <Check className={`h-4 w-4 text-emerald-600 dark:text-emerald-400 ${isM10Domain ? 'dark:text-[#fcba00]' : ''}`} /> : <Copy className="h-4 w-4 text-gray-900 dark:text-white" />}
                 </Button>
               </div>
-              <p className="text-gray-500 text-xs mt-1">Share this link so others can join. Start the meeting when ready.</p>
+              <p className="text-gray-500 text-xs mt-1">Share this link so others can join. Click &quot;Start Meeting&quot; when you&apos;re ready to go live.</p>
             </div>
 
             <div>
               <div className="flex items-center justify-between mb-2">
-                <Label className="text-white">Recordings</Label>
+                <Label className="text-white">Recent recordings</Label>
                 <Link
                   href={isM10Domain ? '/dashboard/recordings' : '/tipjar/dashboard/recordings'}
                   className="flex items-center gap-1.5 text-xs font-medium text-gray-400 hover:text-white transition-colors"
@@ -527,71 +625,81 @@ export default function MeetPage() {
                   View all
                 </Link>
               </div>
-            {(room.recording_url || (isM10Domain && allRooms.some((r) => (r as MeetRoom).recording_url))) ? (
-              <div className="rounded-lg border border-gray-700 bg-gray-900/50 space-y-2 p-3">
-                  {room.recording_url && (
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="text-sm text-gray-300 truncate flex-1">Your last recording</span>
-                      <div className="flex gap-2 flex-shrink-0">
-                        <a
-                          href={room.recording_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className={`inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium ${isM10Domain ? 'bg-[#fcba00]/20 text-[#fcba00] hover:bg-[#fcba00]/30' : 'bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30'}`}
+              {recentRecordings.length > 0 ? (
+                <div className="rounded-lg border border-gray-700 bg-gray-900/50 divide-y divide-gray-800 max-h-64 overflow-y-auto">
+                  {recentRecordings.map((rec) => (
+                    <div
+                      key={rec.id + rec.date}
+                      className="flex items-center gap-3 p-3 hover:bg-gray-800/50 transition-colors"
+                    >
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setPlayingRecording({
+                            url: rec.url,
+                            title: rec.title,
+                            transcript: rec.transcript,
+                            mediaType: rec.mediaType,
+                          })
+                        }
+                        className={`flex-shrink-0 w-10 h-10 rounded-lg flex items-center justify-center ${isM10Domain ? 'bg-[#fcba00]/20 text-[#fcba00] hover:bg-[#fcba00]/30' : 'bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30'}`}
+                        title="Play and view transcript"
+                      >
+                        {rec.mediaType === 'video' ? (
+                          <Film className="h-5 w-5" />
+                        ) : (
+                          <Mic className="h-5 w-5" />
+                        )}
+                      </button>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium text-white truncate">{rec.title}</p>
+                        <p className="text-xs text-gray-500">{formatRecordingDate(rec.date)}</p>
+                        {rec.transcript && rec.transcript.trim() && (
+                          <p className="text-xs text-gray-400 mt-0.5 truncate" title="Has transcript">
+                            Transcript available
+                          </p>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-1 flex-shrink-0">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 w-8 p-0 text-gray-400 hover:text-white"
+                          onClick={() =>
+                            setPlayingRecording({
+                              url: rec.url,
+                              title: rec.title,
+                              transcript: rec.transcript,
+                              mediaType: rec.mediaType,
+                            })
+                          }
+                          title="Play and view transcript"
                         >
-                          <Play className="h-3 w-3" />
-                          Play
-                        </a>
+                          <Play className="h-4 w-4" />
+                        </Button>
                         <a
-                          href={room.recording_url}
+                          href={rec.url}
                           download
-                          className={`inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium ${isM10Domain ? 'bg-[#fcba00]/20 text-[#fcba00] hover:bg-[#fcba00]/30' : 'bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30'}`}
+                          className={`inline-flex items-center justify-center h-8 w-8 rounded-md text-gray-400 hover:text-white hover:bg-gray-700 ${isM10Domain ? 'hover:text-[#fcba00]' : 'hover:text-emerald-400'}`}
+                          title="Download"
                         >
-                          <Download className="h-3 w-3" />
-                          Download
+                          <Download className="h-4 w-4" />
                         </a>
                       </div>
                     </div>
-                  )}
-                  {isM10Domain &&
-                    allRooms
-                      .filter((r) => (r as MeetRoom).recording_url && r.id !== room.id)
-                      .map((r) => (
-                        <div key={r.id} className="flex items-center justify-between gap-2">
-                          <span className="text-sm text-gray-300 truncate flex-1">@{r.username}</span>
-                          <div className="flex gap-2 flex-shrink-0">
-                            <a
-                              href={(r as MeetRoom).recording_url!}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium bg-[#fcba00]/20 text-[#fcba00] hover:bg-[#fcba00]/30"
-                            >
-                              <Play className="h-3 w-3" />
-                              Play
-                            </a>
-                            <a
-                              href={(r as MeetRoom).recording_url!}
-                              download
-                              className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium bg-[#fcba00]/20 text-[#fcba00] hover:bg-[#fcba00]/30"
-                            >
-                              <Download className="h-3 w-3" />
-                              Download
-                            </a>
-                          </div>
-                        </div>
-                      ))}
-              </div>
-            ) : (
-              <div className="rounded-lg border border-dashed border-gray-700 bg-gray-900/30 p-4 text-center">
-                <p className="text-sm text-gray-500">No recordings yet. Start a meeting and click Record to capture.</p>
-                <Link
-                  href={isM10Domain ? '/dashboard/recordings' : '/tipjar/dashboard/recordings'}
-                  className="mt-2 inline-block text-xs text-gray-400 hover:text-white"
-                >
-                  View all recordings →
-                </Link>
-              </div>
-            )}
+                  ))}
+                </div>
+              ) : (
+                <div className="rounded-lg border border-dashed border-gray-700 bg-gray-900/30 p-4 text-center">
+                  <p className="text-sm text-gray-500">No recordings yet. Start a meeting and click Record to capture.</p>
+                  <Link
+                    href={isM10Domain ? '/dashboard/recordings' : '/tipjar/dashboard/recordings'}
+                    className="mt-2 inline-block text-xs text-gray-400 hover:text-white"
+                  >
+                    View all recordings →
+                  </Link>
+                </div>
+              )}
             </div>
 
             {isM10Domain && allRooms.length > 0 && (
@@ -685,15 +793,28 @@ export default function MeetPage() {
                 </span>
               )}
             </div>
-            <Button
-              onClick={handleEndMeeting}
-              variant="destructive"
-              size="sm"
-              className="bg-red-600 hover:bg-red-700"
-            >
-              <Square className="h-4 w-4 mr-1" />
-              End Meeting
-            </Button>
+            <div className="flex items-center gap-2 flex-shrink-0">
+              {isM10Domain && (
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="border-gray-600 bg-gray-900 text-gray-300 hover:bg-gray-800 hover:text-white hover:border-[#fcba00]/50"
+                  onClick={() => setToolsOpen(true)}
+                  title="Tools & quick actions"
+                >
+                  <Wrench className="h-4 w-4" />
+                </Button>
+              )}
+              <Button
+                onClick={handleEndMeeting}
+                variant="destructive"
+                size="sm"
+                className="bg-red-600 hover:bg-red-700"
+              >
+                <Square className="h-4 w-4 mr-1" />
+                End Meeting
+              </Button>
+            </div>
           </div>
 
           <div className="flex-1 relative min-h-0">
@@ -736,9 +857,10 @@ export default function MeetPage() {
                     onClick={handleCopyUrl}
                     variant="outline"
                     size="icon"
-                    className={`flex-shrink-0 ${isM10Domain ? 'border-[#fcba00]/50 text-white hover:bg-[#fcba00]/20 hover:border-[#fcba00]' : 'border-gray-700 text-white hover:bg-gray-800'}`}
+                    className={`flex-shrink-0 border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-800 hover:border-gray-400 dark:hover:border-gray-500 ${isM10Domain ? 'dark:border-[#fcba00]/50 dark:hover:bg-[#fcba00]/20 dark:hover:border-[#fcba00] dark:hover:text-[#fcba00]' : 'dark:hover:text-emerald-400'}`}
+                    title="Copy link"
                   >
-                    {urlCopied ? <Check className={`h-4 w-4 ${isM10Domain ? 'text-[#fcba00]' : 'text-green-400'}`} /> : <Copy className="h-4 w-4" />}
+                    {urlCopied ? <Check className={`h-4 w-4 text-emerald-600 dark:text-emerald-400 ${isM10Domain ? 'dark:text-[#fcba00]' : ''}`} /> : <Copy className="h-4 w-4 text-gray-900 dark:text-white" />}
                   </Button>
                 </div>
                 <a
@@ -853,6 +975,122 @@ export default function MeetPage() {
           </div>
         </div>
       )}
+
+      <Dialog open={!!playingRecording} onOpenChange={(open) => !open && setPlayingRecording(null)}>
+        <DialogContent className="border-gray-700 bg-gray-900 text-white dark:border-gray-600 dark:bg-gray-900 max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
+          {playingRecording && (
+            <>
+              <DialogHeader>
+                <DialogTitle className="text-white dark:text-white truncate pr-8">
+                  {playingRecording.title}
+                </DialogTitle>
+                <DialogDescription className="text-gray-400 dark:text-gray-400 sr-only">
+                  Play recording and view transcript
+                </DialogDescription>
+              </DialogHeader>
+              <div className="flex flex-col gap-4 overflow-y-auto min-h-0">
+                <div className="rounded-lg overflow-hidden bg-black aspect-video max-h-[50vh] flex items-center justify-center">
+                  {playingRecording.mediaType === 'video' ? (
+                    <video
+                      src={playingRecording.url}
+                      controls
+                      className="w-full h-full object-contain"
+                      preload="metadata"
+                    />
+                  ) : (
+                    <div className="w-full p-6 flex flex-col items-center gap-2">
+                      <Mic className="h-12 w-12 text-gray-500" />
+                      <audio src={playingRecording.url} controls className="w-full max-w-md" preload="metadata" />
+                    </div>
+                  )}
+                </div>
+                {playingRecording.transcript && playingRecording.transcript.trim() ? (
+                  <div className="rounded-lg border border-gray-700 bg-gray-800/50 p-4">
+                    <Label className="text-gray-400 text-xs font-medium uppercase tracking-wider mb-2 block">
+                      Transcript
+                    </Label>
+                    <div className="text-sm text-gray-300 whitespace-pre-wrap max-h-48 overflow-y-auto">
+                      {playingRecording.transcript.trim()}
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-xs text-gray-500">No transcript for this recording.</p>
+                )}
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={toolsOpen} onOpenChange={setToolsOpen}>
+        <DialogContent className="border-gray-700 bg-gray-900 text-white dark:border-gray-600 dark:bg-gray-900 max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="text-white dark:text-white flex items-center gap-2">
+              <Wrench className="h-5 w-5 text-[#fcba00]" />
+              Tools & quick actions
+            </DialogTitle>
+            <DialogDescription className="text-gray-400 dark:text-gray-400">
+              Apply these actions to all meet rooms. Only visible to super admins.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-2 py-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full justify-start border-gray-600 bg-gray-800/80 text-gray-200 hover:bg-[#fcba00]/20 hover:border-[#fcba00]/50 hover:text-[#fcba00]"
+              disabled={toolsBusy || allRooms.length === 0}
+              onClick={() => toolsBulkUpdate({ request_a_song_enabled: true }).then(() => setToolsOpen(false))}
+            >
+              <Music className="h-4 w-4 mr-2 shrink-0" />
+              Display &quot;Request a Song&quot; for all rooms
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full justify-start border-gray-600 bg-gray-800/80 text-gray-200 hover:bg-[#fcba00]/20 hover:border-[#fcba00]/50 hover:text-[#fcba00]"
+              disabled={toolsBusy || allRooms.length === 0}
+              onClick={() => toolsBulkUpdate({ request_a_song_enabled: false }).then(() => setToolsOpen(false))}
+            >
+              <Music className="h-4 w-4 mr-2 shrink-0" />
+              Hide &quot;Request a Song&quot; for all rooms
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full justify-start border-gray-600 bg-gray-800/80 text-gray-200 hover:bg-[#fcba00]/20 hover:border-[#fcba00]/50 hover:text-[#fcba00]"
+              disabled={toolsBusy || allRooms.length === 0}
+              onClick={() => toolsBulkUpdate({ transcription_enabled: true }).then(() => setToolsOpen(false))}
+            >
+              <FileText className="h-4 w-4 mr-2 shrink-0" />
+              Enable transcription for all rooms
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full justify-start border-gray-600 bg-gray-800/80 text-gray-200 hover:bg-[#fcba00]/20 hover:border-[#fcba00]/50 hover:text-[#fcba00]"
+              disabled={toolsBusy || allRooms.length === 0}
+              onClick={() => toolsBulkUpdate({ transcription_enabled: false }).then(() => setToolsOpen(false))}
+            >
+              <FileText className="h-4 w-4 mr-2 shrink-0" />
+              Disable transcription for all rooms
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full justify-start border-red-900/60 bg-red-950/40 text-red-300 hover:bg-red-900/40 hover:border-red-600 hover:text-red-200"
+              disabled={toolsBusy || allRooms.length === 0}
+              onClick={async () => {
+                await toolsBulkUpdate({ is_active: false });
+                setToolsOpen(false);
+                if (inMeeting && room) await handleEndMeeting();
+              }}
+            >
+              <Square className="h-4 w-4 mr-2 shrink-0" />
+              End all active meetings
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
