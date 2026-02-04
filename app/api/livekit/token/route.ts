@@ -175,7 +175,7 @@ export async function POST(request: NextRequest) {
 
       const { data: meetRoom, error: meetError } = await supabase
         .from('meet_rooms')
-        .select('id, user_id, username, is_active')
+        .select('id, user_id, username, is_active, banned_identities, banned_names')
         .eq('room_name', roomName)
         .single();
 
@@ -186,7 +186,14 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      const typedMeet = meetRoom as { id: string; user_id: string; username: string; is_active: boolean };
+      const typedMeet = meetRoom as {
+        id: string;
+        user_id: string;
+        username: string;
+        is_active: boolean;
+        banned_identities?: string[] | null;
+        banned_names?: string[] | null;
+      };
 
       if (!typedMeet.is_active) {
         return NextResponse.json(
@@ -214,6 +221,20 @@ export async function POST(request: NextRequest) {
         return NextResponse.json(
           { error: 'Display name is required to join the meeting' },
           { status: 400 }
+        );
+      }
+
+      // Check ban list
+      const bannedIds = typedMeet.banned_identities ?? [];
+      const bannedNames = (typedMeet.banned_names ?? []).map((n) => n.toLowerCase());
+      const nameLower = participantDisplayName.trim().toLowerCase();
+      if (
+        bannedIds.includes(participantId) ||
+        bannedNames.some((bn) => bn === nameLower)
+      ) {
+        return NextResponse.json(
+          { error: 'You have been banned from this meeting' },
+          { status: 403 }
         );
       }
 

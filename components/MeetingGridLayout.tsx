@@ -24,8 +24,10 @@ import {
   FocusLayout,
   CarouselLayout,
   Chat,
+  TrackRefContext,
 } from '@livekit/components-react';
 import { ChevronLeft, ChevronRight, MessageSquare, Circle, Power } from 'lucide-react';
+import { MeetParticipantControls } from '@/components/MeetParticipantControls';
 import { isEqualTrackRef, isTrackReference } from '@livekit/components-core';
 import type { WidgetState } from '@livekit/components-core';
 import { RoomEvent, Track } from 'livekit-client';
@@ -62,6 +64,8 @@ function MeetingGridInner({
   roomName,
   isRecording,
   recordError,
+  soloedIdentity,
+  onSoloChange,
   onStartRecording,
   onStopRecording,
 }: {
@@ -69,6 +73,8 @@ function MeetingGridInner({
   roomName?: string;
   isRecording: boolean;
   recordError: string | null;
+  soloedIdentity: string | null;
+  onSoloChange: (identity: string | null) => void;
   onStartRecording: () => void;
   onStopRecording: () => void;
 }) {
@@ -119,18 +125,45 @@ function MeetingGridInner({
             <div className="lk-focus-layout-wrapper flex-1 min-h-0 w-full">
               <FocusLayoutContainer className="h-full w-full">
                 <CarouselLayout tracks={carouselTracks}>
-                  <ParticipantTile />
+                  <div className="relative w-full h-full">
+                    <ParticipantTile />
+                    {isSuperAdmin && roomName && (
+                      <MeetParticipantControls
+                        roomName={roomName}
+                        soloedIdentity={soloedIdentity}
+                        onSoloChange={onSoloChange}
+                      />
+                    )}
+                  </div>
                 </CarouselLayout>
                 {focusTrack && isTrackReference(focusTrack) && (
-                  <FocusLayout trackRef={focusTrack} />
+                  <div className="relative flex-1 min-w-0">
+                    <FocusLayout trackRef={focusTrack} />
+                    {isSuperAdmin && roomName && (
+                      <TrackRefContext.Provider value={focusTrack}>
+                        <MeetParticipantControls
+                          roomName={roomName}
+                          soloedIdentity={soloedIdentity}
+                          onSoloChange={onSoloChange}
+                        />
+                      </TrackRefContext.Provider>
+                    )}
+                  </div>
                 )}
               </FocusLayoutContainer>
             </div>
           ) : (
             <div className="grid gap-1 w-full h-full min-h-0" style={gridStyle}>
               <TrackLoop tracks={tracks}>
-                <div className="min-w-0 min-h-0 w-full h-full overflow-hidden [&>div]:!h-full [&>div]:!min-h-0">
+                <div className="relative min-w-0 min-h-0 w-full h-full overflow-hidden [&>div]:!h-full [&>div]:!min-h-0 [&>.lk-participant-tile]:!h-full [&>.lk-participant-tile]:!min-h-0">
                   <ParticipantTile className="!h-full !w-full !min-h-0" />
+                  {isSuperAdmin && roomName && (
+                    <MeetParticipantControls
+                      roomName={roomName}
+                      soloedIdentity={soloedIdentity}
+                      onSoloChange={onSoloChange}
+                    />
+                  )}
                 </div>
               </TrackLoop>
             </div>
@@ -204,6 +237,7 @@ export function MeetingGridLayout({ isSuperAdmin = false, roomName }: { isSuperA
   const [isRecording, setIsRecording] = React.useState(false);
   const [egressId, setEgressId] = React.useState<string | null>(null);
   const [recordError, setRecordError] = React.useState<string | null>(null);
+  const [soloedIdentity, setSoloedIdentity] = React.useState<string | null>(null);
   const layoutContext = useCreateLayoutContext();
   const hasInitializedChat = React.useRef(false);
 
@@ -265,6 +299,8 @@ export function MeetingGridLayout({ isSuperAdmin = false, roomName }: { isSuperA
             roomName={roomName}
             isRecording={isRecording}
             recordError={recordError}
+            soloedIdentity={soloedIdentity}
+            onSoloChange={setSoloedIdentity}
             onStartRecording={handleStartRecording}
             onStopRecording={handleStopRecording}
           />
