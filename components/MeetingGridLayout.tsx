@@ -10,6 +10,7 @@
  */
 import {
   useTracks,
+  useRemoteParticipants,
   TrackLoop,
   ParticipantTile,
   DisconnectButton,
@@ -27,7 +28,7 @@ import {
   useTranscriptions,
 } from '@livekit/components-react';
 import { MeetControlBar } from '@/components/MeetControlBar';
-import { ChevronLeft, ChevronRight, MessageSquare, Circle, Power, FileText, Music, User } from 'lucide-react';
+import { ChevronLeft, ChevronRight, MessageSquare, Circle, Power, FileText, Music, User, Users, Calendar, FileSignature } from 'lucide-react';
 import { MeetParticipantControls } from '@/components/MeetParticipantControls';
 import {
   Sheet,
@@ -135,6 +136,10 @@ function MeetTranscriptStrip() {
   );
 }
 
+type RelatedContact = { id: string; name: string; email?: string; leadStatus?: string; eventType?: string; eventDate?: string; venueName?: string; createdAt?: string };
+type RelatedEvent = { id: string; eventName?: string; clientName?: string; clientEmail?: string; eventType?: string; eventDate?: string; venueName?: string; status?: string; createdAt?: string };
+type RelatedContract = { id: string; contractNumber?: string; status?: string; eventName?: string; eventType?: string; eventDate?: string; totalAmount?: number; signedAt?: string; createdAt?: string };
+
 function MeetParticipantDetailContent({
   roomName,
   participantIdentity,
@@ -149,6 +154,9 @@ function MeetParticipantDetailContent({
     displayName?: string;
     joinedAt?: string;
     updatedAt?: string;
+    relatedContacts?: RelatedContact[];
+    relatedEvents?: RelatedEvent[];
+    relatedContracts?: RelatedContract[];
   } | null>(null);
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
@@ -187,6 +195,13 @@ function MeetParticipantDetailContent({
       })
     : null;
 
+  const contacts = data?.relatedContacts ?? [];
+  const events = data?.relatedEvents ?? [];
+  const contracts = data?.relatedContracts ?? [];
+  const hasRelated = contacts.length > 0 || events.length > 0 || contracts.length > 0;
+
+  const formatDate = (d: string | undefined) => d ? new Date(d).toLocaleDateString(undefined, { dateStyle: 'short' }) : '—';
+
   return (
     <>
       <SheetHeader>
@@ -195,10 +210,10 @@ function MeetParticipantDetailContent({
           Participant details
         </SheetTitle>
         <SheetDescription className="text-gray-400">
-          Data associated with this participant (email from pre-join)
+          Data associated with this participant (email from pre-join). Matched contacts, events, and contracts appear below.
         </SheetDescription>
       </SheetHeader>
-      <div className="mt-6 space-y-4">
+      <div className="mt-6 flex flex-col gap-6 overflow-y-auto max-h-[calc(100vh-12rem)] pr-2">
         {loading && (
           <div className="flex items-center gap-2 text-gray-400">
             <div className="h-4 w-4 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
@@ -209,26 +224,103 @@ function MeetParticipantDetailContent({
           <p className="text-sm text-red-400">{error}</p>
         )}
         {data && !loading && (
-          <dl className="space-y-3 text-sm">
-            <div>
-              <dt className="text-gray-500 dark:text-gray-400 font-medium">Email</dt>
-              <dd className="mt-0.5 text-white break-all">{data.email ?? '—'}</dd>
-            </div>
-            <div>
-              <dt className="text-gray-500 dark:text-gray-400 font-medium">Display name</dt>
-              <dd className="mt-0.5 text-white">{data.displayName ?? '—'}</dd>
-            </div>
-            {joinedAtFormatted && (
+          <>
+            <dl className="space-y-3 text-sm flex-shrink-0">
               <div>
-                <dt className="text-gray-500 dark:text-gray-400 font-medium">Joined</dt>
-                <dd className="mt-0.5 text-white">{joinedAtFormatted}</dd>
+                <dt className="text-gray-500 dark:text-gray-400 font-medium">Email</dt>
+                <dd className="mt-0.5 text-white break-all">{data.email ?? '—'}</dd>
+              </div>
+              <div>
+                <dt className="text-gray-500 dark:text-gray-400 font-medium">Display name</dt>
+                <dd className="mt-0.5 text-white">{data.displayName ?? '—'}</dd>
+              </div>
+              {joinedAtFormatted && (
+                <div>
+                  <dt className="text-gray-500 dark:text-gray-400 font-medium">Joined</dt>
+                  <dd className="mt-0.5 text-white">{joinedAtFormatted}</dd>
+                </div>
+              )}
+              <div>
+                <dt className="text-gray-500 dark:text-gray-400 font-medium">Identity</dt>
+                <dd className="mt-0.5 text-gray-400 font-mono text-xs break-all">{participantIdentity}</dd>
+              </div>
+            </dl>
+
+            {hasRelated && (
+              <div className="space-y-4 flex-shrink-0 border-t border-gray-700 pt-4">
+                <h3 className="text-sm font-semibold text-white">Related to this email</h3>
+
+                {contacts.length > 0 && (
+                  <div>
+                    <h4 className="flex items-center gap-1.5 text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">
+                      <Users className="h-3.5 w-3.5" />
+                      Contacts ({contacts.length})
+                    </h4>
+                    <ul className="space-y-2">
+                      {contacts.map((c) => (
+                        <li key={c.id} className="rounded-lg bg-gray-800/80 border border-gray-700 p-2.5 text-sm">
+                          <div className="font-medium text-white">{c.name}</div>
+                          {c.email && <div className="text-gray-400 text-xs truncate">{c.email}</div>}
+                          <div className="flex flex-wrap gap-1.5 mt-1">
+                            {c.leadStatus && <span className="text-xs px-1.5 py-0.5 rounded bg-gray-700 text-gray-300">{c.leadStatus}</span>}
+                            {c.eventType && <span className="text-xs text-gray-500">{c.eventType}</span>}
+                            {c.eventDate && <span className="text-xs text-gray-500">{formatDate(c.eventDate)}</span>}
+                          </div>
+                          <a href={`/admin/contacts/${c.id}`} target="_blank" rel="noopener noreferrer" className="text-xs text-emerald-400 hover:text-emerald-300 mt-1 inline-block">Open contact →</a>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {events.length > 0 && (
+                  <div>
+                    <h4 className="flex items-center gap-1.5 text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">
+                      <Calendar className="h-3.5 w-3.5" />
+                      Events ({events.length})
+                    </h4>
+                    <ul className="space-y-2">
+                      {events.map((e) => (
+                        <li key={e.id} className="rounded-lg bg-gray-800/80 border border-gray-700 p-2.5 text-sm">
+                          <div className="font-medium text-white">{e.eventName ?? 'Event'}</div>
+                          {e.clientName && <div className="text-gray-400 text-xs">{e.clientName}</div>}
+                          <div className="flex flex-wrap gap-1.5 mt-1">
+                            {e.eventType && <span className="text-xs text-gray-500">{e.eventType}</span>}
+                            {e.eventDate && <span className="text-xs text-gray-500">{formatDate(e.eventDate)}</span>}
+                            {e.status && <span className="text-xs px-1.5 py-0.5 rounded bg-gray-700 text-gray-300">{e.status}</span>}
+                          </div>
+                          <a href={`/admin/events/edit/${e.id}`} target="_blank" rel="noopener noreferrer" className="text-xs text-emerald-400 hover:text-emerald-300 mt-1 inline-block">Open event →</a>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {contracts.length > 0 && (
+                  <div>
+                    <h4 className="flex items-center gap-1.5 text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">
+                      <FileSignature className="h-3.5 w-3.5" />
+                      Contracts ({contracts.length})
+                    </h4>
+                    <ul className="space-y-2">
+                      {contracts.map((c) => (
+                        <li key={c.id} className="rounded-lg bg-gray-800/80 border border-gray-700 p-2.5 text-sm">
+                          <div className="font-medium text-white">{c.contractNumber ?? 'Contract'}</div>
+                          {c.eventName && <div className="text-gray-400 text-xs">{c.eventName}</div>}
+                          <div className="flex flex-wrap gap-1.5 mt-1">
+                            {c.status && <span className="text-xs px-1.5 py-0.5 rounded bg-gray-700 text-gray-300">{c.status}</span>}
+                            {c.eventDate && <span className="text-xs text-gray-500">{formatDate(c.eventDate)}</span>}
+                            {c.totalAmount != null && <span className="text-xs text-gray-500">${Number(c.totalAmount).toLocaleString()}</span>}
+                          </div>
+                          <a href={`/admin/contracts/${c.id}`} target="_blank" rel="noopener noreferrer" className="text-xs text-emerald-400 hover:text-emerald-300 mt-1 inline-block">Open contract →</a>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
               </div>
             )}
-            <div>
-              <dt className="text-gray-500 dark:text-gray-400 font-medium">Identity</dt>
-              <dd className="mt-0.5 text-gray-400 font-mono text-xs break-all">{participantIdentity}</dd>
-            </div>
-          </dl>
+          </>
         )}
       </div>
     </>
@@ -273,8 +365,10 @@ function MeetingGridInner({
     ],
     { updateOnlyOn: [RoomEvent.ActiveSpeakersChanged], onlySubscribed: false },
   );
+  const remoteParticipants = useRemoteParticipants();
 
   const { cols, rows, fillMode } = useOptimalGrid(tracks.length);
+  const isAlone = remoteParticipants.length === 0;
   const layoutContext = useMaybeLayoutContext();
   const focusTrack = usePinnedTracks()?.[0];
   const carouselTracks = tracks.filter((t) => !focusTrack || !isEqualTrackRef(t, focusTrack));
@@ -346,6 +440,16 @@ function MeetingGridInner({
                   </div>
                 )}
               </FocusLayoutContainer>
+            </div>
+          ) : isAlone ? (
+            <div className="flex flex-col items-center justify-center w-full h-full min-h-0 p-6 text-center bg-gray-950/50 dark:bg-gray-950/80 rounded-lg border border-gray-800 dark:border-gray-800">
+              <Users className="w-14 h-14 text-gray-500 dark:text-gray-600 mb-4 flex-shrink-0" aria-hidden />
+              <p className="text-lg font-medium text-gray-200 dark:text-gray-200 mb-1">
+                You&apos;re the only one here
+              </p>
+              <p className="text-sm text-gray-500 dark:text-gray-400 max-w-sm">
+                Share the meeting link so others can join. You&apos;ll see them here once they connect.
+              </p>
             </div>
           ) : (
             <div className="grid gap-1 w-full h-full min-h-0" style={gridStyle}>
@@ -631,7 +735,7 @@ export function MeetingGridLayout({
           open={!!selectedParticipantIdentity}
           onOpenChange={(open) => !open && setSelectedParticipantIdentity(null)}
         >
-          <SheetContent side="right" className="bg-gray-900 border-gray-700 text-white">
+          <SheetContent side="right" className="bg-gray-900 border-gray-700 text-white z-[60] w-full max-w-md sm:max-w-lg">
             <MeetParticipantDetailContent
               roomName={roomName}
               participantIdentity={selectedParticipantIdentity}

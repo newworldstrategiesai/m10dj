@@ -15,6 +15,8 @@ interface BookingEmailData {
   eventDate?: string | null;
   notes?: string | null;
   meetingDescription?: string | null;
+  /** When set, this is a video meeting; show "Join Video Meeting" link */
+  videoCallLink?: string | null;
 }
 
 /**
@@ -101,6 +103,14 @@ export async function sendBookingConfirmationEmail(data: BookingEmailData) {
                 <li style="margin: 8px 0;">If you need to reschedule, just reply to this email or call us at <a href="tel:+19014102020" style="color: #fcba00; font-weight: bold;">(901) 410-2020</a></li>
               </ul>
             </div>
+
+            ${data.videoCallLink ? `
+            <div style="background: #ecfdf5; padding: 20px; border-radius: 8px; margin: 25px 0; border-left: 4px solid #10b981;">
+              <h3 style="color: #065f46; margin-top: 0; font-size: 18px;">Video Meeting</h3>
+              <p style="margin: 0 0 12px 0; color: #047857;">This is a video call. Join at the scheduled time using the link below:</p>
+              <a href="${data.videoCallLink}" style="display: inline-block; background: #10b981; color: #fff; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 16px;">Join Video Meeting</a>
+            </div>
+            ` : ''}
 
             <div style="text-align: center; margin: 30px 0;">
               <a href="https://m10djcompany.com/schedule/confirm/${data.bookingId}" style="display: inline-block; background: #fcba00; color: #000; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 16px;">View Booking Details</a>
@@ -280,6 +290,14 @@ export async function sendBookingReminderEmail(data: BookingEmailData) {
               <p style="margin: 5px 0;"><strong>Time:</strong> ${formattedTime}</p>
               <p style="margin: 5px 0;"><strong>Duration:</strong> ${data.durationMinutes} minutes</p>
             </div>
+
+            ${data.videoCallLink ? `
+            <div style="background: #ecfdf5; padding: 20px; border-radius: 8px; margin: 25px 0; border-left: 4px solid #10b981;">
+              <h3 style="color: #065f46; margin-top: 0; font-size: 18px;">Video Meeting</h3>
+              <p style="margin: 0 0 12px 0; color: #047857;">Join tomorrow at the scheduled time using this link:</p>
+              <a href="${data.videoCallLink}" style="display: inline-block; background: #10b981; color: #fff; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 16px;">Join Video Meeting</a>
+            </div>
+            ` : ''}
 
             <div style="background: #fef3c7; padding: 15px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #f59e0b;">
               <p style="margin: 0; font-weight: bold; color: #92400e;">Need to reschedule?</p>

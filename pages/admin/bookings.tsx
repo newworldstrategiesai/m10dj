@@ -19,7 +19,9 @@ import {
   Edit,
   Trash2,
   Eye,
-  Download
+  Download,
+  Video,
+  Copy
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -41,6 +43,7 @@ interface Booking {
   confirmation_sent_at: string | null;
   reminder_sent_at: string | null;
   created_at: string;
+  video_call_link: string | null;
   meeting_types?: {
     name: string;
     description: string | null;
@@ -419,6 +422,33 @@ export default function AdminBookingsPage() {
                       <option value="no_show">No Show</option>
                     </select>
                   </div>
+
+                  {selectedBooking.video_call_link && (
+                    <div className="pt-4 border-t space-y-2">
+                      <label className="text-sm font-medium text-gray-500 block">Video Meeting</label>
+                      <div className="flex gap-2">
+                        <Button
+                          onClick={() => window.open(selectedBooking.video_call_link!, '_blank')}
+                          className="flex-1 bg-green-600 hover:bg-green-700 text-white"
+                        >
+                          <Video className="w-4 h-4 mr-2" />
+                          Join Meeting
+                        </Button>
+                        <Button
+                          variant="outline"
+                          onClick={() => {
+                            navigator.clipboard.writeText(selectedBooking.video_call_link!);
+                            alert('Link copied to clipboard');
+                          }}
+                          className="flex-shrink-0"
+                          title="Copy meeting link"
+                        >
+                          <Copy className="w-4 h-4" />
+                        </Button>
+                      </div>
+                      <p className="text-xs text-gray-500">Client can use this link to join the video call at the scheduled time.</p>
+                    </div>
+                  )}
 
                   <div className="pt-4 border-t space-y-2">
                     <Button

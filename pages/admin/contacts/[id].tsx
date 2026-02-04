@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useRouter } from 'next/router';
-import { ArrowLeft, Save, Phone, Mail, Calendar, MapPin, Music, DollarSign, User, MessageSquare, Edit3, Trash2, CheckCircle, Loader2, FileText, Copy, Clock, Sparkles, Link2, Unlink, ShieldX, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, Save, Phone, Mail, Calendar, MapPin, Music, DollarSign, User, MessageSquare, Edit3, Trash2, CheckCircle, Loader2, FileText, Copy, Clock, Sparkles, Link2, Unlink, ShieldX, AlertTriangle, Video, CalendarCheck } from 'lucide-react';
 import { createClient } from '@/utils/supabase/client';
 import { isRateLimited, setRateLimited } from '@/utils/supabase/rate-limiter';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -145,6 +145,7 @@ export default function ContactDetailPage() {
   const [parsingEmail, setParsingEmail] = useState(false);
   const [eventStatus, setEventStatus] = useState<{ shouldHaveEvent: boolean; hasEvent: boolean; loading: boolean } | null>(null);
   const [creatingEvent, setCreatingEvent] = useState(false);
+  const [scheduledMeetings, setScheduledMeetings] = useState<Array<{ id: string; meeting_date: string; meeting_time: string; status: string; video_call_link?: string | null; meeting_types?: { name: string } | null }>>([]);
   const router = useRouter();
   const supabase = useMemo(() => createClient(), []);
   const { toast } = useToast();
@@ -190,9 +191,37 @@ export default function ContactDetailPage() {
       fetchContracts();
       fetchQuoteSelections();
       checkEventStatus();
+      fetchScheduledMeetings();
       // Communications are now handled by UnifiedCommunicationHub component
     }
   }, [user, id]);
+
+  const fetchScheduledMeetings = async () => {
+    if (!id) return;
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      const { data, error } = await supabase
+        .from('meeting_bookings')
+        .select(`
+          id,
+          meeting_date,
+          meeting_time,
+          status,
+          video_call_link,
+          meeting_types ( name )
+        `)
+        .eq('contact_id', id)
+        .in('status', ['scheduled', 'confirmed'])
+        .gte('meeting_date', today)
+        .order('meeting_date', { ascending: true })
+        .order('meeting_time', { ascending: true })
+        .limit(5);
+      if (!error) setScheduledMeetings((data as any[]) || []);
+      else setScheduledMeetings([]);
+    } catch {
+      setScheduledMeetings([]);
+    }
+  };
 
   const checkEventStatus = async () => {
     if (!id) return;
@@ -1208,6 +1237,17 @@ export default function ContactDetailPage() {
                     {contact.lead_temperature}
                   </Badge>
                 )}
+                {scheduledMeetings.length > 0 && (
+                  <Link href="/admin/bookings" className="inline-flex items-center gap-1.5 rounded-md bg-emerald-100 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-200 px-2.5 py-1 text-xs font-medium border border-emerald-200 dark:border-emerald-800">
+                    <CalendarCheck className="h-3.5 w-3.5 flex-shrink-0" />
+                    <span>
+                      {scheduledMeetings.length === 1
+                        ? `Meeting ${new Date(scheduledMeetings[0].meeting_date + 'T' + scheduledMeetings[0].meeting_time).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} at ${new Date('1970-01-01T' + scheduledMeetings[0].meeting_time).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`
+                        : `${scheduledMeetings.length} meetings scheduled`}
+                    </span>
+                    <span className="sr-only">View bookings</span>
+                  </Link>
+                )}
                   </div>
                     </div>
             <div className="flex gap-2 flex-shrink-0">
@@ -1235,6 +1275,41 @@ export default function ContactDetailPage() {
                       </div>
                     </div>
                   </div>
+                  {/* Upcoming meetings - inside same card */}
+                  {scheduledMeetings.length > 0 && (
+                    <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+                      <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2 flex items-center gap-1.5">
+                        <CalendarCheck className="h-3.5 w-3.5" />
+                        Upcoming meetings
+                      </p>
+                      <ul className="space-y-1.5">
+                        {scheduledMeetings.slice(0, 3).map((m: { id: string; meeting_date: string; meeting_time: string; status: string; video_call_link?: string | null; meeting_types?: { name: string } | null }) => {
+                          const dateStr = new Date(m.meeting_date + 'T' + m.meeting_time).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+                          const timeStr = new Date('1970-01-01T' + m.meeting_time).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+                          const typeName = (m.meeting_types as { name?: string } | null)?.name ?? 'Meeting';
+                          return (
+                            <li key={m.id} className="flex flex-wrap items-center gap-2 text-sm">
+                              <span className="text-gray-700 dark:text-gray-300">{dateStr} at {timeStr}</span>
+                              <span className="text-gray-500 dark:text-gray-400">— {typeName}</span>
+                              <Link href="/admin/bookings" className="text-blue-600 dark:text-blue-400 hover:underline text-xs font-medium">View</Link>
+                              {m.video_call_link && (
+                                <a href={m.video_call_link} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400 hover:underline text-xs font-medium">
+                                  <Video className="h-3 w-3" />
+                                  Join video
+                                </a>
+                              )}
+                            </li>
+                          );
+                        })}
+                      </ul>
+                      {scheduledMeetings.length > 3 && (
+                        <Link href="/admin/bookings" className="text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 mt-1 inline-block">
+                          +{scheduledMeetings.length - 3} more
+                        </Link>
+                      )}
+                    </div>
+                  )}
+        </div>
                   
         {/* Service Selection Link Generator */}
         {contact.event_type === 'wedding' && 
@@ -2259,26 +2334,25 @@ export default function ContactDetailPage() {
             </div>
           </TabsContent>
         </Tabs>
-            </div>
 
-      {/* Email Compose Modal */}
-      {showEmailModal && contact && (
-        <EmailComposeModal
-          contact={contact}
-          initialTemplate={emailModalTemplate}
-          onClose={() => {
-            setShowEmailModal(false);
-            setEmailModalTemplate(null);
-          }}
-          onSuccess={() => {
-            setShowEmailModal(false);
-            setEmailModalTemplate(null);
-            fetchContact(); // Refresh contact data
-            fetchCommunications(); // Refresh communications
-          }}
-        />
-      )}
-          </div>
+        {/* Email Compose Modal */}
+        {showEmailModal && contact && (
+          <EmailComposeModal
+            contact={contact!}
+            initialTemplate={emailModalTemplate}
+            onClose={() => {
+              setShowEmailModal(false);
+              setEmailModalTemplate(null);
+            }}
+            onSuccess={() => {
+              setShowEmailModal(false);
+              setEmailModalTemplate(null);
+              fetchContact(); // Refresh contact data
+              fetchCommunications(); // Refresh communications
+            }}
+          />
+        )}
+      </div>
   );
 }
 

@@ -18,7 +18,8 @@ export default async function handler(req, res) {
       eventType,
       eventDate,
       notes,
-      meetingDescription
+      meetingDescription,
+      videoCallLink
     } = req.body;
 
     if (!bookingId || !clientName || !clientEmail || !meetingType || !meetingDate || !meetingTime) {
@@ -37,7 +38,8 @@ export default async function handler(req, res) {
       eventType,
       eventDate,
       notes,
-      meetingDescription
+      meetingDescription,
+      videoCallLink: videoCallLink || null
     };
 
     // Send both emails in parallel

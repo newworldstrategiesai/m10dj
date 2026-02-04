@@ -1,13 +1,14 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useParams } from 'next/navigation';
+import { useEffect, useState, useMemo } from 'react';
+import { useParams, useSearchParams } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
 import { VideoMeetPlayer } from '@/components/VideoMeetPlayer';
 import { MeetPreJoin, saveStoredPrefs, type MeetPreJoinSubmitPayload } from '@/components/MeetPreJoin';
 import type { LocalUserChoices } from '@livekit/components-core';
 import TipJarAnimatedLoader from '@/components/ui/TipJarAnimatedLoader';
 import Image from 'next/image';
+import { Clock, Calendar, RefreshCw } from 'lucide-react';
 
 interface MeetRoom {
   id: string;
@@ -19,14 +20,45 @@ interface MeetRoom {
   request_a_song_enabled?: boolean | null;
 }
 
+function parseScheduledAt(at: string | null): Date | null {
+  if (!at || typeof at !== 'string') return null;
+  const trimmed = at.trim();
+  if (!trimmed) return null;
+  const d = new Date(trimmed);
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
+function useCountdown(targetDate: Date | null) {
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    if (!targetDate) return;
+    const tick = () => setNow(new Date());
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [targetDate]);
+  if (!targetDate) return null;
+  const diff = targetDate.getTime() - now.getTime();
+  if (diff <= 0) return { days: 0, hours: 0, minutes: 0, seconds: 0, isPast: true };
+  const days = Math.floor(diff / (24 * 60 * 60 * 1000));
+  const hours = Math.floor((diff % (24 * 60 * 60 * 1000)) / (60 * 60 * 1000));
+  const minutes = Math.floor((diff % (60 * 60 * 1000)) / (60 * 1000));
+  const seconds = Math.floor((diff % (60 * 1000)) / 1000);
+  return { days, hours, minutes, seconds, isPast: false };
+}
+
 export default function MeetPage() {
   const params = useParams();
+  const searchParams = useSearchParams();
   const rawUsername = (params?.username as string) || '';
   const username = rawUsername
     .replace(/^@/, '')
     .trim()
     .replace(/[^a-zA-Z0-9_-]/g, '')
     .substring(0, 50);
+
+  const atParam = typeof searchParams !== 'undefined' && searchParams !== null ? searchParams.get('at') : null;
+  const scheduledAt = useMemo(() => parseScheduledAt(atParam), [atParam]);
+  const countdown = useCountdown(scheduledAt);
 
   const [room, setRoom] = useState<MeetRoom | null>(null);
   const [token, setToken] = useState<string | null>(null);
@@ -37,6 +69,13 @@ export default function MeetPage() {
   const [meetingEnded, setMeetingEnded] = useState(false);
   const [requestASongOrg, setRequestASongOrg] = useState<{ id: string; name?: string; [key: string]: unknown } | null>(null);
   const supabase = createClient();
+
+  // When scheduled time has passed, poll so we show pre-join as soon as the host starts the room
+  useEffect(() => {
+    if (!countdown?.isPast || !room) return;
+    const id = setInterval(() => window.location.reload(), 30000);
+    return () => clearInterval(id);
+  }, [countdown?.isPast, room]);
 
   function handleDisconnected() {
     setMeetingEnded(true);
@@ -70,13 +109,11 @@ export default function MeetPage() {
         }
 
         const typedMeet = meetData as MeetRoom;
+        setRoom(typedMeet);
         if (!typedMeet.is_active) {
-          setError('Meeting is not active');
           setLoading(false);
           return;
         }
-
-        setRoom(typedMeet);
 
         if (typedMeet.request_a_song_enabled) {
           try {
@@ -193,6 +230,108 @@ export default function MeetPage() {
       <div className="fixed inset-0 bg-black flex items-center justify-center p-4">
         <div className="text-center text-white max-w-md w-full">
           <h1 className="text-2xl font-bold mb-4">{error}</h1>
+        </div>
+      </div>
+    );
+  }
+
+  // Room exists but not active yet: show scheduled time + countdown (when link has ?at=) or generic "not started"
+  if (room && !room.is_active) {
+    const meetingTitle = room.title ? `Join: ${room.title}` : `Meeting with @${room.username || username}`;
+    const formattedWhen = scheduledAt
+      ? scheduledAt.toLocaleString(undefined, {
+          weekday: 'long',
+          month: 'long',
+          day: 'numeric',
+          year: 'numeric',
+          hour: 'numeric',
+          minute: '2-digit',
+          hour12: true,
+        })
+      : null;
+
+    return (
+      <div className="fixed inset-0 bg-black flex items-center justify-center p-4 overflow-hidden">
+        <div
+          className="absolute inset-0 opacity-40"
+          style={{
+            background: isM10Domain
+              ? 'radial-gradient(ellipse 80% 50% at 50% 30%, rgba(252,186,0,0.2) 0%, transparent 55%)'
+              : 'radial-gradient(ellipse 80% 50% at 50% 30%, rgba(16,185,129,0.15) 0%, transparent 55%)',
+          }}
+        />
+        <div className="relative z-10 w-full max-w-lg mx-auto text-center text-white animate-in fade-in duration-500">
+          <div
+            className={`mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl ${
+              isM10Domain ? 'bg-[#fcba00]/20' : 'bg-emerald-500/20'
+            }`}
+          >
+            <Clock className={`h-8 w-8 ${isM10Domain ? 'text-[#fcba00]' : 'text-emerald-400'}`} strokeWidth={1.5} />
+          </div>
+          <h1 className="text-2xl md:text-3xl font-semibold tracking-tight mb-2">
+            {scheduledAt ? 'Your meeting is scheduled' : "Meeting hasn't started yet"}
+          </h1>
+          <p className="text-gray-400 text-base mb-6">{meetingTitle}</p>
+
+          {formattedWhen && (
+            <div className="flex items-center justify-center gap-2 text-gray-300 mb-8">
+              <Calendar className="h-5 w-5 text-gray-500" />
+              <span className="text-lg">{formattedWhen}</span>
+            </div>
+          )}
+
+          {countdown && !countdown.isPast && (
+            <div className="grid grid-cols-4 gap-3 sm:gap-4 mb-8">
+              {[
+                { value: countdown.days, label: 'Days' },
+                { value: countdown.hours, label: 'Hours' },
+                { value: countdown.minutes, label: 'Min' },
+                { value: countdown.seconds, label: 'Sec' },
+              ].map(({ value, label }) => (
+                <div
+                  key={label}
+                  className={`rounded-2xl border backdrop-blur-sm ${
+                    isM10Domain
+                      ? 'bg-[#fcba00]/10 border-[#fcba00]/30'
+                      : 'bg-emerald-500/10 border-emerald-500/30'
+                  }`}
+                >
+                  <div
+                    className={`text-2xl sm:text-3xl md:text-4xl font-bold tabular-nums ${
+                      isM10Domain ? 'text-[#fcba00]' : 'text-emerald-400'
+                    }`}
+                  >
+                    {String(value).padStart(2, '0')}
+                  </div>
+                  <div className="text-xs font-medium text-gray-400 uppercase tracking-wider mt-1">{label}</div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {countdown?.isPast && (
+            <p className="text-gray-400 text-sm mb-6">
+              The scheduled time has passed. The host may start the meeting shortly.
+            </p>
+          )}
+
+          <p className="text-gray-500 text-sm mb-6">
+            {scheduledAt
+              ? 'When it’s time, the host will start the meeting. This page will refresh automatically when the room is live, or you can check manually.'
+              : 'The host will start the meeting when ready. Refresh this page to see if the meeting has started.'}
+          </p>
+          <button
+            type="button"
+            onClick={() => window.location.reload()}
+            className={`inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-medium text-base transition-all hover:scale-[1.02] active:scale-[0.98] ${
+              isM10Domain
+                ? 'bg-[#fcba00] text-black hover:bg-[#e5a800] shadow-lg shadow-[#fcba00]/20'
+                : 'bg-emerald-600 text-white hover:bg-emerald-500 shadow-lg shadow-emerald-600/20'
+            }`}
+          >
+            <RefreshCw className="h-4 w-4" />
+            Check if meeting has started
+          </button>
         </div>
       </div>
     );

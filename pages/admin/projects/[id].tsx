@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/router';
-import { ArrowLeft, Save, Phone, Mail, Calendar, MapPin, Music, DollarSign, User, MessageSquare, Edit3, Trash2, Mic, MicOff, FileText, ExternalLink, Plus } from 'lucide-react';
+import { ArrowLeft, Save, Phone, Mail, Calendar, MapPin, Music, DollarSign, User, MessageSquare, Edit3, Trash2, Mic, MicOff, FileText, ExternalLink, Plus, CalendarCheck, Video } from 'lucide-react';
 import { createClient } from '@/utils/supabase/client';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -41,6 +41,7 @@ interface Project {
   status: string;
   audio_tracking_enabled: boolean | null;
   organization_id: string | null;
+  contact_id?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -76,6 +77,7 @@ export default function ProjectDetailPage() {
   const [organizationId, setOrganizationId] = useState<string | null>(null);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [invoicesLoading, setInvoicesLoading] = useState(false);
+  const [scheduledMeetings, setScheduledMeetings] = useState<Array<{ id: string; meeting_date: string; meeting_time: string; status: string; video_call_link?: string | null; meeting_types?: { name: string } | null }>>([]);
   const router = useRouter();
   const supabase = useMemo(() => createClient(), []);
   const { toast } = useToast();
@@ -184,6 +186,40 @@ export default function ProjectDetailPage() {
       }
     }
   }, [user, id, organizationId]);
+
+  useEffect(() => {
+    if (project?.contact_id) {
+      fetchScheduledMeetings(project.contact_id);
+    } else {
+      setScheduledMeetings([]);
+    }
+  }, [project?.contact_id]);
+
+  const fetchScheduledMeetings = async (contactId: string) => {
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      const { data, error } = await supabase
+        .from('meeting_bookings')
+        .select(`
+          id,
+          meeting_date,
+          meeting_time,
+          status,
+          video_call_link,
+          meeting_types ( name )
+        `)
+        .eq('contact_id', contactId)
+        .in('status', ['scheduled', 'confirmed'])
+        .gte('meeting_date', today)
+        .order('meeting_date', { ascending: true })
+        .order('meeting_time', { ascending: true })
+        .limit(5);
+      if (!error) setScheduledMeetings((data as any[]) || []);
+      else setScheduledMeetings([]);
+    } catch {
+      setScheduledMeetings([]);
+    }
+  };
 
   const checkUser = async () => {
     try {
@@ -467,6 +503,17 @@ export default function ProjectDetailPage() {
                       Invoice {invoices[0].invoice_number}
                     </Link>
                   )}
+                  {scheduledMeetings.length > 0 && (
+                    <Link
+                      href="/admin/bookings"
+                      className="inline-flex items-center gap-1.5 rounded-md bg-emerald-100 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-200 px-2 py-0.5 text-xs font-medium border border-emerald-200 dark:border-emerald-800"
+                    >
+                      <CalendarCheck className="h-3.5 w-3.5 flex-shrink-0" />
+                      {scheduledMeetings.length === 1
+                        ? `Meeting ${new Date(scheduledMeetings[0].meeting_date + 'T' + scheduledMeetings[0].meeting_time).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} ${new Date('1970-01-01T' + scheduledMeetings[0].meeting_time).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`
+                        : `${scheduledMeetings.length} meetings scheduled`}
+                    </Link>
+                  )}
                 </div>
               </div>
             </div>
@@ -489,6 +536,43 @@ export default function ProjectDetailPage() {
             </div>
           </div>
         </div>
+
+        {scheduledMeetings.length > 0 && project?.contact_id && (
+          <div className="mb-4 sm:mb-6 rounded-lg border border-emerald-200 dark:border-emerald-800 bg-emerald-50/50 dark:bg-emerald-900/20 p-4">
+            <p className="text-xs font-medium text-emerald-800 dark:text-emerald-200 mb-2 flex items-center gap-1.5">
+              <CalendarCheck className="h-3.5 w-3.5" />
+              Upcoming meetings (contact)
+            </p>
+            <ul className="space-y-1.5">
+              {scheduledMeetings.slice(0, 3).map((m) => {
+                const dateStr = new Date(m.meeting_date + 'T' + m.meeting_time).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+                const timeStr = new Date('1970-01-01T' + m.meeting_time).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+                const typeName = (m.meeting_types as { name?: string } | null)?.name ?? 'Meeting';
+                return (
+                  <li key={m.id} className="flex flex-wrap items-center gap-2 text-sm">
+                    <span className="text-gray-700 dark:text-gray-300">{dateStr} at {timeStr}</span>
+                    <span className="text-gray-500 dark:text-gray-400">— {typeName}</span>
+                    <Link href="/admin/bookings" className="text-blue-600 dark:text-blue-400 hover:underline text-xs font-medium">View</Link>
+                    {m.video_call_link && (
+                      <a href={m.video_call_link} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400 hover:underline text-xs font-medium">
+                        <Video className="h-3 w-3" />
+                        Join video
+                      </a>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+            {scheduledMeetings.length > 3 && (
+              <Link href="/admin/bookings" className="text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 mt-1 inline-block">
+                +{scheduledMeetings.length - 3} more
+              </Link>
+            )}
+            <Link href={`/admin/contacts/${project.contact_id}`} className="text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 mt-2 inline-block">
+              View contact →
+            </Link>
+          </div>
+        )}
 
         {/* Main Content */}
         <Tabs defaultValue="details" className="space-y-4 sm:space-y-6">

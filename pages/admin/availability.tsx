@@ -11,7 +11,8 @@ import {
   Save,
   X,
   AlertCircle,
-  RefreshCw
+  RefreshCw,
+  Video
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -51,6 +52,8 @@ interface MeetingType {
   id: string;
   name: string;
   duration_minutes: number;
+  is_video_meet?: boolean;
+  meet_username?: string | null;
 }
 
 const DAYS_OF_WEEK = [
@@ -79,6 +82,8 @@ export default function AdminAvailabilityPage() {
   const [showOverrideForm, setShowOverrideForm] = useState(false);
   const [editingPattern, setEditingPattern] = useState<AvailabilityPattern | null>(null);
   const [editingOverride, setEditingOverride] = useState<AvailabilityOverride | null>(null);
+  const [meetingTypeVideoForm, setMeetingTypeVideoForm] = useState<Record<string, { is_video_meet: boolean; meet_username: string }>>({});
+  const [savingTypeId, setSavingTypeId] = useState<string | null>(null);
 
   // Form state
   const [patternForm, setPatternForm] = useState({
@@ -144,11 +149,40 @@ export default function AdminAvailabilityPage() {
 
       setPatterns(patternsRes.data || []);
       setOverrides(overridesRes.data || []);
-      setMeetingTypes(typesRes.data || []);
+      const types = typesRes.data || [];
+      setMeetingTypes(types);
+      setMeetingTypeVideoForm(
+        types.reduce((acc: Record<string, { is_video_meet: boolean; meet_username: string }>, t: MeetingType) => {
+          acc[t.id] = { is_video_meet: !!t.is_video_meet, meet_username: t.meet_username || '' };
+          return acc;
+        }, {})
+      );
     } catch (error) {
       console.error('Error fetching data:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const saveMeetingTypeVideo = async (typeId: string) => {
+    const form = meetingTypeVideoForm[typeId];
+    if (!form) return;
+    setSavingTypeId(typeId);
+    try {
+      const { error } = await supabase
+        .from('meeting_types')
+        .update({
+          is_video_meet: form.is_video_meet,
+          meet_username: form.is_video_meet && form.meet_username.trim() ? form.meet_username.trim() : null
+        })
+        .eq('id', typeId);
+      if (error) throw error;
+      await fetchData();
+    } catch (error) {
+      console.error('Error saving meeting type video settings:', error);
+      alert('Failed to save');
+    } finally {
+      setSavingTypeId(null);
     }
   };
 
@@ -644,6 +678,62 @@ export default function AdminAvailabilityPage() {
             </div>
           </Card>
         </div>
+
+        {/* Meeting types – link to video Meet */}
+        <Card className="p-6 mt-6">
+          <h2 className="text-xl font-semibold mb-2 flex items-center gap-2">
+            <Video className="w-5 h-5 text-green-600" />
+            Meeting types & video
+          </h2>
+          <p className="text-sm text-gray-600 mb-4">
+            When a meeting type uses video, new bookings get a &quot;Join Video Meeting&quot; link (TipJar Meet). Set the Meet username (e.g. the host&apos;s room: <code className="bg-gray-100 px-1 rounded">ben</code> → /meet/ben).
+          </p>
+          <div className="space-y-4">
+            {meetingTypes.map((mt) => (
+              <div key={mt.id} className="flex flex-wrap items-center gap-4 p-4 bg-gray-50 rounded-lg">
+                <span className="font-medium text-gray-900">{mt.name}</span>
+                <label className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={meetingTypeVideoForm[mt.id]?.is_video_meet ?? false}
+                    onChange={(e) =>
+                      setMeetingTypeVideoForm((prev) => ({
+                        ...prev,
+                        [mt.id]: { ...prev[mt.id], is_video_meet: e.target.checked, meet_username: prev[mt.id]?.meet_username ?? '' }
+                      }))
+                    }
+                  />
+                  <span className="text-sm">Use video meeting</span>
+                </label>
+                {meetingTypeVideoForm[mt.id]?.is_video_meet && (
+                  <div className="flex items-center gap-2">
+                    <label className="text-sm text-gray-600">Meet username:</label>
+                    <input
+                      type="text"
+                      value={meetingTypeVideoForm[mt.id]?.meet_username ?? ''}
+                      onChange={(e) =>
+                        setMeetingTypeVideoForm((prev) => ({
+                          ...prev,
+                          [mt.id]: { ...prev[mt.id], meet_username: e.target.value }
+                        }))
+                      }
+                      placeholder="e.g. ben"
+                      className="w-32 px-2 py-1.5 border border-gray-300 rounded text-sm"
+                    />
+                  </div>
+                )}
+                <Button
+                  size="sm"
+                  onClick={() => saveMeetingTypeVideo(mt.id)}
+                  disabled={savingTypeId === mt.id}
+                  className="bg-green-600 hover:bg-green-700 text-white"
+                >
+                  {savingTypeId === mt.id ? 'Saving...' : 'Save'}
+                </Button>
+              </div>
+            ))}
+          </div>
+        </Card>
       </div>
     </AdminLayout>
   );

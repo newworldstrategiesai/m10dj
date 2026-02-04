@@ -17,6 +17,8 @@ interface MeetingType {
   description: string | null;
   duration_minutes: number;
   color: string;
+  is_video_meet?: boolean;
+  meet_username?: string | null;
 }
 
 interface TimeSlot {
@@ -192,7 +194,13 @@ export default function SchedulePage() {
       // Use default meeting type if available, otherwise use NULL (database allows it)
       const meetingTypeId = defaultMeetingType?.id || null;
       const durationMinutes = defaultMeetingType?.duration_minutes || 30;
-      
+      const siteOrigin = typeof window !== 'undefined' ? window.location.origin : (process.env.NEXT_PUBLIC_SITE_URL || 'https://m10djcompany.com');
+      const meetPath = defaultMeetingType?.is_video_meet && defaultMeetingType?.meet_username
+        ? `${siteOrigin.replace(/\/$/, '')}/meet/${defaultMeetingType.meet_username.replace(/^@/, '')}`
+        : null;
+      const atParam = meetPath ? `?at=${encodeURIComponent(meetingDate + 'T' + (selectedTime || ''))}` : '';
+      const videoCallLink = meetPath ? `${meetPath}${atParam}` : null;
+
       const { data, error } = await supabase
         .from('meeting_bookings')
         .insert({
@@ -206,7 +214,8 @@ export default function SchedulePage() {
           notes: formData.notes || null,
           event_type: formData.eventType || null,
           event_date: formData.eventDate || null,
-          status: 'scheduled'
+          status: 'scheduled',
+          video_call_link: videoCallLink || undefined
         })
         .select()
         .single();
@@ -231,7 +240,8 @@ export default function SchedulePage() {
             eventType: formData.eventType || null,
             eventDate: formData.eventDate || null,
             notes: formData.notes || null,
-            meetingDescription: defaultMeetingType.description
+            meetingDescription: defaultMeetingType.description,
+            videoCallLink: data.video_call_link || null
           })
         }).catch(err => console.error('Failed to send confirmation emails:', err));
       }

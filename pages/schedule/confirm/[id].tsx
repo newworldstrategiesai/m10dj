@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
-import { Calendar, Clock, User, Mail, Phone, CheckCircle, Download, ArrowLeft, MessageSquare } from 'lucide-react';
+import { Calendar, Clock, User, Mail, Phone, CheckCircle, Download, ArrowLeft, MessageSquare, Video } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
@@ -22,6 +22,7 @@ interface Booking {
   event_date: string | null;
   notes: string | null;
   status: string;
+  video_call_link: string | null;
   meeting_types?: {
     name: string;
     description: string | null;
@@ -79,7 +80,7 @@ export default function BookingConfirmation() {
       return date.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
     };
 
-    const icsContent = [
+    const icsLines = [
       'BEGIN:VCALENDAR',
       'VERSION:2.0',
       'PRODID:-//M10 DJ Company//Booking System//EN',
@@ -89,14 +90,16 @@ export default function BookingConfirmation() {
       `DTSTART:${formatDate(startDate)}`,
       `DTEND:${formatDate(endDate)}`,
       `SUMMARY:${booking.meeting_types?.name || 'Consultation'} with M10 DJ Company`,
-      `DESCRIPTION:${booking.meeting_types?.description || 'Consultation meeting'}${booking.notes ? `\\n\\nNotes: ${booking.notes}` : ''}`,
-      `LOCATION:Phone/Video Call`,
+      `DESCRIPTION:${booking.meeting_types?.description || 'Consultation meeting'}${booking.notes ? `\\n\\nNotes: ${booking.notes}` : ''}${booking.video_call_link ? `\\n\\nJoin video meeting: ${booking.video_call_link}` : ''}`,
+      booking.video_call_link ? `URL:${booking.video_call_link}` : null,
+      `LOCATION:${booking.video_call_link ? 'Video Call' : 'Phone/Video Call'}`,
       `ORGANIZER;CN=M10 DJ Company:mailto:info@m10djcompany.com`,
       `ATTENDEE;CN=${booking.client_name};RSVP=TRUE:mailto:${booking.client_email}`,
       'STATUS:CONFIRMED',
       'END:VEVENT',
       'END:VCALENDAR'
-    ].join('\r\n');
+    ].filter(Boolean);
+    const icsContent = icsLines.join('\r\n');
 
     const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8' });
     const link = document.createElement('a');
@@ -272,6 +275,28 @@ export default function BookingConfirmation() {
               )}
             </div>
           </Card>
+
+          {/* Video Meeting - when booking has a Meet link */}
+          {booking.video_call_link && (
+            <Card className="p-6 mb-6 border-green-200 bg-green-50">
+              <h3 className="font-semibold text-gray-900 mb-2 flex items-center gap-2">
+                <Video className="w-5 h-5 text-green-600" />
+                Video Meeting
+              </h3>
+              <p className="text-sm text-gray-600 mb-4">
+                This is a video call. Join at your scheduled time using the link below.
+              </p>
+              <Button
+                asChild
+                className="w-full bg-green-600 hover:bg-green-700 text-white"
+              >
+                <a href={booking.video_call_link} target="_blank" rel="noopener noreferrer">
+                  <Video className="w-4 h-4 mr-2" />
+                  Join Video Meeting
+                </a>
+              </Button>
+            </Card>
+          )}
 
           {/* Action Buttons */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">

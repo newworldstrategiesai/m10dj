@@ -65,7 +65,8 @@ export default async function handler(req, res) {
           eventType: booking.event_type,
           eventDate: booking.event_date,
           notes: booking.notes,
-          meetingDescription: booking.meeting_types?.description || null
+          meetingDescription: booking.meeting_types?.description || null,
+          videoCallLink: booking.video_call_link || null
         };
 
         const result = await sendBookingReminderEmail(emailData);
