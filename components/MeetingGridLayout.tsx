@@ -707,8 +707,8 @@ export function MeetingGridLayout({
                 <ChevronRight className="h-4 w-4" />
               </button>
             )}
-            <div className="flex flex-col flex-1 min-h-0 overflow-hidden [&_.lk-chat]:flex [&_.lk-chat]:flex-col [&_.lk-chat]:h-full [&_.lk-chat]:min-h-0 [&_.lk-chat_.lk-chat-header]:shrink-0 [&_.lk-chat_.lk-chat-messages]:flex-1 [&_.lk-chat_.lk-chat-messages]:min-h-0 [&_.lk-chat_.lk-chat-messages]:overflow-auto [&_.lk-chat_.lk-chat-form]:shrink-0">
-              <Chat />
+            <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
+              <Chat className="h-full min-h-0" />
             </div>
           </div>
         )
