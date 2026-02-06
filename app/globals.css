@@ -329,24 +329,34 @@ input[type="number"] {
   }
 }
 
-/* LiveKit meet: chat sidebar - ensure messages display and scroll correctly */
+/* LiveKit meet: chat sidebar - ensure messages scroll and input sticks to bottom */
 .lk-meet-chat-sidebar {
   display: flex;
   flex-direction: column;
   min-height: 0;
 }
 .lk-meet-chat-sidebar .lk-chat {
+  display: flex;
+  flex-direction: column;
   flex: 1;
   min-height: 0;
+  height: 100%;
   width: 100%;
   max-width: 100%;
   align-self: stretch;
 }
-/* Critical: allow messages list to shrink and scroll (fixes overflow in nested flex/grid) */
+.lk-meet-chat-sidebar .lk-chat .lk-chat-header {
+  flex-shrink: 0;
+}
+/* Messages list fills remaining space and scrolls */
 .lk-meet-chat-sidebar .lk-chat .lk-list.lk-chat-messages {
+  flex: 1 1 0;
   min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
   -webkit-overflow-scrolling: touch;
-  flex: 1;
+}
+/* Form (input + send) stays at bottom */
+.lk-meet-chat-sidebar .lk-chat .lk-chat-form {
+  flex-shrink: 0;
 }

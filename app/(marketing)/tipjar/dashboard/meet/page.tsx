@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import Link from 'next/link';
-import { Copy, Video, Share2, Check, Square, Play, Download, Users, Ban, UserX, ArrowLeft, LogIn, Film, FileText, Music, Wrench, Mic } from 'lucide-react';
+import { Copy, Video, Share2, Check, Square, Play, Download, Users, Ban, UserX, ArrowLeft, LogIn, Film, FileText, Music, Wrench, Mic, X } from 'lucide-react';
 import TipJarAnimatedLoader from '@/components/ui/TipJarAnimatedLoader';
 import { Switch } from '@/components/ui/switch';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
@@ -53,23 +53,34 @@ export default function MeetPage() {
     transcript: string | null;
     mediaType: 'video' | 'audio';
   } | null>(null);
+  const [showSharePanel, setShowSharePanel] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [loadRetry, setLoadRetry] = useState(0);
 
   const router = useRouter();
   const supabase = createClient();
 
   useEffect(() => {
+    let cancelled = false;
+    let loadFinished = false;
+
     async function loadRoom() {
+      setLoadError(null);
       try {
         const { data: { user }, error } = await supabase.auth.getUser();
+        if (cancelled) return;
         if (error || !user) {
+          setLoading(false);
+          loadFinished = true;
           const isM10 = typeof window !== 'undefined' && window.location.hostname.includes('m10djcompany.com');
           router.push(isM10 ? '/signin?redirect=/dashboard/meet' : '/tipjar/signin?redirect=/tipjar/dashboard/meet');
           return;
         }
 
-        // m10djcompany.com: only super admin can access Meet
         const isM10Domain = typeof window !== 'undefined' && window.location.hostname.includes('m10djcompany.com');
         if (isM10Domain && !isSuperAdminEmail(user.email)) {
+          setLoading(false);
+          loadFinished = true;
           router.push('/admin');
           return;
         }
@@ -81,7 +92,9 @@ export default function MeetPage() {
           .from('meet_rooms')
           .select('*')
           .eq('user_id', user.id)
-          .single();
+          .maybeSingle();
+
+        if (cancelled) return;
 
         const isM10Admin = isM10Domain && isSuperAdminEmail(user.email);
 
@@ -89,7 +102,6 @@ export default function MeetPage() {
           const typed = existingRoom as MeetRoom;
           setRoom(typed);
           setTitle(typed.title || `Meet with @${typed.username}`);
-          // Do not auto-join: require user to click "Start Meeting" (Go live) before broadcast starts
           setInMeeting(false);
         } else {
           const { data: newRoom } = await supabase
@@ -104,6 +116,7 @@ export default function MeetPage() {
             .select()
             .single();
 
+          if (cancelled) return;
           if (newRoom) {
             const typed = newRoom as MeetRoom;
             setRoom(typed);
@@ -116,17 +129,32 @@ export default function MeetPage() {
             .from('meet_rooms')
             .select('*')
             .order('updated_at', { ascending: false });
-          setAllRooms((rooms as MeetRoom[]) || []);
+          if (!cancelled) setAllRooms((rooms as MeetRoom[]) || []);
         }
       } catch (err) {
         console.error('Error loading meet room:', err);
+        if (!cancelled) setLoadError(err instanceof Error ? err.message : 'Failed to load');
       } finally {
-        setLoading(false);
+        if (!cancelled) {
+          loadFinished = true;
+          setLoading(false);
+        }
       }
     }
 
+    const timeoutId = window.setTimeout(() => {
+      if (!loadFinished) {
+        setLoadError('Loading is taking too long. Check your connection and try again.');
+        setLoading(false);
+      }
+    }, 12_000);
+
     loadRoom();
-  }, [supabase, router]);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timeoutId);
+    };
+  }, [supabase, router, loadRetry]);
 
   const isM10Domain = typeof window !== 'undefined' && window.location.hostname.includes('m10djcompany.com');
 
@@ -236,7 +264,8 @@ export default function MeetPage() {
       console.warn('Camera/microphone not available – you can enable them after joining.');
     }
 
-    const startedAtIso = room.started_at || new Date().toISOString();
+    // Always use a fresh start time so the master timer resets for each new meeting session
+    const startedAtIso = new Date().toISOString();
     await (supabase.from('meet_rooms') as any)
       .update({
         title: title || null,
@@ -457,11 +486,17 @@ export default function MeetPage() {
   if (!room) {
     return (
       <div className="fixed inset-0 bg-black flex items-center justify-center z-50">
-        <div className="text-white text-center px-4">
-          <p className="text-lg mb-4">Failed to load</p>
-          <Button onClick={() => router.push('/tipjar/signin')} variant="outline" className="text-white border-white">
-            Sign In
-          </Button>
+        <div className="text-white text-center px-4 max-w-sm">
+          <p className="text-lg mb-2">Failed to load</p>
+          {loadError && <p className="text-sm text-gray-400 mb-4">{loadError}</p>}
+          <div className="flex flex-col sm:flex-row gap-3 justify-center">
+            <Button onClick={() => { setLoadError(null); setLoading(true); setLoadRetry((r) => r + 1); }} variant="outline" className="text-white border-white hover:bg-white/10">
+              Retry
+            </Button>
+            <Button onClick={() => router.push('/tipjar/signin')} variant="outline" className="text-white border-white">
+              Sign In
+            </Button>
+          </div>
         </div>
       </div>
     );
@@ -840,8 +875,18 @@ export default function MeetPage() {
             )}
           </div>
 
-          <div className="px-4 py-4 border-t border-gray-800 bg-black/95 backdrop-blur-sm pb-safe-bottom">
-            <div className="flex gap-3 items-start">
+          {showSharePanel ? (
+          <div className="px-4 py-4 border-t border-gray-800 bg-black/95 backdrop-blur-sm pb-safe-bottom relative">
+            <button
+              type="button"
+              onClick={() => setShowSharePanel(false)}
+              className="absolute top-3 right-3 p-1.5 rounded-md text-gray-400 hover:text-white hover:bg-gray-700 transition-colors"
+              title="Hide share panel"
+              aria-label="Hide share panel"
+            >
+              <X className="h-5 w-5" />
+            </button>
+            <div className="flex gap-3 items-start pr-10">
               <div className="flex-shrink-0 bg-white p-1.5 rounded-lg">
                 <img
                   src={`https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent(getMeetUrl())}`}
@@ -979,6 +1024,20 @@ export default function MeetPage() {
               <div className="mt-2 text-center text-xs text-[#fcba00]/80">M10 Video Meeting</div>
             )}
           </div>
+          ) : (
+          <div className="px-3 py-2 border-t border-gray-800 bg-black/95 flex items-center justify-center">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowSharePanel(true)}
+              className="text-gray-400 hover:text-white hover:bg-gray-800"
+            >
+              <Share2 className="h-4 w-4 mr-2" />
+              Show share link
+            </Button>
+          </div>
+          )}
         </div>
       )}
 
