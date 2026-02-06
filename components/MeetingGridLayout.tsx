@@ -30,6 +30,7 @@ import {
 import { MeetControlBar } from '@/components/MeetControlBar';
 import { ChevronLeft, ChevronRight, MessageSquare, Circle, Power, FileText, User, Users, Calendar, FileSignature } from 'lucide-react';
 import { MeetParticipantControls } from '@/components/MeetParticipantControls';
+import { useMeetPolls } from '@/hooks/useMeetPolls';
 import {
   Sheet,
   SheetContent,
@@ -57,6 +58,126 @@ function reorder<T>(arr: T[], fromIndex: number, toIndex: number): T[] {
   a.splice(toIndex, 0, removed);
   return a;
 }
+
+function MeetPollStrip({ isHost, roomName }: { isHost?: boolean; roomName?: string }) {
+  const { activePoll, myVote, results, sendPoll, sendVote } = useMeetPolls(roomName);
+  const [showCreate, setShowCreate] = React.useState(false);
+  const [question, setQuestion] = React.useState('');
+  const [opts, setOpts] = React.useState(['', '']);
+
+  if (!activePoll) {
+    if (isHost) {
+      return (
+        <div className="flex items-center justify-center gap-2 py-1">
+          <button
+            type="button"
+            onClick={() => setShowCreate(true)}
+            className="text-xs font-medium text-muted-foreground hover:text-foreground px-2 py-1 rounded hover:bg-muted transition-colors"
+          >
+            Create poll
+          </button>
+          {showCreate && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+              <div className="bg-background border border-border rounded-xl p-4 w-full max-w-sm space-y-3 shadow-xl">
+                <h3 className="text-sm font-semibold text-foreground">New poll</h3>
+                <input
+                  type="text"
+                  placeholder="Question"
+                  value={question}
+                  onChange={(e) => setQuestion(e.target.value)}
+                  className="w-full px-3 py-2 rounded-lg bg-muted border border-input text-foreground text-sm placeholder:text-muted-foreground"
+                />
+                {opts.map((o, i) => (
+                  <input
+                    key={i}
+                    type="text"
+                    placeholder={`Option ${i + 1}`}
+                    value={o}
+                    onChange={(e) => {
+                      const next = [...opts];
+                      next[i] = e.target.value;
+                      setOpts(next);
+                    }}
+                    className="w-full px-3 py-2 rounded-lg bg-muted border border-input text-foreground text-sm placeholder:text-muted-foreground"
+                  />
+                ))}
+                {opts.length < 6 && (
+                  <button
+                    type="button"
+                    onClick={() => setOpts([...opts, ''])}
+                    className="text-xs text-muted-foreground hover:text-foreground"
+                  >
+                    + Add option
+                  </button>
+                )}
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowCreate(false);
+                      setQuestion('');
+                      setOpts(['', '']);
+                    }}
+                    className="flex-1 px-3 py-2 rounded-lg bg-muted text-muted-foreground text-sm hover:bg-muted/80"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (question.trim() && opts.some((o) => o.trim())) {
+                        sendPoll(question, opts);
+                        setShowCreate(false);
+                        setQuestion('');
+                        setOpts(['', '']);
+                      }
+                    }}
+                    className="flex-1 px-3 py-2 rounded-lg bg-emerald-600 text-white text-sm hover:bg-emerald-500"
+                  >
+                    Start poll
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    }
+    return null;
+  }
+
+  return (
+    <div className="flex flex-wrap items-center gap-2 py-1.5 px-2 rounded-lg bg-muted/80 border border-border">
+      <span className="text-xs font-medium text-foreground flex-shrink-0">{activePoll.question}</span>
+      <div className="flex flex-wrap items-center gap-1.5">
+        {activePoll.options.map((opt, i) => {
+          if (!opt.trim()) return null;
+          const count = results[i] ?? 0;
+          const voted = myVote === i;
+          return (
+            <button
+              key={i}
+              type="button"
+              onClick={() => myVote === null && sendVote(i)}
+              disabled={myVote !== null}
+              className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${
+                voted
+                  ? 'bg-emerald-600 text-white'
+                  : myVote === null
+                    ? 'bg-muted text-foreground hover:bg-muted/80'
+                    : 'bg-muted/50 text-muted-foreground cursor-default'
+              }`}
+            >
+              {opt.trim()}
+              {results.length > 0 && <span className="ml-1 opacity-80">({count})</span>}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function useOptimalGrid(trackCount: number) {
   const [cols, setCols] = React.useState(2);
   const [rows, setRows] = React.useState(1);
@@ -557,6 +678,7 @@ function MeetingGridInner({
             </div>
           )}
           <div className="flex-1 flex flex-col items-center gap-1 min-w-0">
+            <MeetPollStrip isHost={isSuperAdmin || isHost} roomName={roomName} />
             <div className="flex justify-center w-full lk-meet-control-bar-wrap">
               <MeetControlBar saveUserChoices={false} />
             </div>

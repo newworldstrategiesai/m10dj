@@ -1,10 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/utils/supabase/server';
+import { createClient as createServiceClient } from '@supabase/supabase-js';
 import { isSuperAdminEmail } from '@/utils/auth-helpers/super-admin';
+
+const RECORDINGS_BUCKET_PREFIX = 'meet-storage-';
 
 /**
  * GET /api/livekit/recordings
  * List all video and audio recordings (meet + voice calls).
+ * Includes rows from meet_rooms/voice_calls and objects in the meet-recordings bucket
+ * that don't have a DB row (so files in the bucket always show in the UI).
  * Super admin: all recordings. Regular user: own meet recordings only.
  */
 export async function GET(request: NextRequest) {
@@ -30,7 +35,9 @@ export async function GET(request: NextRequest) {
       durationSeconds?: number;
     }> = [];
 
-    // Meet recordings
+    const existingUrls = new Set<string>();
+
+    // Meet recordings from DB
     let meetQuery = supabase
       .from('meet_rooms')
       .select('id, username, title, recording_url, updated_at')
@@ -47,6 +54,7 @@ export async function GET(request: NextRequest) {
       for (const r of meetRooms) {
         const typed = r as { id: string; username: string; title: string | null; recording_url: string; updated_at: string };
         if (typed.recording_url) {
+          existingUrls.add(typed.recording_url);
           const ext = typed.recording_url.toLowerCase().endsWith('.mp4') ? 'video' : 'audio';
           recordings.push({
             id: `meet-${typed.id}`,
@@ -81,6 +89,7 @@ export async function GET(request: NextRequest) {
             duration_seconds?: number;
           };
           if (typed.recording_url) {
+            existingUrls.add(typed.recording_url);
             const date = typed.ended_at || typed.started_at || new Date().toISOString();
             recordings.push({
               id: `voice-${typed.id}`,
@@ -94,6 +103,60 @@ export async function GET(request: NextRequest) {
             });
           }
         }
+      }
+    }
+
+    // Meet recordings from storage bucket (files in bucket that don't have a meet_rooms.recording_url)
+    const bucketName = process.env.LIVEKIT_EGRESS_S3_BUCKET || 'meet-recordings';
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    if (supabaseUrl && serviceKey) {
+      const storage = createServiceClient(supabaseUrl, serviceKey);
+      const prefix = process.env.LIVEKIT_EGRESS_S3_MEET_PREFIX || 'meet-recordings';
+      try {
+        const listRoot = await storage.storage.from(bucketName).list('', { limit: 500 });
+        const listPrefix = prefix && prefix !== '' ? await storage.storage.from(bucketName).list(prefix, { limit: 500 }) : { data: null };
+        const rootFiles = (listRoot.data ?? []).filter((f) => f.name && !(f as { metadata?: { mimetype?: string } }).metadata?.mimetype);
+        const prefixFiles = (listPrefix.data ?? []).filter((f) => f.name && !(f as { metadata?: { mimetype?: string } }).metadata?.mimetype);
+        const allPaths: { path: string; updatedAt: string }[] = [];
+        for (const f of rootFiles) {
+          if (f.name && (f.name.endsWith('.mp4') || f.name.endsWith('.mp3') || f.name.endsWith('.m4a'))) {
+            allPaths.push({
+              path: f.name,
+              updatedAt: (f as { updated_at?: string }).updated_at ?? new Date().toISOString(),
+            });
+          }
+        }
+        for (const f of prefixFiles) {
+          if (f.name && (f.name.endsWith('.mp4') || f.name.endsWith('.mp3') || f.name.endsWith('.m4a'))) {
+            const fullPath = `${prefix}/${f.name}`;
+            allPaths.push({
+              path: fullPath,
+              updatedAt: (f as { updated_at?: string }).updated_at ?? new Date().toISOString(),
+            });
+          }
+        }
+        const baseUrl = supabaseUrl.replace(/\/$/, '');
+        const myRoomPrefix = !isAdmin ? `meet-${user.id}` : null;
+        for (const { path, updatedAt } of allPaths) {
+          if (myRoomPrefix && !path.includes(myRoomPrefix)) continue;
+          const pathSegment = path.split('/').map((p) => encodeURIComponent(p)).join('/');
+          const normalized = `${baseUrl}/storage/v1/object/public/${bucketName}/${pathSegment}`;
+          if (existingUrls.has(normalized)) continue;
+          existingUrls.add(normalized);
+          const mediaType = path.toLowerCase().endsWith('.mp4') ? 'video' : 'audio';
+          const safePath = encodeURIComponent(path);
+          recordings.push({
+            id: `${RECORDINGS_BUCKET_PREFIX}${safePath}`,
+            type: 'meet',
+            mediaType: mediaType as 'video' | 'audio',
+            url: normalized,
+            title: path.split('/').pop() || 'Meeting recording',
+            date: updatedAt,
+          });
+        }
+      } catch (storageErr) {
+        console.warn('[Recordings API] Storage list failed:', storageErr);
       }
     }
 

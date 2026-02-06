@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import Link from 'next/link';
-import { Copy, Video, Share2, Check, Square, Play, Download, Users, Ban, UserX, ArrowLeft, LogIn, Film, FileText, Music, Wrench, Mic, X } from 'lucide-react';
+import { Copy, Video, Share2, Check, Square, Play, Download, Users, Ban, UserX, ArrowLeft, LogIn, Film, FileText, Music, Wrench, Mic, X, Clock, BarChart2 } from 'lucide-react';
 import TipJarAnimatedLoader from '@/components/ui/TipJarAnimatedLoader';
 import { Switch } from '@/components/ui/switch';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
@@ -30,6 +30,13 @@ interface MeetRoom {
   transcript?: string | null;
   request_a_song_enabled?: boolean | null;
   updated_at?: string;
+}
+
+interface MeetingSummaryData {
+  durationMs: number | null;
+  participantCount: number;
+  polls: Array<{ id: string; question: string; options: string[]; created_at: string }>;
+  votesByPoll: Record<string, { optionIndex: number; participantIdentity: string }[]>;
 }
 
 export default function MeetPage() {
@@ -56,6 +63,8 @@ export default function MeetPage() {
   const [showSharePanel, setShowSharePanel] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [loadRetry, setLoadRetry] = useState(0);
+  const [showSummaryModal, setShowSummaryModal] = useState(false);
+  const [meetingSummary, setMeetingSummary] = useState<MeetingSummaryData | null>(null);
 
   const router = useRouter();
   const supabase = createClient();
@@ -306,6 +315,11 @@ export default function MeetPage() {
   async function handleEndMeeting() {
     if (!room) return;
 
+    const endedAt = Date.now();
+    const startedAt = room.started_at ? new Date(room.started_at).getTime() : null;
+    const durationMs = startedAt != null ? Math.max(0, endedAt - startedAt) : null;
+    const finalParticipantCount = participantCount ?? 0;
+
     // End LiveKit room first (disconnects all participants)
     try {
       await fetch('/api/livekit/meet/end-room', {
@@ -329,6 +343,25 @@ export default function MeetPage() {
       setParticipantCount(null);
       setParticipants([]);
       setBannedList(null);
+
+      // Fetch polls and show summary modal
+      try {
+        const res = await fetch(`/api/meet/polls?roomName=${encodeURIComponent(room.room_name)}`, {
+          credentials: 'include',
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setMeetingSummary({
+            durationMs,
+            participantCount: finalParticipantCount,
+            polls: data.polls ?? [],
+            votesByPoll: data.votesByPoll ?? {},
+          });
+          setShowSummaryModal(true);
+        }
+      } catch {
+        // No modal if fetch fails; user already back on dashboard
+      }
     } else {
       alert('Failed to end meeting. Please try again.');
     }
@@ -466,6 +499,16 @@ export default function MeetPage() {
       hour: '2-digit',
       minute: '2-digit',
     });
+  }
+
+  function formatDuration(ms: number | null): string {
+    if (ms == null || ms < 0) return '—';
+    const totalSeconds = Math.floor(ms / 1000);
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    if (hours > 0) return `${hours}h ${minutes}m`;
+    if (minutes > 0) return `${minutes} min`;
+    return '< 1 min';
   }
 
   if (loading) {
@@ -1154,6 +1197,81 @@ export default function MeetPage() {
               End all active meetings
             </Button>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Meeting summary modal after ending */}
+      <Dialog open={showSummaryModal} onOpenChange={(open) => { if (!open) { setShowSummaryModal(false); setMeetingSummary(null); } }}>
+        <DialogContent
+          className="max-w-md bg-gray-900 border-gray-700 text-white dark:bg-gray-900 dark:border-gray-700 dark:text-white"
+          onPointerDownOutside={(e) => e.preventDefault()}
+        >
+          <DialogHeader>
+            <DialogTitle className="text-lg font-semibold text-white dark:text-white">
+              Meeting summary
+            </DialogTitle>
+            <DialogDescription className="text-gray-400 dark:text-gray-400">
+              Here’s a quick recap of your meeting.
+            </DialogDescription>
+          </DialogHeader>
+          {meetingSummary && (
+            <div className="space-y-4 pt-2">
+              <div className="flex items-center gap-3 rounded-lg border border-gray-700 bg-gray-800/50 px-3 py-2.5">
+                <Clock className="h-5 w-5 shrink-0 text-gray-400 dark:text-gray-400" />
+                <div>
+                  <p className="text-xs font-medium text-gray-400 dark:text-gray-400">Duration</p>
+                  <p className="text-sm font-medium text-white dark:text-white">{formatDuration(meetingSummary.durationMs)}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3 rounded-lg border border-gray-700 bg-gray-800/50 px-3 py-2.5">
+                <Users className="h-5 w-5 shrink-0 text-gray-400 dark:text-gray-400" />
+                <div>
+                  <p className="text-xs font-medium text-gray-400 dark:text-gray-400">Participants</p>
+                  <p className="text-sm font-medium text-white dark:text-white">
+                    {meetingSummary.participantCount} participant{meetingSummary.participantCount !== 1 ? 's' : ''}
+                  </p>
+                </div>
+              </div>
+              {meetingSummary.polls.length > 0 ? (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 text-gray-400 dark:text-gray-400">
+                    <BarChart2 className="h-4 w-4" />
+                    <span className="text-xs font-medium">Polls</span>
+                  </div>
+                  <div className="space-y-3 rounded-lg border border-gray-700 bg-gray-800/50 p-3">
+                    {meetingSummary.polls.map((poll) => {
+                      const votes = meetingSummary.votesByPoll[poll.id] ?? [];
+                      const counts = (poll.options ?? []).map((_, i) => votes.filter((v) => v.optionIndex === i).length);
+                      return (
+                        <div key={poll.id} className="rounded-md border border-gray-600 bg-gray-900/50 p-2.5">
+                          <p className="text-sm font-medium text-white dark:text-white mb-2">{poll.question}</p>
+                          <ul className="space-y-1">
+                            {(poll.options ?? []).map((opt, i) => (
+                              <li key={i} className="flex justify-between text-xs text-gray-300 dark:text-gray-300">
+                                <span>{opt || `Option ${i + 1}`}</span>
+                                <span className="font-medium text-white dark:text-white">{counts[i] ?? 0} vote{(counts[i] ?? 0) !== 1 ? 's' : ''}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center gap-3 rounded-lg border border-gray-700 bg-gray-800/50 px-3 py-2.5">
+                  <BarChart2 className="h-5 w-5 shrink-0 text-gray-500 dark:text-gray-500" />
+                  <p className="text-sm text-gray-400 dark:text-gray-400">No polls in this meeting.</p>
+                </div>
+              )}
+              <Button
+                onClick={() => { setShowSummaryModal(false); setMeetingSummary(null); }}
+                className={`w-full mt-2 ${isM10Domain ? 'bg-[#fcba00] hover:bg-[#e5a800] text-black' : 'bg-emerald-600 hover:bg-emerald-500 text-white'}`}
+              >
+                Back to dashboard
+              </Button>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>

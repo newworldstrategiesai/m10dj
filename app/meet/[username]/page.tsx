@@ -6,6 +6,7 @@ import { createClient } from '@/utils/supabase/client';
 import { VideoMeetPlayer } from '@/components/VideoMeetPlayer';
 import { MeetPreJoin, saveStoredPrefs, type MeetPreJoinSubmitPayload } from '@/components/MeetPreJoin';
 import type { LocalUserChoices } from '@livekit/components-core';
+import { DisconnectReason } from 'livekit-client';
 import TipJarAnimatedLoader from '@/components/ui/TipJarAnimatedLoader';
 import Image from 'next/image';
 import { Clock, Calendar, RefreshCw } from 'lucide-react';
@@ -68,6 +69,7 @@ export default function MeetPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [meetingEnded, setMeetingEnded] = useState(false);
+  const [disconnectReason, setDisconnectReason] = useState<DisconnectReason | undefined>(undefined);
   const [requestASongOrg, setRequestASongOrg] = useState<{ id: string; name?: string; [key: string]: unknown } | null>(null);
   const supabase = createClient();
 
@@ -78,7 +80,8 @@ export default function MeetPage() {
     return () => clearInterval(id);
   }, [countdown?.isPast, room]);
 
-  function handleDisconnected() {
+  function handleDisconnected(reason?: DisconnectReason) {
+    setDisconnectReason(reason);
     setMeetingEnded(true);
     setToken(null);
     setServerUrl(null);
@@ -338,8 +341,11 @@ export default function MeetPage() {
     );
   }
 
-  // Meeting ended by host - beautiful notification for disconnected participants
+  // Disconnected from meeting - show reason-specific message (kicked vs meeting ended vs other)
   if (meetingEnded) {
+    const wasRemovedByHost = disconnectReason === DisconnectReason.PARTICIPANT_REMOVED;
+    const wasRoomEnded = disconnectReason === DisconnectReason.ROOM_DELETED;
+
     return (
       <div className="fixed inset-0 bg-black flex items-center justify-center p-4 overflow-hidden">
         {/* Subtle gradient background */}
@@ -374,10 +380,71 @@ export default function MeetPage() {
             </svg>
           </div>
           <h1 className="text-2xl md:text-3xl font-semibold tracking-tight mb-3">
-            The meeting has ended
+            {wasRemovedByHost
+              ? 'You were removed from the meeting'
+              : wasRoomEnded
+                ? 'The meeting has ended'
+                : "You're no longer in the meeting"}
           </h1>
           <p className="text-gray-400 text-base mb-8 max-w-sm mx-auto leading-relaxed">
-            The host has ended this meeting. Thanks for joining!
+            {wasRemovedByHost
+              ? 'The host removed you from this meeting. You can try to rejoin using the same link if the host allows.'
+              : wasRoomEnded
+                ? 'The host has ended this meeting. Thanks for joining!'
+                : 'Your connection to the meeting was lost. You can try to rejoin using the same link.'}
+          </p>
+          <a
+            href="/"
+            className={`inline-flex items-center justify-center gap-2 px-8 py-3.5 rounded-xl font-medium text-base transition-all hover:scale-[1.02] active:scale-[0.98] ${
+              isM10Domain
+                ? 'bg-[#fcba00] text-black hover:bg-[#e5a800] shadow-lg shadow-[#fcba00]/20'
+                : 'bg-emerald-600 text-white hover:bg-emerald-500 shadow-lg shadow-emerald-600/20'
+            }`}
+          >
+            Return home
+          </a>
+        </div>
+      </div>
+    );
+  }
+
+  // Banned: token API returned 403 with "You have been banned from this meeting" (on join or rejoin attempt)
+  const bannedError = 'You have been banned from this meeting';
+  if (error === bannedError && room && !token) {
+    return (
+      <div className="fixed inset-0 bg-black flex items-center justify-center p-4 overflow-hidden">
+        <div
+          className="absolute inset-0 opacity-30"
+          style={{
+            background: isM10Domain
+              ? 'radial-gradient(ellipse 80% 50% at 50% 40%, rgba(252,186,0,0.15) 0%, transparent 60%)'
+              : 'radial-gradient(ellipse 80% 50% at 50% 40%, rgba(16,185,129,0.12) 0%, transparent 60%)',
+          }}
+        />
+        <div className="relative z-10 text-center text-white max-w-md w-full animate-in fade-in duration-500">
+          <div
+            className={`mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full ${
+              isM10Domain ? 'bg-red-500/20' : 'bg-red-500/20'
+            }`}
+          >
+            <svg
+              className="h-10 w-10 text-red-400"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={1.5}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden
+            >
+              <path d="M18.364 18.364A9 9 0 0 0 5.636 5.636m12.728 12.728A9 9 0 0 1 5.636 5.636m12.728 12.728L5.636 5.636" />
+            </svg>
+          </div>
+          <h1 className="text-2xl md:text-3xl font-semibold tracking-tight mb-3">
+            You have been banned from this meeting
+          </h1>
+          <p className="text-gray-400 text-base mb-8 max-w-sm mx-auto leading-relaxed">
+            You cannot rejoin this meeting. Contact the host if you believe this is an error.
           </p>
           <a
             href="/"

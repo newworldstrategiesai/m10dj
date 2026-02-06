@@ -95,6 +95,20 @@ https://your-domain.com/api/livekit/webhook
 
 ---
 
+## Troubleshooting: Recordings not in Supabase bucket
+
+If the Record button works but recordings don’t show up in the bucket or in the dashboard:
+
+1. **Env vars** – Ensure all `LIVEKIT_EGRESS_S3_*` and `NEXT_PUBLIC_SUPABASE_URL` are set in the environment where the **webhook** runs (e.g. Vercel). The egress service uploads to S3; when it finishes, LiveKit calls your webhook. If the webhook can’t build the public URL (missing `NEXT_PUBLIC_SUPABASE_URL` or `LIVEKIT_EGRESS_S3_BUCKET`), it will still update `meet_rooms.egress_id` but not `recording_url`.
+
+2. **Webhook URL** – In LiveKit Cloud (or self-hosted), set the webhook URL to `https://your-domain.com/api/livekit/webhook` so `egress_ended` is received.
+
+3. **Server logs** – After stopping a recording, check your app logs for `[Webhook] meet egress_ended` or `handleMeetEgressEnded update error`. If you see “no recording URL” and a `fileResults` payload, the webhook is receiving a different shape; the handler now accepts `location`, `filename`, or `path` and builds the Supabase public URL from a key when needed.
+
+4. **Supabase S3** – If you use Supabase Storage via S3, ensure the bucket exists, is public if you want direct playback links, and the S3 Access Key/Secret have write access. The webhook builds the public URL as `{NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/{LIVEKIT_EGRESS_S3_BUCKET}/{path}` when LiveKit sends a path instead of a full URL.
+
+---
+
 ## Troubleshooting: Erratic speed in the recording (music speeds up/slows down)
 
 If the final file plays back with the music (or audio) speeding up and slowing down erratically, it’s usually due to **clock drift** or **variable delivery** between the source and the encoder:

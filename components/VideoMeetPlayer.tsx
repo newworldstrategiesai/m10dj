@@ -9,13 +9,15 @@
  * Based on LiveKit Meet template: https://github.com/livekit-examples/meet
  */
 import { LiveKitRoom } from '@livekit/components-react';
+import type { DisconnectReason } from 'livekit-client';
 import { MeetingGridLayout } from '@/components/MeetingGridLayout';
 
 interface VideoMeetPlayerProps {
   roomName: string;
   token: string;
   serverUrl: string;
-  onDisconnected?: () => void;
+  /** Called when disconnected; reason is set when server removed the participant (e.g. kick) or ended the room. */
+  onDisconnected?: (reason?: DisconnectReason) => void;
   /** From PreJoin - whether to start with video/audio enabled */
   videoEnabled?: boolean;
   audioEnabled?: boolean;
@@ -45,7 +47,7 @@ export function VideoMeetPlayer({
       token={token}
       serverUrl={serverUrl}
       data-lk-theme="default"
-      onDisconnected={onDisconnected ? () => onDisconnected() : undefined}
+      onDisconnected={onDisconnected ? (reason) => onDisconnected(reason) : undefined}
       connect={true}
       className="h-full w-full"
       style={{ minHeight: '100%' }}

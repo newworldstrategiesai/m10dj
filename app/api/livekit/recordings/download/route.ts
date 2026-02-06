@@ -32,25 +32,48 @@ export async function GET(request: NextRequest) {
     let suggestedName = `recording-${type}-${id.slice(0, 8)}`;
 
     if (type === 'meet') {
-      const query = supabase
-        .from('meet_rooms')
-        .select('recording_url, title, username')
-        .eq('id', id)
-        .not('recording_url', 'is', null);
+      // Bucket-only recording (id = storage-<encoded-path> from list merge)
+      if (id.startsWith('storage-')) {
+        const encodedPath = id.slice(8);
+        const bucket = process.env.LIVEKIT_EGRESS_S3_BUCKET || 'meet-recordings';
+        const base = process.env.NEXT_PUBLIC_SUPABASE_URL?.replace(/\/$/, '');
+        if (base && encodedPath) {
+          try {
+            const path = decodeURIComponent(encodedPath);
+            if (!path.includes('..') && !path.startsWith('/')) {
+              const pathSegment = path.split('/').map((p) => encodeURIComponent(p)).join('/');
+              recordingUrl = `${base}/storage/v1/object/public/${bucket}/${pathSegment}`;
+              const filename = path.split('/').pop() || 'recording';
+              suggestedName = filename.endsWith('.mp4') || filename.endsWith('.mp3') || filename.endsWith('.m4a') ? filename : `${filename}.mp4`;
+            }
+          } catch {
+            // invalid encoded path
+          }
+        }
+        if (!recordingUrl) {
+          return NextResponse.json({ error: 'Recording not found' }, { status: 404 });
+        }
+      } else {
+        const query = supabase
+          .from('meet_rooms')
+          .select('recording_url, title, username')
+          .eq('id', id)
+          .not('recording_url', 'is', null);
 
-      const { data: row, error } = await (!isAdmin
-        ? query.eq('user_id', user.id).maybeSingle()
-        : query.maybeSingle());
+        const { data: row, error } = await (!isAdmin
+          ? query.eq('user_id', user.id).maybeSingle()
+          : query.maybeSingle());
 
-      if (error || !row) {
-        return NextResponse.json({ error: 'Recording not found' }, { status: 404 });
+        if (error || !row) {
+          return NextResponse.json({ error: 'Recording not found' }, { status: 404 });
+        }
+
+        const typed = row as { recording_url: string; title: string | null; username: string };
+        recordingUrl = typed.recording_url;
+        const base = typed.title || `meet-${typed.username}`;
+        const safe = base.replace(/[^a-zA-Z0-9-_]/g, '_').slice(0, 80);
+        suggestedName = `${safe}.${recordingUrl.toLowerCase().endsWith('.mp4') ? 'mp4' : 'm4a'}`;
       }
-
-      const typed = row as { recording_url: string; title: string | null; username: string };
-      recordingUrl = typed.recording_url;
-      const base = typed.title || `meet-${typed.username}`;
-      const safe = base.replace(/[^a-zA-Z0-9-_]/g, '_').slice(0, 80);
-      suggestedName = `${safe}.${recordingUrl.toLowerCase().endsWith('.mp4') ? 'mp4' : 'm4a'}`;
     } else {
       if (!isAdmin) {
         return NextResponse.json({ error: 'Forbidden' }, { status: 403 });

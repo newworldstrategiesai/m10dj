@@ -103,14 +103,26 @@ export async function POST(request: NextRequest) {
         break;
 
       case 'egress_ended': {
-        // Store recording URL in voice_calls when egress finishes (outbound-* / inbound-*)
+        // Store recording URL in voice_calls / meet_rooms when egress finishes
         const raw = event as {
-          egressInfo?: { roomName?: string; fileResults?: Array<{ location?: string }>; egressId?: string };
-          egress_info?: { room_name?: string; file_results?: Array<{ location?: string }>; egress_id?: string };
+          egressInfo?: {
+            roomName?: string;
+            fileResults?: Array<{ location?: string; filename?: string; path?: string }>;
+            egressId?: string;
+          };
+          egress_info?: {
+            room_name?: string;
+            file_results?: Array<{ location?: string; filename?: string; path?: string }>;
+            egress_id?: string;
+          };
         };
         const info = (raw.egressInfo ?? raw.egress_info) as Record<string, unknown> | undefined;
         const roomName = (info?.roomName ?? info?.room_name) as string | undefined;
-        const fileResults = (info?.fileResults ?? info?.file_results) as Array<{ location?: string }> | undefined;
+        const rawFileResults = (info?.fileResults ?? info?.file_results) as Array<Record<string, unknown>> | undefined;
+        const fileResults = (rawFileResults ?? []).map((f) => ({
+          location: (f.location ?? f.filename ?? f.path) as string | undefined,
+          filename: (f.filename ?? f.location ?? f.path) as string | undefined,
+        }));
         const egressId = (info?.egressId ?? info?.egress_id) as string | undefined;
         if (roomName) {
           if (roomName.startsWith('outbound-') || roomName.startsWith('inbound-')) {
@@ -351,6 +363,19 @@ async function handleEgressEnded(egressInfo: {
     .eq('room_name', roomName);
 }
 
+/**
+ * Build a Supabase Storage public URL from bucket and object path.
+ * Use when LiveKit returns an S3 key/path instead of a full URL (e.g. with Supabase S3).
+ */
+function buildSupabaseRecordingUrl(pathOrKey: string): string | null {
+  const base = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const bucket = process.env.LIVEKIT_EGRESS_S3_BUCKET;
+  if (!base || !bucket || !pathOrKey || pathOrKey.startsWith('http')) return null;
+  const baseUrl = base.replace(/\/$/, '');
+  const path = pathOrKey.replace(/^\//, '');
+  return `${baseUrl}/storage/v1/object/public/${bucket}/${path}`;
+}
+
 /** Store recording URL in meet_rooms when LiveKit meet egress ends. */
 async function handleMeetEgressEnded(egressInfo: {
   roomName?: string;
@@ -362,8 +387,14 @@ async function handleMeetEgressEnded(egressInfo: {
 
   const fileResults = egressInfo.fileResults ?? [];
   const firstFile = fileResults[0];
-  const recordingUrl = firstFile?.location;
+  let recordingUrl: string | null = (firstFile?.location ?? firstFile?.filename) ?? null;
   if (!recordingUrl && !egressInfo.egressId) return;
+
+  // If we have a path/key instead of a full URL (e.g. Supabase S3 returns key), build public URL
+  if (recordingUrl && !recordingUrl.startsWith('http')) {
+    const publicUrl = buildSupabaseRecordingUrl(recordingUrl);
+    if (publicUrl) recordingUrl = publicUrl;
+  }
 
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -376,10 +407,12 @@ async function handleMeetEgressEnded(egressInfo: {
   if (recordingUrl) update.recording_url = recordingUrl;
   if (egressInfo.egressId) update.egress_id = egressInfo.egressId;
 
-  await supabase
-    .from('meet_rooms')
-    .update(update)
-    .eq('room_name', roomName);
+  const { error } = await supabase.from('meet_rooms').update(update).eq('room_name', roomName);
+  if (error) {
+    console.error('[Webhook] handleMeetEgressEnded update error:', error);
+  } else if (!recordingUrl && egressInfo.egressId) {
+    console.warn('[Webhook] meet egress_ended: no recording URL (fileResults:', JSON.stringify(fileResults), ')');
+  }
 }
 
 /** Update voice_calls when a call room ends (room_finished for outbound-* / inbound-*). */
