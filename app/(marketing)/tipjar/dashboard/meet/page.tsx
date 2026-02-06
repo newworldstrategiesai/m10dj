@@ -228,11 +228,12 @@ export default function MeetPage() {
   async function handleStartMeeting() {
     if (!room) return;
 
+    // Request media permission; don't block starting if unavailable (e.g. Cursor browser, no camera)
     try {
-      await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-    } catch (error) {
-      alert('Please allow camera and microphone access to start the meeting');
-      return;
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+      stream.getTracks().forEach((t) => t.stop());
+    } catch {
+      console.warn('Camera/microphone not available – you can enable them after joining.');
     }
 
     const startedAtIso = room.started_at || new Date().toISOString();
@@ -256,10 +257,10 @@ export default function MeetPage() {
 
   async function handleJoinOtherRoom(r: MeetRoom) {
     try {
-      await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-    } catch (error) {
-      alert('Please allow camera and microphone access to join');
-      return;
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+      stream.getTracks().forEach((t) => t.stop());
+    } catch {
+      console.warn('Camera/microphone not available – you can enable them after joining.');
     }
 
     const startedAtIso = r.started_at || new Date().toISOString();

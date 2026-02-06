@@ -419,9 +419,6 @@ export default function MeetPage() {
           videoEnabled={userChoices?.videoEnabled ?? true}
           audioEnabled={userChoices?.audioEnabled ?? true}
           onDisconnected={handleDisconnected}
-          requestASongEnabled={!!(room?.request_a_song_enabled && requestASongOrg)}
-          organizationId={requestASongOrg?.id ?? null}
-          organizationData={requestASongOrg ?? null}
           startedAt={room?.started_at ? new Date(room.started_at).getTime() : undefined}
         />
       </div>

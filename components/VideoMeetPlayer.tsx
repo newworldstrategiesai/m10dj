@@ -23,10 +23,6 @@ interface VideoMeetPlayerProps {
   isSuperAdmin?: boolean;
   /** When true (host view), can click a participant tile to view their email/display name */
   isHost?: boolean;
-  /** When true, guests see "Request a Song" button that opens requests form in chat panel */
-  requestASongEnabled?: boolean;
-  organizationId?: string | null;
-  organizationData?: Record<string, unknown> | null;
   /** Master timer: stream start time (ms). All participants see elapsed from this. */
   startedAt?: number;
 }
@@ -40,9 +36,6 @@ export function VideoMeetPlayer({
   audioEnabled = true,
   isSuperAdmin = false,
   isHost = false,
-  requestASongEnabled = false,
-  organizationId = null,
-  organizationData = null,
   startedAt,
 }: VideoMeetPlayerProps) {
   return (
@@ -69,9 +62,6 @@ export function VideoMeetPlayer({
           isSuperAdmin={isSuperAdmin}
           isHost={isHost}
           roomName={roomName}
-          requestASongEnabled={requestASongEnabled}
-          organizationId={organizationId ?? undefined}
-          organizationData={organizationData ?? undefined}
           startedAt={startedAt}
         />
       </div>

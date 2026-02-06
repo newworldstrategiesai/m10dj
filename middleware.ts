@@ -113,7 +113,37 @@ export async function middleware(request: NextRequest) {
     });
     return rewriteResponse;
   }
-  
+
+  // Rewrite /dashboard/meet and /dashboard/recordings so they work on localhost and production.
+  // The app route lives at /tipjar/dashboard/meet (and recordings); production rewrites in the
+  // main-domain block below, but on localhost isMainDomain is false so we need this early rewrite.
+  if (url.pathname.startsWith('/dashboard/meet')) {
+    url.pathname = url.pathname.replace('/dashboard/meet', '/tipjar/dashboard/meet');
+    const response = await updateSession(request);
+    const rewriteResponse = NextResponse.rewrite(url);
+    rewriteResponse.headers.set('x-pathname', request.nextUrl.pathname);
+    rewriteResponse.headers.set('x-product', 'tipjar');
+    response.headers.forEach((value, key) => {
+      if (key.startsWith('x-') || key === 'set-cookie') {
+        rewriteResponse.headers.set(key, value);
+      }
+    });
+    return rewriteResponse;
+  }
+  if (url.pathname.startsWith('/dashboard/recordings')) {
+    url.pathname = url.pathname.replace('/dashboard/recordings', '/tipjar/dashboard/recordings');
+    const response = await updateSession(request);
+    const rewriteResponse = NextResponse.rewrite(url);
+    rewriteResponse.headers.set('x-pathname', request.nextUrl.pathname);
+    rewriteResponse.headers.set('x-product', 'tipjar');
+    response.headers.forEach((value, key) => {
+      if (key.startsWith('x-') || key === 'set-cookie') {
+        rewriteResponse.headers.set(key, value);
+      }
+    });
+    return rewriteResponse;
+  }
+
   // Handle domain-based routing for marketing sites
   const isApiRoute = url.pathname.startsWith('/api');
   const isStaticFile = url.pathname.startsWith('/_next') || 

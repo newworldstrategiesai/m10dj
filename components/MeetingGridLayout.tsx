@@ -28,7 +28,7 @@ import {
   useTranscriptions,
 } from '@livekit/components-react';
 import { MeetControlBar } from '@/components/MeetControlBar';
-import { ChevronLeft, ChevronRight, MessageSquare, Circle, Power, FileText, Music, User, Users, Calendar, FileSignature } from 'lucide-react';
+import { ChevronLeft, ChevronRight, MessageSquare, Circle, Power, FileText, User, Users, Calendar, FileSignature } from 'lucide-react';
 import { MeetParticipantControls } from '@/components/MeetParticipantControls';
 import {
   Sheet,
@@ -57,41 +57,6 @@ function reorder<T>(arr: T[], fromIndex: number, toIndex: number): T[] {
   a.splice(toIndex, 0, removed);
   return a;
 }
-import dynamic from 'next/dynamic';
-
-const GeneralRequestsPage = dynamic(
-  () => import('@/pages/requests').then((mod) => mod.GeneralRequestsPage),
-  { ssr: false }
-);
-
-function MeetRequestSongPanel({
-  organizationId,
-  organizationData,
-}: {
-  organizationId: string;
-  organizationData?: Record<string, unknown>;
-}) {
-  const organizationName = typeof organizationData?.name === 'string' ? organizationData.name : undefined;
-  const RequestsPanel = GeneralRequestsPage as React.ComponentType<{
-    organizationId?: string | null;
-    organizationName?: string | null;
-    organizationData?: Record<string, unknown> | null;
-    embedMode?: boolean;
-    minimalHeader?: boolean;
-    meetPanel?: boolean;
-  }>;
-  return (
-    <RequestsPanel
-      organizationId={organizationId}
-      organizationName={organizationName ?? null}
-      organizationData={organizationData ?? null}
-      embedMode={true}
-      minimalHeader={true}
-      meetPanel={true}
-    />
-  );
-}
-
 function useOptimalGrid(trackCount: number) {
   const [cols, setCols] = React.useState(2);
   const [rows, setRows] = React.useState(1);
@@ -354,8 +319,6 @@ function MeetingGridInner({
   onStopRecording,
   recordMode,
   onRecordModeChange,
-  requestASongEnabled,
-  onRequestSongClick,
   onViewParticipant,
   startedAt,
 }: {
@@ -370,8 +333,6 @@ function MeetingGridInner({
   onStopRecording: () => void;
   recordMode: 'video' | 'audio';
   onRecordModeChange: (mode: 'video' | 'audio') => void;
-  requestASongEnabled?: boolean;
-  onRequestSongClick?: () => void;
   onViewParticipant?: (identity: string) => void;
   startedAt?: number;
 }) {
@@ -483,7 +444,7 @@ function MeetingGridInner({
                 )}
               </FocusLayoutContainer>
             </div>
-          ) : isAlone ? (
+          ) : isAlone && orderedTracks.length === 0 ? (
             <div className="flex flex-col items-center justify-center w-full h-full min-h-0 p-6 text-center bg-gray-950/50 dark:bg-gray-950/80 rounded-lg border border-gray-800 dark:border-gray-800">
               <Users className="w-14 h-14 text-gray-500 dark:text-gray-600 mb-4 flex-shrink-0" aria-hidden />
               <p className="text-lg font-medium text-gray-200 dark:text-gray-200 mb-1">
@@ -597,11 +558,7 @@ function MeetingGridInner({
           )}
           <div className="flex-1 flex flex-col items-center gap-1 min-w-0">
             <div className="flex justify-center w-full lk-meet-control-bar-wrap">
-              <MeetControlBar
-                saveUserChoices={false}
-                requestASongEnabled={requestASongEnabled}
-                onRequestSongClick={onRequestSongClick}
-              />
+              <MeetControlBar saveUserChoices={false} />
             </div>
             {recordError && (
               <p className="text-xs text-red-400" role="alert">{recordError}</p>
@@ -628,17 +585,11 @@ export function MeetingGridLayout({
   isSuperAdmin = false,
   isHost = false,
   roomName,
-  requestASongEnabled = false,
-  organizationId,
-  organizationData,
   startedAt,
 }: {
   isSuperAdmin?: boolean;
   isHost?: boolean;
   roomName?: string;
-  requestASongEnabled?: boolean;
-  organizationId?: string;
-  organizationData?: Record<string, unknown>;
   startedAt?: number;
 }) {
   const isDesktop = useIsDesktop();
@@ -649,7 +600,6 @@ export function MeetingGridLayout({
     showSettings: false,
   });
   const [chatCollapsed, setChatCollapsed] = React.useState(false);
-  const [panelContent, setPanelContent] = React.useState<'chat' | 'requestSong'>('chat');
   const [isRecording, setIsRecording] = React.useState(false);
   const [egressId, setEgressId] = React.useState<string | null>(null);
   const [recordError, setRecordError] = React.useState<string | null>(null);
@@ -661,11 +611,6 @@ export function MeetingGridLayout({
 
   const onViewParticipant = React.useCallback((identity: string) => {
     setSelectedParticipantIdentity(identity);
-  }, []);
-
-  const onRequestSongClick = React.useCallback(() => {
-    setWidgetState((s) => ({ ...s, showChat: true }));
-    setPanelContent('requestSong');
   }, []);
 
   React.useEffect(() => {
@@ -733,8 +678,6 @@ export function MeetingGridLayout({
             onStopRecording={handleStopRecording}
             recordMode={recordMode}
             onRecordModeChange={setRecordMode}
-            requestASongEnabled={requestASongEnabled}
-            onRequestSongClick={onRequestSongClick}
             onViewParticipant={onViewParticipant}
             startedAt={startedAt}
           />
@@ -764,50 +707,9 @@ export function MeetingGridLayout({
                 <ChevronRight className="h-4 w-4" />
               </button>
             )}
-            {requestASongEnabled && organizationId ? (
-              <>
-                <div className="flex border-b border-gray-700 flex-shrink-0">
-                  <button
-                    type="button"
-                    onClick={() => setPanelContent('chat')}
-                    className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-sm font-medium transition-colors ${
-                      panelContent === 'chat'
-                        ? 'text-white bg-gray-800 border-b-2 border-emerald-500'
-                        : 'text-gray-400 hover:text-white hover:bg-gray-800/50'
-                    }`}
-                  >
-                    <MessageSquare className="h-4 w-4" />
-                    Chat
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setPanelContent('requestSong')}
-                    className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-sm font-medium transition-colors ${
-                      panelContent === 'requestSong'
-                        ? 'text-white bg-gray-800 border-b-2 border-emerald-500'
-                        : 'text-gray-400 hover:text-white hover:bg-gray-800/50'
-                    }`}
-                  >
-                    <Music className="h-4 w-4" />
-                    Request a Song
-                  </button>
-                </div>
-                <div className="flex-1 min-h-0 overflow-hidden">
-                  {panelContent === 'requestSong' ? (
-                    <div className="h-full overflow-y-auto">
-                      <MeetRequestSongPanel
-                        organizationId={organizationId}
-                        organizationData={organizationData}
-                      />
-                    </div>
-                  ) : (
-                    <Chat />
-                  )}
-                </div>
-              </>
-            ) : (
+            <div className="flex flex-col flex-1 min-h-0 overflow-hidden [&_.lk-chat]:flex [&_.lk-chat]:flex-col [&_.lk-chat]:h-full [&_.lk-chat]:min-h-0">
               <Chat />
-            )}
+            </div>
           </div>
         )
       ) : null}
