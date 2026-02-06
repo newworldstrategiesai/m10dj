@@ -159,16 +159,17 @@ export function MeetParticipantControls({
     }
   };
 
+  const btnClass = 'flex items-center justify-center shrink-0 w-8 h-8 min-w-8 min-h-8 rounded-md text-xs font-medium transition-colors sm:w-9 sm:h-9 sm:min-w-9 sm:min-h-9';
   return (
-    <div className="absolute bottom-2 left-2 right-2 flex flex-wrap justify-center gap-1 opacity-0 hover:opacity-100 transition-opacity bg-black/50 rounded-lg py-1">
+    <div className="absolute bottom-2 left-2 right-2 flex flex-wrap items-center justify-center gap-1.5 opacity-0 hover:opacity-100 transition-opacity bg-black/50 rounded-lg p-1.5 h-auto">
       {isHost && onViewParticipant && (
         <button
           type="button"
           onClick={() => onViewParticipant(identity)}
-          className="p-1.5 rounded-md text-xs font-medium transition-colors bg-emerald-700 hover:bg-emerald-600 text-white"
+          className={`${btnClass} bg-emerald-700 hover:bg-emerald-600 text-white`}
           title="View participant (email & details)"
         >
-          <User className="h-3.5 w-3.5" />
+          <User className="h-4 w-4 sm:h-4.5 sm:w-4.5" />
         </button>
       )}
       {isSuperAdmin && roomName && (
@@ -177,45 +178,45 @@ export function MeetParticipantControls({
             type="button"
             onClick={handleMute}
             disabled={loading}
-            className={`p-1.5 rounded-md text-xs font-medium transition-colors ${
+            className={`${btnClass} ${
               muted
                 ? 'bg-red-600 hover:bg-red-700 text-white'
                 : 'bg-gray-700 hover:bg-gray-600 text-white'
             }`}
             title={muted ? 'Unmute' : 'Mute'}
           >
-            {muted ? <MicOff className="h-3.5 w-3.5" /> : <Mic className="h-3.5 w-3.5" />}
+            {muted ? <MicOff className="h-4 w-4 sm:h-4.5 sm:w-4.5" /> : <Mic className="h-4 w-4 sm:h-4.5 sm:w-4.5" />}
           </button>
           <button
             type="button"
             onClick={handleSolo}
             disabled={loading}
-            className={`p-1.5 rounded-md text-xs font-medium transition-colors ${
+            className={`${btnClass} ${
               isSoloed
                 ? 'bg-amber-600 hover:bg-amber-700 text-white'
                 : 'bg-gray-700 hover:bg-gray-600 text-white'
             }`}
             title={isSoloed ? 'Clear solo' : 'Solo (only this audio)'}
           >
-            <Headphones className="h-3.5 w-3.5" />
+            <Headphones className="h-4 w-4 sm:h-4.5 sm:w-4.5" />
           </button>
           <button
             type="button"
             onClick={handleKick}
             disabled={loading}
-            className="p-1.5 rounded-md text-xs font-medium transition-colors bg-orange-700 hover:bg-orange-600 text-white"
+            className={`${btnClass} bg-orange-700 hover:bg-orange-600 text-white`}
             title="Kick (remove from meeting)"
           >
-            <UserMinus className="h-3.5 w-3.5" />
+            <UserMinus className="h-4 w-4 sm:h-4.5 sm:w-4.5" />
           </button>
           <button
             type="button"
             onClick={handleBan}
             disabled={loading}
-            className="p-1.5 rounded-md text-xs font-medium transition-colors bg-red-700 hover:bg-red-600 text-white"
+            className={`${btnClass} bg-red-700 hover:bg-red-600 text-white`}
             title="Ban (kick and block rejoin)"
           >
-            <Ban className="h-3.5 w-3.5" />
+            <Ban className="h-4 w-4 sm:h-4.5 sm:w-4.5" />
           </button>
         </>
       )}

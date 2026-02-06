@@ -489,7 +489,7 @@ function MeetingGridInner({
                         e.dataTransfer.setDragImage?.(e.currentTarget, 0, 0);
                       }}
                       onDragEnd={() => setDragOverSlotIndex(null)}
-                      className="relative min-w-0 min-h-0 w-full h-full cursor-grab active:cursor-grabbing [&>div]:!h-full [&>div]:!min-h-0 [&>.lk-participant-tile]:!h-full [&>.lk-participant-tile]:!min-h-0"
+                      className="relative min-w-0 min-h-0 w-full h-full cursor-grab active:cursor-grabbing [&>.lk-participant-tile]:!h-full [&>.lk-participant-tile]:!min-h-0"
                     >
                       <TrackRefContext.Provider value={trackRef}>
                         <ParticipantTile className="!h-full !w-full !min-h-0" />
