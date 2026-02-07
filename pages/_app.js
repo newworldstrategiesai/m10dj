@@ -125,6 +125,8 @@ export default function App({ Component, pageProps }) {
                         router.pathname.startsWith('/karaoke/');
   // Check if we're on DJ Dash pages (djdash.net domain or /djdash routes or /dj/ profile routes)
   const isDJDashPage = router.pathname.startsWith('/djdash') || router.pathname.startsWith('/dj/');
+  // Check if we're on a QR display page (no chat widget, clean full-screen experience)
+  const isQRPage = router.pathname.endsWith('/qr');
 
   // Set data attribute to remove body padding on admin pages
   useEffect(() => {
@@ -314,7 +316,7 @@ export default function App({ Component, pageProps }) {
 
       {isAdminRoute && !isSignInPage && <FloatingAdminAssistant />}
       {/* Only show chat widget on m10djcompany.com, not on djdash.net, sign-contract pages, quote pages, or karaoke pages */}
-      {!isSignInPage && !isRequestsPage && !isBidPage && !isAdminRoute && !isDJDashPage && !isSignContractPage && !isQuotePage && !isKaraokePage && <GlobalChatWidget />}
+      {!isSignInPage && !isRequestsPage && !isBidPage && !isAdminRoute && !isDJDashPage && !isSignContractPage && !isQuotePage && !isKaraokePage && !isQRPage && <GlobalChatWidget />}
       {/* Toast notifications for Pages Router */}
       <Toaster />
       {/* Temporarily disabled to prevent rate limiting issues */}

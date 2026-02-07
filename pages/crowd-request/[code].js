@@ -462,12 +462,27 @@ export default function CrowdRequestPage() {
   }, [formData.songTitle, formData.songArtist, requestType, currentStep]);
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
+    // Always prevent default form submission - we handle it manually
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+
+    // CRITICAL: Prevent double submission - check FIRST before any other logic
+    // This must be the very first check to prevent race conditions
+    if (submitting) {
+      return;
+    }
+
+    // CRITICAL: Set submitting state IMMEDIATELY before validation
+    // This prevents double-clicks and race conditions between clicks
+    setSubmitting(true);
     setError('');
 
     if (!validateForm()) {
+      // Reset submitting since validation failed - user needs to fix and retry
+      setSubmitting(false);
       // Scroll to error message after a brief delay to allow state to update
-      // Note: Don't check `error` here - it's stale (React state updates are async)
       setTimeout(() => {
         const errorEl = document.querySelector('.bg-red-50, .bg-red-900');
         if (errorEl) {
@@ -476,8 +491,6 @@ export default function CrowdRequestPage() {
       }, 100);
       return;
     }
-
-    setSubmitting(true);
 
     // Save requester info to localStorage for future requests
     try {
@@ -833,7 +846,7 @@ export default function CrowdRequestPage() {
                   }}
                 />
               ) : (
-              <form onSubmit={handleSubmit} className="flex-1 flex flex-col space-y-3 sm:space-y-4 overflow-y-auto">
+              <form onSubmit={handleSubmit} noValidate className="flex-1 flex flex-col space-y-3 sm:space-y-4 overflow-y-auto">
                 {/* Request Type Selection */}
                 <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl p-4 sm:p-5 flex-shrink-0">
                   <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white mb-4">
@@ -1331,15 +1344,6 @@ export default function CrowdRequestPage() {
                     type="submit"
                     disabled={submitting || (requestType !== 'tip' && getPaymentAmount() < (presetAmounts.length > 0 ? presetAmounts[0].value : minimumAmount)) || (requestType === 'tip' && (!getPaymentAmount() || getPaymentAmount() <= 0))}
                     className="w-full btn-primary py-4 sm:py-4 text-base sm:text-lg font-semibold inline-flex items-center justify-center gap-2 min-h-[56px] touch-manipulation disabled:opacity-50 disabled:cursor-not-allowed"
-                    onClick={(e) => {
-                      // Prevent double-submission
-                      if (submitting) {
-                        e.preventDefault();
-                        return;
-                      }
-                      // Don't scroll - let form submit immediately if valid
-                      // Validation errors will handle scrolling in handleSubmit
-                    }}
                   >
                     {submitting ? (
                       <>

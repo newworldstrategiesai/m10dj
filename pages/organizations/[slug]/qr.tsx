@@ -1,7 +1,12 @@
 /**
  * Minimal full-screen QR display page for iPad / large-screen crowd viewing.
- * No header, footer, or navigation - designed for DJs to display on an iPad
- * so crowd members can scan to request songs.
+ * No header, footer, navigation, or chat widget - designed for DJs to display
+ * on an iPad so crowd members can scan to request songs.
+ *
+ * Features:
+ * - Aurora animated background
+ * - Light/dark mode toggle (bottom-left, non-intrusive)
+ * - Clean, distraction-free layout
  *
  * URL: tipjar.live/username/qr or m10djcompany.com/username/qr
  *
@@ -14,11 +19,15 @@
 import { useRouter } from 'next/router';
 import Head from 'next/head';
 import { useEffect, useState } from 'react';
+import { useTheme } from 'next-themes';
 import { createClient } from '@/utils/supabase/client';
+import { AuroraBackground } from '@/components/ui/shadcn-io/aurora-background';
+import { Sun, Moon } from 'lucide-react';
 
 export default function OrganizationQRDisplayPage() {
   const router = useRouter();
   const { slug } = router.query;
+  const { theme, setTheme, resolvedTheme } = useTheme();
   const eventCodeParam =
     typeof router.query.event === 'string'
       ? router.query.event
@@ -56,8 +65,6 @@ export default function OrganizationQRDisplayPage() {
           setError('Organization not found');
           return;
         }
-        // Allow any org with a slug - no subscription gate here.
-        // The requests page handles subscription when someone actually submits.
         setOrganization(org);
       } catch (err) {
         setError('Failed to load organization');
@@ -69,9 +76,15 @@ export default function OrganizationQRDisplayPage() {
     loadOrg();
   }, [mounted, slug]);
 
+  const isDark = mounted && resolvedTheme === 'dark';
+
+  const toggleTheme = () => {
+    setTheme(isDark ? 'light' : 'dark');
+  };
+
   if (!mounted || loading) {
     return (
-      <div className="min-h-screen w-full flex items-center justify-center bg-gray-50 dark:bg-gray-950">
+      <div className="min-h-screen w-full flex items-center justify-center bg-zinc-50 dark:bg-zinc-900">
         <div className="animate-pulse text-gray-500 dark:text-gray-400 text-lg">
           Loading…
         </div>
@@ -81,7 +94,7 @@ export default function OrganizationQRDisplayPage() {
 
   if (error || !organization) {
     return (
-      <div className="min-h-screen w-full flex items-center justify-center bg-gray-50 dark:bg-gray-950">
+      <div className="min-h-screen w-full flex items-center justify-center bg-zinc-50 dark:bg-zinc-900">
         <p className="text-gray-600 dark:text-gray-400">{error || 'Not found'}</p>
       </div>
     );
@@ -109,26 +122,57 @@ export default function OrganizationQRDisplayPage() {
           content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"
         />
       </Head>
-      <div className="min-h-screen w-full flex flex-col items-center justify-center bg-gray-50 dark:bg-gray-950 p-4 sm:p-6">
-        <div className="flex flex-col items-center justify-center gap-6 max-w-2xl w-full">
-          <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-center text-gray-900 dark:text-white">
-            Scan to request Songs
+
+      <AuroraBackground className="min-h-screen w-full">
+        <div className="relative z-10 flex flex-col items-center justify-center gap-6 max-w-2xl w-full px-4 sm:px-6">
+          <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-center text-gray-900 dark:text-white drop-shadow-sm">
+            Scan to Request Songs
           </h1>
+
+          {/* Halo wrapper - Siri-like glowing border */}
           <div
-            className="flex-shrink-0 rounded-xl overflow-hidden bg-white dark:bg-white p-4 shadow-lg"
-            style={{ maxWidth: 'min(90vw, 640px)' }}
+            className="relative flex-shrink-0"
+            style={{ maxWidth: 'min(85vw, 560px)' }}
           >
-            <img
-              src={qrImageUrl}
-              alt="QR code to request songs"
-              className="w-full h-auto block"
-              width={qrSize}
-              height={qrSize}
-              decoding="async"
+            {/* Spinning glow layer */}
+            <div
+              className="absolute -inset-1 rounded-3xl opacity-60 dark:opacity-75 blur-xl animate-spin-slow"
+              style={{
+                background:
+                  'conic-gradient(from 0deg, #ff6b6b, #c084fc, #60a5fa, #34d399, #fbbf24, #f472b6, #ff6b6b)',
+              }}
             />
+            {/* QR card on top */}
+            <div className="relative rounded-2xl overflow-hidden bg-white p-5 shadow-2xl ring-1 ring-black/5">
+              <img
+                src={qrImageUrl}
+                alt="QR code to request songs"
+                className="w-full h-auto block"
+                width={qrSize}
+                height={qrSize}
+                decoding="async"
+              />
+            </div>
           </div>
+
+          <p className="text-sm sm:text-base text-gray-600 dark:text-gray-300 text-center font-medium opacity-80">
+            Point your camera at the QR code to get started
+          </p>
         </div>
-      </div>
+
+        {/* Theme Toggle - Bottom Left, Non-Intrusive */}
+        <button
+          onClick={toggleTheme}
+          aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+          className="fixed bottom-5 left-5 z-50 p-2.5 rounded-full bg-white/20 dark:bg-black/20 backdrop-blur-md border border-white/30 dark:border-white/10 text-gray-700 dark:text-gray-300 hover:bg-white/40 dark:hover:bg-black/40 transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-105 active:scale-95"
+        >
+          {isDark ? (
+            <Sun className="w-5 h-5" />
+          ) : (
+            <Moon className="w-5 h-5" />
+          )}
+        </button>
+      </AuroraBackground>
     </>
   );
 }

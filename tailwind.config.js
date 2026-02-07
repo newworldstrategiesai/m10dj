@@ -106,7 +106,8 @@ module.exports = {
         'fade-in': 'fadeIn 0.4s ease-out',
         'fade-in-up': 'fadeInUp 0.6s ease-out',
         'slide-in': 'slideIn 0.4s ease-out',
-        'aurora': 'aurora 60s linear infinite'
+        'aurora': 'aurora 60s linear infinite',
+        'spin-slow': 'spin 4s linear infinite'
       },
       keyframes: {
         fadeIn: {
