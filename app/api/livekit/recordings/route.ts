@@ -116,8 +116,26 @@ export async function GET(request: NextRequest) {
       try {
         const listRoot = await storage.storage.from(bucketName).list('', { limit: 500 });
         const listPrefix = prefix && prefix !== '' ? await storage.storage.from(bucketName).list(prefix, { limit: 500 }) : { data: null };
-        const rootFiles = (listRoot.data ?? []).filter((f) => f.name && !(f as { metadata?: { mimetype?: string } }).metadata?.mimetype);
-        const prefixFiles = (listPrefix.data ?? []).filter((f) => f.name && !(f as { metadata?: { mimetype?: string } }).metadata?.mimetype);
+        // Bucket has folder "meet-recordings" inside; LiveKit may write to meet-recordings/ or meet-recordings/meet-recordings/
+        const nestedPrefix = prefix && prefix !== '' ? `${prefix}/${prefix}` : '';
+        const listNested =
+          nestedPrefix
+            ? await storage.storage.from(bucketName).list(nestedPrefix, { limit: 500 })
+            : { data: null };
+        if (listRoot.error) {
+          console.warn('[Recordings API] Storage list root failed:', listRoot.error.message);
+        }
+        if (listPrefix.data === null && 'error' in listPrefix && listPrefix.error) {
+          console.warn('[Recordings API] Storage list prefix failed:', listPrefix.error.message);
+        }
+        if (listNested.data === null && 'error' in listNested && listNested.error) {
+          console.warn('[Recordings API] Storage list nested failed:', listNested.error.message);
+        }
+        // Include all list entries; we filter by extension below. Do not filter by !metadata.mimetype
+        // (Supabase file objects often have metadata.mimetype; that filter was excluding real files).
+        const rootFiles = (listRoot.data ?? []).filter((f) => f.name);
+        const prefixFiles = (listPrefix.data ?? []).filter((f) => f.name);
+        const nestedFiles = (listNested.data ?? []).filter((f) => f.name);
         const allPaths: { path: string; updatedAt: string }[] = [];
         for (const f of rootFiles) {
           if (f.name && (f.name.endsWith('.mp4') || f.name.endsWith('.mp3') || f.name.endsWith('.m4a'))) {
@@ -129,9 +147,16 @@ export async function GET(request: NextRequest) {
         }
         for (const f of prefixFiles) {
           if (f.name && (f.name.endsWith('.mp4') || f.name.endsWith('.mp3') || f.name.endsWith('.m4a'))) {
-            const fullPath = `${prefix}/${f.name}`;
             allPaths.push({
-              path: fullPath,
+              path: `${prefix}/${f.name}`,
+              updatedAt: (f as { updated_at?: string }).updated_at ?? new Date().toISOString(),
+            });
+          }
+        }
+        for (const f of nestedFiles) {
+          if (f.name && (f.name.endsWith('.mp4') || f.name.endsWith('.mp3') || f.name.endsWith('.m4a'))) {
+            allPaths.push({
+              path: `${nestedPrefix}/${f.name}`,
               updatedAt: (f as { updated_at?: string }).updated_at ?? new Date().toISOString(),
             });
           }

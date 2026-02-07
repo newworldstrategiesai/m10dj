@@ -154,6 +154,38 @@ export default async function handler(req, res) {
         console.warn(`⚠️ Error creating invoice for request ${requestId}:`, invoiceError);
         // Non-critical - payment is still processed
       }
+
+      // Send admin SMS (and email) with song + payment info via Twilio – once per paid request
+      try {
+        const { data: claimRow } = await supabase
+          .from('crowd_requests')
+          .update({ admin_sms_sent_at: new Date().toISOString() })
+          .eq('id', requestId)
+          .is('admin_sms_sent_at', null)
+          .select('id')
+          .single();
+
+        if (claimRow) {
+          const { sendAdminNotification } = await import('../../../utils/admin-notifications');
+          const r = updatedRequest;
+          const requestDetail = r.request_type === 'song_request'
+            ? `${r.song_title || ''}${r.song_artist ? ` by ${r.song_artist}` : ''}`.trim() || 'Song request'
+            : `Shoutout for ${r.recipient_name || '—'}`;
+          const amountDollars = (r.amount_paid || 0) / 100;
+          sendAdminNotification('crowd_request_payment', {
+            requestId,
+            requestType: r.request_type === 'song_request' ? 'Song Request' : 'Shoutout',
+            requestDetail,
+            requesterName: r.requester_name || 'Guest',
+            amount: amountDollars,
+            eventCode: r.event_qr_code || '—',
+            paymentIntentId: r.payment_intent_id || paymentIntent?.id,
+          }).catch((err) => console.warn('Admin SMS/email for song request failed:', err));
+        }
+      } catch (smsErr) {
+        console.warn('⚠️ Error sending admin SMS for song request:', smsErr);
+        // Non-critical – payment and invoice are already done
+      }
     }
 
     return res.status(200).json({

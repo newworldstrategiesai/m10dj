@@ -755,29 +755,40 @@ export default async function handler(req, res) {
           } else {
             console.log('✅ Crowd request payment processed:', requestIdFromIntent);
             
-            // Notify admin about crowd request payment (non-blocking)
+            // Notify admin via SMS (Twilio) + email – once per paid request (dedupe with process-payment-success)
             (async () => {
               try {
+                const { data: claimRow } = await supabaseForPaymentIntent
+                  .from('crowd_requests')
+                  .update({ admin_sms_sent_at: new Date().toISOString() })
+                  .eq('id', requestIdFromIntent)
+                  .is('admin_sms_sent_at', null)
+                  .select('id')
+                  .single();
+
+                if (!claimRow) return;
+
                 const { sendAdminNotification } = await import('../../../utils/admin-notifications');
                 const { data: requestData } = await supabaseForPaymentIntent
                   .from('crowd_requests')
                   .select('*')
                   .eq('id', requestIdFromIntent)
                   .single();
-                
+
                 if (requestData) {
                   const requestTypeLabel = requestData.request_type === 'song_request' ? 'Song Request' : 'Shoutout';
                   const requestDetail = requestData.request_type === 'song_request'
-                    ? `${requestData.song_title}${requestData.song_artist ? ` by ${requestData.song_artist}` : ''}`
-                    : `For ${requestData.recipient_name}`;
-                  
+                    ? `${requestData.song_title || ''}${requestData.song_artist ? ` by ${requestData.song_artist}` : ''}`.trim() || 'Song request'
+                    : `Shoutout for ${requestData.recipient_name || '—'}`;
+
                   sendAdminNotification('crowd_request_payment', {
                     requestId: requestIdFromIntent,
                     requestType: requestTypeLabel,
-                    requestDetail: requestDetail,
-                    requesterName: requestData.requester_name,
+                    requestDetail,
+                    requesterName: requestData.requester_name || 'Guest',
                     amount: paymentAmount,
-                    eventCode: requestData.event_qr_code
+                    eventCode: requestData.event_qr_code || '—',
+                    paymentIntentId: paymentIntent.id,
                   }).catch(err => console.error('Failed to notify admin:', err));
                 }
               } catch (err) {

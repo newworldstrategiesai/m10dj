@@ -78,7 +78,11 @@ async function sendAdminSMSNotification(eventType, data) {
     case 'questionnaire_submission_failed':
       message = `🚨 QUESTIONNAIRE SUBMISSION FAILED\n\n${data.leadName || 'Client'} tried to submit but it failed\nError: ${data.error || 'Unknown error'}\nError Type: ${data.errorType || 'Unknown'}\nLead ID: ${data.leadId}\n⚠️ ACTION REQUIRED: Check submission log and recover data`;
       break;
-    
+
+    case 'crowd_request_payment':
+      message = `🎵 SONG REQUEST PAID\n\n${data.requestDetail || 'Request'}\nFrom: ${data.requesterName || 'Guest'}\nAmount: $${typeof data.amount === 'number' ? data.amount.toFixed(2) : data.amount || '0'}\nEvent: ${data.eventCode || '—'}\n${data.paymentIntentId ? `Stripe: ${data.paymentIntentId}` : ''}`.trim();
+      break;
+
     default:
       return;
   }
@@ -293,7 +297,31 @@ async function sendAdminEmailNotification(eventType, data) {
         </div>
       `;
       break;
-    
+
+    case 'crowd_request_payment':
+      subject = `🎵 Song Request Paid: ${data.requestDetail || 'Request'} – $${typeof data.amount === 'number' ? data.amount.toFixed(2) : data.amount || '0'}`;
+      htmlContent = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <div style="background: linear-gradient(135deg, #10b981, #059669); padding: 30px; text-align: center; border-radius: 8px 8px 0 0;">
+            <h1 style="color: #fff; margin: 0;">🎵 Song Request Paid</h1>
+          </div>
+          <div style="background: #ffffff; padding: 30px; border-radius: 0 0 8px 8px;">
+            <p><strong>Request:</strong> ${data.requestDetail || 'N/A'}</p>
+            <p><strong>From:</strong> ${data.requesterName || 'Guest'}</p>
+            <p><strong>Amount:</strong> $${typeof data.amount === 'number' ? data.amount.toFixed(2) : data.amount || '0'}</p>
+            <p><strong>Event:</strong> ${data.eventCode || '—'}</p>
+            ${data.paymentIntentId ? `<p><strong>Stripe:</strong> ${data.paymentIntentId}</p>` : ''}
+            <div style="margin-top: 20px; text-align: center;">
+              <a href="${process.env.NEXT_PUBLIC_SITE_URL || 'https://m10djcompany.com'}/admin/requests" 
+                 style="background: #10b981; color: #fff; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">
+                View Requests
+              </a>
+            </div>
+          </div>
+        </div>
+      `;
+      break;
+
     default:
       return;
   }
