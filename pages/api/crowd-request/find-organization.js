@@ -22,7 +22,7 @@ export default async function handler(req, res) {
     // Try to find an existing request with the same event code to get its organization
     const { data: existingRequest, error } = await supabase
       .from('crowd_requests')
-      .select('organization_id')
+      .select('organization_id, organizations(slug)')
       .eq('event_qr_code', eventCode)
       .not('organization_id', 'is', null)
       .limit(1)
@@ -33,8 +33,10 @@ export default async function handler(req, res) {
     }
 
     if (existingRequest?.organization_id) {
+      const orgSlug = existingRequest.organizations?.slug ?? null;
       return res.status(200).json({
         organizationId: existingRequest.organization_id,
+        organizationSlug: orgSlug,
         source: 'existing_request'
       });
     }

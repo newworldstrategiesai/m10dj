@@ -247,6 +247,7 @@ export default function AdminNavbar() {
           label: 'Song Requests',
           items: [
             { label: 'Crowd Requests', href: '/admin/crowd-requests', icon: <QrCode className="w-4 h-4" />, description: 'Manage requests' },
+            { label: 'QR Display', href: '/admin/display-qr', icon: <QrCode className="w-4 h-4" />, description: 'Full-screen QR for iPad' },
             { label: 'Request Page', href: '/admin/requests-page', icon: <Music className="w-4 h-4" />, description: 'Customize page' },
           ]
         },

@@ -45,7 +45,8 @@ import {
   Minimize2,
   Maximize2,
   Globe,
-  Activity
+  Activity,
+  Monitor
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -3521,6 +3522,22 @@ export default function CrowdRequestsPage() {
           </div>
           <div className="flex gap-2 flex-shrink-0 flex-wrap sm:flex-nowrap">
             <Button
+              onClick={() => {
+                const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || (typeof window !== 'undefined' ? window.location.origin : '');
+                const slug = organization?.slug;
+                if (slug && baseUrl) {
+                  window.open(`${baseUrl}/${slug}/qr`, '_blank', 'noopener,noreferrer');
+                }
+              }}
+              variant="outline"
+              className="inline-flex items-center gap-2 whitespace-nowrap"
+              disabled={!organization?.slug}
+            >
+              <Monitor className="w-4 h-4 sm:w-5 sm:h-5" />
+              <span className="hidden sm:inline">QR Display</span>
+              <span className="sm:hidden">Display</span>
+            </Button>
+            <Button
               onClick={() => router.push('/admin/qr-scans')}
               variant="outline"
               className="inline-flex items-center gap-2 whitespace-nowrap"
@@ -3790,6 +3807,22 @@ export default function CrowdRequestsPage() {
                         <Printer className="w-4 h-4" />
                         Print PDF
                       </Button>
+                      
+                      <Button
+                        onClick={() => {
+                          const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin;
+                          const slug = organization?.slug;
+                          if (!slug) return;
+                          const qrUrl = `${baseUrl}/${slug}/qr?event=${encodeURIComponent(qrEventCode)}`;
+                          window.open(qrUrl, '_blank', 'noopener,noreferrer');
+                        }}
+                        variant="outline"
+                        className="inline-flex items-center gap-2"
+                        disabled={!organization?.slug}
+                      >
+                        <Monitor className="w-4 h-4" />
+                        Display on iPad
+                      </Button>
                     </>
                   )}
                 </div>
@@ -3876,6 +3909,21 @@ export default function CrowdRequestsPage() {
                       >
                         <Printer className="w-4 h-4" />
                         Print PDF
+                      </Button>
+                      
+                      <Button
+                        onClick={() => {
+                          const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin;
+                          const slug = organization?.slug;
+                          if (!slug) return;
+                          window.open(`${baseUrl}/${slug}/qr`, '_blank', 'noopener,noreferrer');
+                        }}
+                        variant="outline"
+                        className="inline-flex items-center gap-2"
+                        disabled={!organization?.slug}
+                      >
+                        <Monitor className="w-4 h-4" />
+                        Display on iPad
                       </Button>
                     </>
                   )}

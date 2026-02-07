@@ -307,6 +307,9 @@ export async function middleware(request: NextRequest) {
               } else if (rest[0] === 'sing') {
                 // Performer karaoke page: /[venue-slug]/[performer-slug]/sing
                 rewritePath = `/organizations/${performerOrg.slug}/sing`;
+              } else if (rest[0] === 'qr') {
+                // Performer QR display: /[venue-slug]/[performer-slug]/qr
+                rewritePath = `/organizations/${performerOrg.slug}/qr`;
               } else {
                 // Other performer pages
                 rewritePath = `/tipjar/${venueSlug}/${performerSlug}/${rest.join('/')}`;
@@ -383,6 +386,9 @@ export async function middleware(request: NextRequest) {
         } else if (subPath === 'sing') {
           // Handle /[slug]/sing -> route to karaoke signup page
           rewritePath = `/organizations/${slug}/sing`;
+        } else if (subPath === 'qr') {
+          // Handle /[slug]/qr -> QR display page for iPad/crowd viewing
+          rewritePath = `/organizations/${slug}/qr`;
         } else {
           // Route to artist page (e.g., /m10djcompany -> /tipjar/m10djcompany)
           rewritePath = `/tipjar/${slug}`;
@@ -506,6 +512,21 @@ export async function middleware(request: NextRequest) {
   // If this is the main domain, let Pages Router handle it (pages/index.js)
   // Make sure we're not matching tipjar or djdash domains
   if (isMainDomain && !isTipJarDomain && !isDJDashDomain) {
+    // QR display: /[slug]/qr -> /organizations/[slug]/qr (m10djcompany.com/username/qr)
+    const mainSlugQrMatch = url.pathname.match(/^\/([^/]+)\/qr\/?$/);
+    if (mainSlugQrMatch) {
+      const slug = mainSlugQrMatch[1];
+      url.pathname = `/organizations/${slug}/qr`;
+      const response = await updateSession(request);
+      const rewriteResponse = NextResponse.rewrite(url);
+      rewriteResponse.headers.set('x-pathname', request.nextUrl.pathname);
+      response.headers.forEach((value, key) => {
+        if (key.startsWith('x-') || key === 'set-cookie') {
+          rewriteResponse.headers.set(key, value);
+        }
+      });
+      return rewriteResponse;
+    }
     // Go-live: redirect to tipjar.live (TipJar-only)
     if (url.pathname.startsWith('/dashboard/go-live')) {
       const tipjarUrl = new URL('https://tipjar.live/dashboard/go-live');

@@ -10,6 +10,7 @@ import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { 
   Music, 
   QrCode,
+  Monitor,
   TrendingUp,
   Settings,
   ExternalLink,
@@ -272,6 +273,22 @@ export default function StarterDashboard() {
               </div>
               <p className="text-sm text-gray-600 dark:text-gray-400">
                 See how your request page looks to visitors
+              </p>
+            </div>
+          </a>
+
+          <a
+            href={`${requestPageUrl.split('/organizations')[0]}/${organization.slug}/qr`}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 hover:shadow-md transition-shadow">
+              <div className="flex items-center gap-3 mb-2">
+                <Monitor className="h-6 w-6 text-purple-600" />
+                <h3 className="font-semibold text-gray-900 dark:text-white">QR Display</h3>
+              </div>
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                Open full-screen QR for iPad or display at your events
               </p>
             </div>
           </a>
