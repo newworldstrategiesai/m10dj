@@ -69,6 +69,7 @@ export default function Header({
   isOwner = false, 
   organizationSlug = null, 
   organizationId = null, 
+  isKioskPage = false,
   hideM10Logo = false,
   m10LogoHeightMobile = 54,
   m10LogoHeightDesktop = 68,
@@ -1108,8 +1109,8 @@ export default function Header({
               </div>
             )}
 
-            {/* CTA Button - Show on M10 domain only */}
-            {!shouldHideM10Navigation && (
+            {/* CTA Button - Show on M10 domain only, never on kiosk */}
+            {!isKioskPage && !shouldHideM10Navigation && (
               <div className="hidden lg:flex items-center relative z-50">
                 <button 
                   onClick={(e) => {
@@ -1128,8 +1129,8 @@ export default function Header({
               </div>
             )}
 
-            {/* Mobile Menu Button - Show on M10 domain OR if owner on requests page */}
-            {(!shouldHideM10Navigation || (isRequestsPage && isOwner) || (isQuotePage && quoteId && isValidQuote)) && (
+            {/* Mobile Menu Button - Show on M10 domain OR if owner on requests page; on kiosk only when owner (admin) */}
+            {(!shouldHideM10Navigation || (isRequestsPage && isOwner) || (isQuotePage && quoteId && isValidQuote)) && (!isKioskPage || isOwner) && (
               <button
                 onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
                 className={`lg:hidden p-2 transition-colors rounded-lg ${
@@ -1566,6 +1567,7 @@ export default function Header({
                   Requests
                 </Link>
 
+                {!isKioskPage && (
                 <button 
                   onClick={(e) => {
                     e.preventDefault();
@@ -1580,6 +1582,7 @@ export default function Header({
                 >
                   Get Your Free Quote
                 </button>
+                )}
               </div>
             </div>
           </div>

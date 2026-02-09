@@ -113,10 +113,12 @@ export default function App({ Component, pageProps }) {
   const isAdminRoute = router.pathname.startsWith('/admin') || router.pathname.startsWith('/chat');
   const isSignInPage = router.pathname.startsWith('/signin');
   const isSignContractPage = router.pathname.startsWith('/sign-contract');
-  // Check for requests pages - includes both /requests and /organizations/[slug]/requests
+  // Check for requests pages - includes /requests, /[slug]/requests, kiosk, and pay-on-phone
   const isRequestsPage = router.pathname === '/requests' ||
     router.pathname.startsWith('/crowd-request') ||
-    (router.pathname.includes('/organizations/') && router.pathname.includes('/requests'));
+    (router.pathname.includes('/organizations/') && router.pathname.includes('/requests')) ||
+    router.pathname === '/[slug]/requests' ||
+    router.pathname.startsWith('/[slug]/requests/');
   const isBidPage = router.pathname === '/bid';
   // Check if we're on karaoke admin pages (uses its own header, don't show AdminNavbar)
   const isKaraokeAdminPage = router.pathname.startsWith('/admin/karaoke');

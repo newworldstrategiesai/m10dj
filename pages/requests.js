@@ -262,7 +262,8 @@ export function GeneralRequestsPage({
   forceBiddingMode = false, // Force bidding mode regardless of organization setting
   allowedRequestTypes = null, // Array of allowed request types (e.g., ['song_request']). If null, all types allowed.
   minimalHeader = false, // Use minimal header (for bid page)
-  meetPanel = false // When true, render inside meet sidebar: no Head, single scrollable wrapper
+  meetPanel = false, // When true, render inside meet sidebar: no Head, single scrollable wrapper
+  kiosk = false // When true, after submit show QR to pay on phone instead of payment methods
 } = {}) {
   
   // State for tab visibility settings
@@ -909,6 +910,65 @@ export function GeneralRequestsPage({
 
   // Track QR code scan for public requests page
   useQRScanTracking('public', organizationId);
+
+  // Kiosk: poll payment status so iPad shows success when user pays on phone
+  useEffect(() => {
+    if (!kiosk || !showPaymentMethods || !requestId || success) return;
+    let cancelled = false;
+    const poll = async () => {
+      if (cancelled) return;
+      try {
+        const res = await fetch(`/api/crowd-request/payment-status?requestId=${encodeURIComponent(requestId)}`);
+        if (!res.ok) return;
+        const data = await res.json();
+        if (cancelled) return;
+        if (data.paid === true) {
+          setSuccess(true);
+        }
+      } catch {
+        // ignore
+      }
+    };
+    poll();
+    const interval = setInterval(poll, 2500);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [kiosk, showPaymentMethods, requestId, success]);
+
+  // Kiosk: after success shows for 10 seconds, reset to form for next user
+  useEffect(() => {
+    if (!kiosk || !success) return;
+    const timer = setTimeout(() => {
+      setSuccess(false);
+      setShowPaymentMethods(false);
+      setRequestId(null);
+      setPaymentCode(null);
+      setSelectedPaymentMethod(null);
+      setAdditionalRequestIds([]);
+      setFormData({
+        songArtist: '',
+        songTitle: '',
+        recipientName: '',
+        recipientMessage: '',
+        requesterName: '',
+        requesterEmail: '',
+        requesterPhone: '',
+        message: ''
+      });
+      setError('');
+      setAdditionalSongs([]);
+      setBundleSongs([]);
+      setBundleSize(1);
+      setCurrentStep(1);
+      setSongInput('');
+      setSongUrl('');
+      setExtractedSongUrl('');
+      setAlbumArtUrl(null);
+    }, 10000);
+    return () => clearTimeout(timer);
+  }, [kiosk, success]);
 
   // Load saved requester info from localStorage on mount
   useEffect(() => {
@@ -3022,7 +3082,7 @@ export function GeneralRequestsPage({
       />
 
       <div 
-        className={`requests-page-container min-h-screen relative overflow-x-hidden md:flex ${
+        className={`requests-page-container min-h-screen relative overflow-x-hidden md:flex ${kiosk ? 'kiosk-mode ' : ''}${
           effectiveThemeMode === 'dark' 
             ? 'bg-gradient-to-br from-black via-black to-black force-dark'
             : effectiveThemeMode === 'light'
@@ -3043,6 +3103,13 @@ export function GeneralRequestsPage({
           } : {})
         }}
       >
+        {kiosk && (
+          <style jsx global>{`
+            .requests-page-container.kiosk-mode button[type="submit"],
+            .requests-page-container.kiosk-mode .btn-primary { min-height: 3rem; padding: 0.75rem 1.5rem; font-size: 1rem; }
+            .requests-page-container.kiosk-mode .desktop-content-wrapper { max-width: 42rem; }
+          `}</style>
+        )}
         {/* Desktop Video Sidebar - Fixed position, stays stationary while content scrolls */}
         {/* Shows video only if no custom cover photo is set, otherwise shows the cover photo */}
         {!embedMode && !showPaymentMethods && !meetPanel && (
@@ -3489,6 +3556,7 @@ export function GeneralRequestsPage({
                   isOwner={isOwner} 
                   organizationSlug={organizationData?.slug} 
                   organizationId={organizationId}
+                  isKioskPage={kiosk}
                   hideM10Logo={organizationData?.requests_hide_m10_logo === true}
                   m10LogoHeightMobile={organizationData?.requests_m10_logo_height_mobile || 54}
                   m10LogoHeightDesktop={organizationData?.requests_m10_logo_height_desktop || 68}
@@ -5179,6 +5247,50 @@ export function GeneralRequestsPage({
                 amount={getPaymentAmount()} 
                 additionalRequestIds={additionalRequestIds}
               />
+            ) : showPaymentMethods && kiosk ? (
+              (() => {
+                const slug = organizationData?.slug || '';
+                const payUrl = typeof window !== 'undefined' && slug && paymentCode
+                  ? `${window.location.origin}/${slug}/requests/pay?code=${encodeURIComponent(paymentCode)}`
+                  : '';
+                const qrImageUrl = payUrl
+                  ? `https://api.qrserver.com/v1/create-qr-code/?size=320x320&data=${encodeURIComponent(payUrl)}`
+                  : '';
+                return (
+                  <div className="rounded-xl border bg-card p-6 shadow-sm text-center space-y-6">
+                    <h2 className="text-xl font-semibold text-foreground">Scan to complete payment on your phone</h2>
+                    <p className="text-muted-foreground text-sm">
+                      Amount: ${((getPaymentAmount() || 0) / 100).toFixed(2)}
+                    </p>
+                    {requestType === 'song_request' && (formData.songTitle || formData.songArtist) && (
+                      <p className="text-muted-foreground text-sm">
+                        {[formData.songTitle, formData.songArtist].filter(Boolean).join(' — ')}
+                      </p>
+                    )}
+                    {qrImageUrl ? (
+                      <div className="inline-block p-4 bg-white dark:bg-muted rounded-lg">
+                        <img src={qrImageUrl} alt="QR code to pay on your phone" width={320} height={320} className="rounded" />
+                      </div>
+                    ) : (
+                      <div className="inline-flex h-[320px] w-[320px] items-center justify-center rounded-lg bg-muted text-muted-foreground">Loading QR…</div>
+                    )}
+                    <p className="text-muted-foreground text-sm">
+                      Open your camera or a QR app and scan the code to pay on your phone.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowPaymentMethods(false);
+                        setSelectedPaymentMethod(null);
+                        setError('');
+                      }}
+                      className="text-sm text-primary hover:underline"
+                    >
+                      Start over
+                    </button>
+                  </div>
+                );
+              })()
             ) : showPaymentMethods ? (
               <PaymentMethodSelection
                 requestId={requestId}
