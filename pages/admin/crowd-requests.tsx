@@ -68,6 +68,8 @@ import { getCurrentOrganization } from '@/utils/organization-context';
 import SongRecognition from '@/components/audio/SongRecognition';
 import MusicServiceLinks from '@/components/admin/MusicServiceLinks';
 import { DecoratedQRCode } from '@/components/ui/DecoratedQRCode';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 
 interface CrowdRequest {
   id: string;
@@ -260,6 +262,13 @@ export default function CrowdRequestsPage() {
   const [showArtistNameInput, setShowArtistNameInput] = useState(false);
   const [pdfType, setPdfType] = useState<'full-page' | 'table-tent'>('full-page');
   const [generatingPDF, setGeneratingPDF] = useState(false);
+
+  // QR Display page look (/{slug}/qr)
+  const [qrDisplaySettings, setQrDisplaySettings] = useState({
+    background: 'aurora' as 'aurora' | 'plain',
+    haloEnabled: true,
+    themeToggleEnabled: true,
+  });
   
   // Settings State
   const [paymentSettings, setPaymentSettings] = useState({
@@ -675,6 +684,11 @@ export default function CrowdRequestsPage() {
         updateData.requests_bidding_enabled = biddingSettings.enabled;
         updateData.requests_bidding_minimum_bid = biddingSettings.minimumBid;
         updateData.requests_bidding_starting_bid = biddingSettings.startingBid;
+
+        // QR display page look (/{slug}/qr)
+        updateData.qr_display_background = qrDisplaySettings.background;
+        updateData.qr_display_halo_enabled = qrDisplaySettings.haloEnabled;
+        updateData.qr_display_theme_toggle_enabled = qrDisplaySettings.themeToggleEnabled;
 
         const { data: updatedOrg, error: orgError } = await supabase
           .from('organizations')
@@ -1133,6 +1147,12 @@ export default function CrowdRequestsPage() {
         showFastTrack: orgWithRequests.requests_show_fast_track !== false,
         showNextSong: orgWithRequests.requests_show_next_song !== false,
         showBundleDiscount: orgWithRequests.requests_show_bundle_discount !== false
+      });
+
+      setQrDisplaySettings({
+        background: (orgWithRequests.qr_display_background === 'plain' ? 'plain' : 'aurora') as 'aurora' | 'plain',
+        haloEnabled: orgWithRequests.qr_display_halo_enabled !== false,
+        themeToggleEnabled: orgWithRequests.qr_display_theme_toggle_enabled !== false,
       });
 
       // Filter by organization_id OR null (to catch orphaned requests that need assignment)
@@ -3862,6 +3882,69 @@ export default function CrowdRequestsPage() {
                     This QR code will link to the public requests page at <code className="bg-white dark:bg-gray-800 px-2 py-1 rounded">/requests</code>. 
                     Anyone can use this page to submit song requests or shoutouts.
                   </p>
+                </div>
+
+                {/* QR display page look - applies to /{slug}/qr (Display on iPad) */}
+                <div className="bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 mb-4">
+                  <p className="text-sm font-semibold text-gray-900 dark:text-white mb-3">
+                    QR display page look
+                  </p>
+                  <p className="text-xs text-gray-600 dark:text-gray-400 mb-3">
+                    Customize how the full-screen QR page looks when you open it with &quot;Display on iPad&quot; ({organization?.slug ? `/${organization.slug}/qr` : '/your-slug/qr'}).
+                  </p>
+                  <div className="space-y-3">
+                    <div>
+                      <Label className="text-xs font-medium text-gray-700 dark:text-gray-300">Background</Label>
+                      <div className="flex gap-2 mt-1">
+                        <button
+                          type="button"
+                          onClick={() => setQrDisplaySettings((s) => ({ ...s, background: 'aurora' }))}
+                          className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                            qrDisplaySettings.background === 'aurora'
+                              ? 'bg-purple-600 text-white'
+                              : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
+                          }`}
+                        >
+                          Aurora
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setQrDisplaySettings((s) => ({ ...s, background: 'plain' }))}
+                          className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                            qrDisplaySettings.background === 'plain'
+                              ? 'bg-purple-600 text-white'
+                              : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
+                          }`}
+                        >
+                          Plain
+                        </button>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="qr-halo" className="text-xs font-medium text-gray-700 dark:text-gray-300">
+                        Glowing halo around QR code
+                      </Label>
+                      <Switch
+                        id="qr-halo"
+                        checked={qrDisplaySettings.haloEnabled}
+                        onCheckedChange={(checked) =>
+                          setQrDisplaySettings((s) => ({ ...s, haloEnabled: checked }))
+                        }
+                      />
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="qr-theme-toggle" className="text-xs font-medium text-gray-700 dark:text-gray-300">
+                        Light/dark mode toggle (bottom left)
+                      </Label>
+                      <Switch
+                        id="qr-theme-toggle"
+                        checked={qrDisplaySettings.themeToggleEnabled}
+                        onCheckedChange={(checked) =>
+                          setQrDisplaySettings((s) => ({ ...s, themeToggleEnabled: checked }))
+                        }
+                      />
+                    </div>
+                  </div>
                 </div>
 
                 <div className="flex gap-3 mb-4">
