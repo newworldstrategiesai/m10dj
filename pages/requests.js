@@ -4723,19 +4723,6 @@ export function GeneralRequestsPage({
                     
                     // Only handle if not already submitting and this is an Enter key press
                     if (!submitting) {
-                      // For step 1, navigate to payment step
-                      if (currentStep === 1) {
-                        setError('');
-                        setCurrentStep(2);
-                        setTimeout(() => {
-                          const paymentElement = document.querySelector('[data-payment-section]');
-                          if (paymentElement) {
-                            paymentElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                          }
-                        }, 100);
-                        return;
-                      }
-                      // For step 2, call handleSubmit (only for Enter key)
                       handleSubmit(e);
                     }
                   }} noValidate className="flex-1 flex flex-col space-y-3 sm:space-y-4 overflow-y-auto">
@@ -5399,19 +5386,6 @@ export function GeneralRequestsPage({
                 
                 // Only handle if not already submitting and this is an Enter key press
                 if (!submitting) {
-                  // For step 1, navigate to payment step
-                  if (currentStep === 1) {
-                    setError('');
-                    setCurrentStep(2);
-                    setTimeout(() => {
-                      const paymentElement = document.querySelector('[data-payment-section]');
-                      if (paymentElement) {
-                        paymentElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                      }
-                    }, 100);
-                    return;
-                  }
-                  // For step 2, call handleSubmit (only for Enter key)
                   handleSubmit(e);
                 }
               }} className="flex-1 flex flex-col space-y-2 sm:space-y-3 overflow-y-auto" style={{ minHeight: 0, maxHeight: '100%' }}>
@@ -6103,7 +6077,7 @@ export function GeneralRequestsPage({
                         currentStep,
                         submitting,
                         requestType,
-                        buttonType: currentStep === 1 ? 'button' : 'submit'
+                        buttonType: 'submit'
                       });
                       
                       // Prevent double-submission - check BEFORE any async operations
@@ -6114,27 +6088,9 @@ export function GeneralRequestsPage({
                       }
                       
                       try {
-                        if (currentStep === 1) {
-                          console.log('[Submit Button] Step 1: Navigating to payment step');
-                          logger.info('[Submit Button] Step 1: Navigating to payment step');
-                          // Clear any previous errors and go to payment step
-                          setError('');
-                          setCurrentStep(2);
-                          // Scroll to payment section
-                          setTimeout(() => {
-                            const paymentElement = document.querySelector('[data-payment-section]');
-                            if (paymentElement) {
-                              paymentElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                            }
-                          }, 100);
-                          return;
-                        }
-                        
-                        // For step 2, explicitly call handleSubmit
-                        console.log('[Submit Button] Step 2: Calling handleSubmit');
-                        logger.info('[Submit Button] Step 2: Calling handleSubmit');
-                        
-                        // Call handleSubmit - it will set submitting state synchronously at the start
+                        // Single click: submit and show payment methods when required fields are valid (no step 1 → step 2)
+                        console.log('[Submit Button] Calling handleSubmit');
+                        logger.info('[Submit Button] Calling handleSubmit');
                         await handleSubmit(e);
                       } catch (error) {
                         console.error('[Submit Button] onClick error:', error);
@@ -6150,24 +6106,17 @@ export function GeneralRequestsPage({
                         <Loader2 className="w-6 h-6 animate-spin relative z-10" />
                         <span className="relative z-10">Processing...</span>
                       </>
-                    ) : currentStep === 1 ? (
+                    ) : (
                       <>
-                        <Music className="w-6 h-6 relative z-10" />
-                        <span className="whitespace-nowrap relative z-10">Continue to Payment</span>
+                        <Music className="w-5 h-5 sm:w-6 sm:h-6 relative z-10" />
+                        <span className="whitespace-nowrap relative z-10">{organizationData?.requests_submit_button_text || 'Submit Request'}</span>
                       </>
-                          ) : (
-                            <>
-                              <Music className="w-5 h-5 sm:w-6 sm:h-6 relative z-10" />
-                              <span className="whitespace-nowrap relative z-10">{organizationData?.requests_submit_button_text || 'Submit Request'}</span>
-                            </>
-                          )}
+                    )}
                         </button>
 
-                        {currentStep >= 2 && (
-                          <p className="text-[10px] sm:text-xs text-center text-gray-500 dark:text-gray-400 mt-1 sm:mt-2">
-                            You&apos;ll choose your payment method after submitting.
-                          </p>
-                        )}
+                        <p className="text-[10px] sm:text-xs text-center text-gray-500 dark:text-gray-400 mt-1 sm:mt-2">
+                          You&apos;ll choose your payment method after submitting.
+                        </p>
                       </div>
                       )}
               </form>

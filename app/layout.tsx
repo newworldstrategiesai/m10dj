@@ -112,6 +112,8 @@ export default async function RootLayout({ children }: PropsWithChildren) {
   const isLivePage = pathname.startsWith('/live/');
   const isMeetPage = pathname.startsWith('/meet/');
   const isDialerPage = pathname.startsWith('/dialer');
+  // QR display page (e.g. tipjar.live/m10djcompany/qr) – full-screen, no header
+  const isQRDisplayPage = pathname.endsWith('/qr');
   
   // Hide M10 navbar/footer on marketing sites (tipjar, djdash)
   // These sites have their own headers/footers
@@ -119,8 +121,8 @@ export default async function RootLayout({ children }: PropsWithChildren) {
   const isMarketingSite = product === 'tipjar' || product === 'djdash' || 
                           pathname.startsWith('/tipjar') || pathname.startsWith('/djdash');
   
-  const hideNavbar = isSignInPage || isChatPage || isMarketingSite || isLivePage || isMeetPage || isDialerPage;
-  const hideFooter = isSignInPage || isChatPage || isMarketingSite || isLivePage || isMeetPage || isDialerPage;
+  const hideNavbar = isSignInPage || isChatPage || isMarketingSite || isLivePage || isMeetPage || isDialerPage || isQRDisplayPage;
+  const hideFooter = isSignInPage || isChatPage || isMarketingSite || isLivePage || isMeetPage || isDialerPage || isQRDisplayPage;
   
   // Homepage uses generateStructuredData which includes LocalBusiness schema
   // Only show layout schema on non-homepage pages to avoid duplication

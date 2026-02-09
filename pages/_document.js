@@ -65,13 +65,14 @@ export default function Document() {
         <script
           dangerouslySetInnerHTML={{
             __html: `
-              /* Remove body padding-top on requests pages - runs immediately on page load before CSS applies */
+              /* Remove body padding-top on requests and QR display pages - runs immediately on page load before CSS applies */
               (function() {
                 try {
                   var path = window.location.pathname;
                   var isRequestsPage = path === '/requests' || 
                                        (path && path.includes && path.includes('/organizations/') && path.includes('/requests'));
-                  if (isRequestsPage && document.body) {
+                  var isQRPage = path && path.endsWith('/qr');
+                  if ((isRequestsPage || isQRPage) && document.body) {
                     document.body.style.setProperty('padding-top', '0', 'important');
                     document.body.setAttribute('data-no-header-padding', 'true');
                   }
