@@ -31,6 +31,8 @@ export default async function handler(req, res) {
       requests_header_artist_name, 
       requests_header_location,
       requests_header_logo_url,
+      requests_cover_photo_url,
+      requests_profile_photo_url,
       requests_accent_color,
       requests_bidding_minimum_bid,
       requests_minimum_amount,
@@ -90,6 +92,12 @@ export default async function handler(req, res) {
     }
     if (requests_header_logo_url !== undefined) {
       updateData.requests_header_logo_url = requests_header_logo_url;
+    }
+    if (requests_cover_photo_url !== undefined) {
+      updateData.requests_cover_photo_url = requests_cover_photo_url;
+    }
+    if (requests_profile_photo_url !== undefined) {
+      updateData.requests_profile_photo_url = requests_profile_photo_url;
     }
     if (requests_accent_color !== undefined) {
       updateData.requests_accent_color = requests_accent_color;

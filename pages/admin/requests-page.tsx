@@ -180,6 +180,7 @@ export default function RequestsPageSettings() {
     requests_cover_photo_url: '',
     requests_artist_photo_url: '',
     requests_venue_photo_url: '',
+    requests_profile_photo_url: '',
     requests_header_video_url: ''
   });
   
@@ -556,6 +557,7 @@ export default function RequestsPageSettings() {
           requests_cover_photo_url: org.requests_cover_photo_url || '',
           requests_artist_photo_url: org.requests_artist_photo_url || '',
           requests_venue_photo_url: org.requests_venue_photo_url || '',
+          requests_profile_photo_url: org.requests_profile_photo_url || '',
           requests_header_video_url: org.requests_header_video_url || ''
         });
         
@@ -1184,6 +1186,7 @@ export default function RequestsPageSettings() {
         requests_cover_photo_url: coverPhotos.requests_cover_photo_url || null,
         requests_artist_photo_url: coverPhotos.requests_artist_photo_url || null,
         requests_venue_photo_url: coverPhotos.requests_venue_photo_url || null,
+        requests_profile_photo_url: coverPhotos.requests_profile_photo_url || null,
         requests_header_video_url: coverPhotos.requests_header_video_url || null,
         // Show artist name over video setting
         requests_show_artist_name_over_video: showArtistNameOverVideo,
@@ -2513,6 +2516,18 @@ export default function RequestsPageSettings() {
                       recommendedDimensions="1200x600px"
                       aspectRatio="2:1"
                       previewClassName="w-full h-48 object-cover"
+                      showPreview={true}
+                      required={false}
+                    />
+
+                    {/* Profile Photo - circle overlapping cover on public page (TipJar layout) */}
+                    <ImageUploadInput
+                      label="Profile Photo (Optional)"
+                      value={coverPhotos.requests_profile_photo_url}
+                      onChange={(url) => handleImageUrlChange('requests_profile_photo_url', url)}
+                      recommendedDimensions="400×400px (square)"
+                      aspectRatio="1:1"
+                      previewClassName="w-24 h-24 rounded-full object-cover"
                       showPreview={true}
                       required={false}
                     />

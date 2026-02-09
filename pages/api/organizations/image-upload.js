@@ -32,13 +32,16 @@ export default async function handler(req, res) {
       return res.status(404).json({ error: 'Organization not found' });
     }
 
-    const { fileData, fileName, fileType, storagePath = 'organization-assets' } = req.body;
+    const { fileData, fileName, fileType, storagePath = 'organization-assets', subfolder } = req.body;
 
     if (!fileData || !fileName) {
       return res.status(400).json({ 
         error: 'Missing required fields: fileData, fileName' 
       });
     }
+
+    // Optional subfolder within organization images (e.g. 'cover', 'profile') for organization
+    const safeSubfolder = subfolder && /^[a-z0-9_-]+$/.test(subfolder) ? subfolder : '';
 
     // Validate file format (should be base64 encoded)
     if (!fileData.startsWith('data:image/')) {
@@ -61,10 +64,13 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'File size exceeds 5MB limit' });
     }
 
-    // Upload to Supabase Storage
+    // Upload to Supabase Storage (organization-assets bucket)
     const timestamp = Date.now();
     const sanitizedFileName = fileName.replace(/[^a-zA-Z0-9.-]/g, '_');
-    const storageFilePath = `organizations/${organization.id}/images/${timestamp}-${sanitizedFileName}`;
+    const imagesPath = safeSubfolder
+      ? `organizations/${organization.id}/images/${safeSubfolder}/${timestamp}-${sanitizedFileName}`
+      : `organizations/${organization.id}/images/${timestamp}-${sanitizedFileName}`;
+    const storageFilePath = imagesPath;
     
     const supabaseStorage = createClient(supabaseUrl, supabaseServiceKey);
 

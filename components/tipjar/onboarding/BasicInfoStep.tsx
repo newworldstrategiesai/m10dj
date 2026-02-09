@@ -5,6 +5,7 @@ import { ArrowLeft, ArrowRight, MapPin, CheckCircle, AlertCircle } from 'lucide-
 import { OnboardingData } from '../OnboardingWizard';
 import { triggerQuickConfetti } from '@/utils/confetti';
 import LogoUpload from './LogoUpload';
+import OnboardingImageUpload from './OnboardingImageUpload';
 
 interface BasicInfoStepProps {
   data: OnboardingData;
@@ -31,6 +32,8 @@ export default function BasicInfoStep({
   const [location, setLocation] = useState(data.location || '');
   const [slug, setSlug] = useState(data.slug || '');
   const [logoUrl, setLogoUrl] = useState(data.logoUrl || '');
+  const [coverPhotoUrl, setCoverPhotoUrl] = useState(data.coverPhotoUrl || '');
+  const [profilePhotoUrl, setProfilePhotoUrl] = useState(data.profilePhotoUrl || '');
   const [slugAvailable, setSlugAvailable] = useState<boolean | null>(null);
   const [checkingSlug, setCheckingSlug] = useState(false);
   const [errors, setErrors] = useState<{ displayName?: string; slug?: string }>({});
@@ -39,18 +42,29 @@ export default function BasicInfoStep({
 
   // Check if fields were pre-filled from organization
   const hasPreFilledData = organization && (
-    organization.requests_header_artist_name || 
-    organization.name || 
+    organization.requests_header_artist_name ||
+    organization.name ||
     organization.slug ||
     organization.requests_header_location ||
-    organization.requests_header_logo_url
+    organization.requests_header_logo_url ||
+    organization.requests_cover_photo_url ||
+    organization.requests_profile_photo_url
   );
 
-  // Load logo from organization if available
+  // Load logo and photos from organization if available
   useEffect(() => {
-    if (organization?.requests_header_logo_url && !logoUrl) {
+    if (!organization) return;
+    if (organization.requests_header_logo_url && !logoUrl) {
       setLogoUrl(organization.requests_header_logo_url);
       onDataUpdate({ logoUrl: organization.requests_header_logo_url });
+    }
+    if (organization.requests_cover_photo_url && !coverPhotoUrl) {
+      setCoverPhotoUrl(organization.requests_cover_photo_url);
+      onDataUpdate({ coverPhotoUrl: organization.requests_cover_photo_url });
+    }
+    if (organization.requests_profile_photo_url && !profilePhotoUrl) {
+      setProfilePhotoUrl(organization.requests_profile_photo_url);
+      onDataUpdate({ profilePhotoUrl: organization.requests_profile_photo_url });
     }
   }, [organization]);
 
@@ -155,7 +169,9 @@ export default function BasicInfoStep({
               slug: slug.trim(),
               requests_header_artist_name: displayName.trim(),
               requests_header_location: location.trim() || null,
-              requests_header_logo_url: logoUrl || null
+              requests_header_logo_url: logoUrl || null,
+              requests_cover_photo_url: coverPhotoUrl || null,
+              requests_profile_photo_url: profilePhotoUrl || null
             })
           });
           
@@ -189,7 +205,9 @@ export default function BasicInfoStep({
         displayName: displayName.trim(),
         location: location.trim(),
         slug: slug.trim(),
-        logoUrl: logoUrl || undefined
+        logoUrl: logoUrl || undefined,
+        coverPhotoUrl: coverPhotoUrl || undefined,
+        profilePhotoUrl: profilePhotoUrl || undefined
       });
       onNext();
     }
@@ -302,6 +320,41 @@ export default function BasicInfoStep({
             </p>
           </div>
         )}
+
+        {/* Cover Photo - stored in Supabase organization-assets bucket */}
+        <div className="mb-6">
+          <OnboardingImageUpload
+            label="Cover photo"
+            value={coverPhotoUrl}
+            onChange={(url) => {
+              setCoverPhotoUrl(url);
+              onDataUpdate({ coverPhotoUrl: url });
+            }}
+            organizationId={organization?.id}
+            subfolder="cover"
+            maxSizeMB={5}
+            recommendedDimensions="Wide banner, e.g. 1200×600px"
+            helpText="Shown at the top of your public page. "
+          />
+        </div>
+
+        {/* Profile photo - circle overlapping cover, stored in Supabase bucket */}
+        <div className="mb-6">
+          <OnboardingImageUpload
+            label="Profile photo"
+            value={profilePhotoUrl}
+            onChange={(url) => {
+              setProfilePhotoUrl(url);
+              onDataUpdate({ profilePhotoUrl: url });
+            }}
+            organizationId={organization?.id}
+            subfolder="profile"
+            maxSizeMB={2}
+            previewShape="circle"
+            recommendedDimensions="Square works best, e.g. 400×400px"
+            helpText="Shown in a circle at the bottom-left of the cover. "
+          />
+        </div>
 
         {/* Logo Upload (Optional) */}
         <div className="mb-6">

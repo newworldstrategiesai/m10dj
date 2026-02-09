@@ -515,6 +515,10 @@ export function GeneralRequestsPage({
   })();
   const effectiveHeaderDate = previewHeaderDate !== null ? previewHeaderDate : (organizationData?.requests_header_date || '');
   
+  // When profile photo is set, use layout: cover photo + profile circle at bottom-left, title/description below hero
+  const showProfilePhotoLayout = !!(organizationData?.requests_profile_photo_url);
+  const profilePhotoUrl = organizationData?.requests_profile_photo_url || null;
+  
   // Use preview values for subtitle styling if available, otherwise use organization data
   // Subtitle font defaults to artist name font if not set (unless manually changed)
   const artistNameFont = organizationData?.requests_artist_name_font || 'Impact, "Arial Black", "Helvetica Neue", Arial, sans-serif';
@@ -4295,12 +4299,29 @@ export function GeneralRequestsPage({
               <div className="absolute inset-0 w-full h-full bg-black" style={{ zIndex: 0 }} />
             )}
             
+            {/* Profile photo circle - bottom-left of cover, overlapping (TipJar profile layout) */}
+            {profilePhotoUrl && (
+              <div
+                className="absolute left-4 sm:left-6 bottom-0 z-20 flex items-end justify-start pointer-events-none"
+                style={{ transform: 'translateY(50%)' }}
+              >
+                <div className="w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 rounded-full overflow-hidden border-2 border-black dark:border-gray-900 bg-black shadow-lg flex-shrink-0">
+                  <img
+                    src={profilePhotoUrl}
+                    alt=""
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+              </div>
+            )}
+            
             {/* Desktop Background - removed black gradient to show animated background */}
-            {/* Content overlay */}
+            {/* Content overlay - hide title/location when profile layout (they go below hero) */}
             <div             className={`relative z-20 h-full flex flex-col justify-between items-center text-center px-4 ${
               minimalHeader ? 'justify-center' : ''
             }`} style={{ paddingTop: minimalHeader ? '60px' : '80px', paddingBottom: minimalHeader ? '10px' : '4px', overflow: 'visible' }}>
-              {/* Top content section */}
+              {/* Top content section - hidden when profile layout (title/description shown below hero) */}
+              {!showProfilePhotoLayout && (
               <div className={`flex flex-col items-center justify-center ${minimalHeader ? '' : 'flex-1'}`}>
                 {/* Artist Name - Show based on settings. If video playing and showArtistNameOverVideo is false, hide it */}
                 {(() => {
@@ -4410,6 +4431,7 @@ export function GeneralRequestsPage({
                   </div>
                 )}
               </div>
+              )}
               
               {/* Bottom section with social icons - Hide on minimal header */}
               {!minimalHeader && (
@@ -4510,6 +4532,46 @@ export function GeneralRequestsPage({
               </div>
               )}
             </div>
+          </div>
+        )}
+        
+        {/* Title and description below hero when profile photo layout (TipJar) */}
+        {!embedMode && !showPaymentMethods && showProfilePhotoLayout && (
+          <div className="relative z-10 px-4 pt-2 pb-3 sm:pt-4 sm:pb-4 bg-black">
+            <h1
+              className="text-xl sm:text-2xl md:text-3xl font-bold text-white dark:text-white mb-1 sm:mb-2"
+              style={{
+                fontFamily: effectiveArtistNameFont,
+                textTransform: effectiveArtistNameTextTransform,
+                color: effectiveArtistNameColor,
+                letterSpacing: `${effectiveArtistNameKerning}px`,
+                textShadow: artistNameTextShadow
+              }}
+            >
+              {(() => {
+                const artistName = organizationData?.requests_header_artist_name || organizationData?.name || 'DJ';
+                if (effectiveArtistNameTextTransform === 'uppercase') return artistName.toUpperCase();
+                if (effectiveArtistNameTextTransform === 'lowercase') return artistName.toLowerCase();
+                return artistName;
+              })()}
+            </h1>
+            {effectiveHeaderLocation && organizationData?.requests_show_subtitle !== false && (
+              <p
+                className="text-sm sm:text-base text-gray-300 dark:text-gray-400"
+                style={{
+                  fontFamily: effectiveSubtitleFont,
+                  textTransform: effectiveSubtitleTextTransform,
+                  color: effectiveSubtitleColor
+                }}
+              >
+                {(() => {
+                  const locationText = effectiveHeaderLocation;
+                  if (effectiveSubtitleTextTransform === 'uppercase') return locationText.toUpperCase();
+                  if (effectiveSubtitleTextTransform === 'lowercase') return locationText.toLowerCase();
+                  return locationText;
+                })()}
+              </p>
+            )}
           </div>
         )}
         

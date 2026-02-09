@@ -83,17 +83,19 @@ bucket_id = 'organization-assets'
  ))
 ```
 
-## Method 2: Via SQL Editor (Alternative)
+## Method 2: Via SQL Editor (One script: bucket + all policies)
 
-If you prefer SQL, you can run the policies via SQL Editor:
+You can create the bucket and all 5 policies in one go:
 
-1. Go to **Supabase Dashboard** → **SQL Editor**
-2. Open the file: `supabase/migrations/20250125000003_storage_policies_manual.sql`
-3. Copy the entire contents
-4. Paste into SQL Editor
+1. Go to **Supabase Dashboard** → **SQL Editor** → **New query**
+2. Open the file: `supabase/migrations/20250125000004_organization_assets_bucket_and_policies.sql`
+3. Copy the **entire** contents
+4. Paste into the SQL Editor
 5. Click **"Run"**
 
-**Note**: The SQL Editor should automatically use service role permissions, but if you get permission errors, use Method 1 (Dashboard UI) instead.
+This script creates the `organization-assets` bucket (if it doesn’t exist) and all 5 RLS policies. If the bucket `INSERT` fails (e.g. permission), create the bucket in the Dashboard (Method 1, Step 1), then run the script again so the policies are applied.
+
+**Alternative (policies only):** If you already created the bucket in the Dashboard and only need policies, use `supabase/migrations/20250125000003_storage_policies_manual.sql` and run that in the SQL Editor.
 
 ## Verification
 

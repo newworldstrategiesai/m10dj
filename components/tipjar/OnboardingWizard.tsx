@@ -16,6 +16,10 @@ export interface OnboardingData {
   slug: string;
   paymentSetup: 'completed' | 'skipped' | 'pending';
   logoUrl?: string;
+  /** Cover photo for public page hero (stored in Supabase organization-assets bucket) */
+  coverPhotoUrl?: string;
+  /** Profile photo shown in circle overlapping cover (stored in Supabase organization-assets bucket) */
+  profilePhotoUrl?: string;
   accentColor?: string;
   minimumBid?: number; // In cents
   showFastTrack?: boolean;
@@ -56,6 +60,8 @@ export default function TipJarOnboardingWizard({
         location: organization.requests_header_location || '',
         slug: organization.slug || '',
         logoUrl: organization.requests_header_logo_url || undefined,
+        coverPhotoUrl: organization.requests_cover_photo_url || undefined,
+        profilePhotoUrl: organization.requests_profile_photo_url || undefined,
         paymentSetup: organization.stripe_connect_account_id ? 'completed' : 'pending'
       }));
     } else if (user?.email && !onboardingData.displayName) {
