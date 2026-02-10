@@ -193,6 +193,11 @@ export default function Footer() {
                   Meet DJ Ben Murray
                 </Link>
               </li>
+              <li>
+                <Link href="/blog/new-years-eve-beale-street-2026" className="text-gray-300 hover:text-brand transition-colors font-inter hover:pl-2 block py-1 text-sm md:text-base">
+                  NYE on Beale Street 2026
+                </Link>
+              </li>
             </ul>
           </div>
 

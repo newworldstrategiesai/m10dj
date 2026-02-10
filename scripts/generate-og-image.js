@@ -130,6 +130,7 @@ async function generateAllOGImages() {
     
     // M10 DJ Company / General OG Images
     { id: 'quote-booking', filename: 'quote-booking-og.png' },
+    { id: 'nye-beale-street-2026-og', filename: 'nye-beale-street-2026-og.png' },
   ];
   
   let successCount = 0;

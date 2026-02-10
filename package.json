@@ -26,6 +26,7 @@
     "optimize:logo-gif": "node scripts/optimize-logo-gif.js",
     "generate:og-image": "node scripts/generate-og-image.js",
     "generate:og-images": "node scripts/generate-og-images.js",
+    "generate:nye-beale-og": "node scripts/generate-nye-beale-og.js",
     "generate:karaoke-og": "node scripts/generate-karaoke-og.js",
     "generate:og-simple": "node scripts/generate-og-simple.js",
     "agent:dev": "tsx watch agents/index.ts",

@@ -200,6 +200,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       '/blog/memphis-wedding-dj-cost-guide-2025',
       '/blog/memphis-wedding-songs-2025',
       '/blog/memphis-wedding-success-story-sarah-michael',
+      '/blog/new-years-eve-beale-street-2026',
       '/blog/memphis-dj-cost-complete-guide-2025',
       '/blog/memphis-dj-cost-pricing-guide-2025',
       '/blog/how-to-choose-wedding-dj-memphis-2025',

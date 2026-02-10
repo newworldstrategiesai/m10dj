@@ -1225,6 +1225,49 @@
       color: #374151;
     }
     
+    /* NYE Beale Street 2026 Blog OG Image - photo background + title overlay */
+    .nye-beale-street-2026-og {
+      background-image: url('DJ-Ben-Murray-NYE-Beale-St-2026-1.jpg');
+      background-size: cover;
+      background-position: center;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      align-items: center;
+      padding: 48px 60px 56px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+    .nye-beale-street-2026-og::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.4) 45%, rgba(0,0,0,0.2) 70%, transparent 100%);
+      z-index: 0;
+    }
+    .nye-beale-street-2026-og .content {
+      position: relative;
+      z-index: 1;
+      max-width: 1000px;
+    }
+    .nye-beale-street-2026-og h1 {
+      font-size: 52px;
+      font-weight: 900;
+      line-height: 1.15;
+      margin: 0 0 12px 0;
+      color: #ffffff;
+      text-shadow: 0 2px 4px rgba(0,0,0,0.8), 0 4px 12px rgba(0,0,0,0.7), 0 8px 24px rgba(0,0,0,0.6);
+      letter-spacing: -0.5px;
+    }
+    .nye-beale-street-2026-og .subtitle {
+      font-size: 26px;
+      font-weight: 600;
+      color: #fbbf24;
+      text-shadow: 0 1px 3px rgba(0,0,0,0.9), 0 2px 8px rgba(0,0,0,0.7);
+      margin: 0;
+    }
+    
     .hidden {
       display: none;
     }
@@ -1409,6 +1452,14 @@
     <h1>How DJ Dash Works</h1>
     <p>Find, Compare & Book Professional DJs</p>
     <div class="trust">Browse • Quote • Book • Manage</div>
+  </div>
+  
+  <!-- NYE Beale Street 2026 Blog OG Image -->
+  <div class="og-container nye-beale-street-2026-og hidden" id="nye-beale-street-2026-og">
+    <div class="content">
+      <h1>DJ Ben Murray at New Year's Eve on Beale Street 2026</h1>
+      <p class="subtitle">M10 DJ Company · Event Recap</p>
+    </div>
   </div>
   
   <!-- Quote/Booking OG Image -->
