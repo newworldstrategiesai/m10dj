@@ -245,7 +245,7 @@ export default function MemphisWeddingDJ() {
 
                   <div className="flex flex-col sm:flex-row gap-4 mb-8">
                     <button 
-                      onClick={scrollToContact}
+                      onClick={() => scrollToContact('hero')}
                       className="btn-primary text-lg px-8 py-4"
                     >
                       Get Free Wedding Quote
@@ -306,7 +306,7 @@ export default function MemphisWeddingDJ() {
         </section>
 
         {/* Breadcrumb Navigation */}
-        <section className="py-6 bg-white">
+        <section className="py-6 bg-white dark:bg-zinc-950">
           <div className="section-container">
             <Breadcrumbs 
               items={generateBreadcrumbs.service('Memphis Wedding DJ')}
@@ -320,56 +320,56 @@ export default function MemphisWeddingDJ() {
         </section>
 
         {/* Memphis Wedding DJ Packages - Value-Focused (No Public Pricing) */}
-        <section className="py-20 bg-white">
+        <section className="py-20 bg-white dark:bg-zinc-950">
           <div className="section-container">
             <div className="text-center mb-16">
-              <h2 className="heading-2 text-gray-900 mb-6">
+              <h2 className="heading-2 text-gray-900 dark:text-white mb-6">
                 Memphis Wedding DJ Packages - Customized for Your Celebration
               </h2>
-              <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+              <p className="text-xl text-gray-600 dark:text-zinc-400 max-w-3xl mx-auto">
                 Every Memphis wedding is different – some need ceremony audio, some don&apos;t. Some want uplighting, others prefer natural light. We build packages around what you actually need, not a one-size-fits-all template. <strong>Get your custom quote in 24 hours.</strong>
               </p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
               {/* Essential Package */}
-              <div className="bg-gray-50 rounded-2xl p-8 hover:shadow-xl transition-shadow border-2 border-gray-200 hover:border-brand-gold">
+              <div className="bg-gray-50 dark:bg-zinc-800 rounded-2xl p-8 hover:shadow-xl transition-shadow border-2 border-gray-200 dark:border-zinc-700 hover:border-brand-gold">
                 <div className="text-center mb-6">
                   <div className="w-16 h-16 bg-brand-gold rounded-full flex items-center justify-center mx-auto mb-4">
                     <Music className="w-8 h-8 text-black" />
                   </div>
-                  <h3 className="text-2xl font-bold text-gray-900 mb-2">Essential Package</h3>
-                  <p className="text-gray-600 mb-4">Reception Only</p>
+                  <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Essential Package</h3>
+                  <p className="text-gray-600 dark:text-zinc-400 mb-4">Reception Only</p>
                   <div className="text-lg font-semibold text-brand mb-2">Perfect for Intimate Weddings</div>
                 </div>
                 <ul className="space-y-3 mb-8">
                   <li className="flex items-start">
                     <CheckCircle className="w-5 h-5 text-brand-gold mr-2 flex-shrink-0 mt-0.5" />
-                    <span className="text-gray-700"><strong>4 hours</strong> professional DJ/MC services</span>
+                    <span className="text-gray-700 dark:text-zinc-300"><strong>4 hours</strong> professional DJ/MC services</span>
                   </li>
                   <li className="flex items-start">
                     <CheckCircle className="w-5 h-5 text-brand-gold mr-2 flex-shrink-0 mt-0.5" />
-                    <span className="text-gray-700">Premium sound system & wireless mics</span>
+                    <span className="text-gray-700 dark:text-zinc-300">Premium sound system & wireless mics</span>
                   </li>
                   <li className="flex items-start">
                     <CheckCircle className="w-5 h-5 text-brand-gold mr-2 flex-shrink-0 mt-0.5" />
-                    <span className="text-gray-700">Multi-color LED dance floor lighting</span>
+                    <span className="text-gray-700 dark:text-zinc-300">Multi-color LED dance floor lighting</span>
                   </li>
                   <li className="flex items-start">
                     <CheckCircle className="w-5 h-5 text-brand-gold mr-2 flex-shrink-0 mt-0.5" />
-                    <span className="text-gray-700">Up to 16 uplighting fixtures (we&apos;ll match your wedding colors)</span>
+                    <span className="text-gray-700 dark:text-zinc-300">Up to 16 uplighting fixtures (we&apos;ll match your wedding colors)</span>
                   </li>
                   <li className="flex items-start">
                     <CheckCircle className="w-5 h-5 text-brand-gold mr-2 flex-shrink-0 mt-0.5" />
-                    <span className="text-gray-700">Expert crowd reading & music curation</span>
+                    <span className="text-gray-700 dark:text-zinc-300">Expert crowd reading & music curation</span>
                   </li>
                   <li className="flex items-start">
                     <CheckCircle className="w-5 h-5 text-brand-gold mr-2 flex-shrink-0 mt-0.5" />
-                    <span className="text-gray-700">Online planning portal & consultation</span>
+                    <span className="text-gray-700 dark:text-zinc-300">Online planning portal & consultation</span>
                   </li>
                 </ul>
                 <button 
-                  onClick={scrollToContact}
+                  onClick={() => scrollToContact('packages-essential')}
                   className="w-full btn-secondary py-3"
                 >
                   Get Custom Quote
@@ -377,7 +377,7 @@ export default function MemphisWeddingDJ() {
               </div>
 
               {/* Complete Package - Most Popular */}
-              <div className="bg-brand text-white rounded-2xl p-8 shadow-2xl transform scale-105 relative border-4 border-brand-gold">
+              <div className="bg-brand dark:bg-zinc-800 text-white rounded-2xl p-8 shadow-2xl transform scale-105 relative border-4 border-brand-gold dark:border-amber-500">
                 <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
                   <span className="bg-brand-gold text-black px-4 py-1 rounded-full text-sm font-bold shadow-lg">
                     ⭐ MOST POPULAR ⭐
@@ -418,7 +418,7 @@ export default function MemphisWeddingDJ() {
                   </li>
                 </ul>
                 <button 
-                  onClick={scrollToContact}
+                  onClick={() => scrollToContact('packages-complete')}
                   className="w-full bg-brand-gold text-black py-3 rounded-lg font-bold hover:bg-brand-gold/90 transition-colors shadow-lg"
                 >
                   Request Most Popular Package
@@ -426,43 +426,43 @@ export default function MemphisWeddingDJ() {
               </div>
 
               {/* Premium Package */}
-              <div className="bg-gray-50 rounded-2xl p-8 hover:shadow-xl transition-shadow border-2 border-gray-200 hover:border-brand-gold">
+              <div className="bg-gray-50 dark:bg-zinc-800 rounded-2xl p-8 hover:shadow-xl transition-shadow border-2 border-gray-200 dark:border-zinc-700 hover:border-brand-gold">
                 <div className="text-center mb-6">
                   <div className="w-16 h-16 bg-brand-gold rounded-full flex items-center justify-center mx-auto mb-4">
                     <Award className="w-8 h-8 text-black" />
                   </div>
-                  <h3 className="text-2xl font-bold text-gray-900 mb-2">Premium Package</h3>
-                  <p className="text-gray-600 mb-4">Full Service Luxury</p>
+                  <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Premium Package</h3>
+                  <p className="text-gray-600 dark:text-zinc-400 mb-4">Full Service Luxury</p>
                   <div className="text-lg font-semibold text-brand mb-2">Ultimate Wedding Experience</div>
                 </div>
                 <ul className="space-y-3 mb-8">
                   <li className="flex items-start">
                     <CheckCircle className="w-5 h-5 text-brand-gold mr-2 flex-shrink-0 mt-0.5" />
-                    <span className="text-gray-700"><strong>Everything in Complete, PLUS:</strong></span>
+                    <span className="text-gray-700 dark:text-zinc-300"><strong>Everything in Complete, PLUS:</strong></span>
                   </li>
                   <li className="flex items-start">
                     <CheckCircle className="w-5 h-5 text-brand-gold mr-2 flex-shrink-0 mt-0.5" />
-                    <span className="text-gray-700">"Dancing on the Clouds" effect</span>
+                    <span className="text-gray-700 dark:text-zinc-300">"Dancing on the Clouds" effect</span>
                   </li>
                   <li className="flex items-start">
                     <CheckCircle className="w-5 h-5 text-brand-gold mr-2 flex-shrink-0 mt-0.5" />
-                    <span className="text-gray-700">Dramatic dry ice first dance cloud</span>
+                    <span className="text-gray-700 dark:text-zinc-300">Dramatic dry ice first dance cloud</span>
                   </li>
                   <li className="flex items-start">
                     <CheckCircle className="w-5 h-5 text-brand-gold mr-2 flex-shrink-0 mt-0.5" />
-                    <span className="text-gray-700">Cold spark fountain effects available</span>
+                    <span className="text-gray-700 dark:text-zinc-300">Cold spark fountain effects available</span>
                   </li>
                   <li className="flex items-start">
                     <CheckCircle className="w-5 h-5 text-brand-gold mr-2 flex-shrink-0 mt-0.5" />
-                    <span className="text-gray-700">Professional photo-ready special effects</span>
+                    <span className="text-gray-700 dark:text-zinc-300">Professional photo-ready special effects</span>
                   </li>
                   <li className="flex items-start">
                     <CheckCircle className="w-5 h-5 text-brand-gold mr-2 flex-shrink-0 mt-0.5" />
-                    <span className="text-gray-700">VIP concierge-level service</span>
+                    <span className="text-gray-700 dark:text-zinc-300">VIP concierge-level service</span>
                   </li>
                 </ul>
                 <button 
-                  onClick={scrollToContact}
+                  onClick={() => scrollToContact('packages-premium')}
                   className="w-full btn-secondary py-3"
                 >
                   Explore Premium Options
@@ -492,7 +492,7 @@ export default function MemphisWeddingDJ() {
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
                 <button 
-                  onClick={scrollToContact}
+                  onClick={() => scrollToContact('packages-cta')}
                   className="bg-brand-gold text-black px-8 py-4 rounded-lg font-bold text-lg hover:bg-brand-gold/90 transition-colors inline-flex items-center shadow-xl"
                 >
                   Get Your Custom Quote
@@ -500,7 +500,7 @@ export default function MemphisWeddingDJ() {
                 </button>
                 <a 
                   href="tel:9014102020"
-                  className="bg-white text-brand px-8 py-4 rounded-lg font-bold text-lg hover:bg-gray-100 transition-colors inline-flex items-center shadow-xl"
+                  className="bg-white dark:bg-zinc-800 text-brand px-8 py-4 rounded-lg font-bold text-lg hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors inline-flex items-center shadow-xl"
                 >
                   <Phone className="mr-2 w-5 h-5" />
                   (901) 410-2020
@@ -512,9 +512,9 @@ export default function MemphisWeddingDJ() {
             </div>
 
             {/* Market Education - SEO Gold */}
-            <div className="mt-16 bg-gray-50 rounded-2xl p-8">
-              <h3 className="text-2xl font-bold text-gray-900 mb-4 text-center">Understanding Memphis Wedding DJ Pricing</h3>
-              <p className="text-gray-700 mb-6 text-center max-w-3xl mx-auto">
+            <div className="mt-16 bg-gray-50 dark:bg-zinc-800 rounded-2xl p-8">
+              <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-4 text-center">Understanding Memphis Wedding DJ Pricing</h3>
+              <p className="text-gray-700 dark:text-zinc-300 mb-6 text-center max-w-3xl mx-auto">
                 Professional Memphis wedding DJ services typically range from <strong>$1,200-$3,500+</strong> depending on experience, equipment quality, and services included. <strong>Most Memphis couples invest $1,800-$2,500</strong> for complete ceremony and reception coverage with a professional DJ. Here's what affects pricing:
               </p>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -522,36 +522,36 @@ export default function MemphisWeddingDJ() {
                   <div className="w-12 h-12 bg-brand-gold rounded-full flex items-center justify-center mx-auto mb-3">
                     <Clock className="w-6 h-6 text-black" />
                   </div>
-                  <h4 className="font-bold text-gray-900 mb-2">Event Duration</h4>
-                  <p className="text-sm text-gray-600">4-8 hours typical, ceremony adds 1-2 hours</p>
+                  <h4 className="font-bold text-gray-900 dark:text-white mb-2">Event Duration</h4>
+                  <p className="text-sm text-gray-600 dark:text-zinc-400">4-8 hours typical, ceremony adds 1-2 hours</p>
                 </div>
                 <div className="text-center">
                   <div className="w-12 h-12 bg-brand-gold rounded-full flex items-center justify-center mx-auto mb-3">
                     <Award className="w-6 h-6 text-black" />
                   </div>
-                  <h4 className="font-bold text-gray-900 mb-2">Experience Level</h4>
-                  <p className="text-sm text-gray-600">15+ years & 500+ weddings = premium value</p>
+                  <h4 className="font-bold text-gray-900 dark:text-white mb-2">Experience Level</h4>
+                  <p className="text-sm text-gray-600 dark:text-zinc-400">15+ years & 500+ weddings = premium value</p>
                 </div>
                 <div className="text-center">
                   <div className="w-12 h-12 bg-brand-gold rounded-full flex items-center justify-center mx-auto mb-3">
                     <Music className="w-6 h-6 text-black" />
                   </div>
-                  <h4 className="font-bold text-gray-900 mb-2">Equipment Quality</h4>
-                  <p className="text-sm text-gray-600">Professional sound, lighting & backup systems</p>
+                  <h4 className="font-bold text-gray-900 dark:text-white mb-2">Equipment Quality</h4>
+                  <p className="text-sm text-gray-600 dark:text-zinc-400">Professional sound, lighting & backup systems</p>
                 </div>
                 <div className="text-center">
                   <div className="w-12 h-12 bg-brand-gold rounded-full flex items-center justify-center mx-auto mb-3">
                     <MapPin className="w-6 h-6 text-black" />
                   </div>
-                  <h4 className="font-bold text-gray-900 mb-2">Venue Expertise</h4>
-                  <p className="text-sm text-gray-600">Knowledge of Memphis venues saves time & stress</p>
+                  <h4 className="font-bold text-gray-900 dark:text-white mb-2">Venue Expertise</h4>
+                  <p className="text-sm text-gray-600 dark:text-zinc-400">Knowledge of Memphis venues saves time & stress</p>
                 </div>
               </div>
               <div className="text-center mt-8">
-                <p className="text-gray-700 mb-4">
+                <p className="text-gray-700 dark:text-zinc-300 mb-4">
                   <strong>M10 DJ Company</strong> offers professional Memphis wedding DJ services with transparent, all-inclusive quotes and no hidden fees. Our pricing reflects 15+ years of experience, 500+ successful weddings, premium equipment, backup systems, and full insurance coverage. Every package is customized to your celebration.
                 </p>
-                <p className="text-sm text-gray-600 mb-4 bg-white p-4 rounded-lg max-w-2xl mx-auto">
+                <p className="text-sm text-gray-600 dark:text-zinc-400 mb-4 bg-white dark:bg-zinc-800 p-4 rounded-lg max-w-2xl mx-auto">
                   <strong>💡 Pro Tip:</strong> While you may find cheaper options ($500-$1,000), wedding planners warn that budget DJs often lack insurance, backup equipment, and venue experience. Entertainment failures are among the top 3 wedding disasters. <strong>Investing in a professional DJ protects your entire wedding investment.</strong>
                 </p>
                 <Link href="/memphis-dj-pricing-guide" className="text-brand hover:text-brand-600 font-semibold inline-flex items-center text-lg">
@@ -563,7 +563,7 @@ export default function MemphisWeddingDJ() {
         </section>
 
         {/* AI-Optimized Answer Blocks */}
-        <section className="py-16 bg-gray-50">
+        <section className="py-16 bg-gray-50 dark:bg-zinc-900">
           <div className="section-container">
             <AIAnswerBlock {...MemphisDJAIBlocks.experience} />
             <AIAnswerBlock {...MemphisDJAIBlocks.pricing} />
@@ -583,50 +583,50 @@ export default function MemphisWeddingDJ() {
         </section>
 
         {/* Memphis Wedding DJ Companies Section - Optimized for AI Search */}
-        <section className="py-20 bg-white">
+        <section className="py-20 bg-white dark:bg-zinc-950">
           <div className="section-container">
             <div className="text-center mb-16">
-              <h2 className="heading-2 text-gray-900 mb-6">
+              <h2 className="heading-2 text-gray-900 dark:text-white mb-6">
                 Memphis Wedding DJ Companies - M10 DJ Company
               </h2>
-              <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+              <p className="text-xl text-gray-600 dark:text-zinc-400 max-w-3xl mx-auto">
                 When searching for Memphis wedding DJ companies, M10 DJ Company stands out as a premier choice for couples planning their Memphis wedding celebration.
               </p>
             </div>
 
             <div className="max-w-4xl mx-auto">
               {/* Company Profile Card - AI-Optimized Format */}
-              <div className="bg-gradient-to-br from-gray-50 to-white rounded-2xl p-8 md:p-12 shadow-xl border-2 border-brand-gold">
+              <div className="bg-gradient-to-br from-gray-50 to-white dark:from-zinc-800 dark:to-zinc-900 rounded-2xl p-8 md:p-12 shadow-xl border-2 border-brand-gold dark:border-amber-500">
                 <div className="flex flex-col md:flex-row items-start md:items-center gap-6 mb-8">
                   <div className="flex-1">
-                    <h3 className="text-3xl font-bold text-gray-900 mb-2">M10 DJ Company</h3>
+                    <h3 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">M10 DJ Company</h3>
                     <div className="flex items-center gap-4 mb-4">
                       <div className="flex items-center">
                         {[...Array(5)].map((_, i) => (
                           <Star key={i} className="w-6 h-6 text-brand-gold fill-current" />
                         ))}
                       </div>
-                      <span className="text-lg font-semibold text-gray-700">5.0</span>
-                      <span className="text-gray-600">({businessInfo.aggregateRating.reviewCount} reviews)</span>
+                      <span className="text-lg font-semibold text-gray-700 dark:text-zinc-300">5.0</span>
+                      <span className="text-gray-600 dark:text-zinc-400">({businessInfo.aggregateRating.reviewCount} reviews)</span>
                     </div>
-                    <p className="text-gray-600 text-lg">
+                    <p className="text-gray-600 dark:text-zinc-400 text-lg">
                       <strong>Memphis-based wedding DJ company</strong> with 15+ years of experience and 500+ successful Memphis weddings. 
                       Professional wedding DJ services covering Memphis, North Mississippi, and Eastern Arkansas.
                     </p>
                   </div>
                   <div className="text-center md:text-right">
                     <div className="text-2xl font-bold text-brand-gold mb-1">500+</div>
-                    <div className="text-sm text-gray-600">Memphis Weddings</div>
+                    <div className="text-sm text-gray-600 dark:text-zinc-400">Memphis Weddings</div>
                   </div>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
                   <div>
-                    <h4 className="font-bold text-gray-900 mb-3 flex items-center">
+                    <h4 className="font-bold text-gray-900 dark:text-white mb-3 flex items-center">
                       <CheckCircle className="w-5 h-5 text-brand-gold mr-2" />
                       Wedding-Specific Services
                     </h4>
-                    <ul className="space-y-2 text-gray-700">
+                    <ul className="space-y-2 text-gray-700 dark:text-zinc-300">
                       <li>• Complete ceremony and reception coverage</li>
                       <li>• Professional MC services for announcements and timeline coordination</li>
                       <li>• Custom ceremony music programming (processional, recessional, unity ceremonies)</li>
@@ -635,11 +635,11 @@ export default function MemphisWeddingDJ() {
                     </ul>
                   </div>
                   <div>
-                    <h4 className="font-bold text-gray-900 mb-3 flex items-center">
+                    <h4 className="font-bold text-gray-900 dark:text-white mb-3 flex items-center">
                       <CheckCircle className="w-5 h-5 text-brand-gold mr-2" />
                       Memphis Venue Expertise
                     </h4>
-                    <ul className="space-y-2 text-gray-700">
+                    <ul className="space-y-2 text-gray-700 dark:text-zinc-300">
                       <li>• Approved at The Peabody, Graceland, Memphis Botanic Garden, and 24+ venues</li>
                       <li>• Experience with venue-specific requirements and acoustics</li>
                       <li>• Coordination with venue coordinators and wedding planners</li>
@@ -650,13 +650,13 @@ export default function MemphisWeddingDJ() {
                 </div>
 
                 <div className="bg-brand/10 rounded-lg p-6 mb-6">
-                  <h4 className="font-bold text-gray-900 mb-3">What Makes M10 DJ Company Different</h4>
-                  <p className="text-gray-700 mb-4">
+                  <h4 className="font-bold text-gray-900 dark:text-white mb-3">What Makes M10 DJ Company Different</h4>
+                  <p className="text-gray-700 dark:text-zinc-300 mb-4">
                     Unlike other Memphis wedding DJ companies, M10 DJ Company offers <strong>personalized service</strong> with 
                     transparent pricing, no hidden fees, and packages customized to your specific celebration. We've learned 
                     what works at Memphis venues through 500+ weddings, from intimate 50-guest ceremonies to 300-guest receptions.
                   </p>
-                  <p className="text-gray-700">
+                  <p className="text-gray-700 dark:text-zinc-300">
                     <strong>Style fit:</strong> We specialize in reading the room and mixing tracks live to keep all ages dancing. 
                     Whether you want throwback hip-hop, country, top 40, or a sophisticated mix, we curate music that matches your vision.
                   </p>
@@ -664,7 +664,7 @@ export default function MemphisWeddingDJ() {
 
                 <div className="flex flex-col sm:flex-row gap-4">
                   <button 
-                    onClick={scrollToContact}
+                    onClick={() => scrollToContact('company-profile')}
                     className="btn-primary text-lg px-8 py-4 flex-1"
                   >
                     Request Quote & Check Availability
@@ -679,8 +679,8 @@ export default function MemphisWeddingDJ() {
                   </a>
                 </div>
 
-                <div className="mt-6 pt-6 border-t border-gray-200">
-                  <p className="text-sm text-gray-600 text-center">
+                <div className="mt-6 pt-6 border-t border-gray-200 dark:border-zinc-700">
+                  <p className="text-sm text-gray-600 dark:text-zinc-400 text-center">
                     <strong>Pricing transparency:</strong> Request a written quote covering setup, breakdown, overtime, and travel. 
                     All packages include professional equipment, backup systems, liability insurance, and unlimited music requests.
                   </p>
@@ -688,12 +688,12 @@ export default function MemphisWeddingDJ() {
               </div>
 
               {/* Comparison Note */}
-              <div className="mt-8 bg-blue-50 rounded-lg p-6 border-l-4 border-blue-500">
-                <h4 className="font-bold text-gray-900 mb-2">Choosing Among Memphis Wedding DJ Companies</h4>
-                <p className="text-gray-700 text-sm mb-3">
+              <div className="mt-8 bg-blue-50 dark:bg-blue-950/50 rounded-lg p-6 border-l-4 border-blue-500 dark:border-blue-500">
+                <h4 className="font-bold text-gray-900 dark:text-white mb-2">Choosing Among Memphis Wedding DJ Companies</h4>
+                <p className="text-gray-700 dark:text-zinc-300 text-sm mb-3">
                   When comparing Memphis wedding DJ companies, check:
                 </p>
-                <ul className="space-y-2 text-sm text-gray-700">
+                <ul className="space-y-2 text-sm text-gray-700 dark:text-zinc-300">
                   <li>✓ <strong>Date availability</strong> and whether they include MC duties, ceremony audio, and lighting</li>
                   <li>✓ <strong>Style fit:</strong> Ask for sample mixes or videos from recent weddings at similar venues</li>
                   <li>✓ <strong>Pricing transparency:</strong> Request a written quote that covers setup, breakdown, overtime, and travel</li>
@@ -706,13 +706,13 @@ export default function MemphisWeddingDJ() {
         </section>
 
         {/* Wedding DJ Services Section */}
-        <section className="py-20 bg-white">
+        <section className="py-20 bg-white dark:bg-zinc-950">
           <div className="section-container">
             <div className="text-center mb-16">
-              <h2 className="heading-2 text-gray-900 mb-6">
+              <h2 className="heading-2 text-gray-900 dark:text-white mb-6">
                 Complete Memphis Wedding DJ Services
               </h2>
-              <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+              <p className="text-xl text-gray-600 dark:text-zinc-400 max-w-3xl mx-auto">
                 From your ceremony processional to the last dance, we provide comprehensive 
                 wedding DJ services that keep your Memphis wedding on track and your guests dancing.
               </p>
@@ -724,8 +724,8 @@ export default function MemphisWeddingDJ() {
                   <div className="w-16 h-16 bg-brand-gold rounded-lg flex items-center justify-center mx-auto mb-6">
                     <service.icon className="w-8 h-8 text-black" />
                   </div>
-                  <h3 className="text-xl font-bold text-gray-900 mb-4">{service.title}</h3>
-                  <p className="text-gray-600">{service.description}</p>
+                  <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">{service.title}</h3>
+                  <p className="text-gray-600 dark:text-zinc-400">{service.description}</p>
                 </div>
               ))}
             </div>
@@ -733,13 +733,13 @@ export default function MemphisWeddingDJ() {
         </section>
 
         {/* Memphis Wedding Venues Section */}
-        <section className="py-20 bg-gray-50">
+        <section className="py-20 bg-gray-50 dark:bg-zinc-900">
           <div className="section-container">
             <div className="text-center mb-16">
-              <h2 className="heading-2 text-gray-900 mb-6">
+              <h2 className="heading-2 text-gray-900 dark:text-white mb-6">
                 Trusted at Memphis Wedding Venues
               </h2>
-              <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+              <p className="text-xl text-gray-600 dark:text-zinc-400 max-w-3xl mx-auto">
                 We&apos;re the preferred wedding DJ service at Memphis&apos;s most beautiful venues. 
                 Our team knows the unique requirements of each location.
               </p>
@@ -747,8 +747,8 @@ export default function MemphisWeddingDJ() {
 
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
               {venues.map((venue, index) => (
-                <div key={index} className="bg-white rounded-lg p-4 text-center shadow-sm hover:shadow-md transition-shadow">
-                  <p className="text-gray-800 font-medium text-sm">{venue}</p>
+                <div key={index} className="bg-white dark:bg-zinc-800 rounded-lg p-4 text-center shadow-sm hover:shadow-md transition-shadow">
+                  <p className="text-gray-800 dark:text-zinc-200 font-medium text-sm">{venue}</p>
                 </div>
               ))}
             </div>
@@ -762,13 +762,13 @@ export default function MemphisWeddingDJ() {
         </section>
 
         {/* Memphis Wedding DJ Team Section */}
-        <section className="py-20 bg-white">
+        <section className="py-20 bg-white dark:bg-zinc-950">
           <div className="section-container">
             <div className="text-center mb-16">
-              <h2 className="heading-2 text-gray-900 mb-6">
+              <h2 className="heading-2 text-gray-900 dark:text-white mb-6">
                 Best Wedding DJs in Memphis TN - Professional Team Approach
               </h2>
-              <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+              <p className="text-xl text-gray-600 dark:text-zinc-400 max-w-3xl mx-auto">
                 Looking for the best wedding DJs in Memphis? Our professional team of experienced Memphis wedding DJs 
                 includes backup DJs and specialized entertainers so your wedding runs smoothly even if something unexpected happens, 
                 no matter the size or complexity. We&apos;re Memphis&apos;s most trusted wedding DJ company with 500+ successful celebrations.
@@ -780,44 +780,44 @@ export default function MemphisWeddingDJ() {
                 <div className="w-20 h-20 bg-brand-gold rounded-full flex items-center justify-center mx-auto mb-4">
                   <Users className="w-10 h-10 text-black" />
                 </div>
-                <h3 className="text-xl font-bold text-gray-900 mb-3">Lead DJ + Backup</h3>
-                <p className="text-gray-600">Primary DJ with backup DJ available for large weddings and peace of mind</p>
+                <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-3">Lead DJ + Backup</h3>
+                <p className="text-gray-600 dark:text-zinc-400">Primary DJ with backup DJ available for large weddings and peace of mind</p>
               </div>
               <div className="text-center">
                 <div className="w-20 h-20 bg-brand-gold rounded-full flex items-center justify-center mx-auto mb-4">
                   <Award className="w-10 h-10 text-black" />
                 </div>
-                <h3 className="text-xl font-bold text-gray-900 mb-3">15+ Years Experience</h3>
-                <p className="text-gray-600">Each Memphis wedding DJ brings extensive experience and professional training</p>
+                <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-3">15+ Years Experience</h3>
+                <p className="text-gray-600 dark:text-zinc-400">Each Memphis wedding DJ brings extensive experience and professional training</p>
               </div>
               <div className="text-center">
                 <div className="w-20 h-20 bg-brand-gold rounded-full flex items-center justify-center mx-auto mb-4">
                   <CheckCircle className="w-10 h-10 text-black" />
                 </div>
-                <h3 className="text-xl font-bold text-gray-900 mb-3">Team Approach</h3>
-                <p className="text-gray-600">Multiple DJs available for large venues, destination weddings, and extended coverage</p>
+                <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-3">Team Approach</h3>
+                <p className="text-gray-600 dark:text-zinc-400">Multiple DJs available for large venues, destination weddings, and extended coverage</p>
               </div>
             </div>
           </div>
         </section>
 
         {/* DJs Near Me Memphis Section */}
-        <section className="py-20 bg-white">
+        <section className="py-20 bg-white dark:bg-zinc-950">
           <div className="section-container">
             <div className="text-center mb-16">
-              <h2 className="heading-2 text-gray-900 mb-6">
+              <h2 className="heading-2 text-gray-900 dark:text-white mb-6">
                 DJs Near Me Memphis TN | Professional DJ Services Throughout Memphis
               </h2>
-              <p className="text-xl text-gray-600 max-w-4xl mx-auto">
+              <p className="text-xl text-gray-600 dark:text-zinc-400 max-w-4xl mx-auto">
                 Looking for DJs near me in Memphis? M10 DJ Company serves all Memphis neighborhoods including Downtown Memphis, Midtown Memphis, East Memphis, South Memphis, and North Memphis. We&apos;re Memphis&apos;s most experienced DJ company with 15+ years serving the Memphis community and 500+ successful events.
               </p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-16">
-              <div className="bg-gray-50 rounded-xl p-6">
-                <h3 className="text-xl font-bold text-gray-900 mb-4">Downtown Memphis DJs</h3>
-                <p className="text-gray-600 mb-4">Professional DJ services for Downtown Memphis weddings and events at The Peabody Hotel, Memphis Cook Convention Center, and historic venues.</p>
-                <ul className="space-y-2 text-sm text-gray-600">
+              <div className="bg-gray-50 dark:bg-zinc-800 rounded-xl p-6">
+                <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Downtown Memphis DJs</h3>
+                <p className="text-gray-600 dark:text-zinc-400 mb-4">Professional DJ services for Downtown Memphis weddings and events at The Peabody Hotel, Memphis Cook Convention Center, and historic venues.</p>
+                <ul className="space-y-2 text-sm text-gray-600 dark:text-zinc-400">
                   <li>• The Peabody Hotel weddings</li>
                   <li>• Convention Center events</li>
                   <li>• Historic venue expertise</li>
@@ -825,10 +825,10 @@ export default function MemphisWeddingDJ() {
                 </ul>
               </div>
               
-              <div className="bg-gray-50 rounded-xl p-6">
-                <h3 className="text-xl font-bold text-gray-900 mb-4">East Memphis DJs</h3>
-                <p className="text-gray-600 mb-4">Experienced DJs for East Memphis venues including Memphis Country Club, The Racquet Club, and upscale residential events.</p>
-                <ul className="space-y-2 text-sm text-gray-600">
+              <div className="bg-gray-50 dark:bg-zinc-800 rounded-xl p-6">
+                <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">East Memphis DJs</h3>
+                <p className="text-gray-600 dark:text-zinc-400 mb-4">Experienced DJs for East Memphis venues including Memphis Country Club, The Racquet Club, and upscale residential events.</p>
+                <ul className="space-y-2 text-sm text-gray-600 dark:text-zinc-400">
                   <li>• Memphis Country Club</li>
                   <li>• The Racquet Club events</li>
                   <li>• Upscale residential parties</li>
@@ -836,10 +836,10 @@ export default function MemphisWeddingDJ() {
                 </ul>
               </div>
               
-              <div className="bg-gray-50 rounded-xl p-6">
-                <h3 className="text-xl font-bold text-gray-900 mb-4">Midtown Memphis DJs</h3>
-                <p className="text-gray-600 mb-4">Creative DJ services for Midtown Memphis&apos;s vibrant venues including Memphis Botanic Garden, Dixon Gallery, and cultural events.</p>
-                <ul className="space-y-2 text-sm text-gray-600">
+              <div className="bg-gray-50 dark:bg-zinc-800 rounded-xl p-6">
+                <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Midtown Memphis DJs</h3>
+                <p className="text-gray-600 dark:text-zinc-400 mb-4">Creative DJ services for Midtown Memphis&apos;s vibrant venues including Memphis Botanic Garden, Dixon Gallery, and cultural events.</p>
+                <ul className="space-y-2 text-sm text-gray-600 dark:text-zinc-400">
                   <li>• Memphis Botanic Garden</li>
                   <li>• Dixon Gallery & Gardens</li>
                   <li>• Cultural event expertise</li>
@@ -849,11 +849,11 @@ export default function MemphisWeddingDJ() {
             </div>
 
             <div className="text-center">
-              <p className="text-lg text-gray-600 mb-6">
+              <p className="text-lg text-gray-600 dark:text-zinc-400 mb-6">
                 <strong>Memphis DJs Near Me:</strong> We serve all Memphis zip codes including 38103, 38104, 38105, 38106, 38107, 38108, 38109, 38111, 38112, 38114, 38115, 38116, 38117, 38118, 38119, 38120, 38122, 38125, 38126, 38127, 38128, 38133, 38134, 38135, 38141, and 38152.
               </p>
               <button 
-                onClick={scrollToContact}
+                onClick={() => scrollToContact('djs-near-me')}
                 className="btn-primary text-lg px-8 py-4"
               >
                 Find DJs Near Me in Memphis
@@ -864,10 +864,10 @@ export default function MemphisWeddingDJ() {
         </section>
 
         {/* Memphis Wedding DJ Reviews */}
-        <section className="py-20 bg-gray-50">
+        <section className="py-20 bg-gray-50 dark:bg-zinc-900">
           <div className="section-container">
             <div className="text-center mb-16">
-              <h2 className="heading-2 text-gray-900 mb-6">
+              <h2 className="heading-2 text-gray-900 dark:text-white mb-6">
                 What Memphis Couples Say About Our Wedding DJ Service
               </h2>
               <div className="flex items-center justify-center mb-6">
@@ -876,22 +876,22 @@ export default function MemphisWeddingDJ() {
                     <Star key={i} className="w-6 h-6 text-brand-gold fill-current" />
                   ))}
                 </div>
-                <span className="ml-3 text-gray-600 font-medium">5.0 out of 5 stars from 200+ Memphis weddings</span>
+                <span className="ml-3 text-gray-600 dark:text-zinc-400 font-medium">5.0 out of 5 stars from 200+ Memphis weddings</span>
               </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
               {reviews.map((review, index) => (
-                <div key={index} className="bg-gray-50 rounded-xl p-8">
+                <div key={index} className="bg-gray-50 dark:bg-zinc-800 rounded-xl p-8">
                   <div className="flex items-center mb-4">
                     {[...Array(review.rating)].map((_, i) => (
                       <Star key={i} className="w-5 h-5 text-brand-gold fill-current" />
                     ))}
                   </div>
-                  <p className="text-gray-700 mb-6 italic">"{review.text}"</p>
+                  <p className="text-gray-700 dark:text-zinc-300 mb-6 italic">"{review.text}"</p>
                   <div>
-                    <p className="font-semibold text-gray-900">{review.name}</p>
-                    <p className="text-gray-600 text-sm">{review.venue}</p>
+                    <p className="font-semibold text-gray-900 dark:text-white">{review.name}</p>
+                    <p className="text-gray-600 dark:text-zinc-400 text-sm">{review.venue}</p>
                   </div>
                 </div>
               ))}
@@ -900,13 +900,13 @@ export default function MemphisWeddingDJ() {
         </section>
 
         {/* Wedding Add-Ons & Enhancements */}
-        <section className="py-20 bg-white">
+        <section className="py-20 bg-white dark:bg-zinc-950">
           <div className="section-container">
             <div className="text-center mb-16">
-              <h2 className="heading-2 text-gray-900 mb-6">
+              <h2 className="heading-2 text-gray-900 dark:text-white mb-6">
                 Enhance Your Memphis Wedding with Premium Add-Ons
               </h2>
-              <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+              <p className="text-xl text-gray-600 dark:text-zinc-400 max-w-3xl mx-auto">
                 Take your celebration to the next level with professional uplighting, photo booths, and special effects.
               </p>
             </div>
@@ -916,8 +916,8 @@ export default function MemphisWeddingDJ() {
                 <div className="w-16 h-16 bg-gradient-to-br from-purple-500 to-blue-600 text-white rounded-lg flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform">
                   <Sparkles className="w-8 h-8" />
                 </div>
-                <h3 className="text-xl font-bold text-gray-900 mb-3">Professional Uplighting</h3>
-                <p className="text-gray-600 mb-4">Transform your venue with elegant LED uplighting that matches your wedding colors. Packages from $200.</p>
+                <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-3">Professional Uplighting</h3>
+                <p className="text-gray-600 dark:text-zinc-400 mb-4">Transform your venue with elegant LED uplighting that matches your wedding colors. Packages from $200.</p>
                 <span className="text-brand font-semibold inline-flex items-center group-hover:gap-2 gap-1 transition-all">
                   Learn More <ChevronRight className="w-4 h-4" />
                 </span>
@@ -927,8 +927,8 @@ export default function MemphisWeddingDJ() {
                 <div className="w-16 h-16 bg-gradient-to-br from-pink-500 to-purple-600 text-white rounded-lg flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform">
                   <Camera className="w-8 h-8" />
                 </div>
-                <h3 className="text-xl font-bold text-gray-900 mb-3">Photo Booth Rental</h3>
-                <p className="text-gray-600 mb-4">Keep guests entertained with professional photo booth rental. Instant prints and digital gallery. Packages from $500.</p>
+                <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-3">Photo Booth Rental</h3>
+                <p className="text-gray-600 dark:text-zinc-400 mb-4">Keep guests entertained with professional photo booth rental. Instant prints and digital gallery. Packages from $500.</p>
                 <span className="text-brand font-semibold inline-flex items-center group-hover:gap-2 gap-1 transition-all">
                   Learn More <ChevronRight className="w-4 h-4" />
                 </span>
@@ -938,8 +938,8 @@ export default function MemphisWeddingDJ() {
                 <div className="w-16 h-16 bg-gradient-to-br from-orange-500 to-yellow-600 text-white rounded-lg flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform">
                   <Sparkles className="w-8 h-8" />
                 </div>
-                <h3 className="text-xl font-bold text-gray-900 mb-3">Cold Spark Machines</h3>
-                <p className="text-gray-600 mb-4">Dramatic indoor-safe spark effects for grand entrances and special moments. Packages from $500.</p>
+                <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-3">Cold Spark Machines</h3>
+                <p className="text-gray-600 dark:text-zinc-400 mb-4">Dramatic indoor-safe spark effects for grand entrances and special moments. Packages from $500.</p>
                 <span className="text-brand font-semibold inline-flex items-center group-hover:gap-2 gap-1 transition-all">
                   Learn More <ChevronRight className="w-4 h-4" />
                 </span>
@@ -956,32 +956,32 @@ export default function MemphisWeddingDJ() {
         </section>
 
         {/* Memphis Wedding DJ Packages Section - no exact pricing */}
-        <section className="py-20 bg-gray-50">
+        <section className="py-20 bg-gray-50 dark:bg-zinc-900">
           <div className="section-container">
             <div className="max-w-4xl mx-auto text-center">
-              <h2 className="heading-2 text-gray-900 mb-6">
+              <h2 className="heading-2 text-gray-900 dark:text-white mb-6">
                 Memphis Wedding DJ Packages
               </h2>
-              <p className="text-xl text-gray-600 mb-12">
+              <p className="text-xl text-gray-600 dark:text-zinc-400 mb-12">
                 No hidden fees. Custom packages for reception-only, ceremony + reception, 
                 or full-day coverage. Get a free quote tailored to your date and venue.
               </p>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
-                <div className="bg-white rounded-xl p-8 shadow-lg">
+                <div className="bg-white dark:bg-zinc-800 rounded-xl p-8 shadow-lg">
                   <div className="text-brand-gold text-xl font-bold mb-2">Reception</div>
-                  <div className="text-gray-600 mb-4">Reception-only package</div>
-                  <div className="text-sm text-gray-500">DJ, MC, and sound for your reception</div>
+                  <div className="text-gray-600 dark:text-zinc-400 mb-4">Reception-only package</div>
+                  <div className="text-sm text-gray-500 dark:text-zinc-500">DJ, MC, and sound for your reception</div>
                 </div>
-                <div className="bg-white rounded-xl p-8 shadow-lg border-2 border-brand-gold">
+                <div className="bg-white dark:bg-zinc-800 rounded-xl p-8 shadow-lg border-2 border-brand-gold dark:border-amber-500">
                   <div className="text-brand-gold text-xl font-bold mb-2">Ceremony + Reception</div>
-                  <div className="text-gray-600 mb-4">Most Popular</div>
-                  <div className="text-sm text-gray-500">Ceremony audio and full reception coverage</div>
+                  <div className="text-gray-600 dark:text-zinc-400 mb-4">Most Popular</div>
+                  <div className="text-sm text-gray-500 dark:text-zinc-500">Ceremony audio and full reception coverage</div>
                 </div>
-                <div className="bg-white rounded-xl p-8 shadow-lg">
+                <div className="bg-white dark:bg-zinc-800 rounded-xl p-8 shadow-lg">
                   <div className="text-brand-gold text-xl font-bold mb-2">Premium</div>
-                  <div className="text-gray-600 mb-4">Full-day package</div>
-                  <div className="text-sm text-gray-500">Full day with optional lighting and extras</div>
+                  <div className="text-gray-600 dark:text-zinc-400 mb-4">Full-day package</div>
+                  <div className="text-sm text-gray-500 dark:text-zinc-500">Full day with optional lighting and extras</div>
                 </div>
               </div>
 
@@ -993,52 +993,52 @@ export default function MemphisWeddingDJ() {
         </section>
 
         {/* FAQ Section for Memphis Wedding DJ */}
-        <section className="py-20 bg-white">
+        <section className="py-20 bg-white dark:bg-zinc-950">
           <div className="section-container">
             <div className="max-w-4xl mx-auto">
-              <h2 className="heading-2 text-gray-900 text-center mb-16">
+              <h2 className="heading-2 text-gray-900 dark:text-white text-center mb-16">
                 Memphis Wedding DJ Frequently Asked Questions
               </h2>
               
               <div className="space-y-8">
-                <div className="border-b border-gray-200 pb-6">
-                  <h3 className="text-xl font-bold text-gray-900 mb-3">
+                <div className="border-b border-gray-200 dark:border-zinc-700 pb-6">
+                  <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-3">
                     How far in advance should I book a Memphis wedding DJ?
                   </h3>
-                  <p className="text-gray-600">
+                  <p className="text-gray-600 dark:text-zinc-400">
                     We recommend booking your Memphis wedding DJ 6-12 months in advance, especially for popular 
                     wedding dates like Saturday evenings and peak wedding season (May-October). This ensures 
                     you get your preferred DJ and have time for detailed planning.
                   </p>
                 </div>
 
-                <div className="border-b border-gray-200 pb-6">
-                  <h3 className="text-xl font-bold text-gray-900 mb-3">
+                <div className="border-b border-gray-200 dark:border-zinc-700 pb-6">
+                  <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-3">
                     Do you provide ceremony music for Memphis weddings?
                   </h3>
-                  <p className="text-gray-600">
+                  <p className="text-gray-600 dark:text-zinc-400">
                     Yes! Our Memphis wedding DJ packages include ceremony music with professional sound systems, 
                     wireless microphones for your officiant and vows, and coordination of processional and 
                     recessional music timing.
                   </p>
                 </div>
 
-                <div className="border-b border-gray-200 pb-6">
-                  <h3 className="text-xl font-bold text-gray-900 mb-3">
+                <div className="border-b border-gray-200 dark:border-zinc-700 pb-6">
+                  <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-3">
                     What Memphis wedding venues do you work with?
                   </h3>
-                  <p className="text-gray-600">
+                  <p className="text-gray-600 dark:text-zinc-400">
                     We're approved and experienced at all major Memphis wedding venues including The Peabody, 
                     Dixon Gallery & Gardens, Memphis Hunt & Country Club, The Columns, and many more. We know 
                     each venue's unique requirements and restrictions.
                   </p>
                 </div>
 
-                <div className="border-b border-gray-200 pb-6">
-                  <h3 className="text-xl font-bold text-gray-900 mb-3">
+                <div className="border-b border-gray-200 dark:border-zinc-700 pb-6">
+                  <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-3">
                     What makes your Memphis wedding DJ service different?
                   </h3>
-                  <p className="text-gray-600">
+                  <p className="text-gray-600 dark:text-zinc-400">
                     Our Memphis wedding DJs combine 15+ years of local experience with sound systems that handle everything from small ceremonies to large receptions, 
                     personalized service, and transparent pricing. We're not just DJs – we're wedding entertainment 
                     specialists who understand Memphis couples and venues.
@@ -1046,10 +1046,10 @@ export default function MemphisWeddingDJ() {
                 </div>
 
                 <div>
-                  <h3 className="text-xl font-bold text-gray-900 mb-3">
+                  <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-3">
                     Do you offer lighting for Memphis weddings?
                   </h3>
-                  <p className="text-gray-600">
+                  <p className="text-gray-600 dark:text-zinc-400">
                     Yes! We offer uplighting, dance floor lighting, and special effects lighting to transform 
                     your Memphis wedding venue. Our lighting packages can match your wedding colors and create 
                     the perfect ambiance for your celebration.
@@ -1068,13 +1068,13 @@ export default function MemphisWeddingDJ() {
         />
 
         {/* Contact Section */}
-        <section id="contact" className="py-20 bg-gray-50">
+        <section id="contact" className="py-20 bg-gray-50 dark:bg-zinc-900">
           <div className="section-container">
             <div className="text-center mb-16">
-              <h2 className="heading-2 text-gray-900 mb-6">
+              <h2 className="heading-2 text-gray-900 dark:text-white mb-6">
                 Ready to Book Memphis&apos;s Best Wedding DJ?
               </h2>
-              <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+              <p className="text-xl text-gray-600 dark:text-zinc-400 max-w-3xl mx-auto">
                 Let's discuss your Memphis wedding and figure out exactly what you need. 
                 Get your free quote and consultation today!
               </p>
@@ -1089,8 +1089,8 @@ export default function MemphisWeddingDJ() {
                       <Phone className="w-6 h-6" />
                     </div>
                     <div>
-                      <h3 className="text-xl font-semibold text-gray-900 mb-2">Call Our Memphis Wedding DJ Team</h3>
-                      <p className="text-gray-600 mb-3">Ready to discuss your Memphis wedding? Give us a call!</p>
+                      <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">Call Our Memphis Wedding DJ Team</h3>
+                      <p className="text-gray-600 dark:text-zinc-400 mb-3">Ready to discuss your Memphis wedding? Give us a call!</p>
                       <a href="tel:+19014102020" className="text-brand font-semibold hover:text-brand-600 transition-colors text-lg">
                         (901) 410-2020
                       </a>
@@ -1104,8 +1104,8 @@ export default function MemphisWeddingDJ() {
                       <Mail className="w-6 h-6" />
                     </div>
                     <div>
-                      <h3 className="text-xl font-semibold text-gray-900 mb-2">Email Us</h3>
-                      <p className="text-gray-600 mb-3">Send us your Memphis wedding details and questions</p>
+                      <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">Email Us</h3>
+                      <p className="text-gray-600 dark:text-zinc-400 mb-3">Send us your Memphis wedding details and questions</p>
                       <a href="mailto:info@m10djcompany.com" className="text-brand font-semibold hover:text-brand-600 transition-colors">
                         info@m10djcompany.com
                       </a>
@@ -1119,15 +1119,15 @@ export default function MemphisWeddingDJ() {
                       <MapPin className="w-6 h-6" />
                     </div>
                     <div>
-                      <h3 className="text-xl font-semibold text-gray-900 mb-2">Memphis Service Area</h3>
-                      <p className="text-gray-600">Greater Memphis area and surrounding counties within 50 miles</p>
+                      <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">Memphis Service Area</h3>
+                      <p className="text-gray-600 dark:text-zinc-400">Greater Memphis area and surrounding counties within 50 miles</p>
                     </div>
                   </div>
                 </div>
               </div>
               
               {/* Contact Form */}
-              <div id="contact-form" className="modern-card bg-white">
+              <div id="contact-form" className="modern-card bg-white dark:bg-zinc-800">
                 <ContactForm />
               </div>
             </div>
@@ -1135,36 +1135,36 @@ export default function MemphisWeddingDJ() {
         </section>
 
         {/* AI-Optimized FAQ Section */}
-        <section className="py-section bg-gray-50">
+        <section className="py-section bg-gray-50 dark:bg-zinc-900">
           <div className="section-container">
             <div className="max-w-4xl mx-auto">
               <div className="text-center mb-16">
-                <h2 className="heading-2 mb-6 text-gray-900">Memphis Wedding DJ Frequently Asked Questions</h2>
-                <p className="text-xl text-gray-600">
+                <h2 className="heading-2 mb-6 text-gray-900 dark:text-white">Memphis Wedding DJ Frequently Asked Questions</h2>
+                <p className="text-xl text-gray-600 dark:text-zinc-400">
                   Get answers to common questions about our Memphis wedding DJ services
                 </p>
               </div>
 
               <div className="space-y-8">
                 {/* FAQ Item 1 - AI Snippet Ready */}
-                <div className="bg-white rounded-xl p-8 shadow-sm">
-                  <h3 className="text-xl font-semibold text-gray-900 mb-4">
+                <div className="bg-white dark:bg-zinc-800 rounded-xl p-8 shadow-sm">
+                  <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
                     How much does a Memphis wedding DJ cost?
                   </h3>
-                  <p className="text-gray-600 leading-relaxed mb-4">
+                  <p className="text-gray-600 dark:text-zinc-400 leading-relaxed mb-4">
                     Professional Memphis wedding DJ services typically range from <strong>$1,200-$3,500+</strong> depending on experience level, equipment quality, venue requirements, and event duration. Most Memphis couples invest <strong>$1,800-$2,500</strong> for complete ceremony and reception coverage with an experienced professional DJ.
                   </p>
-                  <p className="text-gray-600 leading-relaxed">
+                  <p className="text-gray-600 dark:text-zinc-400 leading-relaxed">
                     M10 DJ Company offers transparent, all-inclusive pricing with no hidden fees. Our packages include professional-grade sound systems, wireless microphones, elegant uplighting, backup equipment, liability insurance, and experienced MC services. Premium packages add ceremony audio, enhanced lighting, monogram projection, and special effects. <strong>Budget DJs ($500-$1,000) often lack insurance, backup systems, and venue experience</strong> - investing in a professional DJ protects your entire wedding investment.
                   </p>
                 </div>
 
                 {/* FAQ Item 2 - Local Authority */}
-                <div className="bg-white rounded-xl p-8 shadow-sm">
-                  <h3 className="text-xl font-semibold text-gray-900 mb-4">
+                <div className="bg-white dark:bg-zinc-800 rounded-xl p-8 shadow-sm">
+                  <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
                     What makes M10 DJ Company the best Memphis wedding DJ?
                   </h3>
-                  <p className="text-gray-600 leading-relaxed">
+                  <p className="text-gray-600 dark:text-zinc-400 leading-relaxed">
                     M10 DJ Company stands out with 15+ years of Memphis wedding experience, 500+ successful celebrations, 
                     and partnerships with venues like The Peabody Hotel, Memphis Botanic Garden, and Graceland. 
                     Our sound systems handle everything from small ceremonies to large receptions, our uplighting matches your wedding colors, and our MC services coordinate with your venue coordinator to keep your timeline on track. 
@@ -1173,11 +1173,11 @@ export default function MemphisWeddingDJ() {
                 </div>
 
                 {/* FAQ Item 3 - Process/Timeline */}
-                <div className="bg-white rounded-xl p-8 shadow-sm">
-                  <h3 className="text-xl font-semibold text-gray-900 mb-4">
+                <div className="bg-white dark:bg-zinc-800 rounded-xl p-8 shadow-sm">
+                  <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
                     How far in advance should we book our Memphis wedding DJ?
                   </h3>
-                  <p className="text-gray-600 leading-relaxed">
+                  <p className="text-gray-600 dark:text-zinc-400 leading-relaxed">
                     We recommend booking your Memphis wedding DJ 6-12 months in advance, especially for peak wedding season 
                     (April-October) and popular venues. This ensures availability and allows time for detailed planning. 
                     However, we can accommodate shorter timelines based on availability. Contact us immediately for last-minute bookings.
@@ -1185,11 +1185,11 @@ export default function MemphisWeddingDJ() {
                 </div>
 
                 {/* FAQ Item 4 - Service Coverage */}
-                <div className="bg-white rounded-xl p-8 shadow-sm">
-                  <h3 className="text-xl font-semibold text-gray-900 mb-4">
+                <div className="bg-white dark:bg-zinc-800 rounded-xl p-8 shadow-sm">
+                  <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
                     Do you travel outside Memphis for weddings?
                   </h3>
-                  <p className="text-gray-600 leading-relaxed">
+                  <p className="text-gray-600 dark:text-zinc-400 leading-relaxed">
                     Yes! We serve the greater Memphis area including Germantown, Collierville, Bartlett, Cordova, Millington, 
                     and surrounding communities within 50 miles. Travel fees may apply for venues outside our standard service area. 
                     We're experienced with venues throughout Tennessee, Mississippi, and Arkansas.
@@ -1197,11 +1197,11 @@ export default function MemphisWeddingDJ() {
                 </div>
 
                 {/* FAQ Item 5 - Equipment/Setup */}
-                <div className="bg-white rounded-xl p-8 shadow-sm">
-                  <h3 className="text-xl font-semibold text-gray-900 mb-4">
+                <div className="bg-white dark:bg-zinc-800 rounded-xl p-8 shadow-sm">
+                  <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
                     What equipment do you provide for Memphis weddings?
                   </h3>
-                  <p className="text-gray-600 leading-relaxed">
+                  <p className="text-gray-600 dark:text-zinc-400 leading-relaxed">
                     Our Memphis wedding DJ packages include professional sound systems, wireless microphones for ceremony and toasts, 
                     basic uplighting, DJ booth setup, and backup equipment. Premium packages add enhanced lighting, additional speakers 
                     for larger venues, and ceremony sound systems. All equipment is tested before every event and we bring backups (learned this lesson at an outdoor wedding in 2018).
@@ -1209,21 +1209,21 @@ export default function MemphisWeddingDJ() {
                 </div>
 
                 {/* FAQ targeting "wedding djs in memphis" - 197 impressions */}
-                <div className="bg-white rounded-xl p-8 shadow-sm">
-                  <h3 className="text-xl font-semibold text-gray-900 mb-4">
+                <div className="bg-white dark:bg-zinc-800 rounded-xl p-8 shadow-sm">
+                  <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
                     Are there good wedding DJs in Memphis?
                   </h3>
-                  <p className="text-gray-600 leading-relaxed">
+                  <p className="text-gray-600 dark:text-zinc-400 leading-relaxed">
                     Yes, Memphis has excellent wedding DJs! M10 DJ Company has DJed 500+ weddings since 2014, with a 5.0-star rating from real Memphis couples. We know the ins and outs of major Memphis venues – The Peabody's ballroom acoustics, Graceland's outdoor ceremony spaces, Memphis Botanic Garden's setup restrictions. We bring equipment that works in these spaces, MC services that coordinate with venue staff, and music selection that gets Memphis crowds dancing.
                   </p>
                 </div>
 
                 {/* FAQ targeting "djs near me" - 152 impressions */}
-                <div className="bg-white rounded-xl p-8 shadow-sm">
-                  <h3 className="text-xl font-semibold text-gray-900 mb-4">
+                <div className="bg-white dark:bg-zinc-800 rounded-xl p-8 shadow-sm">
+                  <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
                     Where can I find DJs near me in Memphis?
                   </h3>
-                  <p className="text-gray-600 leading-relaxed">
+                  <p className="text-gray-600 dark:text-zinc-400 leading-relaxed">
                     M10 DJ Company serves all Memphis neighborhoods including Downtown Memphis, Midtown Memphis, East Memphis, South Memphis, Germantown, Collierville, Bartlett, and Cordova within 25 miles. We're locally based and know every Memphis venue, neighborhood, and wedding location. Call (901) 410-2020 for same-day quotes or visit m10djcompany.com to request a free consultation and check availability for your date.
                   </p>
                 </div>

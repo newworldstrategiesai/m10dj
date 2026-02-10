@@ -148,6 +148,7 @@ export default async function handler(req, res) {
 
     const projectData = {
       submission_id: submission.id,
+      contact_id: contact.id, // So project shows under contact in contacts section
       organization_id: contact.organization_id || submissionOrgId,
       event_name: eventName,
       client_name: clientName,

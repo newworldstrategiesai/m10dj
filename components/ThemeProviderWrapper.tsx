@@ -5,7 +5,7 @@ import { useEffect, useState, useRef } from 'react';
 import { createClient } from '@/utils/supabase/client';
 
 export default function ThemeProviderWrapper({ children }: { children: React.ReactNode }) {
-  const [defaultTheme, setDefaultTheme] = useState<'light' | 'dark' | 'system'>('light'); // Default to light for non-logged-in users
+  const [defaultTheme, setDefaultTheme] = useState<'light' | 'dark' | 'system'>('dark'); // Default to dark for everyone
   const [forcedTheme, setForcedTheme] = useState<'light' | 'dark' | undefined>(undefined);
   const [mounted, setMounted] = useState(false);
   const isMountedRef = useRef(true);
@@ -44,8 +44,8 @@ export default function ThemeProviderWrapper({ children }: { children: React.Rea
         if (!isMountedRef.current) return;
         
         if (!session) {
-          // No session, default to light mode but allow users to toggle
-          setDefaultTheme('light');
+          // No session, default to dark mode but allow users to toggle
+          setDefaultTheme('dark');
           // Don't force the theme - allow users to toggle via ThemeToggle
           setForcedTheme(undefined);
           return;
@@ -101,8 +101,8 @@ export default function ThemeProviderWrapper({ children }: { children: React.Rea
         }
         if (isMountedRef.current) {
           console.error('Error loading theme preference:', error);
-          // Fall back to light mode but allow users to toggle
-          setDefaultTheme('light');
+          // Fall back to dark mode but allow users to toggle
+          setDefaultTheme('dark');
           setForcedTheme(undefined);
         }
       }
@@ -115,8 +115,8 @@ export default function ThemeProviderWrapper({ children }: { children: React.Rea
       if (!isMountedRef.current) return;
       
       if (!session) {
-        // User logged out, default to light mode but allow toggling
-        setDefaultTheme('light');
+        // User logged out, default to dark mode but allow toggling
+        setDefaultTheme('dark');
         setForcedTheme(undefined);
       } else {
         // User logged in, allow theme customization

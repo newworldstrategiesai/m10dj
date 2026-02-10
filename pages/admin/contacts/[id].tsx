@@ -1133,7 +1133,7 @@ export default function ContactDetailPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 dark:bg-zinc-950 flex items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#fcba00]"></div>
         </div>
     );
@@ -1145,9 +1145,9 @@ export default function ContactDetailPage() {
 
   if (!contact) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 dark:bg-zinc-950 flex items-center justify-center">
         <div className="text-center">
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">Contact not found</h2>
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Contact not found</h2>
           <Link href={from === 'lead' ? `/admin/leads/${id}` : "/admin/contacts"}>
             <Button>← {from === 'lead' ? 'Back to Lead Details' : 'Back to Contacts'}</Button>
           </Link>
@@ -1157,7 +1157,7 @@ export default function ContactDetailPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 dark:bg-zinc-950">
       {/* Email Recommendation Toasts - Shows toast notifications for recommended templates */}
       <EmailRecommendationToasts
         contactId={id}
@@ -1175,7 +1175,7 @@ export default function ContactDetailPage() {
       />
       <div className="max-w-4xl mx-auto px-3 sm:px-4 py-4 sm:py-6">
         {/* Header */}
-        <div className="bg-white rounded-lg shadow-sm border p-4 sm:p-6 mb-4 sm:mb-6">
+        <div className="bg-white dark:bg-zinc-800 rounded-lg shadow-sm border dark:border-zinc-700 p-4 sm:p-6 mb-4 sm:mb-6">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 mb-4">
             <Link href={from === 'lead' ? `/admin/leads/${id}` : "/admin/contacts"}>
               <Button variant="outline" className="flex items-center gap-2 w-full sm:w-auto">
@@ -1245,10 +1245,10 @@ export default function ContactDetailPage() {
                       </AvatarFallback>
                     </Avatar>
             <div className="flex-1 min-w-0">
-              <h1 className="text-xl sm:text-2xl font-bold text-gray-900 truncate">
+              <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white truncate">
                 {`${contact.first_name || ''} ${contact.last_name || ''}`.trim() || 'Unknown Contact'}
               </h1>
-              <p className="text-sm sm:text-base text-gray-600 truncate">{contact.email_address}</p>
+              <p className="text-sm sm:text-base text-gray-600 dark:text-zinc-400 truncate">{contact.email_address}</p>
               <div className="flex flex-wrap gap-2 mt-2">
                 {contact.lead_status && (
                   <Badge className={`${getLeadStatusColor(contact.lead_status)} text-xs`}>
@@ -1256,9 +1256,9 @@ export default function ContactDetailPage() {
                   </Badge>
                 )}
                 {contact.lead_temperature && (
-                  <Badge className={`text-xs ${contact.lead_temperature === 'Hot' ? 'bg-red-100 text-red-800' : 
-                    contact.lead_temperature === 'Warm' ? 'bg-orange-100 text-orange-800' : 
-                    'bg-blue-100 text-blue-800'}`}>
+                  <Badge className={`text-xs ${contact.lead_temperature === 'Hot' ? 'bg-red-100 dark:bg-red-900/50 text-red-800 dark:text-red-200' : 
+                    contact.lead_temperature === 'Warm' ? 'bg-orange-100 dark:bg-orange-900/50 text-orange-800 dark:text-orange-200' : 
+                    'bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-200'}`}>
                     {contact.lead_temperature}
                   </Badge>
                 )}
@@ -1302,8 +1302,8 @@ export default function ContactDetailPage() {
                   </div>
                   {/* Upcoming meetings - inside same card */}
                   {scheduledMeetings.length > 0 && (
-                    <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
-                      <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2 flex items-center gap-1.5">
+                    <div className="mt-4 pt-4 border-t border-gray-200 dark:border-zinc-700">
+                      <p className="text-xs font-medium text-gray-500 dark:text-zinc-400 mb-2 flex items-center gap-1.5">
                         <CalendarCheck className="h-3.5 w-3.5" />
                         Upcoming meetings
                       </p>
@@ -1314,8 +1314,8 @@ export default function ContactDetailPage() {
                           const typeName = (m.meeting_types as { name?: string } | null)?.name ?? 'Meeting';
                           return (
                             <li key={m.id} className="flex flex-wrap items-center gap-2 text-sm">
-                              <span className="text-gray-700 dark:text-gray-300">{dateStr} at {timeStr}</span>
-                              <span className="text-gray-500 dark:text-gray-400">— {typeName}</span>
+                              <span className="text-gray-700 dark:text-zinc-300">{dateStr} at {timeStr}</span>
+                              <span className="text-gray-500 dark:text-zinc-400">— {typeName}</span>
                               <Link href="/admin/bookings" className="text-blue-600 dark:text-blue-400 hover:underline text-xs font-medium">View</Link>
                               {m.video_call_link && (
                                 <a href={m.video_call_link} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400 hover:underline text-xs font-medium">
@@ -1328,7 +1328,7 @@ export default function ContactDetailPage() {
                         })}
                       </ul>
                       {scheduledMeetings.length > 3 && (
-                        <Link href="/admin/bookings" className="text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 mt-1 inline-block">
+                        <Link href="/admin/bookings" className="text-xs text-gray-500 dark:text-zinc-400 hover:text-gray-700 dark:hover:text-zinc-300 mt-1 inline-block">
                           +{scheduledMeetings.length - 3} more
                         </Link>
                       )}
@@ -1337,9 +1337,9 @@ export default function ContactDetailPage() {
         </div>
 
         {/* Quote page link and client activity */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border dark:border-gray-700 p-4 sm:p-6 mb-4 sm:mb-6">
-          <h3 className="text-base sm:text-lg font-semibold mb-3 text-gray-900 dark:text-gray-100">Quote</h3>
-          <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+        <div className="bg-white dark:bg-zinc-800 rounded-lg shadow-sm border dark:border-zinc-700 p-4 sm:p-6 mb-4 sm:mb-6">
+          <h3 className="text-base sm:text-lg font-semibold mb-3 text-gray-900 dark:text-white">Quote</h3>
+          <p className="text-sm text-gray-600 dark:text-zinc-400 mb-4">
             Client quote page and activity status.
           </p>
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -1356,7 +1356,7 @@ export default function ContactDetailPage() {
               <Button
                 variant="outline"
                 size="sm"
-                className="gap-1.5 text-gray-600 dark:text-gray-400 border-gray-300 dark:border-gray-600"
+                className="gap-1.5 text-gray-600 dark:text-zinc-400 border-gray-300 dark:border-zinc-600"
                 onClick={() => {
                   const url = typeof window !== 'undefined'
                     ? `${window.location.origin}/quote/${contact.id}`
@@ -1373,13 +1373,13 @@ export default function ContactDetailPage() {
             </div>
             <div className="flex flex-wrap gap-x-6 gap-y-1 text-sm">
               {quoteStatusLoading ? (
-                <span className="text-gray-500 dark:text-gray-400 flex items-center gap-1">
+                <span className="text-gray-500 dark:text-zinc-400 flex items-center gap-1">
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
                   Loading…
                 </span>
               ) : quoteStatus ? (
                 <>
-                  <span className="text-gray-600 dark:text-gray-300">
+                  <span className="text-gray-600 dark:text-zinc-300">
                     Page viewed: {quoteStatus.viewed ? (
                       <span className="text-green-600 dark:text-green-400">
                         Yes{quoteStatus.viewedAt ? ` (${new Date(quoteStatus.viewedAt).toLocaleString()})` : ''}
@@ -1388,7 +1388,7 @@ export default function ContactDetailPage() {
                       <span className="text-amber-600 dark:text-amber-400">No</span>
                     )}
                   </span>
-                  <span className="text-gray-600 dark:text-gray-300">
+                  <span className="text-gray-600 dark:text-zinc-300">
                     Selection made: {quoteStatus.hasSelection ? (
                       <span className="text-green-600 dark:text-green-400">
                         Yes{quoteStatus.selectionAt ? ` (${new Date(quoteStatus.selectionAt).toLocaleString()})` : ''}
@@ -1408,9 +1408,9 @@ export default function ContactDetailPage() {
          contact.lead_status !== 'Lost' && 
          contact.lead_status !== 'Completed' && 
          contact.email_address && (
-          <div className="bg-white rounded-lg shadow-sm border p-6 mb-6">
-            <h3 className="text-lg font-semibold mb-3 text-gray-900">Service Selection</h3>
-            <p className="text-sm text-gray-600 mb-4">
+          <div className="bg-white dark:bg-zinc-800 rounded-lg shadow-sm border dark:border-zinc-700 p-6 mb-6">
+            <h3 className="text-lg font-semibold mb-3 text-gray-900 dark:text-white">Service Selection</h3>
+            <p className="text-sm text-gray-600 dark:text-zinc-400 mb-4">
               Send {contact.first_name || 'this lead'} a personalized link to select their wedding DJ package and add-ons.
             </p>
             <ServiceSelectionButton 
@@ -1423,9 +1423,9 @@ export default function ContactDetailPage() {
 
         {/* Quick Actions */}
         {contact.email_address && (
-          <div className="bg-white rounded-lg shadow-sm border p-4 sm:p-6 mb-4 sm:mb-6">
-            <h3 className="text-base sm:text-lg font-semibold mb-3 text-gray-900">Quick Actions</h3>
-            <p className="text-xs sm:text-sm text-gray-600 mb-4">
+          <div className="bg-white dark:bg-zinc-800 rounded-lg shadow-sm border dark:border-zinc-700 p-4 sm:p-6 mb-4 sm:mb-6">
+            <h3 className="text-base sm:text-lg font-semibold mb-3 text-gray-900 dark:text-white">Quick Actions</h3>
+            <p className="text-xs sm:text-sm text-gray-600 dark:text-zinc-400 mb-4">
               Send important documents and communications to {contact.first_name || 'this contact'}.
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -1543,7 +1543,7 @@ export default function ContactDetailPage() {
         {/* Main Content */}
         <Tabs defaultValue="pipeline" className="space-y-4 sm:space-y-6">
           <div className="overflow-x-auto">
-            <TabsList className="bg-white border rounded-lg p-1 inline-flex min-w-full sm:min-w-0">
+            <TabsList className="bg-white dark:bg-zinc-800 border dark:border-zinc-700 rounded-lg p-1 inline-flex min-w-full sm:min-w-0">
               <TabsTrigger value="pipeline" className="text-xs sm:text-sm whitespace-nowrap">Pipeline</TabsTrigger>
               <TabsTrigger value="communications" className="text-xs sm:text-sm whitespace-nowrap">
                 Comm {communications.length > 0 && `(${communications.length})`}
@@ -1561,7 +1561,7 @@ export default function ContactDetailPage() {
           </div>
 
           <TabsContent value="pipeline">
-            <div className="bg-white rounded-lg shadow-sm border p-6">
+            <div className="bg-white dark:bg-zinc-800 rounded-lg shadow-sm border dark:border-zinc-700 p-6">
               {contact && (
                 <PipelineView
                   contact={contact as any}
@@ -1579,11 +1579,11 @@ export default function ContactDetailPage() {
           </TabsContent>
 
           <TabsContent value="details">
-            <div className="bg-white rounded-lg shadow-sm border p-6">
-              <h3 className="text-lg font-semibold mb-4">Personal Information</h3>
+            <div className="bg-white dark:bg-zinc-800 rounded-lg shadow-sm border dark:border-zinc-700 p-6">
+              <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">Personal Information</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">First Name</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-zinc-300 mb-1">First Name</label>
                   {isEditing ? (
                     <Input
                       type="text"
@@ -1593,11 +1593,11 @@ export default function ContactDetailPage() {
                       autoFocus={false}
                     />
                   ) : (
-                    <p className="text-gray-900">{contact.first_name || 'Not provided'}</p>
+                    <p className="text-gray-900 dark:text-white">{contact.first_name || 'Not provided'}</p>
                   )}
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Last Name</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-zinc-300 mb-1">Last Name</label>
                   {isEditing ? (
                     <Input
                       type="text"
@@ -1606,11 +1606,11 @@ export default function ContactDetailPage() {
                       className="w-full"
                     />
                   ) : (
-                    <p className="text-gray-900">{contact.last_name || 'Not provided'}</p>
+                    <p className="text-gray-900 dark:text-white">{contact.last_name || 'Not provided'}</p>
                   )}
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-zinc-300 mb-1">Email</label>
                   {isEditing ? (
                     <Input
                       type="email"
@@ -1618,11 +1618,11 @@ export default function ContactDetailPage() {
                       onChange={(e) => handleInputChange('email_address', e.target.value)}
                     />
                   ) : (
-                    <p className="text-gray-900">{contact.email_address || 'Not provided'}</p>
+                    <p className="text-gray-900 dark:text-white">{contact.email_address || 'Not provided'}</p>
                   )}
                 </div>
                     <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-zinc-300 mb-1">Phone</label>
                   {isEditing ? (
                     <Input
                       type="tel"
@@ -1630,40 +1630,40 @@ export default function ContactDetailPage() {
                       onChange={(e) => handleInputChange('phone', e.target.value)}
                     />
                   ) : (
-                    <p className="text-gray-900">{contact.phone || 'Not provided'}</p>
+                    <p className="text-gray-900 dark:text-white">{contact.phone || 'Not provided'}</p>
                   )}
                         </div>
                 <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Address</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-zinc-300 mb-1">Address</label>
                   {isEditing ? (
                     <Input
                       value={contact.address || ''}
                       onChange={(e) => handleInputChange('address', e.target.value)}
                     />
                   ) : (
-                    <p className="text-gray-900">{contact.address || 'Not provided'}</p>
+                    <p className="text-gray-900 dark:text-white">{contact.address || 'Not provided'}</p>
                   )}
                         </div>
                     <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">City</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-zinc-300 mb-1">City</label>
                   {isEditing ? (
                     <Input
                       value={contact.city || ''}
                       onChange={(e) => handleInputChange('city', e.target.value)}
                     />
                   ) : (
-                    <p className="text-gray-900">{contact.city || 'Not provided'}</p>
+                    <p className="text-gray-900 dark:text-white">{contact.city || 'Not provided'}</p>
                   )}
                         </div>
                     <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">State</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-zinc-300 mb-1">State</label>
                   {isEditing ? (
                     <Input
                       value={contact.state || ''}
                       onChange={(e) => handleInputChange('state', e.target.value)}
                     />
                   ) : (
-                    <p className="text-gray-900">{contact.state || 'Not provided'}</p>
+                    <p className="text-gray-900 dark:text-white">{contact.state || 'Not provided'}</p>
                   )}
                         </div>
                   </div>
@@ -1673,11 +1673,11 @@ export default function ContactDetailPage() {
           <TabsContent value="event">
             <div className="space-y-6">
               {/* Contact Event Details */}
-              <div className="bg-white rounded-lg shadow-sm border p-6">
-                <h3 className="text-lg font-semibold mb-4">Contact Event Details</h3>
+              <div className="bg-white dark:bg-zinc-800 rounded-lg shadow-sm border dark:border-zinc-700 p-6">
+                <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">Contact Event Details</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Event Type</label>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-zinc-300 mb-1">Event Type</label>
                     {isEditing ? (
                       <Select value={contact.event_type || ''} onValueChange={(value) => handleInputChange('event_type', value)}>
                         <SelectTrigger>
@@ -1692,11 +1692,11 @@ export default function ContactDetailPage() {
                         </SelectContent>
                       </Select>
                     ) : (
-                      <p className="text-gray-900">{contact.event_type?.replace('_', ' ').toUpperCase() || 'Not specified'}</p>
+                      <p className="text-gray-900 dark:text-white">{contact.event_type?.replace('_', ' ').toUpperCase() || 'Not specified'}</p>
                     )}
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Event Date</label>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-zinc-300 mb-1">Event Date</label>
                     {isEditing ? (
                       <Input
                         type="date"
@@ -1704,16 +1704,16 @@ export default function ContactDetailPage() {
                         onChange={(e) => handleInputChange('event_date', e.target.value)}
                       />
                     ) : (
-                      <p className="text-gray-900">
+                      <p className="text-gray-900 dark:text-white">
                         {contact.event_date ? formatDateForDisplay(contact.event_date) : 'Not set'}
                         {process.env.NODE_ENV === 'development' && contact.event_date && (
-                          <span className="ml-2 text-xs text-gray-400">({contact.event_date})</span>
+                          <span className="ml-2 text-xs text-gray-400 dark:text-zinc-500">({contact.event_date})</span>
                         )}
                       </p>
                     )}
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Event Time (Start)</label>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-zinc-300 mb-1">Event Time (Start)</label>
                     {isEditing ? (
                       <Input
                         type="time"
@@ -1721,11 +1721,11 @@ export default function ContactDetailPage() {
                         onChange={(e) => handleInputChange('event_time', e.target.value)}
                       />
                     ) : (
-                      <p className="text-gray-900">{contact.event_time || 'Not set'}</p>
+                      <p className="text-gray-900 dark:text-white">{contact.event_time || 'Not set'}</p>
                     )}
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">End Time</label>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-zinc-300 mb-1">End Time</label>
                     {isEditing ? (
                       <Input
                         type="time"
@@ -1733,11 +1733,11 @@ export default function ContactDetailPage() {
                         onChange={(e) => handleInputChange('end_time', e.target.value)}
                       />
                     ) : (
-                      <p className="text-gray-900">{contact.end_time || 'Not set'}</p>
+                      <p className="text-gray-900 dark:text-white">{contact.end_time || 'Not set'}</p>
                     )}
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Setup Time</label>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-zinc-300 mb-1">Setup Time</label>
                     {isEditing ? (
                       <Input
                         type="time"
@@ -1745,11 +1745,11 @@ export default function ContactDetailPage() {
                         onChange={(e) => handleInputChange('setup_time', e.target.value)}
                       />
                     ) : (
-                      <p className="text-gray-900">{contact.setup_time || 'Not set'}</p>
+                      <p className="text-gray-900 dark:text-white">{contact.setup_time || 'Not set'}</p>
                     )}
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Guest Arrival Time</label>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-zinc-300 mb-1">Guest Arrival Time</label>
                     {isEditing ? (
                       <Input
                         type="time"
@@ -1757,11 +1757,11 @@ export default function ContactDetailPage() {
                         onChange={(e) => handleInputChange('guest_arrival_time', e.target.value)}
                       />
                     ) : (
-                      <p className="text-gray-900">{contact.guest_arrival_time || 'Not set'}</p>
+                      <p className="text-gray-900 dark:text-white">{contact.guest_arrival_time || 'Not set'}</p>
                     )}
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Guest Count</label>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-zinc-300 mb-1">Guest Count</label>
                     {isEditing ? (
                       <Input
                         type="number"
@@ -1769,11 +1769,11 @@ export default function ContactDetailPage() {
                         onChange={(e) => handleInputChange('guest_count', e.target.value ? parseInt(e.target.value) : null)}
                       />
                     ) : (
-                      <p className="text-gray-900">{contact.guest_count || 'Not specified'}</p>
+                      <p className="text-gray-900 dark:text-white">{contact.guest_count || 'Not specified'}</p>
                     )}
                   </div>
                   <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Venue Name</label>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-zinc-300 mb-1">Venue Name</label>
                     {isEditing ? (
                       <div className="relative">
                         <Input
@@ -1788,14 +1788,14 @@ export default function ContactDetailPage() {
                         )}
                       </div>
                     ) : (
-                      <p className="text-gray-900">{contact.venue_name || 'Not specified'}</p>
+                      <p className="text-gray-900 dark:text-white">{contact.venue_name || 'Not specified'}</p>
                     )}
                   </div>
                   <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-zinc-300 mb-1">
                       Venue Address
                       {isEditing && (!contact.venue_address || contact.venue_address.trim() === '') && contact.venue_name && (
-                        <span className="ml-2 text-xs text-gray-500 font-normal">
+                        <span className="ml-2 text-xs text-gray-500 dark:text-zinc-400 font-normal">
                           (Auto-lookup when venue name is entered)
                         </span>
                       )}
@@ -1807,11 +1807,11 @@ export default function ContactDetailPage() {
                         placeholder="Address will auto-fill if venue is in database"
                       />
                     ) : (
-                      <p className="text-gray-900">{contact.venue_address || 'Not specified'}</p>
+                      <p className="text-gray-900 dark:text-white">{contact.venue_address || 'Not specified'}</p>
                     )}
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Venue Type</label>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-zinc-300 mb-1">Venue Type</label>
                     {isEditing ? (
                       <Input
                         value={contact.venue_type || ''}
@@ -1819,11 +1819,11 @@ export default function ContactDetailPage() {
                         placeholder="e.g., Clubhouse, Ballroom, Restaurant"
                       />
                     ) : (
-                      <p className="text-gray-900">{contact.venue_type || 'Not specified'}</p>
+                      <p className="text-gray-900 dark:text-white">{contact.venue_type || 'Not specified'}</p>
                     )}
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Venue Room</label>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-zinc-300 mb-1">Venue Room</label>
                     {isEditing ? (
                       <Input
                         value={contact.venue_room || ''}
@@ -1831,11 +1831,11 @@ export default function ContactDetailPage() {
                         placeholder="e.g., Main Hall, Conference Room A"
                       />
                     ) : (
-                      <p className="text-gray-900">{contact.venue_room || 'Not specified'}</p>
+                      <p className="text-gray-900 dark:text-white">{contact.venue_room || 'Not specified'}</p>
                     )}
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Budget Range</label>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-zinc-300 mb-1">Budget Range</label>
                     {isEditing ? (
                       <Input
                         value={contact.budget_range || ''}
@@ -1843,11 +1843,11 @@ export default function ContactDetailPage() {
                         placeholder="e.g., $2,000-$3,500"
                       />
                     ) : (
-                      <p className="text-gray-900">{contact.budget_range || 'Not specified'}</p>
+                      <p className="text-gray-900 dark:text-white">{contact.budget_range || 'Not specified'}</p>
                     )}
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Referral Source</label>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-zinc-300 mb-1">Referral Source</label>
                     {isEditing ? (
                       <Input
                         value={contact.referral_source || ''}
@@ -1855,11 +1855,11 @@ export default function ContactDetailPage() {
                         placeholder="How did they hear about us?"
                       />
                     ) : (
-                      <p className="text-gray-900">{contact.referral_source || 'Not specified'}</p>
+                      <p className="text-gray-900 dark:text-white">{contact.referral_source || 'Not specified'}</p>
                     )}
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Event Occasion</label>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-zinc-300 mb-1">Event Occasion</label>
                     {isEditing ? (
                       <Input
                         value={contact.event_occasion || ''}
@@ -1867,11 +1867,11 @@ export default function ContactDetailPage() {
                         placeholder="e.g., Surprise Birthday Party, Anniversary"
                       />
                     ) : (
-                      <p className="text-gray-900">{contact.event_occasion || 'Not specified'}</p>
+                      <p className="text-gray-900 dark:text-white">{contact.event_occasion || 'Not specified'}</p>
                     )}
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Event For</label>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-zinc-300 mb-1">Event For</label>
                     {isEditing ? (
                       <Input
                         value={contact.event_for || ''}
@@ -1879,11 +1879,11 @@ export default function ContactDetailPage() {
                         placeholder="e.g., Wife, Daughter, Client"
                       />
                     ) : (
-                      <p className="text-gray-900">{contact.event_for || 'Not specified'}</p>
+                      <p className="text-gray-900 dark:text-white">{contact.event_for || 'Not specified'}</p>
                     )}
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Is Surprise Event</label>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-zinc-300 mb-1">Is Surprise Event</label>
                     {isEditing ? (
                       <Select 
                         value={contact.is_surprise === null ? '' : contact.is_surprise ? 'true' : 'false'} 
@@ -1898,11 +1898,11 @@ export default function ContactDetailPage() {
                         </SelectContent>
                       </Select>
                     ) : (
-                      <p className="text-gray-900">{contact.is_surprise === true ? 'Yes' : contact.is_surprise === false ? 'No' : 'Not specified'}</p>
+                      <p className="text-gray-900 dark:text-white">{contact.is_surprise === true ? 'Yes' : contact.is_surprise === false ? 'No' : 'Not specified'}</p>
                     )}
                   </div>
                   <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Special Requests</label>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-zinc-300 mb-1">Special Requests</label>
                     {isEditing ? (
                       <Textarea
                         value={contact.special_requests || ''}
@@ -1910,7 +1910,7 @@ export default function ContactDetailPage() {
                         rows={3}
                       />
                     ) : (
-                      <p className="text-gray-900 whitespace-pre-wrap">{contact.special_requests || 'None'}</p>
+                      <p className="text-gray-900 dark:text-white whitespace-pre-wrap">{contact.special_requests || 'None'}</p>
                     )}
                   </div>
                 </div>
@@ -1941,9 +1941,9 @@ export default function ContactDetailPage() {
               )}
 
               {/* Projects Section */}
-              <div className="bg-white rounded-lg shadow-sm border p-6">
+              <div className="bg-white dark:bg-zinc-800 rounded-lg shadow-sm border dark:border-zinc-700 p-6">
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-semibold">Projects</h3>
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Projects</h3>
                   <div className="flex items-center gap-2">
                     {eventStatus && eventStatus.shouldHaveEvent && !eventStatus.hasEvent && !eventStatus.loading && (
                       <Button
@@ -1969,34 +1969,34 @@ export default function ContactDetailPage() {
                 {projectsLoading ? (
                   <div className="text-center py-8">
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-                    <p className="text-gray-500 mt-2">Loading projects...</p>
+                    <p className="text-gray-500 dark:text-zinc-400 mt-2">Loading projects...</p>
                   </div>
                 ) : projects.length === 0 ? (
                   <div className="text-center py-8">
-                    <p className="text-gray-500">No projects found for this contact.</p>
-                    <p className="text-sm text-gray-400 mt-1">Projects are automatically created when contact forms are submitted.</p>
+                    <p className="text-gray-500 dark:text-zinc-400">No projects found for this contact.</p>
+                    <p className="text-sm text-gray-400 dark:text-zinc-500 mt-1">Projects are automatically created when contact forms are submitted.</p>
                   </div>
                 ) : (
                   <div className="space-y-4">
                     {projects.map((project) => (
-                      <div key={project.id} className="border rounded-lg p-4 hover:bg-gray-50 transition-colors">
+                      <div key={project.id} className="border dark:border-zinc-700 rounded-lg p-4 hover:bg-gray-50 dark:hover:bg-zinc-700/50 transition-colors">
                         <div className="flex items-start justify-between">
                           <div className="flex-1">
                             <div className="flex items-center gap-2 mb-2">
-                              <h4 className="font-medium text-gray-900">{project.event_name}</h4>
+                              <h4 className="font-medium text-gray-900 dark:text-white">{project.event_name}</h4>
                               <Badge 
                                 className={
-                                  project.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                                  project.status === 'confirmed' ? 'bg-green-100 text-green-800' :
-                                  project.status === 'in_progress' ? 'bg-blue-100 text-blue-800' :
-                                  project.status === 'completed' ? 'bg-gray-100 text-gray-800' :
-                                  'bg-red-100 text-red-800'
+                                  project.status === 'pending' ? 'bg-yellow-100 dark:bg-yellow-900/50 text-yellow-800 dark:text-yellow-200' :
+                                  project.status === 'confirmed' ? 'bg-green-100 dark:bg-green-900/50 text-green-800 dark:text-green-200' :
+                                  project.status === 'in_progress' ? 'bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-200' :
+                                  project.status === 'completed' ? 'bg-gray-100 dark:bg-zinc-700 text-gray-800 dark:text-zinc-200' :
+                                  'bg-red-100 dark:bg-red-900/50 text-red-800 dark:text-red-200'
                                 }
                               >
                                 {project.status}
                               </Badge>
                             </div>
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-gray-600">
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-gray-600 dark:text-zinc-400">
                               <div>
                                 <span className="font-medium">Event Type:</span> {project.event_type}
                               </div>
@@ -2018,7 +2018,7 @@ export default function ContactDetailPage() {
                               )}
                             </div>
                             {project.special_requests && (
-                              <div className="mt-2 text-sm text-gray-600">
+                              <div className="mt-2 text-sm text-gray-600 dark:text-zinc-400">
                                 <span className="font-medium">Special Requests:</span> {project.special_requests}
                               </div>
                             )}
@@ -2072,11 +2072,11 @@ export default function ContactDetailPage() {
           </TabsContent>
 
           <TabsContent value="business">
-            <div className="bg-white rounded-lg shadow-sm border p-6">
-              <h3 className="text-lg font-semibold mb-4">Business & Lead Information</h3>
+            <div className="bg-white dark:bg-zinc-800 rounded-lg shadow-sm border dark:border-zinc-700 p-6">
+              <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">Business & Lead Information</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Lead Status</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-zinc-300 mb-1">Lead Status</label>
                   {isEditing ? (
                     <Select value={contact.lead_status || ''} onValueChange={(value) => handleInputChange('lead_status', value)}>
                       <SelectTrigger>
@@ -2091,11 +2091,11 @@ export default function ContactDetailPage() {
                       </SelectContent>
                     </Select>
                   ) : (
-                    <p className="text-gray-900">{contact.lead_status || 'Not set'}</p>
+                    <p className="text-gray-900 dark:text-white">{contact.lead_status || 'Not set'}</p>
                   )}
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Lead Temperature</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-zinc-300 mb-1">Lead Temperature</label>
                   {isEditing ? (
                     <Select value={contact.lead_temperature || ''} onValueChange={(value) => handleInputChange('lead_temperature', value)}>
                       <SelectTrigger>
@@ -2110,23 +2110,23 @@ export default function ContactDetailPage() {
                       </SelectContent>
                     </Select>
                   ) : (
-                    <p className="text-gray-900">{contact.lead_temperature || 'Not set'}</p>
+                    <p className="text-gray-900 dark:text-white">{contact.lead_temperature || 'Not set'}</p>
                   )}
               </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Lead Source</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-zinc-300 mb-1">Lead Source</label>
                   {isEditing ? (
                     <Input
                       value={contact.lead_source || ''}
                       onChange={(e) => handleInputChange('lead_source', e.target.value)}
                     />
                   ) : (
-                    <p className="text-gray-900">{contact.lead_source || 'Not specified'}</p>
+                    <p className="text-gray-900 dark:text-white">{contact.lead_source || 'Not specified'}</p>
                   )}
             </div>
                 {contact.source_domain && (
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Source Domain</label>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-zinc-300 mb-1">Source Domain</label>
                     <p className="text-gray-900 flex items-center gap-1">
                       <span className="text-purple-500">🌐</span>
                       {contact.source_domain}
@@ -2134,7 +2134,7 @@ export default function ContactDetailPage() {
                   </div>
                 )}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Communication Preference</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-zinc-300 mb-1">Communication Preference</label>
                   {isEditing ? (
                     <Select value={contact.communication_preference || ''} onValueChange={(value) => handleInputChange('communication_preference', value)}>
                       <SelectTrigger>
@@ -2149,11 +2149,11 @@ export default function ContactDetailPage() {
                       </SelectContent>
                     </Select>
                   ) : (
-                    <p className="text-gray-900">{contact.communication_preference ? contact.communication_preference.charAt(0).toUpperCase() + contact.communication_preference.slice(1) : 'Not set'}</p>
+                    <p className="text-gray-900 dark:text-white">{contact.communication_preference ? contact.communication_preference.charAt(0).toUpperCase() + contact.communication_preference.slice(1) : 'Not set'}</p>
                   )}
                   </div>
                 <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-zinc-300 mb-1">Notes</label>
                   {isEditing ? (
                     <Textarea
                       value={contact.notes || ''}
@@ -2161,22 +2161,22 @@ export default function ContactDetailPage() {
                       rows={4}
                     />
                   ) : (
-                    <p className="text-gray-900 whitespace-pre-wrap">{contact.notes || 'No notes'}</p>
+                    <p className="text-gray-900 dark:text-white whitespace-pre-wrap">{contact.notes || 'No notes'}</p>
                   )}
                   </div>
                 </div>
 
               {/* Service Selection Display */}
               {(contact as any).custom_fields?.service_selection && (
-                <div className="mt-6 p-6 bg-blue-50 border-2 border-blue-200 rounded-lg">
-                  <h3 className="text-lg font-semibold text-blue-900 mb-4 flex items-center gap-2">
+                <div className="mt-6 p-6 bg-blue-50 dark:bg-blue-900/20 border-2 border-blue-200 dark:border-blue-800 rounded-lg">
+                  <h3 className="text-lg font-semibold text-blue-900 dark:text-blue-100 mb-4 flex items-center gap-2">
                     <CheckCircle className="h-5 w-5" />
                     Selected Services
                   </h3>
                   <div className="space-y-4">
                     <div>
-                      <p className="text-sm font-medium text-gray-700 mb-1">Package</p>
-                      <p className="text-gray-900 font-semibold">
+                      <p className="text-sm font-medium text-gray-700 dark:text-zinc-300 mb-1">Package</p>
+                      <p className="text-gray-900 dark:text-white font-semibold">
                         {(contact as any).custom_fields.service_selection.package.name}
                         <span className="ml-2 text-brand">
                           ${(contact as any).custom_fields.service_selection.package.basePrice.toLocaleString()}
@@ -2186,7 +2186,7 @@ export default function ContactDetailPage() {
                     
                     {(contact as any).custom_fields.service_selection.addOns?.length > 0 && (
                       <div>
-                        <p className="text-sm font-medium text-gray-700 mb-2">Add-Ons</p>
+                        <p className="text-sm font-medium text-gray-700 dark:text-zinc-300 mb-2">Add-Ons</p>
                         <ul className="space-y-1">
                           {(contact as any).custom_fields.service_selection.addOns.map((addon: any, idx: number) => (
                             <li key={idx} className="text-gray-900 flex items-center justify-between">
@@ -2202,8 +2202,8 @@ export default function ContactDetailPage() {
                       </div>
                     )}
                     
-                    <div className="pt-4 border-t border-blue-300">
-                      <p className="text-xl font-bold text-blue-900 flex items-center justify-between">
+                    <div className="pt-4 border-t border-blue-300 dark:border-blue-700">
+                      <p className="text-xl font-bold text-blue-900 dark:text-blue-100 flex items-center justify-between">
                         <span>Total Investment:</span>
                         <span className="text-2xl">
                           ${(contact as any).custom_fields.service_selection.total.toLocaleString()}
@@ -2212,16 +2212,16 @@ export default function ContactDetailPage() {
                     </div>
                     
                     {(contact as any).custom_fields.service_selection.additionalNotes && (
-                      <div className="pt-4 border-t border-blue-300">
-                        <p className="text-sm font-medium text-gray-700 mb-1">Additional Notes</p>
-                        <p className="text-gray-900 whitespace-pre-wrap bg-white p-3 rounded border border-blue-200">
+                      <div className="pt-4 border-t border-blue-300 dark:border-blue-700">
+                        <p className="text-sm font-medium text-gray-700 dark:text-zinc-300 mb-1">Additional Notes</p>
+                        <p className="text-gray-900 dark:text-white whitespace-pre-wrap bg-white dark:bg-zinc-800 p-3 rounded border border-blue-200 dark:border-blue-800">
                           {(contact as any).custom_fields.service_selection.additionalNotes}
                         </p>
                       </div>
                     )}
                     
-                    <div className="pt-4 border-t border-blue-300">
-                      <p className="text-xs text-gray-500">
+                    <div className="pt-4 border-t border-blue-300 dark:border-blue-700">
+                      <p className="text-xs text-gray-500 dark:text-zinc-400">
                         Submitted: {new Date((contact as any).custom_fields.service_selection.submittedAt).toLocaleString()}
                       </p>
                     </div>
@@ -2234,11 +2234,11 @@ export default function ContactDetailPage() {
           {/* Communications Tab - Unified Hub */}
           <TabsContent value="communications">
             {/* Email Parser Section */}
-            <div className="bg-white rounded-lg shadow-sm border p-6 mb-6">
+            <div className="bg-white dark:bg-zinc-800 rounded-lg shadow-sm border dark:border-zinc-700 p-6 mb-6">
               <div className="flex items-center justify-between mb-4">
                 <div>
-                  <h3 className="text-lg font-semibold text-gray-900">Import from Email</h3>
-                  <p className="text-sm text-gray-600 mt-1">
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Import from Email</h3>
+                  <p className="text-sm text-gray-600 dark:text-zinc-400 mt-1">
                     Paste email content to automatically extract playlists, event times, and special requests
                   </p>
                 </div>
@@ -2263,7 +2263,7 @@ export default function ContactDetailPage() {
                     </DialogHeader>
                     <div className="space-y-4 mt-4">
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                        <label className="block text-sm font-medium text-gray-700 dark:text-zinc-300 mb-2">
                           Email Content
                         </label>
                         <Textarea
@@ -2317,16 +2317,16 @@ export default function ContactDetailPage() {
 
           {/* Social Media Tab */}
           <TabsContent value="social">
-            <div className="bg-white rounded-lg shadow-sm border p-6">
+            <div className="bg-white dark:bg-zinc-800 rounded-lg shadow-sm border dark:border-zinc-700 p-6">
               <div className="flex items-center justify-between mb-6">
                 <div>
-                  <h3 className="text-lg font-semibold text-gray-900">Social Media Conversation History</h3>
-                  <p className="text-sm text-gray-600 mt-1">
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Social Media Conversation History</h3>
+                  <p className="text-sm text-gray-600 dark:text-zinc-400 mt-1">
                     Messages from Instagram and Facebook Messenger
                   </p>
                 </div>
                 {socialMessages.length > 0 && socialMessages[0].platform && (
-                  <Badge className={socialMessages[0].platform === 'instagram' ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-800'}>
+                  <Badge className={socialMessages[0].platform === 'instagram' ? 'bg-purple-100 dark:bg-purple-900/50 text-purple-800 dark:text-purple-200' : 'bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-200'}>
                     {socialMessages[0].platform === 'instagram' ? 'Instagram' : 'Facebook Messenger'}
                   </Badge>
                 )}
@@ -2335,13 +2335,13 @@ export default function ContactDetailPage() {
               {socialMessagesLoading ? (
                 <div className="text-center py-12">
                   <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-                  <p className="text-gray-600 mt-4">Loading messages...</p>
+                  <p className="text-gray-600 dark:text-zinc-400 mt-4">Loading messages...</p>
                 </div>
               ) : socialMessages.length === 0 ? (
                 <div className="text-center py-12">
-                  <MessageSquare className="h-12 w-12 text-gray-300 mx-auto mb-3" />
-                  <p className="text-gray-600">No social media messages found</p>
-                  <p className="text-sm text-gray-500 mt-1">
+                  <MessageSquare className="h-12 w-12 text-gray-300 dark:text-zinc-600 mx-auto mb-3" />
+                  <p className="text-gray-600 dark:text-zinc-400">No social media messages found</p>
+                  <p className="text-sm text-gray-500 dark:text-zinc-500 mt-1">
                     Messages from Instagram or Facebook Messenger will appear here
                   </p>
                 </div>
@@ -2352,8 +2352,8 @@ export default function ContactDetailPage() {
                       key={message.id}
                       className={`p-4 rounded-lg border ${
                         message.is_lead_inquiry
-                          ? 'bg-green-50 border-green-200'
-                          : 'bg-gray-50 border-gray-200'
+                          ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800'
+                          : 'bg-gray-50 dark:bg-zinc-800 border-gray-200 dark:border-zinc-700'
                       }`}
                     >
                       <div className="flex items-start justify-between mb-2">
@@ -2367,7 +2367,7 @@ export default function ContactDetailPage() {
                               <span className="text-white text-xs font-bold">FB</span>
                             </div>
                           )}
-                          <span className="text-xs text-gray-600">
+                          <span className="text-xs text-gray-600 dark:text-zinc-400">
                             {new Date(message.timestamp).toLocaleString('en-US', {
                               month: 'short',
                               day: 'numeric',
@@ -2377,33 +2377,33 @@ export default function ContactDetailPage() {
                             })}
                           </span>
                           {index === 0 && (
-                            <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-300">
+                            <Badge variant="outline" className="text-xs bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-200 border-blue-300 dark:border-blue-700">
                               First message
                             </Badge>
                           )}
                         </div>
                         <div className="flex items-center gap-2">
                           {message.is_lead_inquiry && (
-                            <Badge variant="outline" className="text-xs bg-green-100 text-green-800 border-green-300">
+                            <Badge variant="outline" className="text-xs bg-green-100 dark:bg-green-900/50 text-green-800 dark:text-green-200 border-green-300 dark:border-green-700">
                               Lead Inquiry
                             </Badge>
                           )}
                           {message.processed && (
-                            <Badge variant="outline" className="text-xs bg-gray-100 text-gray-600">
+                            <Badge variant="outline" className="text-xs bg-gray-100 dark:bg-zinc-700 text-gray-600 dark:text-zinc-300">
                               Processed
                             </Badge>
                           )}
                         </div>
                       </div>
-                      <p className="text-gray-900 whitespace-pre-wrap">{message.message_text}</p>
+                      <p className="text-gray-900 dark:text-white whitespace-pre-wrap">{message.message_text}</p>
                     </div>
                   ))}
                   
-                  <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                    <p className="text-sm text-blue-900 font-medium mb-1">
+                  <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+                    <p className="text-sm text-blue-900 dark:text-blue-200 font-medium mb-1">
                       💡 Tip: Conversation captured automatically
                     </p>
-                    <p className="text-xs text-blue-700">
+                    <p className="text-xs text-blue-700 dark:text-blue-300">
                       This conversation was automatically captured from {socialMessages[0]?.platform === 'instagram' ? 'Instagram' : 'Facebook Messenger'} and linked to this contact. 
                       All messages are preserved for reference and follow-up.
                     </p>
@@ -2415,7 +2415,7 @@ export default function ContactDetailPage() {
 
           {/* Customer Journey Tab */}
           <TabsContent value="journey">
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4 sm:p-6">
+            <div className="bg-white dark:bg-zinc-800 rounded-lg shadow-sm border dark:border-zinc-700 p-4 sm:p-6">
               <CustomerTimeline 
                 contactId={contact.id}
                 email={contact.email_address || undefined}
@@ -2850,7 +2850,10 @@ djbenmurray@gmail.com`
             ? window.location.origin 
             : (process.env.NEXT_PUBLIC_SITE_URL || 'https://www.m10djcompany.com');
           
-          if (selectedTemplate === 'walkthrough') {
+          if (selectedTemplate === 'select_services') {
+            const quoteLink = `${baseUrl}/quote/${contact.id}`;
+            body = body.replace(/Here's the link:\s*\n?/i, `Here's the link:\n\n${quoteLink}\n\n`);
+          } else if (selectedTemplate === 'walkthrough') {
             const walkthroughLink = `${baseUrl}/quote/${contact.id}/walkthrough`;
             body = body.replace(/Here's the link:\s*\n?/i, `Here's the link:\n\n${walkthroughLink}\n\n`);
           } else if (selectedTemplate === 'questionnaire') {
@@ -3164,10 +3167,10 @@ djbenmurray@gmail.com`
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col">
-        <div className="p-6 border-b">
+      <div className="bg-white dark:bg-zinc-900 rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col border dark:border-zinc-700">
+        <div className="p-6 border-b dark:border-zinc-700">
           <div className="flex items-center justify-between">
-            <h2 className="text-xl font-semibold">Send Email to {contact.first_name || contact.email_address}</h2>
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Send Email to {contact.first_name || contact.email_address}</h2>
             <Button variant="outline" onClick={onClose} className="h-8 w-8 p-0">
               <span className="sr-only">Close</span>
               ×
@@ -3178,7 +3181,7 @@ djbenmurray@gmail.com`
         <div className="p-6 overflow-y-auto flex-1">
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium mb-2">Template</label>
+              <label className="block text-sm font-medium text-gray-900 dark:text-zinc-300 mb-2">Template</label>
               <Select value={selectedTemplate} onValueChange={setSelectedTemplate}>
                 <SelectTrigger>
                   <SelectValue />
@@ -3193,12 +3196,12 @@ djbenmurray@gmail.com`
 
             <div>
               <div className="flex items-center justify-between mb-2">
-                <label className="block text-sm font-medium">To</label>
+                <label className="block text-sm font-medium text-gray-900 dark:text-zinc-300">To</label>
                 {gmailStatus.loading ? (
-                  <div className="text-xs text-gray-500">Loading...</div>
+                  <div className="text-xs text-gray-500 dark:text-zinc-400">Loading...</div>
                 ) : gmailStatus.connected ? (
                   <div className="flex items-center gap-2">
-                    <span className="text-xs text-green-600 flex items-center gap-1">
+                    <span className="text-xs text-green-600 dark:text-green-400 flex items-center gap-1">
                       <CheckCircle className="w-3 h-3" />
                       Sending from {gmailStatus.email}
                     </span>
@@ -3230,7 +3233,7 @@ djbenmurray@gmail.com`
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-2">Subject</label>
+              <label className="block text-sm font-medium text-gray-900 dark:text-zinc-300 mb-2">Subject</label>
               <Input
                 value={formData.subject}
                 onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
@@ -3239,7 +3242,7 @@ djbenmurray@gmail.com`
 
             <div>
               <div className="flex items-center justify-between mb-2">
-                <label className="block text-sm font-medium">Message</label>
+                <label className="block text-sm font-medium text-gray-900 dark:text-zinc-300">Message</label>
                 <Button
                   type="button"
                   variant="outline"
@@ -3262,7 +3265,7 @@ djbenmurray@gmail.com`
           </div>
         </div>
 
-        <div className="p-6 border-t flex justify-between items-center">
+        <div className="p-6 border-t dark:border-zinc-700 flex justify-between items-center">
           <Button 
             variant="outline" 
             onClick={handleSendTestEmail} 

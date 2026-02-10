@@ -62,6 +62,7 @@ export default function Header({
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [openDropdown, setOpenDropdown] = useState(null);
   const [isContactModalOpen, setIsContactModalOpen] = useState(false);
+  const [contactModalCtaSource, setContactModalCtaSource] = useState(null);
   const [isValidQuote, setIsValidQuote] = useState(false);
   const [isValidatingQuote, setIsValidatingQuote] = useState(false);
   const [hasPayments, setHasPayments] = useState(false);
@@ -169,6 +170,16 @@ export default function Header({
       observer.disconnect();
       subscription?.unsubscribe();
     };
+  }, []);
+
+  // Listen for openContactModal event from body buttons (scrollToContact)
+  useEffect(() => {
+    const handleOpenContactModal = (e) => {
+      setContactModalCtaSource(e?.detail?.source ?? null);
+      setIsContactModalOpen(true);
+    };
+    window.addEventListener('openContactModal', handleOpenContactModal);
+    return () => window.removeEventListener('openContactModal', handleOpenContactModal);
   }, []);
 
   // Validate quote ID exists before showing customer nav links
@@ -1095,6 +1106,7 @@ export default function Header({
                     e.stopPropagation();
                     console.log('Get Quote button clicked, opening modal');
                     // trackLead('quote_request_start', { source: 'header_desktop' });
+                    setContactModalCtaSource('nav');
                     setIsContactModalOpen(true);
                   }}
                   className="btn-primary whitespace-nowrap relative z-50 cursor-pointer"
@@ -1551,6 +1563,7 @@ export default function Header({
                     e.stopPropagation();
                     console.log('Get Quote button clicked (mobile), opening modal');
                     setIsMobileMenuOpen(false);
+                    setContactModalCtaSource('nav');
                     setIsContactModalOpen(true);
                   }}
                   className="btn-primary w-full text-center shadow-lg hover:shadow-xl min-h-[48px] text-base font-bold cursor-pointer"
@@ -1593,7 +1606,8 @@ export default function Header({
       {/* Contact Form Modal */}
       <ContactFormModal 
         isOpen={isContactModalOpen} 
-        onClose={() => setIsContactModalOpen(false)} 
+        onClose={() => { setIsContactModalOpen(false); setContactModalCtaSource(null); }} 
+        ctaSource={contactModalCtaSource}
       />
 
       {/* Social Account Selector */}

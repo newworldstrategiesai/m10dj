@@ -31,7 +31,7 @@ export default async function handler(req, res) {
     return;
   }
 
-  const { name, email, phone, eventType, eventDate, eventTime, venueName, venueAddress, location, message, honeypot, idempotencyKey, visitor_id } = req.body;
+  const { name, email, phone, eventType, eventDate, eventTime, venueName, venueAddress, location, message, honeypot, idempotencyKey, visitor_id, ctaSource, sourcePage } = req.body;
 
   // SECURITY: Honeypot check - if filled, it's likely a bot
   if (honeypot && honeypot.trim().length > 0) {
@@ -279,7 +279,9 @@ export default async function handler(req, res) {
       location: sanitizedData.location,
       message: sanitizedData.message,
       organization_id: organizationId, // Include organization_id in submission
-      visitor_id: visitor_id || null // Link to visitor tracking
+      visitor_id: visitor_id || null, // Link to visitor tracking
+      ...(ctaSource && typeof ctaSource === 'string' && { ctaSource: ctaSource.trim().slice(0, 200) }), // Which CTA opened the form
+      ...(sourcePage && typeof sourcePage === 'string' && { sourcePage: sourcePage.replace(/[#?].*$/, '').trim().slice(0, 500) }) // Page path where form was opened
     };
     
     // Add venue fields if provided (for future use)
@@ -346,7 +348,12 @@ export default async function handler(req, res) {
             status: 'new',
             updated_at: new Date().toISOString()
           };
-          
+          if (ctaSource && typeof ctaSource === 'string') {
+            updateData.cta_source = ctaSource.trim().slice(0, 200);
+          }
+          if (sourcePage && typeof sourcePage === 'string') {
+            updateData.source_page = sourcePage.replace(/[#?].*$/, '').trim().slice(0, 500);
+          }
           // Update organization_id if we determined it (may not have been set on draft)
           if (organizationId) {
             updateData.organization_id = organizationId;
@@ -698,10 +705,10 @@ export default async function handler(req, res) {
           criticalOperations.contactRecord.id = updatedContact.id;
           contactCreated = true;
           
-          // Create project for the existing contact (new inquiry)
+          // Create project for the existing contact (new inquiry) — pass contact_id so project shows in contacts section
           try {
             console.log('Creating project for existing contact...');
-            const project = await db.createProject(contactData, dbSubmission.id);
+            const project = await db.createProject(contactData, dbSubmission.id, criticalOperations.contactRecord.id);
             console.log('✅ Project created successfully:', project.id);
             criticalOperations.projectRecord.success = true;
             criticalOperations.projectRecord.id = project.id;
@@ -757,10 +764,10 @@ export default async function handler(req, res) {
           criticalOperations.contactRecord.id = newContact.id;
           contactCreated = true;
           
-          // Create project for the new contact
+          // Create project for the new contact — pass contact_id so project shows in contacts section
           try {
             console.log('Creating project for new contact...');
-            const project = await db.createProject(contactData, dbSubmission.id);
+            const project = await db.createProject(contactData, dbSubmission.id, criticalOperations.contactRecord.id);
             console.log('✅ Project created successfully:', project.id);
             criticalOperations.projectRecord.success = true;
             criticalOperations.projectRecord.id = project.id;

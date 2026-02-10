@@ -11,7 +11,7 @@ import { useToast } from '@/components/ui/Toasts/use-toast';
 // Temporarily disabled to prevent rate limiting issues
 // import { trackLead, trackContactAction } from '../EnhancedTracking';
 
-export default function ContactForm({ className = '', showSubmitButton = true, isSubmitOnly = false, modalLayout = false, organizationId = null }) {
+export default function ContactForm({ className = '', showSubmitButton = true, isSubmitOnly = false, modalLayout = false, organizationId = null, ctaSource = null }) {
   const { toast } = useToast();
   const [formData, setFormData] = useState({
     name: '',
@@ -396,7 +396,9 @@ export default function ContactForm({ className = '', showSubmitButton = true, i
         location: location, // Keep for backward compatibility
         message: `${formData.message}${formData.guests ? `\n\nNumber of guests: ${formData.guests}` : ''}`.trim(),
         honeypot: formData.honeypot, // Include honeypot field
-        idempotencyKey: idempotencyKey.current // Include idempotency key
+        idempotencyKey: idempotencyKey.current, // Include idempotency key
+        ...(ctaSource && { ctaSource }), // Which CTA opened the form (e.g. hero, packages-essential)
+        ...(typeof window !== 'undefined' && window.location?.pathname && { sourcePage: window.location.pathname }) // Page where form was opened
       };
       
       // Submit with retry logic

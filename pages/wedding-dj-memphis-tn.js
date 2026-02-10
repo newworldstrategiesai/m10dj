@@ -234,7 +234,7 @@ export default function WeddingDJMemphisTN() {
 
                   <div className="flex flex-col sm:flex-row gap-4 mb-8">
                     <button 
-                      onClick={scrollToContact}
+                      onClick={() => scrollToContact('hero')}
                       className="btn-primary text-lg px-8 py-4"
                     >
                       Get Free Wedding Quote
@@ -350,7 +350,7 @@ export default function WeddingDJMemphisTN() {
                   </ul>
                   
                   <button 
-                    onClick={scrollToContact}
+                    onClick={() => scrollToContact('packages')}
                     className={`btn-${pkg.popular ? 'primary' : 'outline'} w-full`}
                   >
                     Choose This Package
@@ -385,7 +385,7 @@ export default function WeddingDJMemphisTN() {
               <p className="text-gray-600 mb-6">
                 Don't see your Memphis, TN venue listed? We work at venues throughout Tennessee!
               </p>
-              <button onClick={scrollToContact} className="btn-outline">
+              <button onClick={() => scrollToContact('venues')} className="btn-outline">
                 Ask About Your Venue
               </button>
             </div>
@@ -437,7 +437,7 @@ export default function WeddingDJMemphisTN() {
               
               <div className="flex flex-col sm:flex-row gap-6 justify-center items-center">
                 <button 
-                  onClick={scrollToContact}
+                  onClick={() => scrollToContact('contact-cta')}
                   className="bg-white text-brand hover:bg-gray-100 px-8 py-4 rounded-lg font-semibold text-lg transition-colors"
                 >
                   Get Free Quote

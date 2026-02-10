@@ -46,10 +46,14 @@ export const db = {
       location: data.location,
       message: data.message
     };
-    
-    // Include organization_id if provided (for multi-tenant isolation)
     if (data.organization_id) {
       insertData.organization_id = data.organization_id;
+    }
+    if (data.ctaSource && typeof data.ctaSource === 'string') {
+      insertData.cta_source = data.ctaSource.trim().slice(0, 200);
+    }
+    if (data.sourcePage && typeof data.sourcePage === 'string') {
+      insertData.source_page = data.sourcePage.replace(/[#?].*$/, '').trim().slice(0, 500);
     }
 
     const { data: result, error } = await supabase
@@ -551,7 +555,8 @@ export const db = {
   },
 
   // Project/Event Management
-  async createProject(contactData, contactId) {
+  // submissionId = contact_submissions.id; contactId = contacts.id (so project shows in contacts section)
+  async createProject(contactData, submissionId, contactId = null) {
     if (!supabaseUrl || !supabaseAnonKey) {
       throw new Error('Supabase is not configured. Please set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY environment variables.');
     }
@@ -570,9 +575,10 @@ export const db = {
       return `${clientName} - ${eventType}${eventDate ? ` - ${eventDate}` : ''}${venue}`;
     };
 
-    // Map contact data to project data
+    // Map contact data to project data (submission_id + contact_id so project appears under contact)
     const projectData = {
-      submission_id: contactId, // Link to the original submission
+      submission_id: submissionId, // Link to the original submission
+      ...(contactId && { contact_id: contactId }), // Link to contact so customer shows in contacts section
       event_name: generateProjectName(contactData), // Use the generated name as event_name
       client_name: `${contactData.first_name || ''} ${contactData.last_name || ''}`.trim() || 'Client',
       client_email: contactData.email_address,
@@ -614,7 +620,7 @@ export const db = {
     const { data, error } = await supabase
       .from('events')
       .select('*')
-      .eq('submission_id', contactId)
+      .eq('contact_id', contactId)
       .order('created_at', { ascending: false });
 
     if (error) {

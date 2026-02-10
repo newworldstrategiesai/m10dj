@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import ContactForm from './ContactForm';
 
-export default function ContactFormModal({ isOpen, onClose, organizationId = null }) {
+export default function ContactFormModal({ isOpen, onClose, organizationId = null, ctaSource = null }) {
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -85,7 +85,7 @@ export default function ContactFormModal({ isOpen, onClose, organizationId = nul
           WebkitOverflowScrolling: 'touch',
           paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 16px)'
         }}>
-          <ContactForm className="modal-form" modalLayout={true} organizationId={organizationId} />
+          <ContactForm className="modal-form" modalLayout={true} organizationId={organizationId} ctaSource={ctaSource} />
         </div>
       </div>
     </div>

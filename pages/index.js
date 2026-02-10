@@ -7,12 +7,22 @@ import { Star, Users, Calendar, Music, Headphones, Mic, Volume2, Award, Phone, M
 // Temporarily simplified imports to isolate infinite reload issue
 import Header from '../components/company/Header';
 import Footer from '../components/company/Footer';
+import HeroPhotoCarousel from '../components/company/HeroPhotoCarousel';
 import SEO from '../components/SEO';
 import ContactForm from '../components/company/ContactForm';
 import ContactFormModal from '../components/company/ContactFormModal';
 import ClientLogoCarousel from '../components/company/ClientLogoCarousel';
 import TestimonialSlider from '../components/company/TestimonialSlider';
 import { generateStructuredData } from '../utils/generateStructuredData';
+
+// Fallback photos for home hero when gallery API returns empty (same sources as gallery)
+const HERO_FALLBACK_PHOTOS = [
+  { id: 'alfreds-beale-stax', src: '/assets/photos/DJ-Ben-Murray-at-Alfreds-on-Beale-with-Stax.jpg', alt: "DJ Ben Murray at Alfred's on Beale with Stax", caption: "Alfred's on Beale with Stax" },
+  { id: 'hu-hotel-rooftop-1', src: '/assets/photos/DJ-Ben-Murray-at-Hu-Hotel-Rooftop.JPG', alt: 'DJ Ben Murray at Hu Hotel Rooftop', caption: 'Hu Hotel Rooftop' },
+  { id: 'renasant-convention-1', src: '/assets/photos/DJ-Ben-Murray-at-Renasant-Convention-Center.JPG', alt: 'DJ Ben Murray at Renasant Convention Center', caption: 'Renasant Convention Center' },
+  { id: 'the-bluff-1', src: '/assets/photos/DJ-Ben-Murray-at-the-Bluff.jpg', alt: 'DJ Ben Murray at The Bluff', caption: 'The Bluff' },
+  { id: 'mollie-fontaine-lounge', src: '/assets/photos/DJ-Ben-Murray-at-Mollie-Fontaine-Lounge.JPG', alt: 'DJ Ben Murray at Mollie Fontaine Lounge', caption: 'Mollie Fontaine Lounge' },
+];
 
 // Server-side check: prevent Pages Router from rendering on TipJar/DJ Dash domains
 // Return notFound to skip Pages Router, allowing middleware rewrite to serve App Router page
@@ -33,16 +43,30 @@ export async function getServerSideProps(context) {
       notFound: true, // Skip Pages Router, let middleware rewrite handle it
     };
   }
+
+  // Fetch gallery photos for home hero carousel (same as gallery page)
+  let heroPhotos = [];
+  try {
+    const base = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000';
+    const res = await fetch(`${base}/api/gallery-photos`, { method: 'GET' });
+    if (res.ok) {
+      const data = await res.json();
+      if (Array.isArray(data) && data.length > 0) heroPhotos = data;
+    }
+  } catch (_) {}
+  if (heroPhotos.length === 0) heroPhotos = HERO_FALLBACK_PHOTOS;
   
   return {
-    props: {}, // Normal render for M10 DJ Company domain
+    props: { heroPhotos },
   };
 }
 
-export default function Home() {
+export default function Home({ heroPhotos = [] }) {
   const [isVisible, setIsVisible] = useState(false);
   const [isContactModalOpen, setIsContactModalOpen] = useState(false);
   const router = useRouter();
+  // Always pass photos: use fallback when API failed or client nav left props empty
+  const photos = Array.isArray(heroPhotos) && heroPhotos.length > 0 ? heroPhotos : HERO_FALLBACK_PHOTOS;
 
   useEffect(() => {
     setIsVisible(true);
@@ -97,28 +121,19 @@ export default function Home() {
       <Header />
 
       <main id="main-content">
-        {/* Hero Section */}
-        <section id="home" className={`relative min-h-[90vh] md:min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-white to-amber-50/30 dark:from-black dark:via-black dark:to-black text-gray-900 dark:text-white overflow-hidden ${isVisible ? 'animate-fade-in' : 'opacity-0'}`}>
-          {/* Enhanced Background Elements */}
-          <div className="absolute inset-0">
-            <div className="absolute top-20 right-10 w-64 h-64 md:w-96 md:h-96 bg-brand/10 dark:bg-brand/5 rounded-full blur-3xl animate-pulse"></div>
-            <div className="absolute bottom-20 left-10 w-64 h-64 md:w-80 md:h-80 bg-brand-600/10 dark:bg-brand-600/5 rounded-full blur-2xl animate-pulse" style={{ animationDelay: '1s' }}></div>
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] h-[400px] md:w-[600px] md:h-[600px] bg-brand-500/5 dark:bg-brand-500/3 rounded-full blur-3xl"></div>
-          </div>
-          
-          <div className="section-container relative z-10 text-center py-16 md:py-24 lg:py-32">
+        {/* Hero: photo carousel replaces old gradient hero, same headline text */}
+        <HeroPhotoCarousel
+          photos={photos}
+          title="Professional DJ Services in Memphis, TN"
+          subtitle="Weddings, Corporate Events & Celebrations | 500+ Events"
+          description="Trusted Memphis Wedding DJ – 15+ Years, 500+ Celebrations"
+        />
+
+        {/* Content section below hero (headline is on carousel above) */}
+        <section id="home" className={`relative flex items-center justify-center bg-gradient-to-br from-slate-50 via-white to-amber-50/30 dark:from-black dark:via-black dark:to-black text-gray-900 dark:text-white overflow-hidden py-16 md:py-24 ${isVisible ? 'animate-fade-in' : 'opacity-0'}`}>
+          <div className="section-container relative z-10 text-center">
             <div className="max-w-5xl mx-auto">
-              {/* Main Headline - SEO Optimized H1 */}
-              <h1 className="heading-1 mb-4 md:mb-6 animate-fade-in-up px-4">
-                <span className="block text-gray-900 dark:text-white">Professional DJ Services in Memphis, TN</span>
-                <span className="block text-gradient bg-gradient-to-r from-brand via-amber-400 to-brand bg-clip-text">Weddings, Corporate Events &amp; Celebrations | 500+ Events</span>
-              </h1>
-              {/* H2 subheadline for wedding intent (audit: add "Trusted Memphis Wedding DJ – 15+ Years, 500+ Celebrations") */}
-              <h2 className="text-xl md:text-2xl font-semibold text-gray-700 dark:text-gray-300 mb-6 md:mb-8 px-4">
-                Trusted Memphis Wedding DJ – 15+ Years, 500+ Celebrations
-              </h2>
-              
-              {/* Enhanced Content Block with Better Shadows */}
+              {/* Content Block with Better Shadows */}
               <div className="bg-white/95 dark:bg-black/95 backdrop-blur-md rounded-2xl md:rounded-3xl p-6 md:p-10 mb-8 md:mb-12 shadow-2xl border border-brand/20 dark:border-brand/10 max-w-4xl mx-auto relative overflow-hidden">
                 {/* Decorative Top Border */}
                 <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-brand to-transparent"></div>
@@ -170,14 +185,14 @@ export default function Home() {
                 </div>
               </div>
               
-              {/* Enhanced CTA Buttons (audit: add wedding → contact funnel + See Wedding Packages) */}
+              {/* CTA Buttons */}
               <div className="flex flex-col sm:flex-row gap-3 md:gap-4 justify-center items-stretch sm:items-center mb-12 md:mb-16 px-4">
                 <button 
                   onClick={() => setIsContactModalOpen(true)}
                   className="btn-primary group shadow-lg hover:shadow-2xl w-full sm:w-auto min-h-[48px]"
                 >
                   <Star className="mr-2 w-4 h-4 md:w-5 md:h-5 fill-current flex-shrink-0" />
-                  <span className="text-sm md:text-base">Get Your Free Quote</span>
+                  <span className="text-sm md:text-base">Free Quote</span>
                   <ChevronRight className="ml-2 w-4 h-4 md:w-5 md:h-5 group-hover:translate-x-1 transition-transform flex-shrink-0" />
                 </button>
                 <Link 
@@ -185,14 +200,14 @@ export default function Home() {
                   className="btn-secondary shadow-md hover:shadow-lg w-full sm:w-auto min-h-[48px] inline-flex items-center justify-center gap-2"
                 >
                   <Music className="w-4 h-4 md:w-5 md:h-5 flex-shrink-0" />
-                  <span className="text-sm md:text-base">See Wedding Packages</span>
+                  <span className="text-sm md:text-base">Wedding Packages</span>
                   <ChevronRight className="w-4 h-4 md:w-5 md:h-5 flex-shrink-0" />
                 </Link>
                 <Link 
                   href="/services" 
                   className="btn-secondary shadow-md hover:shadow-lg w-full sm:w-auto min-h-[48px] border-gray-300 dark:border-gray-600 inline-flex items-center justify-center gap-2"
                 >
-                  <span className="text-sm md:text-base">View All Services</span>
+                  <span className="text-sm md:text-base">All Services</span>
                   <ChevronRight className="w-4 h-4 md:w-5 md:h-5 flex-shrink-0" />
                 </Link>
               </div>
@@ -219,7 +234,7 @@ export default function Home() {
                   <h3 className="text-xl md:text-2xl lg:text-3xl font-bold mb-3 md:mb-4 text-gray-900 dark:text-white">Wedding-Grade Equipment</h3>
                   <p className="text-sm md:text-base text-gray-600 dark:text-gray-300 font-inter leading-relaxed mb-3 md:mb-4">Crystal-clear sound systems, elegant uplighting, and wireless microphones for ceremony, cocktail hour, and reception perfection.</p>
                   <Link href="/services" className="text-brand hover:text-brand-600 dark:text-brand-400 dark:hover:text-brand-300 font-semibold mt-2 md:mt-4 inline-flex items-center group-hover:gap-2 gap-1 transition-all text-sm md:text-base">
-                    View All Services <ChevronRight className="w-4 h-4" />
+                    All Services <ChevronRight className="w-4 h-4" />
                   </Link>
                 </div>
                 
@@ -323,7 +338,7 @@ export default function Home() {
                   href="/services" 
                   className="inline-flex items-center gap-2 text-brand hover:text-amber-600 dark:hover:text-amber-400 font-semibold text-lg transition-colors"
                 >
-                  View All Services <ChevronRight className="w-5 h-5" />
+                  All Services <ChevronRight className="w-5 h-5" />
                 </Link>
               </div>
             </div>
@@ -433,7 +448,7 @@ export default function Home() {
                 <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-brand via-amber-400 to-brand"></div>
                 <div className="p-6 md:p-8">
                   <div className="mb-6">
-                    <h3 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white mb-3">Get Your Free Quote</h3>
+                    <h3 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white mb-3">Free Quote</h3>
                     <p className="text-sm md:text-base text-gray-600 dark:text-gray-300 font-inter leading-relaxed">
                       Fill out the form below and we&apos;ll get back to you within 24 hours with a personalized quote.
                     </p>

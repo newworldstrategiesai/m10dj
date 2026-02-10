@@ -1,11 +1,12 @@
 /**
  * Intelligent scroll-to-contact function that handles mobile and desktop layouts
  * Now opens a full-screen modal instead of scrolling
+ * @param {string} [source] - Which CTA opened the form (e.g. 'hero', 'packages-essential') for tracking
  */
-export const scrollToContact = () => {
+export const scrollToContact = (source) => {
   // Dispatch event to open modal (handled by Header or page components)
   if (typeof window !== 'undefined') {
-    const event = new CustomEvent('openContactModal');
+    const event = new CustomEvent('openContactModal', { detail: source != null ? { source } : {} });
     window.dispatchEvent(event);
   }
 };

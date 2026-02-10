@@ -256,13 +256,13 @@ export default function FormSubmissionsPage() {
 
   const getStatusBadge = (status: string) => {
     const badges: Record<string, { label: string; className: string }> = {
-      new: { label: 'New', className: 'bg-blue-100 text-blue-800 border-blue-200' },
-      contacted: { label: 'Contacted', className: 'bg-yellow-100 text-yellow-800 border-yellow-200' },
-      quoted: { label: 'Quoted', className: 'bg-purple-100 text-purple-800 border-purple-200' },
-      booked: { label: 'Booked', className: 'bg-green-100 text-green-800 border-green-200' },
-      completed: { label: 'Completed', className: 'bg-gray-100 text-gray-800 border-gray-200' },
-      cancelled: { label: 'Cancelled', className: 'bg-red-100 text-red-800 border-red-200' },
-      spam: { label: 'Spam', className: 'bg-orange-100 text-orange-800 border-orange-200' },
+      new: { label: 'New', className: 'bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-200 border-blue-200 dark:border-blue-700' },
+      contacted: { label: 'Contacted', className: 'bg-yellow-100 dark:bg-yellow-900/50 text-yellow-800 dark:text-yellow-200 border-yellow-200 dark:border-yellow-700' },
+      quoted: { label: 'Quoted', className: 'bg-purple-100 dark:bg-purple-900/50 text-purple-800 dark:text-purple-200 border-purple-200 dark:border-purple-700' },
+      booked: { label: 'Booked', className: 'bg-green-100 dark:bg-green-900/50 text-green-800 dark:text-green-200 border-green-200 dark:border-green-700' },
+      completed: { label: 'Completed', className: 'bg-gray-100 dark:bg-zinc-700/50 text-gray-800 dark:text-zinc-200 border-gray-200 dark:border-zinc-600' },
+      cancelled: { label: 'Cancelled', className: 'bg-red-100 dark:bg-red-900/50 text-red-800 dark:text-red-200 border-red-200 dark:border-red-700' },
+      spam: { label: 'Spam', className: 'bg-orange-100 dark:bg-orange-900/50 text-orange-800 dark:text-orange-200 border-orange-200 dark:border-orange-700' },
     };
 
     const badge = badges[status] || badges.new;
@@ -340,14 +340,14 @@ export default function FormSubmissionsPage() {
   if (loading) {
     return (
       <AdminLayout title="Form Submissions" description="Manage website contact form submissions">
-        <div className="flex items-center justify-center min-h-screen bg-black">
+        <div className="flex items-center justify-center min-h-screen bg-black dark:bg-zinc-950">
           <div className="text-center">
             <img
               src="/M10-Rotating-Logo.gif"
               alt="M10 DJ Company Loading"
               className="w-24 h-24 object-contain mx-auto mb-4"
             />
-            <p className="text-white">Loading submissions...</p>
+            <p className="text-white dark:text-zinc-200">Loading submissions...</p>
           </div>
         </div>
       </AdminLayout>
@@ -360,11 +360,11 @@ export default function FormSubmissionsPage() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-6">
           <div className="flex-1 min-w-0 pr-4">
-            <h1 className="text-2xl lg:text-3xl font-bold text-gray-900 flex items-center gap-2 mb-1">
+            <h1 className="text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white flex items-center gap-2 mb-1">
               <ClipboardList className="w-8 h-8 text-[#fcba00] flex-shrink-0" />
               <span>Form Submissions</span>
             </h1>
-            <p className="text-sm text-gray-600 whitespace-normal overflow-visible">
+            <p className="text-sm text-gray-600 dark:text-zinc-400 whitespace-normal overflow-visible">
               Contact form submissions from your website
             </p>
           </div>
@@ -381,57 +381,57 @@ export default function FormSubmissionsPage() {
 
         {/* Stats Cards */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-          <div className="bg-white rounded-lg border border-gray-200 p-4">
+          <div className="bg-white dark:bg-zinc-800 rounded-lg border border-gray-200 dark:border-zinc-700 p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">Total</p>
-                <p className="text-2xl font-bold text-gray-900">{stats.total}</p>
+                <p className="text-sm text-gray-600 dark:text-zinc-400">Total</p>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.total}</p>
               </div>
-              <ClipboardList className="w-8 h-8 text-gray-400" />
+              <ClipboardList className="w-8 h-8 text-gray-400 dark:text-zinc-500" />
             </div>
           </div>
-          <div className="bg-blue-50 rounded-lg border border-blue-200 p-4">
+          <div className="bg-blue-50 dark:bg-blue-900/30 rounded-lg border border-blue-200 dark:border-blue-800 p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-blue-600">New</p>
-                <p className="text-2xl font-bold text-blue-900">{stats.new}</p>
+                <p className="text-sm text-blue-600 dark:text-blue-300">New</p>
+                <p className="text-2xl font-bold text-blue-900 dark:text-blue-100">{stats.new}</p>
               </div>
-              <AlertCircle className="w-8 h-8 text-blue-400" />
+              <AlertCircle className="w-8 h-8 text-blue-400 dark:text-blue-500" />
             </div>
           </div>
-          <div className="bg-yellow-50 rounded-lg border border-yellow-200 p-4">
+          <div className="bg-yellow-50 dark:bg-yellow-900/30 rounded-lg border border-yellow-200 dark:border-yellow-800 p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-yellow-600">Contacted</p>
-                <p className="text-2xl font-bold text-yellow-900">{stats.contacted}</p>
+                <p className="text-sm text-yellow-600 dark:text-yellow-300">Contacted</p>
+                <p className="text-2xl font-bold text-yellow-900 dark:text-yellow-100">{stats.contacted}</p>
               </div>
-              <Clock className="w-8 h-8 text-yellow-400" />
+              <Clock className="w-8 h-8 text-yellow-400 dark:text-yellow-500" />
             </div>
           </div>
-          <div className="bg-green-50 rounded-lg border border-green-200 p-4">
+          <div className="bg-green-50 dark:bg-green-900/30 rounded-lg border border-green-200 dark:border-green-800 p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-green-600">Booked</p>
-                <p className="text-2xl font-bold text-green-900">{stats.booked}</p>
+                <p className="text-sm text-green-600 dark:text-green-300">Booked</p>
+                <p className="text-2xl font-bold text-green-900 dark:text-green-100">{stats.booked}</p>
               </div>
-              <CheckCircle className="w-8 h-8 text-green-400" />
+              <CheckCircle className="w-8 h-8 text-green-400 dark:text-green-500" />
             </div>
           </div>
         </div>
 
         {/* Filters */}
-        <div className="bg-white rounded-lg border border-gray-200 p-4 mb-6">
+        <div className="bg-white dark:bg-zinc-800 rounded-lg border border-gray-200 dark:border-zinc-700 p-4 mb-6">
           <div className="flex flex-col lg:flex-row gap-4">
             {/* Search */}
             <div className="flex-1">
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-zinc-500" />
                 <input
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Search by name, email, phone, or location..."
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#fcba00] focus:border-transparent"
+                  className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-zinc-600 rounded-lg focus:ring-2 focus:ring-[#fcba00] focus:border-transparent bg-white dark:bg-zinc-900 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-zinc-400"
                 />
               </div>
             </div>
@@ -441,7 +441,7 @@ export default function FormSubmissionsPage() {
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#fcba00] focus:border-transparent"
+                className="w-full px-4 py-2 border border-gray-300 dark:border-zinc-600 rounded-lg focus:ring-2 focus:ring-[#fcba00] focus:border-transparent bg-white dark:bg-zinc-900 text-gray-900 dark:text-white"
               >
                 <option value="all">All Statuses</option>
                 <option value="new">New</option>
@@ -457,12 +457,12 @@ export default function FormSubmissionsPage() {
         </div>
 
         {/* Submissions List */}
-        <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+        <div className="bg-white dark:bg-zinc-800 rounded-lg border border-gray-200 dark:border-zinc-700 overflow-hidden">
           {filteredSubmissions.length === 0 ? (
             <div className="text-center py-12">
-              <ClipboardList className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">No submissions found</h3>
-              <p className="text-gray-600">
+              <ClipboardList className="w-16 h-16 text-gray-300 dark:text-zinc-600 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No submissions found</h3>
+              <p className="text-gray-600 dark:text-zinc-400">
                 {searchQuery || statusFilter !== 'all'
                   ? 'Try adjusting your filters'
                   : 'Contact form submissions will appear here'}
@@ -470,52 +470,52 @@ export default function FormSubmissionsPage() {
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
+              <table className="min-w-full divide-y divide-gray-200 dark:divide-zinc-700">
+                <thead className="bg-gray-50 dark:bg-zinc-900">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-zinc-400 uppercase tracking-wider">
                       Contact
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-zinc-400 uppercase tracking-wider">
                       Event
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-zinc-400 uppercase tracking-wider">
                       Status
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-zinc-400 uppercase tracking-wider">
                       Submitted
                     </th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-zinc-400 uppercase tracking-wider">
                       Actions
                     </th>
                   </tr>
                 </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
+                <tbody className="bg-white dark:bg-zinc-800 divide-y divide-gray-200 dark:divide-zinc-700">
                   {filteredSubmissions.map((submission) => (
                     <tr
                       key={submission.id}
-                      className="hover:bg-gray-50 cursor-pointer"
+                      className="hover:bg-gray-50 dark:hover:bg-zinc-700/50 cursor-pointer"
                       onClick={() => setSelectedSubmission(submission)}
                     >
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center">
-                          <div className="flex-shrink-0 h-10 w-10 bg-gray-200 rounded-full flex items-center justify-center">
-                            <User className="w-5 h-5 text-gray-600" />
+                          <div className="flex-shrink-0 h-10 w-10 bg-gray-200 dark:bg-zinc-600 rounded-full flex items-center justify-center">
+                            <User className="w-5 h-5 text-gray-600 dark:text-zinc-300" />
                           </div>
                           <div className="ml-4">
-                            <div className="text-sm font-medium text-gray-900">{submission.name}</div>
-                            <div className="text-sm text-gray-500">{submission.email}</div>
+                            <div className="text-sm font-medium text-gray-900 dark:text-white">{submission.name}</div>
+                            <div className="text-sm text-gray-500 dark:text-zinc-400">{submission.email}</div>
                           </div>
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">{submission.event_type}</div>
-                        <div className="text-sm text-gray-500">{formatEventDate(submission.event_date)}</div>
+                        <div className="text-sm text-gray-900 dark:text-white">{submission.event_type}</div>
+                        <div className="text-sm text-gray-500 dark:text-zinc-400">{formatEventDate(submission.event_date)}</div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         {getStatusBadge(submission.status)}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-zinc-400">
                         {formatDate(submission.created_at)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
@@ -533,7 +533,7 @@ export default function FormSubmissionsPage() {
                             e.stopPropagation();
                             deleteSubmission(submission.id);
                           }}
-                          className="text-red-600 hover:text-red-800"
+                          className="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300"
                         >
                           Delete
                         </button>
@@ -549,8 +549,8 @@ export default function FormSubmissionsPage() {
 
       {/* Submission Detail Modal */}
       {selectedSubmission && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[10000] flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+        <div className="fixed inset-0 bg-black/60 dark:bg-black/70 backdrop-blur-sm z-[10000] flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col">
             {/* Modal Header */}
             <div className="bg-gradient-to-r from-[#fcba00] to-[#d99f00] px-6 py-5 flex items-center justify-between">
               <h2 className="text-xl font-bold text-gray-900">Submission Details</h2>
@@ -565,14 +565,14 @@ export default function FormSubmissionsPage() {
             {/* Modal Content */}
             <div className="flex-1 overflow-y-auto p-6 space-y-6">
               {/* Status Update */}
-              <div className="bg-gray-50 rounded-xl p-4 border border-gray-200">
-                <label className="block text-sm font-semibold text-gray-900 mb-2">
+              <div className="bg-gray-50 dark:bg-zinc-800 rounded-xl p-4 border border-gray-200 dark:border-zinc-700">
+                <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-2">
                   Update Status
                 </label>
                 <select
                   value={selectedSubmission.status}
                   onChange={(e) => updateSubmissionStatus(selectedSubmission.id, e.target.value as FormSubmission['status'])}
-                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#fcba00] focus:border-transparent bg-white font-medium"
+                  className="w-full px-4 py-2.5 border border-gray-300 dark:border-zinc-600 rounded-lg focus:ring-2 focus:ring-[#fcba00] focus:border-transparent bg-white dark:bg-zinc-900 dark:text-white font-medium"
                 >
                   <option value="new">🆕 New</option>
                   <option value="contacted">📞 Contacted</option>
@@ -586,18 +586,18 @@ export default function FormSubmissionsPage() {
 
               {/* Contact Info */}
               <div>
-                <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wide mb-4">Contact Information</h3>
+                <h3 className="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wide mb-4">Contact Information</h3>
                 <div className="space-y-3">
-                  <div className="flex items-center gap-3 p-3 bg-white border border-gray-200 rounded-lg hover:border-[#fcba00] transition-colors">
-                    <div className="flex-shrink-0 w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
-                      <User className="w-5 h-5 text-gray-600" />
+                  <div className="flex items-center gap-3 p-3 bg-white dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg hover:border-[#fcba00] transition-colors">
+                    <div className="flex-shrink-0 w-10 h-10 bg-gray-100 dark:bg-zinc-700 rounded-lg flex items-center justify-center">
+                      <User className="w-5 h-5 text-gray-600 dark:text-zinc-300" />
                     </div>
                     <div className="flex-1">
-                      <p className="text-xs font-medium text-gray-500 uppercase">Name</p>
+                      <p className="text-xs font-medium text-gray-500 dark:text-zinc-400 uppercase">Name</p>
                       <button
                         onClick={(e) => handleNameClick(e, selectedSubmission)}
                         disabled={lookingUpContact === selectedSubmission.email}
-                        className="text-sm font-semibold text-gray-900 hover:text-[#fcba00] hover:underline transition-colors flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="text-sm font-semibold text-gray-900 dark:text-white hover:text-[#fcba00] hover:underline transition-colors flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         {selectedSubmission.name}
                         {lookingUpContact === selectedSubmission.email ? (
@@ -609,15 +609,15 @@ export default function FormSubmissionsPage() {
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-3 p-3 bg-white border border-gray-200 rounded-lg hover:border-[#fcba00] transition-colors">
-                    <div className="flex-shrink-0 w-10 h-10 bg-blue-50 rounded-lg flex items-center justify-center">
-                      <Mail className="w-5 h-5 text-blue-600" />
+                  <div className="flex items-center gap-3 p-3 bg-white dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg hover:border-[#fcba00] transition-colors">
+                    <div className="flex-shrink-0 w-10 h-10 bg-blue-50 dark:bg-blue-900/40 rounded-lg flex items-center justify-center">
+                      <Mail className="w-5 h-5 text-blue-600 dark:text-blue-400" />
                     </div>
                     <div className="flex-1">
-                      <p className="text-xs font-medium text-gray-500 uppercase">Email</p>
+                      <p className="text-xs font-medium text-gray-500 dark:text-zinc-400 uppercase">Email</p>
                       <a
                         href={`mailto:${selectedSubmission.email}`}
-                        className="text-sm font-semibold text-blue-600 hover:text-blue-700 hover:underline"
+                        className="text-sm font-semibold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:underline"
                       >
                         {selectedSubmission.email}
                       </a>
@@ -625,23 +625,23 @@ export default function FormSubmissionsPage() {
                   </div>
 
                   {selectedSubmission.phone && (
-                    <div className="flex items-center gap-3 p-3 bg-white border border-gray-200 rounded-lg hover:border-[#fcba00] transition-colors">
-                      <div className="flex-shrink-0 w-10 h-10 bg-green-50 rounded-lg flex items-center justify-center">
-                        <Phone className="w-5 h-5 text-green-600" />
+                    <div className="flex items-center gap-3 p-3 bg-white dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg hover:border-[#fcba00] transition-colors">
+                      <div className="flex-shrink-0 w-10 h-10 bg-green-50 dark:bg-green-900/40 rounded-lg flex items-center justify-center">
+                        <Phone className="w-5 h-5 text-green-600 dark:text-green-400" />
                       </div>
                       <div className="flex-1">
-                        <p className="text-xs font-medium text-gray-500 uppercase">Phone</p>
+                        <p className="text-xs font-medium text-gray-500 dark:text-zinc-400 uppercase">Phone</p>
                         <div className="flex items-center gap-2 flex-wrap">
                           <a
                             href={`tel:${selectedSubmission.phone}`}
-                            className="text-sm font-semibold text-green-600 hover:text-green-700 hover:underline"
+                            className="text-sm font-semibold text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 hover:underline"
                           >
                             {selectedSubmission.phone}
                           </a>
                           {(() => {
                             const phoneLocation = getPhoneLocation(selectedSubmission.phone);
                             return phoneLocation ? (
-                              <span className="text-xs text-gray-500 italic">
+                              <span className="text-xs text-gray-500 dark:text-zinc-400 italic">
                                 ({phoneLocation})
                               </span>
                             ) : null;
@@ -655,44 +655,44 @@ export default function FormSubmissionsPage() {
 
               {/* Event Details */}
               <div>
-                <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wide mb-4">Event Details</h3>
+                <h3 className="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wide mb-4">Event Details</h3>
                 <div className="space-y-3">
-                  <div className="flex items-center gap-3 p-3 bg-white border border-gray-200 rounded-lg">
-                    <div className="flex-shrink-0 w-10 h-10 bg-purple-50 rounded-lg flex items-center justify-center">
-                      <Calendar className="w-5 h-5 text-purple-600" />
+                  <div className="flex items-center gap-3 p-3 bg-white dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg">
+                    <div className="flex-shrink-0 w-10 h-10 bg-purple-50 dark:bg-purple-900/40 rounded-lg flex items-center justify-center">
+                      <Calendar className="w-5 h-5 text-purple-600 dark:text-purple-400" />
                     </div>
                     <div className="flex-1">
-                      <p className="text-xs font-medium text-gray-500 uppercase">Event Type</p>
-                      <p className="text-sm font-semibold text-gray-900">{selectedSubmission.event_type}</p>
+                      <p className="text-xs font-medium text-gray-500 dark:text-zinc-400 uppercase">Event Type</p>
+                      <p className="text-sm font-semibold text-gray-900 dark:text-white">{selectedSubmission.event_type}</p>
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-3 p-3 bg-white border border-gray-200 rounded-lg">
-                    <div className="flex-shrink-0 w-10 h-10 bg-orange-50 rounded-lg flex items-center justify-center">
-                      <Calendar className="w-5 h-5 text-orange-600" />
+                  <div className="flex items-center gap-3 p-3 bg-white dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg">
+                    <div className="flex-shrink-0 w-10 h-10 bg-orange-50 dark:bg-orange-900/40 rounded-lg flex items-center justify-center">
+                      <Calendar className="w-5 h-5 text-orange-600 dark:text-orange-400" />
                     </div>
                     <div className="flex-1">
-                      <p className="text-xs font-medium text-gray-500 uppercase">Event Date</p>
-                      <p className="text-sm font-semibold text-gray-900">{formatEventDate(selectedSubmission.event_date)}</p>
+                      <p className="text-xs font-medium text-gray-500 dark:text-zinc-400 uppercase">Event Date</p>
+                      <p className="text-sm font-semibold text-gray-900 dark:text-white">{formatEventDate(selectedSubmission.event_date)}</p>
                     </div>
                   </div>
 
                   {selectedSubmission.location && (
                     <div className="space-y-3">
-                      <div className="flex items-center gap-3 p-3 bg-white border border-gray-200 rounded-lg">
-                        <div className="flex-shrink-0 w-10 h-10 bg-red-50 rounded-lg flex items-center justify-center">
-                          <MapPin className="w-5 h-5 text-red-600" />
+                      <div className="flex items-center gap-3 p-3 bg-white dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg">
+                        <div className="flex-shrink-0 w-10 h-10 bg-red-50 dark:bg-red-900/40 rounded-lg flex items-center justify-center">
+                          <MapPin className="w-5 h-5 text-red-600 dark:text-red-400" />
                         </div>
                         <div className="flex-1">
-                          <p className="text-xs font-medium text-gray-500 uppercase">Location</p>
-                          <p className="text-sm font-semibold text-gray-900">{selectedSubmission.location}</p>
+                          <p className="text-xs font-medium text-gray-500 dark:text-zinc-400 uppercase">Location</p>
+                          <p className="text-sm font-semibold text-gray-900 dark:text-white">{selectedSubmission.location}</p>
                         </div>
                       </div>
                       
                       {/* Venue Image */}
                       {selectedSubmission.venue_image_url ? (
                         <div className="relative group">
-                          <div className="relative w-full h-48 rounded-lg overflow-hidden border border-gray-200 bg-gray-100">
+                          <div className="relative w-full h-48 rounded-lg overflow-hidden border border-gray-200 dark:border-zinc-700 bg-gray-100 dark:bg-zinc-800">
                             <img
                               src={selectedSubmission.venue_image_url}
                               alt={`${selectedSubmission.location} venue`}
@@ -703,7 +703,7 @@ export default function FormSubmissionsPage() {
                               }}
                             />
                           </div>
-                          <div className="mt-2 flex items-center justify-between text-xs text-gray-500">
+                          <div className="mt-2 flex items-center justify-between text-xs text-gray-500 dark:text-zinc-400">
                             <span>Venue image from Google Places</span>
                             {selectedSubmission.venue_image_fetched_at && (
                               <span>Fetched {new Date(selectedSubmission.venue_image_fetched_at).toLocaleDateString()}</span>
@@ -711,10 +711,10 @@ export default function FormSubmissionsPage() {
                           </div>
                         </div>
                       ) : (
-                        <div className="flex items-center gap-3 p-3 bg-gray-50 border border-gray-200 rounded-lg">
+                        <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg">
                           <div className="flex-1">
-                            <p className="text-xs font-medium text-gray-500 uppercase mb-1">Venue Image</p>
-                            <p className="text-sm text-gray-600 mb-2">No venue image available</p>
+                            <p className="text-xs font-medium text-gray-500 dark:text-zinc-400 uppercase mb-1">Venue Image</p>
+                            <p className="text-sm text-gray-600 dark:text-zinc-400 mb-2">No venue image available</p>
                             <button
                               onClick={async () => {
                                 if (!selectedSubmission.location) return;
@@ -781,13 +781,13 @@ export default function FormSubmissionsPage() {
               {/* Message */}
               {selectedSubmission.message && (
                 <div>
-                  <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wide mb-4">Message</h3>
+                  <h3 className="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wide mb-4">Message</h3>
                   <div className="relative">
                     <div className="absolute top-3 left-3">
-                      <MessageSquare className="w-5 h-5 text-gray-400" />
+                      <MessageSquare className="w-5 h-5 text-gray-400 dark:text-zinc-500" />
                     </div>
-                    <div className="pl-11 pr-4 py-4 bg-gradient-to-br from-gray-50 to-gray-100 border border-gray-200 rounded-xl">
-                      <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">
+                    <div className="pl-11 pr-4 py-4 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-zinc-800 dark:to-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-xl">
+                      <p className="text-sm text-gray-700 dark:text-zinc-300 leading-relaxed whitespace-pre-wrap">
                         {selectedSubmission.message}
                       </p>
                     </div>
@@ -798,7 +798,7 @@ export default function FormSubmissionsPage() {
               {/* Communication History */}
               {communicationHistory.length > 0 && (
                 <div>
-                  <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wide mb-4 flex items-center gap-2">
+                  <h3 className="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wide mb-4 flex items-center gap-2">
                     <MessageSquare className="w-4 h-4" />
                     Communication History ({communicationHistory.length})
                   </h3>
@@ -809,39 +809,39 @@ export default function FormSubmissionsPage() {
                         className={`
                           p-3 rounded-lg border-l-4
                           ${comm.direction === 'outbound'
-                            ? 'bg-blue-50 border-blue-500'
-                            : 'bg-green-50 border-green-500'
+                            ? 'bg-blue-50 dark:bg-blue-900/30 border-blue-500 dark:border-blue-600'
+                            : 'bg-green-50 dark:bg-green-900/30 border-green-500 dark:border-green-600'
                           }
                         `}
                       >
                         <div className="flex items-start justify-between mb-2">
                           <div className="flex items-center gap-2">
-                            {comm.communication_type === 'email' && <Mail className="w-4 h-4 text-gray-600" />}
-                            {comm.communication_type === 'sms' && <MessageSquare className="w-4 h-4 text-gray-600" />}
-                            {comm.communication_type === 'call' && <Phone className="w-4 h-4 text-gray-600" />}
-                            <span className="text-xs font-semibold text-gray-900 uppercase">
+                            {comm.communication_type === 'email' && <Mail className="w-4 h-4 text-gray-600 dark:text-zinc-400" />}
+                            {comm.communication_type === 'sms' && <MessageSquare className="w-4 h-4 text-gray-600 dark:text-zinc-400" />}
+                            {comm.communication_type === 'call' && <Phone className="w-4 h-4 text-gray-600 dark:text-zinc-400" />}
+                            <span className="text-xs font-semibold text-gray-900 dark:text-white uppercase">
                               {comm.communication_type}
                             </span>
                             <span className={`
                               text-xs px-2 py-0.5 rounded-full
                               ${comm.direction === 'outbound'
-                                ? 'bg-blue-200 text-blue-800'
-                                : 'bg-green-200 text-green-800'
+                                ? 'bg-blue-200 dark:bg-blue-800 text-blue-800 dark:text-blue-200'
+                                : 'bg-green-200 dark:bg-green-800 text-green-800 dark:text-green-200'
                               }
                             `}>
                               {comm.direction === 'outbound' ? '→ Sent' : '← Received'}
                             </span>
                           </div>
-                          <span className="text-xs text-gray-500">
+                          <span className="text-xs text-gray-500 dark:text-zinc-400">
                             {formatDate(comm.created_at)}
                           </span>
                         </div>
                         {comm.subject && (
-                          <div className="text-sm font-semibold text-gray-900 mb-1">
+                          <div className="text-sm font-semibold text-gray-900 dark:text-white mb-1">
                             {comm.subject}
                           </div>
                         )}
-                        <div className="text-sm text-gray-700 line-clamp-3">
+                        <div className="text-sm text-gray-700 dark:text-zinc-300 line-clamp-3">
                           {comm.content}
                         </div>
                       </div>
@@ -861,16 +861,16 @@ export default function FormSubmissionsPage() {
               )}
 
               {!loadingHistory && communicationHistory.length === 0 && (
-                <div className="bg-gray-50 rounded-xl p-6 text-center border border-gray-200">
-                  <MessageSquare className="w-12 h-12 text-gray-300 mx-auto mb-2" />
-                  <p className="text-sm text-gray-600">No communication history yet</p>
-                  <p className="text-xs text-gray-500 mt-1">Messages will appear here once you interact with this contact</p>
+                <div className="bg-gray-50 dark:bg-zinc-800 rounded-xl p-6 text-center border border-gray-200 dark:border-zinc-700">
+                  <MessageSquare className="w-12 h-12 text-gray-300 dark:text-zinc-500 mx-auto mb-2" />
+                  <p className="text-sm text-gray-600 dark:text-zinc-400">No communication history yet</p>
+                  <p className="text-xs text-gray-500 dark:text-zinc-500 mt-1">Messages will appear here once you interact with this contact</p>
                 </div>
               )}
 
               {/* Timestamps */}
-              <div className="pt-4 border-t border-gray-200">
-                <div className="flex items-center justify-between text-xs text-gray-500">
+              <div className="pt-4 border-t border-gray-200 dark:border-zinc-700">
+                <div className="flex items-center justify-between text-xs text-gray-500 dark:text-zinc-400">
                   <div className="flex items-center gap-2">
                     <Clock className="w-4 h-4" />
                     <span>Submitted: {formatDate(selectedSubmission.created_at)}</span>
@@ -881,7 +881,7 @@ export default function FormSubmissionsPage() {
             </div>
 
             {/* Modal Footer */}
-            <div className="bg-white px-6 py-4 border-t border-gray-200 flex flex-wrap gap-3">
+            <div className="bg-white dark:bg-zinc-900 px-6 py-4 border-t border-gray-200 dark:border-zinc-700 flex flex-wrap gap-3">
               <button
                 onClick={() => createContactAndProject(selectedSubmission)}
                 disabled={creatingContactAndProject}
@@ -940,7 +940,7 @@ export default function FormSubmissionsPage() {
                     alert(err.message || 'Failed to mark as spam');
                   }
                 }}
-                className="flex items-center justify-center gap-2 px-4 py-3 bg-orange-50 text-orange-600 rounded-lg hover:bg-orange-100 transition-colors font-medium border border-orange-200"
+                className="flex items-center justify-center gap-2 px-4 py-3 bg-orange-50 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 rounded-lg hover:bg-orange-100 dark:hover:bg-orange-900/50 transition-colors font-medium border border-orange-200 dark:border-orange-700"
               >
                 <ShieldAlert className="w-4 h-4" />
                 <span className="hidden sm:inline">Mark as Spam</span>
@@ -952,7 +952,7 @@ export default function FormSubmissionsPage() {
                     deleteSubmission(selectedSubmission.id);
                   }
                 }}
-                className="flex items-center justify-center gap-2 px-4 py-3 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors font-medium border border-red-200"
+                className="flex items-center justify-center gap-2 px-4 py-3 bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/50 transition-colors font-medium border border-red-200 dark:border-red-700"
               >
                 <Trash2 className="w-4 h-4" />
                 <span className="hidden sm:inline">Delete</span>
@@ -1279,8 +1279,8 @@ djbenmurray@gmail.com`
   };
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[10001] flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+    <div className="fixed inset-0 bg-black/60 dark:bg-black/70 backdrop-blur-sm z-[10001] flex items-center justify-center p-4">
+      <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-hidden flex flex-col">
         {/* Header */}
         <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -1302,13 +1302,13 @@ djbenmurray@gmail.com`
         <div className="flex-1 overflow-y-auto p-6 space-y-4">
           {/* Template Selector */}
           <div>
-            <label className="block text-sm font-semibold text-gray-900 mb-2">
+            <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-2">
               Email Template
             </label>
             <select
               value={selectedTemplate}
               onChange={(e) => setSelectedTemplate(e.target.value)}
-              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-4 py-2.5 border border-gray-300 dark:border-zinc-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-zinc-800 text-gray-900 dark:text-white"
             >
               <option value="custom">Custom Email</option>
               <option value="initial_response">Initial Response</option>
@@ -1321,33 +1321,33 @@ djbenmurray@gmail.com`
 
           {/* Subject */}
           <div>
-            <label className="block text-sm font-semibold text-gray-900 mb-2">
+            <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-2">
               Subject
             </label>
             <input
               type="text"
               value={formData.subject}
               onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
-              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-4 py-2.5 border border-gray-300 dark:border-zinc-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-zinc-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-zinc-400"
               placeholder="Email subject..."
             />
           </div>
 
           {/* Include Service Selection Link */}
-          <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+          <div className="bg-purple-50 dark:bg-purple-900/30 border border-purple-200 dark:border-purple-700 rounded-lg p-4">
             <label className="flex items-start gap-3 cursor-pointer">
               <input
                 type="checkbox"
                 checked={includeServiceLink}
                 onChange={(e) => setIncludeServiceLink(e.target.checked)}
-                className="mt-1 w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
+                className="mt-1 w-4 h-4 text-purple-600 border-gray-300 dark:border-zinc-600 rounded focus:ring-purple-500"
               />
               <div className="flex-1">
-                <div className="font-semibold text-gray-900 text-sm flex items-center gap-2">
-                  <LinkIcon className="w-4 h-4 text-purple-600" />
+                <div className="font-semibold text-gray-900 dark:text-white text-sm flex items-center gap-2">
+                  <LinkIcon className="w-4 h-4 text-purple-600 dark:text-purple-400" />
                   Include Service Selection Link
                 </div>
-                <p className="text-xs text-gray-600 mt-1">
+                <p className="text-xs text-gray-600 dark:text-zinc-400 mt-1">
                   Add a personalized link where the client can select their preferred services and packages. 
                   This helps provide accurate quotes and streamlines the booking process.
                 </p>
@@ -1357,28 +1357,28 @@ djbenmurray@gmail.com`
 
           {/* Body */}
           <div>
-            <label className="block text-sm font-semibold text-gray-900 mb-2">
+            <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-2">
               Message
             </label>
             <textarea
               value={formData.body}
               onChange={(e) => setFormData({ ...formData, body: e.target.value })}
               rows={12}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm"
+              className="w-full px-4 py-3 border border-gray-300 dark:border-zinc-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm bg-white dark:bg-zinc-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-zinc-400"
               placeholder="Type your message here..."
             />
           </div>
 
           {/* Preview */}
           {includeServiceLink && (
-            <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-              <p className="text-xs font-semibold text-gray-700 mb-2 flex items-center gap-2">
+            <div className="bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg p-4">
+              <p className="text-xs font-semibold text-gray-700 dark:text-zinc-300 mb-2 flex items-center gap-2">
                 <span className="w-2 h-2 bg-green-500 rounded-full"></span>
                 Service Selection Link Preview
               </p>
-              <div className="text-sm text-gray-600 bg-white p-3 rounded border border-gray-300">
+              <div className="text-sm text-gray-600 dark:text-zinc-400 bg-white dark:bg-zinc-900 p-3 rounded border border-gray-300 dark:border-zinc-600">
                 <p className="mb-2">━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</p>
-                <p className="font-semibold">📋 SELECT YOUR SERVICES</p>
+                <p className="font-semibold text-gray-900 dark:text-white">📋 SELECT YOUR SERVICES</p>
                 <p className="mt-2 text-xs">A personalized service selection page will be automatically generated and included at the end of your email.</p>
                 <p className="mt-2">━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</p>
               </div>
@@ -1387,11 +1387,11 @@ djbenmurray@gmail.com`
         </div>
 
         {/* Footer */}
-        <div className="bg-gray-50 px-6 py-4 border-t border-gray-200 flex gap-3">
+        <div className="bg-gray-50 dark:bg-zinc-800 px-6 py-4 border-t border-gray-200 dark:border-zinc-700 flex gap-3">
           <button
             onClick={onClose}
             disabled={sending}
-            className="flex-1 px-4 py-2.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 font-medium disabled:opacity-50"
+            className="flex-1 px-4 py-2.5 border border-gray-300 dark:border-zinc-600 text-gray-700 dark:text-zinc-300 rounded-lg hover:bg-gray-100 dark:hover:bg-zinc-700 font-medium disabled:opacity-50"
           >
             Cancel
           </button>

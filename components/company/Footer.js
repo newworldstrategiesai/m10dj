@@ -328,6 +328,7 @@ export default function Footer() {
       <ContactFormModal 
         isOpen={isContactModalOpen} 
         onClose={() => setIsContactModalOpen(false)} 
+        ctaSource="footer"
       />
     </footer>
   );

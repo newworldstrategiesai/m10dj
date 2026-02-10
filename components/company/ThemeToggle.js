@@ -76,10 +76,10 @@ export default function ThemeToggle({ className = '', variant = 'button' }) {
       <button
         onClick={cycleTheme}
         className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors w-full text-left ${className}`}
-        aria-label={getLabel()}
+        aria-label="Switch appearance"
       >
         {getIcon()}
-        <span className="font-medium">Theme: {getLabel()}</span>
+        <span className="font-medium">Switch Appearance</span>
       </button>
     );
   }
@@ -88,8 +88,8 @@ export default function ThemeToggle({ className = '', variant = 'button' }) {
     <button
       onClick={cycleTheme}
       className={`flex items-center justify-center w-9 h-9 rounded-lg transition-colors ${className}`}
-      aria-label={getLabel()}
-      title={getLabel()}
+      aria-label="Switch appearance"
+      title="Switch appearance"
     >
       {getIcon()}
     </button>
