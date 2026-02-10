@@ -88,11 +88,11 @@ export default function CorporateEvents() {
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <link rel="icon" href="/favicon.ico" />
         
-        {/* Open Graph */}
+        {/* Open Graph - keep title/description aligned with ranking for "Corporate DJ Memphis" */}
         <meta property="og:title" content="Corporate DJ Memphis | Professional Corporate Event DJ Services" />
         <meta property="og:description" content="Corporate DJ Memphis - Professional corporate event DJ services for Memphis businesses. Company parties, galas, conferences & business celebrations." />
-        <meta property="og:image" content="https://m10djcompany.com/logo-static.jpg" />
-        <meta property="og:url" content="https://m10djcompany.com/corporate-events" />
+        <meta property="og:image" content="https://www.m10djcompany.com/logo-static.jpg" />
+        <meta property="og:url" content="https://www.m10djcompany.com/corporate-events" />
         
         {/* Schema.org */}
         <script 
@@ -299,19 +299,19 @@ export default function CorporateEvents() {
               <div className="modern-card p-6 text-center">
                 <Coffee className="w-16 h-16 bg-gradient-to-br from-brand to-brand-600 text-white rounded-2xl flex items-center justify-center mx-auto mb-6 p-4" />
                 <h3 className="text-xl font-semibold text-gray-900 mb-4 font-sans">Appropriate Music Selection</h3>
-                <p className="text-gray-600 font-inter">Sophisticated background music during networking and high-energy entertainment when it's time to celebrate.</p>
+                <p className="text-gray-600 font-inter">Sophisticated background music during networking and high-energy entertainment when it&apos;s time to celebrate.</p>
               </div>
               
               <div className="modern-card p-6 text-center">
                 <Trophy className="w-16 h-16 bg-gradient-to-br from-brand to-brand-600 text-white rounded-2xl flex items-center justify-center mx-auto mb-6 p-4" />
                 <h3 className="text-xl font-semibold text-gray-900 mb-4 font-sans">Corporate Experience</h3>
-                <p className="text-gray-600 font-inter">Over 10 years of experience providing entertainment for Memphis's top companies and organizations.</p>
+                <p className="text-gray-600 font-inter">Over 10 years of experience providing entertainment for Memphis&apos;s top companies and organizations.</p>
               </div>
               
               <div className="modern-card p-6 text-center">
                 <Globe className="w-16 h-16 bg-gradient-to-br from-brand to-brand-600 text-white rounded-2xl flex items-center justify-center mx-auto mb-6 p-4" />
                 <h3 className="text-xl font-semibold text-gray-900 mb-4 font-sans">Venue Expertise</h3>
-                <p className="text-gray-600 font-inter">Familiar with Memphis's premier corporate venues and their specific technical requirements.</p>
+                <p className="text-gray-600 font-inter">Familiar with Memphis&apos;s premier corporate venues and their specific technical requirements.</p>
               </div>
             </div>
           </div>
@@ -323,7 +323,7 @@ export default function CorporateEvents() {
             <div className="text-center mb-16">
               <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6 font-sans">Memphis Corporate Venues</h2>
               <p className="text-xl text-gray-600 max-w-3xl mx-auto font-inter">
-                We've provided professional entertainment at Memphis's top corporate event venues.
+                We&apos;ve provided professional entertainment at Memphis&apos;s top corporate event venues.
               </p>
             </div>
             

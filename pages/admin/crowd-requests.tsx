@@ -9616,8 +9616,8 @@ export default function CrowdRequestsPage() {
                 <p className="mb-2">These are payments in Stripe that either:</p>
                 <ul className="list-disc list-inside space-y-1 ml-2">
                   <li>Have no request_id in metadata</li>
-                  <li>The request_id doesn't exist in the database</li>
-                  <li>The payment isn't properly linked to the request</li>
+                  <li>The request_id doesn&apos;t exist in the database</li>
+                  <li>The payment isn&apos;t properly linked to the request</li>
                 </ul>
               </div>
 

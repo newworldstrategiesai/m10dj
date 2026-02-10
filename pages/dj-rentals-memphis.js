@@ -97,7 +97,7 @@ export default function DJRentalsMemphis() {
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <link rel="canonical" href="https://www.m10djcompany.com/dj-rentals-memphis" />
         
-        {/* Open Graph tags */}
+        {/* Open Graph - keep title/description aligned with ranking for "DJ Rentals Memphis" */}
         <meta property="og:title" content="DJ Rentals Memphis from $75/Day | Speakers, Mics, Lighting" />
         <meta property="og:description" content="Memphis DJ equipment rental from $75/day. Pro speakers, wireless mics, uplighting & full DJ setups. Free delivery available. 500+ events served." />
         <meta property="og:url" content="https://www.m10djcompany.com/dj-rentals-memphis" />

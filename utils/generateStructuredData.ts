@@ -370,6 +370,50 @@ export function generateStructuredData(props: StructuredDataProps) {
         "currenciesAccepted": businessInfo.currenciesAccepted,
         "paymentAccepted": businessInfo.paymentAccepted
       });
+
+      // BreadcrumbList for service pages (Enhancements: breadcrumb rich results)
+      const serviceBreadcrumbName = serviceProps.serviceKey === 'wedding' ? 'Memphis Wedding DJ' : service.name;
+      schemas.push({
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        "@id": generateId('breadcrumb'),
+        "itemListElement": [
+          { "@type": "ListItem", "position": 1, "name": "Home", "item": baseUrl },
+          { "@type": "ListItem", "position": 2, "name": "Services", "item": `${baseUrl}/services` },
+          { "@type": "ListItem", "position": 3, "name": serviceBreadcrumbName, "item": pageUrl }
+        ]
+      });
+
+      // HowTo and ItemList for wedding service only (Enhancements: how-to / list rich results)
+      if (serviceProps.serviceKey === 'wedding') {
+        schemas.push({
+          "@context": "https://schema.org",
+          "@type": "HowTo",
+          "@id": generateId('howto'),
+          "name": "How to Book a Memphis Wedding DJ",
+          "description": "Steps to book your Memphis wedding DJ with M10 DJ Company: check availability, get a custom quote, plan your music and timeline, and confirm your date.",
+          "totalTime": "PT24H",
+          "step": [
+            { "@type": "HowToStep", "position": 1, "name": "Check availability", "text": "Contact us at (901) 410-2020 or request a quote online with your wedding date and venue." },
+            { "@type": "HowToStep", "position": 2, "name": "Get your custom quote", "text": "We'll send a transparent quote within 24 hours with ceremony, reception, MC, and uplighting options." },
+            { "@type": "HowToStep", "position": 3, "name": "Plan ceremony and reception music", "text": "Use our online planning portal and consultation to choose processional, recessional, and reception music." },
+            { "@type": "HowToStep", "position": 4, "name": "Confirm your booking", "text": "Secure your date with a deposit. We'll coordinate with your venue and send a final timeline before your wedding." }
+          ]
+        });
+        schemas.push({
+          "@context": "https://schema.org",
+          "@type": "ItemList",
+          "@id": generateId('itemlist'),
+          "name": "What's Included in a Memphis Wedding DJ Package",
+          "description": "Typical inclusions with M10 DJ Company wedding DJ packages.",
+          "numberOfItems": service.includes?.length ?? 0,
+          "itemListElement": (service.includes || []).map((item: string, index: number) => ({
+            "@type": "ListItem",
+            "position": index + 1,
+            "name": item
+          }))
+        });
+      }
       break;
 
     case 'location':
@@ -824,17 +868,23 @@ export function generateStructuredData(props: StructuredDataProps) {
       break;
   }
 
-  // Add FAQ schema if relevant
-  const relevantFaqs = faqData.general;
+  // Add FAQ schema if relevant (wedding service page: wedding FAQs first for rich results; others get general only)
+  const serviceProps = props as ServicePageProps;
+  const isWeddingService = pageType === 'service' && serviceProps.serviceKey === 'wedding';
+  const relevantFaqs = isWeddingService && faqData.wedding?.length
+    ? [...faqData.wedding, ...faqData.general].slice(0, 15) // Wedding first so Google shows wedding Q&As in rich results
+    : faqData.general;
   if (relevantFaqs.length > 0) {
     schemas.push({
       "@context": "https://schema.org",
       "@type": "FAQPage",
       "@id": generateId('faq'),
-      "name": "Memphis DJ Services - Frequently Asked Questions",
-      "description": "Common questions about M10 DJ Company's professional DJ services in Memphis, TN including pricing, booking, equipment, and service areas.",
+      "name": isWeddingService ? "Memphis Wedding DJ – Frequently Asked Questions" : "Memphis DJ Services – Frequently Asked Questions",
+      "description": isWeddingService
+        ? "Frequently asked questions about hiring a Memphis wedding DJ: pricing, ceremony and reception music, what's included, venues, and booking. M10 DJ Company – 500+ Memphis weddings."
+        : "Common questions about M10 DJ Company's professional DJ services in Memphis, TN including pricing, booking, equipment, and service areas.",
       "url": pageUrl,
-      "mainEntity": relevantFaqs.map(faq => ({
+      "mainEntity": relevantFaqs.map((faq: { question: string; answer: string }) => ({
         "@type": "Question",
         "name": faq.question,
         "acceptedAnswer": {

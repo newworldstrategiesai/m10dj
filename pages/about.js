@@ -94,7 +94,7 @@ export default function About() {
   return (
     <>
       <Head>
-        <title>About M10 DJ Company | Memphis Wedding DJ</title>
+        <title>About M10 DJ Company | Memphis DJ & Event Entertainment</title>
         <meta 
           name="description" 
           content="About M10 DJ Company - Memphis's premier wedding & event DJ service since 2009. Our story, values & commitment to unforgettable celebrations. 500+ events." 
@@ -104,7 +104,7 @@ export default function About() {
         <link rel="canonical" href="https://m10djcompany.com/about" />
         
         {/* Open Graph tags */}
-        <meta property="og:title" content="About M10 DJ Company | Memphis Wedding & Event DJs" />
+        <meta property="og:title" content="About M10 DJ Company | Memphis DJ & Event Entertainment" />
         <meta property="og:description" content="Learn about M10 DJ Company, Memphis's premier wedding and event DJ service since 2014." />
         <meta property="og:url" content="https://m10djcompany.com/about" />
         <meta property="og:type" content="website" />
@@ -142,11 +142,11 @@ export default function About() {
             <div className="max-w-4xl mx-auto text-center">
               <h1 className="heading-1 mb-6">
                 <span className="block text-white">About M10 DJ Company</span>
-                <span className="block text-[#fcba00]">Memphis's Premier Event Entertainment</span>
+                <span className="block text-[#fcba00]">Memphis&apos;s Premier Event Entertainment</span>
               </h1>
               
               <p className="text-xl text-gray-300 mb-8 max-w-3xl mx-auto leading-relaxed">
-                For over a decade, we've been creating unforgettable moments through music in Memphis and surrounding areas. 
+                For over a decade, we&apos;ve been creating unforgettable moments through music in Memphis and surrounding areas. 
                 Our passion for entertainment and commitment to excellence has made us the trusted choice for weddings, 
                 corporate events, and celebrations throughout the Mid-South.
               </p>

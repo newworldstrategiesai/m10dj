@@ -19,7 +19,7 @@ export default function EmailConfirmedPage() {
 
           {/* Description */}
           <p className="text-lg text-gray-600 dark:text-gray-300 mb-8">
-            Your email address has been successfully verified. You're all set to get started with TipJar!
+            Your email address has been successfully verified. You&apos;re all set to get started with TipJar!
           </p>
 
           {/* CTA Button - Highly Visible */}

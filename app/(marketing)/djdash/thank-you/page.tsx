@@ -30,7 +30,7 @@ export default function ThankYouPage() {
             </h1>
             
             <p className="text-xl text-gray-600 dark:text-gray-400 mb-8">
-              We've received your request and will connect you with professional DJs in your area within 24 hours.
+              We&apos;ve received your request and will connect you with professional DJs in your area within 24 hours.
             </p>
           </div>
           

@@ -59,12 +59,12 @@ export default function Home() {
     };
   }, []);
 
-  // Generate structured data for SEO
+  // Generate structured data for SEO (Organization + LocalBusiness + AggregateRating in schema)
   const structuredData = generateStructuredData({
     pageType: 'homepage',
     canonical: '/',
-    title: 'Memphis DJ Company | Professional DJ Services | M10 DJ Company',
-    description: 'Memphis DJ • 500+ Events • Same-Day Quotes Available! Professional DJ services for weddings, corporate events & parties. #1 rated Memphis DJ company. Call (901) 410-2020 now!'
+    title: 'Memphis Wedding DJ | 500+ Events, 4.8★ | M10 DJ Company',
+    description: 'Premier Memphis wedding DJ with 500+ events and 4.8 Google stars. Custom playlists, MC services, uplighting & more. Book your perfect reception today!'
   });
 
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.m10djcompany.com';
@@ -73,17 +73,18 @@ export default function Home() {
   return (
     <>
       <SEO
-        title="Memphis DJ Company | Professional DJ Services | M10 DJ Company"
-        description="Memphis premier DJ and entertainment company serving all event types. Professional sound, lighting, and MC services with transparent pricing. Call (901) 410-2020!"
+        title="Memphis Wedding DJ | 500+ Events, 4.8★ | M10 DJ Company"
+        description="Premier Memphis wedding DJ with 500+ events and 4.8 Google stars. Custom playlists, MC services, uplighting & more. Book your perfect reception today!"
         keywords={[
+          'memphis wedding dj',
+          'wedding dj memphis tn',
+          'best wedding dj memphis',
           'memphis dj company',
           'm10 dj company',
           'professional dj memphis',
           'Memphis DJs',
           'DJ Memphis',
-          'DJ in Memphis',
-          'memphis djs',
-          'djs memphis tn',
+          'wedding djs in memphis',
           'memphis tn djs'
         ]}
         canonical="/"
@@ -108,10 +109,14 @@ export default function Home() {
           <div className="section-container relative z-10 text-center py-16 md:py-24 lg:py-32">
             <div className="max-w-5xl mx-auto">
               {/* Main Headline - SEO Optimized H1 */}
-              <h1 className="heading-1 mb-6 md:mb-8 animate-fade-in-up px-4">
+              <h1 className="heading-1 mb-4 md:mb-6 animate-fade-in-up px-4">
                 <span className="block text-gray-900 dark:text-white">Professional DJ Services in Memphis, TN</span>
-                <span className="block text-gradient bg-gradient-to-r from-brand via-amber-400 to-brand bg-clip-text">Weddings, Corporate Events & Celebrations | 500+ Events</span>
+                <span className="block text-gradient bg-gradient-to-r from-brand via-amber-400 to-brand bg-clip-text">Weddings, Corporate Events &amp; Celebrations | 500+ Events</span>
               </h1>
+              {/* H2 subheadline for wedding intent (audit: add "Trusted Memphis Wedding DJ – 15+ Years, 500+ Celebrations") */}
+              <h2 className="text-xl md:text-2xl font-semibold text-gray-700 dark:text-gray-300 mb-6 md:mb-8 px-4">
+                Trusted Memphis Wedding DJ – 15+ Years, 500+ Celebrations
+              </h2>
               
               {/* Enhanced Content Block with Better Shadows */}
               <div className="bg-white/95 dark:bg-black/95 backdrop-blur-md rounded-2xl md:rounded-3xl p-6 md:p-10 mb-8 md:mb-12 shadow-2xl border border-brand/20 dark:border-brand/10 max-w-4xl mx-auto relative overflow-hidden">
@@ -165,7 +170,7 @@ export default function Home() {
                 </div>
               </div>
               
-              {/* Enhanced CTA Buttons */}
+              {/* Enhanced CTA Buttons (audit: add wedding → contact funnel + See Wedding Packages) */}
               <div className="flex flex-col sm:flex-row gap-3 md:gap-4 justify-center items-stretch sm:items-center mb-12 md:mb-16 px-4">
                 <button 
                   onClick={() => setIsContactModalOpen(true)}
@@ -176,11 +181,19 @@ export default function Home() {
                   <ChevronRight className="ml-2 w-4 h-4 md:w-5 md:h-5 group-hover:translate-x-1 transition-transform flex-shrink-0" />
                 </button>
                 <Link 
-                  href="/services" 
-                  className="btn-secondary shadow-md hover:shadow-lg w-full sm:w-auto min-h-[48px]"
+                  href="/memphis-wedding-dj"
+                  className="btn-secondary shadow-md hover:shadow-lg w-full sm:w-auto min-h-[48px] inline-flex items-center justify-center gap-2"
                 >
-                  <Music className="mr-2 w-4 h-4 md:w-5 md:h-5 flex-shrink-0" />
-                  <span className="text-sm md:text-base">View Our Services</span>
+                  <Music className="w-4 h-4 md:w-5 md:h-5 flex-shrink-0" />
+                  <span className="text-sm md:text-base">See Wedding Packages</span>
+                  <ChevronRight className="w-4 h-4 md:w-5 md:h-5 flex-shrink-0" />
+                </Link>
+                <Link 
+                  href="/services" 
+                  className="btn-secondary shadow-md hover:shadow-lg w-full sm:w-auto min-h-[48px] border-gray-300 dark:border-gray-600 inline-flex items-center justify-center gap-2"
+                >
+                  <span className="text-sm md:text-base">View All Services</span>
+                  <ChevronRight className="w-4 h-4 md:w-5 md:h-5 flex-shrink-0" />
                 </Link>
               </div>
               

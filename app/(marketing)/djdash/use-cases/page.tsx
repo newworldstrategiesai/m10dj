@@ -124,7 +124,7 @@ export default function UseCasesPage() {
             Built for Every Type of DJ Business
           </h1>
           <p className="text-xl text-gray-600 dark:text-gray-300">
-            Whether you're a solo DJ or running a multi-op firm, DJ Dash scales with you.
+            Whether you&apos;re a solo DJ or running a multi-op firm, DJ Dash scales with you.
           </p>
         </div>
       </section>
@@ -183,7 +183,7 @@ export default function UseCasesPage() {
                         ))}
                       </div>
                       <p className="text-gray-700 dark:text-gray-300 mb-4 italic">
-                        "{useCase.testimonial.quote}"
+                        &quot;{useCase.testimonial.quote}&quot;
                       </p>
                       <p className="font-semibold text-gray-900 dark:text-white">
                         {useCase.testimonial.author}
@@ -282,7 +282,7 @@ export default function UseCasesPage() {
             Ready to Transform Your DJ Business?
           </h2>
           <p className="text-xl text-blue-100 mb-8">
-            Join thousands of DJs who've streamlined their business with DJ Dash.
+            Join thousands of DJs who&apos;ve streamlined their business with DJ Dash.
           </p>
           <Link
             href="/djdash/signup"

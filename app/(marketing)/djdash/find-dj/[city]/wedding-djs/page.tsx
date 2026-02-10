@@ -222,7 +222,7 @@ export default function WeddingDJsCityPage({ params }: PageProps) {
                 Why Choose a Wedding DJ from DJ Dash in {name}?
               </h2>
               <p className="text-xl text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
-                We've helped thousands of couples find their perfect wedding DJ
+                We&apos;ve helped thousands of couples find their perfect wedding DJ
               </p>
             </div>
             
@@ -268,7 +268,7 @@ export default function WeddingDJsCityPage({ params }: PageProps) {
                 Get Free Quotes from {name} Wedding DJs
               </h2>
               <p className="text-xl text-gray-600 dark:text-gray-400">
-                Tell us about your wedding and we'll connect you with the best wedding DJs in {name}
+                Tell us about your wedding and we&apos;ll connect you with the best wedding DJs in {name}
               </p>
             </div>
             
@@ -386,7 +386,7 @@ export default function WeddingDJsCityPage({ params }: PageProps) {
                 </Button>
                 
                 <p className="text-sm text-center text-gray-600 dark:text-gray-400">
-                  By submitting, you agree to receive quotes from verified wedding DJs in {name}. We'll never share your information.
+                  By submitting, you agree to receive quotes from verified wedding DJs in {name}. We&apos;ll never share your information.
                 </p>
               </form>
             </div>

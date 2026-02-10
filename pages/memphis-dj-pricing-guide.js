@@ -172,12 +172,12 @@ export default function MemphisDJPricingGuide() {
   return (
     <>
       <Head>
-        <title>Wedding DJ Cost Guide 2025 | Average Price for Wedding DJ | Memphis DJ Pricing</title>
+        <title>Wedding DJ Cost Memphis | Average Price for Wedding DJ | 2025 Guide</title>
         <meta 
           name="description" 
-          content="Wedding DJ Cost: $600-$1,200 average. Complete guide to wedding DJ pricing, what affects costs, and how to save money. Memphis DJ Company transparent pricing ⭐ Call (901) 410-2020!" 
+          content="How much does a wedding DJ cost? Typical cost for wedding DJ, average price. Transparent Memphis DJ pricing. Free quote! (901) 410-2020" 
         />
-        <meta name="keywords" content="wedding dj cost, average price for wedding dj, average dj cost for wedding, wedding dj pricing, how much does a wedding dj cost, Memphis DJ pricing, DJ cost Memphis, Memphis DJ prices 2025, wedding DJ cost Memphis, corporate DJ pricing Memphis, event DJ rates Memphis" />
+        <meta name="keywords" content="wedding dj cost, average price for wedding dj, how much does a wedding dj cost, typical cost for wedding dj, wedding dj cost average, Memphis DJ pricing, wedding DJ cost Memphis" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <link rel="canonical" href="https://www.m10djcompany.com/memphis-dj-pricing-guide" />
         

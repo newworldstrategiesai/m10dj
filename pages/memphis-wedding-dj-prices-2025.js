@@ -139,18 +139,18 @@ export default function MemphisWeddingDJPrices2025() {
   return (
     <>
       <Head>
-        <title>Memphis Wedding DJ Prices 2025: Complete Pricing Guide | M10 DJ Company</title>
+        <title>Memphis Wedding DJ Prices 2025 | Wedding DJ Cost | Free Quote</title>
         <meta 
           name="description" 
-          content="Complete guide to Memphis wedding DJ services in 2025. Learn about package options, pricing factors, and what to expect when hiring a professional wedding DJ in Memphis." 
+          content="Wedding DJ cost & average price for wedding DJ. Memphis wedding DJ packages 2025. Transparent pricing. Free quote! (901) 410-2020" 
         />
-        <meta name="keywords" content="Memphis wedding DJ prices, wedding DJ cost Memphis, Memphis DJ pricing 2025, how much does a wedding DJ cost Memphis, Memphis wedding DJ packages, affordable wedding DJ Memphis" />
+        <meta name="keywords" content="Memphis wedding DJ prices 2025, wedding dj cost, average price for wedding dj, typical cost for wedding dj, Memphis wedding DJ packages, wedding DJ cost Memphis" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <link rel="canonical" href="https://www.m10djcompany.com/memphis-wedding-dj-prices-2025" />
         
         {/* Open Graph tags */}
-        <meta property="og:title" content="Memphis Wedding DJ Prices 2025: Complete Pricing Guide" />
-        <meta property="og:description" content="Comprehensive guide to Memphis wedding DJ services for 2025. Learn about packages, services, and what to consider when planning your wedding entertainment." />
+        <meta property="og:title" content="Memphis Wedding DJ Prices 2025 | Wedding DJ Cost | Free Quote" />
+        <meta property="og:description" content="Wedding DJ cost & average price for wedding DJ. Memphis wedding DJ packages 2025. Transparent pricing. Free quote! (901) 410-2020" />
         <meta property="og:url" content="https://www.m10djcompany.com/memphis-wedding-dj-prices-2025" />
         <meta property="og:type" content="article" />
         <meta property="og:image" content="https://m10djcompany.com/logo-static.jpg" />
@@ -264,7 +264,7 @@ export default function MemphisWeddingDJPrices2025() {
         <section className="py-8 bg-gray-50">
           <div className="section-container max-w-4xl">
             <div className="bg-white rounded-xl p-6 shadow-sm">
-              <h2 className="text-xl font-bold text-gray-900 mb-4">What's in This Guide</h2>
+              <h2 className="text-xl font-bold text-gray-900 mb-4">What&apos;s in This Guide</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <ul className="space-y-2">
                   <li><a href="#average-costs" className="text-brand hover:text-brand-600 transition-colors">• Understanding DJ Services</a></li>

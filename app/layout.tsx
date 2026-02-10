@@ -27,81 +27,94 @@ import '@livekit/components-styles';
 const title = 'M10 DJ Company - Professional Event Entertainment in Memphis';
 const description = 'Memphis premier DJ and entertainment services for weddings, corporate events, birthday parties, and special occasions. Professional sound, lighting, and MC services with transparent pricing. Call (901) 410-2020 for your free quote!';
 
-export const metadata: Metadata = {
-  metadataBase: new URL(getURL()),
-  title: {
-    default: title,
-    template: '%s | M10 DJ Company'
-  },
-  description: description,
-  icons: {
-    icon: '/m10-black-clear-png.png',
-    shortcut: '/m10-black-clear-png.png',
-    apple: '/m10-black-clear-png.png',
-  },
-  keywords: [
-    'Memphis DJ',
-    'wedding DJ Memphis',
-    'corporate event DJ',
-    'birthday party DJ',
-    'event entertainment Memphis',
-    'professional DJ services',
-    'sound system rental',
-    'uplighting Memphis',
-    'MC services Memphis'
-  ],
-  authors: [{ name: 'M10 DJ Company' }],
-  creator: 'M10 DJ Company',
-  publisher: 'M10 DJ Company',
-  formatDetection: {
-    email: false,
-    address: false,
-    telephone: false,
-  },
-  openGraph: {
-    type: 'website',
-    locale: 'en_US',
-    url: getURL(),
-    title: title,
+/** Base URL and canonical from request host so tipjar.live / djdash.net don't declare m10djcompany.com. */
+function getBaseUrlFromHeaders(headersList: Headers): string {
+  const host = headersList.get('host') || headersList.get('x-forwarded-host') || '';
+  const hostLower = host.toLowerCase();
+  if (hostLower.includes('tipjar.live')) return 'https://www.tipjar.live';
+  if (hostLower.includes('djdash.net')) return 'https://www.djdash.net';
+  return getURL();
+}
+
+export async function generateMetadata(): Promise<Metadata> {
+  const headersList = await headers();
+  const baseUrl = getBaseUrlFromHeaders(headersList);
+
+  return {
+    metadataBase: new URL(baseUrl),
+    title: {
+      default: title,
+      template: '%s | M10 DJ Company'
+    },
     description: description,
-    siteName: 'M10 DJ Company',
-    images: [
-      {
-        url: '/logo-static.jpg',
-        width: 1200,
-        height: 630,
-        alt: 'M10 DJ Company - Professional Event Entertainment',
-      },
+    icons: {
+      icon: '/m10-black-clear-png.png',
+      shortcut: '/m10-black-clear-png.png',
+      apple: '/m10-black-clear-png.png',
+    },
+    keywords: [
+      'Memphis DJ',
+      'wedding DJ Memphis',
+      'corporate event DJ',
+      'birthday party DJ',
+      'event entertainment Memphis',
+      'professional DJ services',
+      'sound system rental',
+      'uplighting Memphis',
+      'MC services Memphis'
     ],
-  },
-  twitter: {
-    card: 'summary_large_image',
-    title: title,
-    description: description,
-    images: ['/logo-static.jpg'],
-    creator: '@m10djcompany',
-  },
-  robots: {
-    index: true,
-    follow: true,
-    googleBot: {
+    authors: [{ name: 'M10 DJ Company' }],
+    creator: 'M10 DJ Company',
+    publisher: 'M10 DJ Company',
+    formatDetection: {
+      email: false,
+      address: false,
+      telephone: false,
+    },
+    openGraph: {
+      type: 'website',
+      locale: 'en_US',
+      url: baseUrl,
+      title: title,
+      description: description,
+      siteName: 'M10 DJ Company',
+      images: [
+        {
+          url: '/logo-static.jpg',
+          width: 1200,
+          height: 630,
+          alt: 'M10 DJ Company - Professional Event Entertainment',
+        },
+      ],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: title,
+      description: description,
+      images: ['/logo-static.jpg'],
+      creator: '@m10djcompany',
+    },
+    robots: {
       index: true,
       follow: true,
-      'max-video-preview': -1,
-      'max-image-preview': 'large',
-      'max-snippet': -1,
+      googleBot: {
+        index: true,
+        follow: true,
+        'max-video-preview': -1,
+        'max-image-preview': 'large',
+        'max-snippet': -1,
+      },
     },
-  },
-  verification: {
-    google: 'your-google-verification-code',
-  },
-  alternates: {
-    canonical: getURL(),
-  },
-};
+    // Add your real Google Search Console verification meta content value here when you have it
+    // verification: { google: 'your-actual-verification-code-from-gsc' },
+    alternates: {
+      canonical: baseUrl,
+    },
+  };
+}
 
 export default async function RootLayout({ children }: PropsWithChildren) {
-  const headersList = headers();
+  const headersList = await headers();
   const pathname = headersList.get('x-pathname') || '';
   const product = headersList.get('x-product') || '';
   

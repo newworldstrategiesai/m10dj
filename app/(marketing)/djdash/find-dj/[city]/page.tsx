@@ -487,7 +487,7 @@ export default async function FindDJCityPage({ params }: PageProps) {
                 Get Free Quotes from {name} DJs
               </h2>
               <p className="text-xl text-gray-600 dark:text-gray-400">
-                Tell us about your event and we'll connect you with the best DJs in {name}
+                Tell us about your event and we&apos;ll connect you with the best DJs in {name}
               </p>
             </div>
             
@@ -626,7 +626,7 @@ export default async function FindDJCityPage({ params }: PageProps) {
                 </Button>
                 
                 <p className="text-sm text-center text-gray-600 dark:text-gray-400">
-                  By submitting, you agree to receive quotes from verified DJs in {name}. We'll never share your information.
+                  By submitting, you agree to receive quotes from verified DJs in {name}. We&apos;ll never share your information.
                 </p>
               </form>
             </div>

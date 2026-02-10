@@ -32,7 +32,7 @@ export default function PrivacyPolicyPage() {
           <section className="mb-12">
             <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">Introduction</h2>
             <p className="text-gray-700 dark:text-gray-300 leading-relaxed mb-4">
-              TipJar.Live ("we," "our," or "us") is committed to protecting your privacy. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you visit our website, use our tipping and song request platform, or interact with our services as a DJ, performer, venue, or guest.
+              TipJar.Live (&quot;we,&quot; &quot;our,&quot; or &quot;us&quot;) is committed to protecting your privacy. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you visit our website, use our tipping and song request platform, or interact with our services as a DJ, performer, venue, or guest.
             </p>
             <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
               Please read this privacy policy carefully. If you do not agree with the terms of this privacy policy, please do not access our website or use our services.
@@ -145,12 +145,12 @@ export default function PrivacyPolicyPage() {
               <li>
                 <strong>Stripe:</strong> We share payment information with Stripe to process payments. Stripe acts as a data controller for payment data. Please review{' '}
                 <a href="https://stripe.com/privacy" target="_blank" rel="noopener noreferrer" className="text-purple-600 dark:text-purple-400 hover:underline">
-                  Stripe's Privacy Policy
+                  Stripe&apos;s Privacy Policy
                 </a>
                 .
               </li>
               <li>
-                <strong>DJs and Performers:</strong> When you send a tip, song request, or shoutout, we share your name (or alias), message, and request details with the DJ or performer you're interacting with. You can choose to remain anonymous.
+                <strong>DJs and Performers:</strong> When you send a tip, song request, or shoutout, we share your name (or alias), message, and request details with the DJ or performer you&apos;re interacting with. You can choose to remain anonymous.
               </li>
               <li>
                 <strong>Venues:</strong> If you are a performer associated with a venue, your profile and activity may be visible to the venue owner.
@@ -185,17 +185,17 @@ export default function PrivacyPolicyPage() {
               <li>DJs and performer must create a Stripe Connect account to receive tips</li>
               <li>All payment data is processed and stored by Stripe, not TipJar.Live</li>
               <li>Stripe collects tax identification information from DJs for compliance purposes</li>
-              <li>Tips are routed directly to the DJ's Stripe account, minus platform fees</li>
+              <li>Tips are routed directly to the DJ&apos;s Stripe account, minus platform fees</li>
               <li>Stripe may request additional information from DJs to comply with financial regulations</li>
             </ul>
             <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
               Stripe is responsible for payment data security and compliance with financial regulations. For more information, please review{' '}
               <a href="https://stripe.com/privacy" target="_blank" rel="noopener noreferrer" className="text-purple-600 dark:text-purple-400 hover:underline">
-                Stripe's Privacy Policy
+                Stripe&apos;s Privacy Policy
               </a>{' '}
               and{' '}
               <a href="https://stripe.com/legal" target="_blank" rel="noopener noreferrer" className="text-purple-600 dark:text-purple-400 hover:underline">
-                Stripe's Terms of Service
+                Stripe&apos;s Terms of Service
               </a>
               .
             </p>
@@ -214,7 +214,7 @@ export default function PrivacyPolicyPage() {
               <strong>Important:</strong> These pages are publicly accessible. Anyone with the link or QR code can:
             </p>
             <ul className="list-disc pl-6 text-gray-700 dark:text-gray-300 space-y-2">
-              <li>View the DJ's or performer's public profile</li>
+              <li>View the DJ&apos;s or performer&apos;s public profile</li>
               <li>Send tips, song requests, or shoutouts</li>
               <li>See publicly displayed information (name, bio, photos)</li>
             </ul>
@@ -301,7 +301,7 @@ export default function PrivacyPolicyPage() {
           </section>
 
           <section className="mb-12">
-            <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">Children's Privacy</h2>
+            <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">Children&apos;s Privacy</h2>
             <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
               TipJar.Live is not directed to individuals under the age of 18. We do not knowingly collect personal information from children under 18. If you are a parent or guardian and believe your child has provided us with personal information, please contact us immediately. If we discover that we have collected information from a child under 18, we will delete that information promptly.
             </p>
@@ -344,7 +344,7 @@ export default function PrivacyPolicyPage() {
             </p>
             <ul className="list-disc pl-6 text-gray-700 dark:text-gray-300 space-y-2 mt-4">
               <li>Posting the new privacy policy on this page</li>
-              <li>Updating the "Last Updated" date</li>
+              <li>Updating the &quot;Last Updated&quot; date</li>
               <li>Sending an email notification to registered users (for significant changes)</li>
             </ul>
             <p className="text-gray-700 dark:text-gray-300 leading-relaxed mt-4">

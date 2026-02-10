@@ -185,7 +185,7 @@ export default function KaraokePage() {
                             </div>
                             <div className="flex-1">
                               <p className="font-semibold text-gray-900">Phone Number</p>
-                              <p className="text-sm text-gray-600">Get SMS when you're up!</p>
+                              <p className="text-sm text-gray-600">Get SMS when you&apos;re up!</p>
                             </div>
                           </div>
                         </div>
@@ -197,7 +197,7 @@ export default function KaraokePage() {
                   <div className="absolute -right-4 top-1/2 transform translate-x-1/2 bg-green-500 text-white px-4 py-2 rounded-full shadow-lg animate-bounce">
                     <div className="flex items-center space-x-2">
                       <Bell className="w-4 h-4" />
-                      <span className="font-semibold">You're next!</span>
+                      <span className="font-semibold">You&apos;re next!</span>
                     </div>
                   </div>
                 </div>
@@ -311,7 +311,7 @@ export default function KaraokePage() {
                 </div>
                 <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">2. Manage Signups</h3>
                 <p className="text-gray-600 dark:text-gray-400 leading-relaxed">
-                  View all karaoke requests in real-time. Organize the queue, send SMS notifications, and track who's singing next.
+                  View all karaoke requests in real-time. Organize the queue, send SMS notifications, and track who&apos;s singing next.
                 </p>
               </div>
 
@@ -322,7 +322,7 @@ export default function KaraokePage() {
                 </div>
                 <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">3. Display on Screen</h3>
                 <p className="text-gray-600 dark:text-gray-400 leading-relaxed">
-                  Show the karaoke queue on venue TV screens. Singers can see their position and get notified when it's their turn.
+                  Show the karaoke queue on venue TV screens. Singers can see their position and get notified when it&apos;s their turn.
                 </p>
               </div>
             </div>
@@ -344,7 +344,7 @@ export default function KaraokePage() {
             </h2>
 
             <p className="text-xl text-purple-100 mb-8 max-w-2xl mx-auto">
-              Join the waitlist to be the first to know when karaoke mode launches. We'll notify you as soon as it's available in your TipJar dashboard.
+              Join the waitlist to be the first to know when karaoke mode launches. We&apos;ll notify you as soon as it&apos;s available in your TipJar dashboard.
             </p>
 
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
@@ -395,7 +395,7 @@ export default function KaraokePage() {
                   When will karaoke mode be available?
                 </h3>
                 <p className="text-gray-600 dark:text-gray-400">
-                  We're currently in the final stages of development and testing. We expect to launch karaoke mode within the next few weeks. Join our waitlist to be notified as soon as it's available.
+                  We&apos;re currently in the final stages of development and testing. We expect to launch karaoke mode within the next few weeks. Join our waitlist to be notified as soon as it&apos;s available.
                 </p>
               </div>
 
@@ -422,7 +422,7 @@ export default function KaraokePage() {
                   Can I use karaoke mode with my existing TipJar setup?
                 </h3>
                 <p className="text-gray-600 dark:text-gray-400">
-                  Absolutely! Karaoke mode integrates seamlessly with your existing TipJar account. You'll access it from the same dashboard, and it uses your existing branding and settings.
+                  Absolutely! Karaoke mode integrates seamlessly with your existing TipJar account. You&apos;ll access it from the same dashboard, and it uses your existing branding and settings.
                 </p>
               </div>
 

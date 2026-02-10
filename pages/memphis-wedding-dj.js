@@ -204,7 +204,7 @@ export default function MemphisWeddingDJ() {
     <>
       <SEO
         title="Memphis Wedding DJ ★★★★★ 500+ Weddings | From $795 | M10 DJ"
-        description="Top-rated Memphis wedding DJ with 500+ weddings at The Peabody, Graceland & 27+ venues. Ceremony + reception + MC included. $795-$1,495. Free quote in minutes! (901) 410-2020"
+        description="Wedding DJs in Memphis – top-rated with 500+ weddings at The Peabody, Graceland & 27+ venues. Wedding DJ near me. Ceremony + reception + MC. Free quote! (901) 410-2020"
         keywords={[
           'memphis wedding dj',
           'wedding dj memphis',
@@ -291,7 +291,7 @@ export default function MemphisWeddingDJ() {
                       </div>
                       <div className="flex items-center">
                         <CheckCircle className="w-5 h-5 text-brand-gold mr-3 flex-shrink-0" />
-                        <span>Pricing is upfront – you'll know the total before you book, no surprise fees</span>
+                        <span>Pricing is upfront – you&apos;ll know the total before you book, no surprise fees</span>
                       </div>
                       <div className="flex items-center">
                         <CheckCircle className="w-5 h-5 text-brand-gold mr-3 flex-shrink-0" />
@@ -327,7 +327,7 @@ export default function MemphisWeddingDJ() {
                 Memphis Wedding DJ Packages - Customized for Your Celebration
               </h2>
               <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-                Every Memphis wedding is different – some need ceremony audio, some don't. Some want uplighting, others prefer natural light. We build packages around what you actually need, not a one-size-fits-all template. <strong>Get your custom quote in 24 hours.</strong>
+                Every Memphis wedding is different – some need ceremony audio, some don&apos;t. Some want uplighting, others prefer natural light. We build packages around what you actually need, not a one-size-fits-all template. <strong>Get your custom quote in 24 hours.</strong>
               </p>
             </div>
 
@@ -357,7 +357,7 @@ export default function MemphisWeddingDJ() {
                   </li>
                   <li className="flex items-start">
                     <CheckCircle className="w-5 h-5 text-brand-gold mr-2 flex-shrink-0 mt-0.5" />
-                    <span className="text-gray-700">Up to 16 uplighting fixtures (we'll match your wedding colors)</span>
+                    <span className="text-gray-700">Up to 16 uplighting fixtures (we&apos;ll match your wedding colors)</span>
                   </li>
                   <li className="flex items-start">
                     <CheckCircle className="w-5 h-5 text-brand-gold mr-2 flex-shrink-0 mt-0.5" />
@@ -414,7 +414,7 @@ export default function MemphisWeddingDJ() {
                   </li>
                   <li className="flex items-start">
                     <CheckCircle className="w-5 h-5 text-brand-gold mr-2 flex-shrink-0 mt-0.5" />
-                    <span>Coordinated ceremony-to-reception transition (we handle the equipment move so you don't have to)</span>
+                    <span>Coordinated ceremony-to-reception transition (we handle the equipment move so you don&apos;t have to)</span>
                   </li>
                 </ul>
                 <button 
@@ -740,7 +740,7 @@ export default function MemphisWeddingDJ() {
                 Trusted at Memphis Wedding Venues
               </h2>
               <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-                We're the preferred wedding DJ service at Memphis's most beautiful venues. 
+                We&apos;re the preferred wedding DJ service at Memphis&apos;s most beautiful venues. 
                 Our team knows the unique requirements of each location.
               </p>
             </div>
@@ -771,7 +771,7 @@ export default function MemphisWeddingDJ() {
               <p className="text-xl text-gray-600 max-w-3xl mx-auto">
                 Looking for the best wedding DJs in Memphis? Our professional team of experienced Memphis wedding DJs 
                 includes backup DJs and specialized entertainers so your wedding runs smoothly even if something unexpected happens, 
-                no matter the size or complexity. We're Memphis's most trusted wedding DJ company with 500+ successful celebrations.
+                no matter the size or complexity. We&apos;re Memphis&apos;s most trusted wedding DJ company with 500+ successful celebrations.
               </p>
             </div>
 
@@ -809,7 +809,7 @@ export default function MemphisWeddingDJ() {
                 DJs Near Me Memphis TN | Professional DJ Services Throughout Memphis
               </h2>
               <p className="text-xl text-gray-600 max-w-4xl mx-auto">
-                Looking for DJs near me in Memphis? M10 DJ Company serves all Memphis neighborhoods including Downtown Memphis, Midtown Memphis, East Memphis, South Memphis, and North Memphis. We're Memphis's most experienced DJ company with 15+ years serving the Memphis community and 500+ successful events.
+                Looking for DJs near me in Memphis? M10 DJ Company serves all Memphis neighborhoods including Downtown Memphis, Midtown Memphis, East Memphis, South Memphis, and North Memphis. We&apos;re Memphis&apos;s most experienced DJ company with 15+ years serving the Memphis community and 500+ successful events.
               </p>
             </div>
 
@@ -838,7 +838,7 @@ export default function MemphisWeddingDJ() {
               
               <div className="bg-gray-50 rounded-xl p-6">
                 <h3 className="text-xl font-bold text-gray-900 mb-4">Midtown Memphis DJs</h3>
-                <p className="text-gray-600 mb-4">Creative DJ services for Midtown Memphis's vibrant venues including Memphis Botanic Garden, Dixon Gallery, and cultural events.</p>
+                <p className="text-gray-600 mb-4">Creative DJ services for Midtown Memphis&apos;s vibrant venues including Memphis Botanic Garden, Dixon Gallery, and cultural events.</p>
                 <ul className="space-y-2 text-sm text-gray-600">
                   <li>• Memphis Botanic Garden</li>
                   <li>• Dixon Gallery & Gardens</li>
@@ -1063,7 +1063,7 @@ export default function MemphisWeddingDJ() {
         {/* Client Logo Carousel - Wedding Venues & Partners */}
         <ClientLogoCarousel 
           logoSet="wedding"
-          title="Trusted at Memphis's Premier Wedding Venues"
+          title="Trusted at Memphis&apos;s Premier Wedding Venues"
           subtitle="Preferred entertainment partner at The Peabody Hotel, Memphis Botanic Garden, Dixon Gallery & Gardens, and 27+ Memphis wedding venues"
         />
 
@@ -1072,7 +1072,7 @@ export default function MemphisWeddingDJ() {
           <div className="section-container">
             <div className="text-center mb-16">
               <h2 className="heading-2 text-gray-900 mb-6">
-                Ready to Book Memphis's Best Wedding DJ?
+                Ready to Book Memphis&apos;s Best Wedding DJ?
               </h2>
               <p className="text-xl text-gray-600 max-w-3xl mx-auto">
                 Let's discuss your Memphis wedding and figure out exactly what you need. 

@@ -133,15 +133,15 @@ export default function SchoolDances() {
   return (
     <>
       <Head>
-        <title>School Dance DJ Services Memphis | M10 DJ Company | Prom, Homecoming & School Events</title>
-        <meta name="description" content="Professional school dance DJ services in Memphis. Expert entertainment for prom, homecoming, winter formal, and all school events with age-appropriate music." />
-        <meta name="keywords" content="Memphis school dance DJ, prom DJ Memphis, homecoming dance entertainment, school event DJ Memphis TN" />
+        <title>School Dance DJ Memphis | Prom & Homecoming DJ | M10 DJ Company</title>
+        <meta name="description" content="DJ for school dance & high school dance DJ. Memphis prom, homecoming, winter formal. Age-appropriate music. (901) 410-2020!" />
+        <meta name="keywords" content="dj for school dance, high school dance dj, school dance djs, Memphis school dance DJ, prom DJ Memphis, homecoming dance entertainment Memphis" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <link rel="icon" href="/favicon.ico" />
         
         {/* Open Graph */}
-        <meta property="og:title" content="School Dance DJ Services Memphis | M10 DJ Company" />
-        <meta property="og:description" content="Professional school dance DJ services in Memphis for prom, homecoming, and all school events." />
+        <meta property="og:title" content="School Dance DJ Memphis | Prom & Homecoming DJ | M10 DJ Company" />
+        <meta property="og:description" content="DJ for school dance & high school dance DJ. Memphis prom, homecoming. (901) 410-2020!" />
         <meta property="og:image" content="https://m10djcompany.com/logo-static.jpg" />
         <meta property="og:url" content="https://m10djcompany.com/school-dances" />
         
@@ -490,7 +490,7 @@ export default function SchoolDances() {
                 <div>
                   <Award className="w-12 h-12 mx-auto mb-4 opacity-80" />
                   <h3 className="text-lg font-semibold mb-2">Satisfaction Guaranteed</h3>
-                  <p className="opacity-80">We're committed to making your event a success</p>
+                  <p className="opacity-80">We&apos;re committed to making your event a success</p>
                 </div>
               </div>
             </div>

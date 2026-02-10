@@ -30,7 +30,7 @@ export function generateVenueInvitationEmailHTML(params: VenueInvitationEmailPar
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>You've been invited to join ${venueName} on TipJar</title>
+  <title>You&apos;ve been invited to join ${venueName} on TipJar</title>
 </head>
 <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f9fafb;">
   <table role="presentation" style="width: 100%; border-collapse: collapse;">

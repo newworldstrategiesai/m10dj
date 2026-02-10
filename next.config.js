@@ -1,6 +1,13 @@
 /** @type {import('next').NextConfig} */
 module.exports = {
   reactStrictMode: false, // Disabled to prevent double renders and fast refresh issues
+  // SEO: consolidate URLs so one canonical ranks (see M10DJ_SEO_IMPROVEMENTS_2026.md §3.4, §3.2)
+  async redirects() {
+    return [
+      { source: '/djbenmurray', destination: '/dj-ben-murray', permanent: true },
+      { source: '/home', destination: '/', permanent: true },
+    ];
+  },
   // Disable file system watching for node_modules to reduce reload triggers
   experimental: {
     esmExternals: false,

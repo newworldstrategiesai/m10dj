@@ -172,6 +172,26 @@ const faqs = [
   {
     question: "What makes you different from other Memphis DJs?",
     answer: "We're locally owned with deep Memphis roots, professional-grade equipment, comprehensive insurance, and a track record of 500+ successful events. We know Memphis venues, audiences, and what works in our city."
+  },
+  {
+    question: "Are there good wedding DJs near me in Memphis?",
+    answer: "Yes. M10 DJ Company is one of Memphis's top wedding DJ services, with 500+ weddings at The Peabody, Graceland, Memphis Botanic Garden, and 27+ venues. We offer ceremony and reception DJ, MC services, and uplighting. Call (901) 410-2020 for a same-day quote."
+  },
+  {
+    question: "Do you offer disc jockey services near me?",
+    answer: "Yes. We provide professional disc jockey services throughout Memphis and the Mid-South—weddings, corporate events, parties, and school dances. Same-day quotes and 15+ years of local experience. Call (901) 410-2020."
+  },
+  {
+    question: "What is a DJ company near me that does weddings and parties?",
+    answer: "M10 DJ Company serves Memphis and surrounding areas for weddings, corporate events, birthday parties, and private celebrations. We're a local DJ company with 500+ events and same-day quotes. Call (901) 410-2020."
+  },
+  {
+    question: "Can I hire mobile DJs near me for a party?",
+    answer: "Yes. We're mobile DJs who bring professional sound, lighting, and MC services to your venue throughout Memphis, Germantown, Collierville, and the greater metro area. Call (901) 410-2020 for availability and pricing."
+  },
+  {
+    question: "Do local DJs near me in Memphis do school dances?",
+    answer: "Yes. M10 DJ Company provides school dance DJ services—prom, homecoming, winter formal—with age-appropriate music and professional equipment. We serve Memphis-area schools; call (901) 410-2020 for packages."
   }
 ];
 
@@ -186,18 +206,18 @@ export default function DJNearMemphis() {
   return (
     <>
       <Head>
-        <title>DJ Near Me Memphis, TN | Local DJ Services | All Neighborhoods</title>
+        <title>DJs Near Me Memphis TN | Local Wedding & Party DJs | M10 DJ Company</title>
         <meta 
           name="description" 
-          content="Find local DJs near you in Memphis. Serving all Memphis neighborhoods with same-day quotes. Professional DJ services for events, parties, and celebrations. Call (901) 410-2020!"
+          content="Local DJs near you in Memphis. Djs near me for weddings & parties. Germantown, Collierville, East Memphis. Same-day quotes! (901) 410-2020"
         />
-        <meta name="keywords" content="DJ near me Memphis, Memphis DJ near me, local DJ Memphis, DJ near me, find DJ near me, Memphis area DJ, nearby DJ Memphis" />
+        <meta name="keywords" content="djs near me, local djs near me, DJ near me Memphis, dj company near me, wedding djs near me, party djs near me, Memphis DJ near me" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <link rel="canonical" href="https://www.m10djcompany.com/dj-near-me-memphis" />
         
         {/* Open Graph tags */}
-        <meta property="og:title" content="DJ Near Me Memphis, TN | Local Wedding & Event DJs" />
-        <meta property="og:description" content="Professional DJ services near you in Memphis. Wedding, corporate, and party entertainment with 15+ years experience and 5-star ratings." />
+        <meta property="og:title" content="DJs Near Me Memphis TN | Local Wedding & Party DJs | M10 DJ Company" />
+        <meta property="og:description" content="Local DJs near you in Memphis. Djs near me for weddings & parties. Same-day quotes! (901) 410-2020" />
         <meta property="og:url" content="https://www.m10djcompany.com/dj-near-me-memphis" />
         <meta property="og:type" content="website" />
         <meta property="og:image" content="https://m10djcompany.com/logo-static.jpg" />
@@ -304,6 +324,24 @@ export default function DJNearMemphis() {
                 "https://www.instagram.com/m10djcompany"
               ]
             }),
+          }}
+        />
+        {/* FAQPage schema for rich results (M10DJ_SEO_IMPROVEMENTS_2026.md §5.1) */}
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              "@context": "https://schema.org",
+              "@type": "FAQPage",
+              "mainEntity": faqs.map(faq => ({
+                "@type": "Question",
+                "name": faq.question,
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": faq.answer
+                }
+              }))
+            })
           }}
         />
       </Head>
@@ -529,8 +567,8 @@ export default function DJNearMemphis() {
               <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-8">
                 <h3 className="text-2xl font-bold mb-4">Memphis Born & Raised</h3>
                 <p className="text-xl mb-6">
-                  M10 DJ Company is proudly locally owned and operated. We're not a national chain - 
-                  we're your Memphis neighbors who understand what makes our city special.
+                  M10 DJ Company is proudly locally owned and operated. We&apos;re not a national chain - 
+                  we&apos;re your Memphis neighbors who understand what makes our city special.
                 </p>
                 <div className="flex flex-col sm:flex-row gap-4 justify-center">
                   <Link 

@@ -78,7 +78,7 @@ export default async function AcceptInvitePage({ params }: AcceptInvitePageProps
             </div>
             <CardTitle className="text-2xl">Venue Invitation</CardTitle>
             <CardDescription className="text-lg mt-2">
-              You've been invited to join <strong>{venueOrg?.name || 'a venue'}</strong> on TipJar
+              You&apos;ve been invited to join <strong>{venueOrg?.name || 'a venue'}</strong> on TipJar
             </CardDescription>
           </CardHeader>
 
@@ -110,7 +110,7 @@ export default async function AcceptInvitePage({ params }: AcceptInvitePageProps
                 <div>
                   <h3 className="font-semibold text-green-900 dark:text-green-100">Invitation Accepted</h3>
                   <p className="text-sm text-green-700 dark:text-green-300 mt-1">
-                    You've already accepted this invitation. Redirecting to your dashboard...
+                    You&apos;ve already accepted this invitation. Redirecting to your dashboard...
                   </p>
                 </div>
               </div>
@@ -180,7 +180,7 @@ export default async function AcceptInvitePage({ params }: AcceptInvitePageProps
                       <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4 mb-4">
                         <p className="text-sm text-yellow-800 dark:text-yellow-200">
                           <strong>Email Mismatch:</strong> This invitation was sent to{' '}
-                          <strong>{invitation.invited_email}</strong>, but you're signed in as{' '}
+                          <strong>{invitation.invited_email}</strong>, but you&apos;re signed in as{' '}
                           <strong>{user.email}</strong>. Please sign in with the invited email address.
                         </p>
                       </div>

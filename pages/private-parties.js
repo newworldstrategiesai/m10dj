@@ -132,15 +132,15 @@ export default function PrivateParties() {
   return (
     <>
       <Head>
-        <title>Private Party DJ Services Memphis | M10 DJ Company | Birthday, Anniversary & Family Celebrations</title>
-        <meta name="description" content="Professional private party DJ services in Memphis. Perfect entertainment for birthdays, anniversaries, family reunions, and all your personal celebrations." />
-        <meta name="keywords" content="Memphis private party DJ, birthday party DJ Memphis, anniversary party entertainment, family reunion DJ Memphis TN" />
+        <title>Private Party DJ Memphis | Birthday, Anniversary & Parties | M10 DJ Company</title>
+        <meta name="description" content="Hire a DJ for a party or birthday. Private party DJ Memphis – birthdays, anniversaries, family reunions. (901) 410-2020!" />
+        <meta name="keywords" content="hire a dj for a party, hire dj for birthday party, private party DJ Memphis, birthday party DJ Memphis, anniversary party entertainment Memphis" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <link rel="icon" href="/favicon.ico" />
         
         {/* Open Graph */}
-        <meta property="og:title" content="Private Party DJ Services Memphis | M10 DJ Company" />
-        <meta property="og:description" content="Professional private party DJ services in Memphis for birthdays, anniversaries, and all your personal celebrations." />
+        <meta property="og:title" content="Private Party DJ Memphis | Birthday, Anniversary & Parties | M10 DJ Company" />
+        <meta property="og:description" content="Hire a DJ for a party or birthday. Private party DJ Memphis – birthdays, anniversaries. (901) 410-2020!" />
         <meta property="og:image" content="https://m10djcompany.com/logo-static.jpg" />
         <meta property="og:url" content="https://m10djcompany.com/private-parties" />
         

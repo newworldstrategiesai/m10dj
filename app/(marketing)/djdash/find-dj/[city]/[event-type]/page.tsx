@@ -435,7 +435,7 @@ export default async function CityEventTypePage({ params }: PageProps) {
                     Market Still Growing
                   </p>
                   <p className="text-sm text-yellow-700 dark:text-yellow-300 mt-1">
-                    The {event_type_display.toLowerCase()} market in {city_name} is still developing. We're actively adding more DJs and collecting data to provide comprehensive insights.
+                    The {event_type_display.toLowerCase()} market in {city_name} is still developing. We&apos;re actively adding more DJs and collecting data to provide comprehensive insights.
                   </p>
                 </div>
               </div>

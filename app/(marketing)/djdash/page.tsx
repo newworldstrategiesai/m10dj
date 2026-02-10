@@ -503,7 +503,7 @@ export default async function HomePage() {
                 Find DJs by Event Type
             </h2>
               <p className="text-xl text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
-                Whether you're planning a wedding, corporate event, or party, we have the perfect DJ for you.
+                Whether you&apos;re planning a wedding, corporate event, or party, we have the perfect DJ for you.
               </p>
             </div>
             

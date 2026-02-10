@@ -186,7 +186,7 @@ export default function BestWeddingDJMemphis() {
         <link rel="canonical" href="https://www.m10djcompany.com/best-wedding-dj-memphis" />
         
         {/* Open Graph tags */}
-        <meta property="og:title" content="Memphis Wedding DJ Reviews | 500+ 5-Star Weddings | M10 DJ Company" />
+        <meta property="og:title" content="Best Wedding DJ Memphis | 500+ 5-Star Reviews | M10 DJ Company" />
         <meta property="og:description" content="See what makes M10 Memphis's most trusted wedding DJ. Read real reviews, see photos & videos from 500+ successful weddings, and discover why couples choose us." />
         <meta property="og:url" content="https://www.m10djcompany.com/best-wedding-dj-memphis" />
         <meta property="og:type" content="website" />
@@ -252,7 +252,7 @@ export default function BestWeddingDJMemphis() {
                 <div>
                   <div className="flex items-center mb-6">
                     <Trophy className="w-8 h-8 text-brand-gold mr-3" />
-                    <span className="text-brand-gold font-semibold">Memphis's #1 Choice</span>
+                    <span className="text-brand-gold font-semibold">Memphis&apos;s #1 Choice</span>
                   </div>
                   
                   <h1 className="text-5xl md:text-6xl font-bold mb-6 leading-tight">
@@ -262,7 +262,7 @@ export default function BestWeddingDJMemphis() {
                   
                   <p className="text-xl text-gray-300 mb-8 leading-relaxed">
                     Discover why Memphis couples choose M10 DJ Company as their wedding DJ. With 500+ successful 
-                    weddings, 5-star reviews, and unmatched professionalism, we're Memphis's most trusted choice.
+                    weddings, 5-star reviews, and unmatched professionalism, we&apos;re Memphis&apos;s most trusted choice.
                   </p>
 
                   <div className="flex flex-col sm:flex-row gap-4 mb-8">
@@ -308,7 +308,7 @@ export default function BestWeddingDJMemphis() {
                       </div>
                       <div className="flex items-center">
                         <Trophy className="w-5 h-5 text-brand-gold mr-3" />
-                        <span>Memphis's most experienced wedding DJ</span>
+                        <span>Memphis&apos;s most experienced wedding DJ</span>
                       </div>
                       <div className="flex items-center">
                         <Award className="w-5 h-5 text-brand-gold mr-3" />
@@ -334,10 +334,10 @@ export default function BestWeddingDJMemphis() {
         <section className="py-24 bg-white">
           <div className="section-container">
             <div className="text-center mb-16">
-              <h2 className="heading-2 mb-4">Why M10 is Memphis's Best Wedding DJ</h2>
+              <h2 className="heading-2 mb-4">Why M10 is Memphis&apos;s Best Wedding DJ</h2>
               <p className="text-xl text-gray-600 max-w-3xl mx-auto">
                 When Memphis couples search for the best wedding DJ, they consistently choose M10. 
-                Here's what sets us apart from other Memphis wedding entertainment options.
+                Here&apos;s what sets us apart from other Memphis wedding entertainment options.
               </p>
             </div>
 
@@ -451,7 +451,7 @@ export default function BestWeddingDJMemphis() {
         <section className="py-24 bg-gray-900 text-white">
           <div className="section-container">
             <div className="text-center mb-16">
-              <h2 className="text-4xl font-bold mb-4">Memphis Couples Agree: We're the Best</h2>
+              <h2 className="text-4xl font-bold mb-4">Memphis Couples Agree: We&apos;re the Best</h2>
               <p className="text-xl text-gray-300 max-w-3xl mx-auto">
                 Don't just take our word for it. See what Memphis brides and grooms say about 
                 their experience with the best wedding DJ in Memphis.
@@ -498,7 +498,7 @@ export default function BestWeddingDJMemphis() {
           <div className="section-container">
             <div className="max-w-4xl mx-auto text-center">
               <Trophy className="w-16 h-16 text-white mx-auto mb-6" />
-              <h2 className="text-4xl font-bold mb-6">Book Memphis's Best Wedding DJ Today</h2>
+              <h2 className="text-4xl font-bold mb-6">Book Memphis&apos;s Best Wedding DJ Today</h2>
               <p className="text-xl mb-8 opacity-90">
                 Join the 500+ Memphis couples who chose the best wedding DJ for their special day. 
                 Contact us now for your free consultation and see why we're Memphis's top choice.

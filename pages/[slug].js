@@ -146,17 +146,6 @@ const locationData = {
     weddingFocus: true,
     weddingDescription: 'Olive Branch wedding DJ services for Mississippi couples in the Memphis metro area. Professional entertainment specializing in elegant receptions and celebrations throughout this beautiful suburban community.'
   },
-  'cordova': {
-    name: 'Cordova',
-    zipCodes: ['38016', '38018'],
-    description: 'Professional DJ services in Cordova, TN - serving this vibrant Memphis suburb with wedding entertainment, corporate events, and celebration services in the greater Memphis area.',
-    neighborhoods: ['Cordova Town Center', 'Wolfchase area', 'Germantown Parkway corridor', 'Macon Road area', 'Stage Road area'],
-    landmarks: ['Wolfchase Galleria', 'Cordova Town Center', 'Cordova Community Center', 'Shelby Farms Park'],
-    localBusinesses: ['Wolfchase Galleria', 'Cordova Community Center', 'Cordova Country Club', 'Cordova Town Center venues'],
-    eventTypes: ['Wedding receptions at country clubs', 'Shopping center events', 'Corporate events', 'Community center parties', 'Private celebrations', 'School events'],
-    weddingFocus: true,
-    weddingDescription: 'Cordova wedding DJ services for Memphis suburb couples. Professional entertainment for country club receptions and elegant celebrations throughout this beautiful suburban community.'
-  },
   'west-memphis': {
     name: 'West Memphis',
     zipCodes: ['72301', '72303'],
@@ -370,7 +359,7 @@ export default function LocationPage() {
               
               <p className="text-xl text-gray-300 mb-8 max-w-3xl mx-auto leading-relaxed">
                 {loc.description} From weddings to corporate events, we bring premium entertainment 
-                to your special occasions with professional equipment and experienced DJs.
+                to {loc.name} and your special occasions with professional equipment and experienced DJs.
               </p>
               
               {/* Zip Codes */}

@@ -65,6 +65,11 @@ export const metadata: Metadata = {
   alternates: {
     canonical: 'https://www.tipjar.live',
   },
+  // For Google Search Console URL-prefix property (https://www.tipjar.live).
+  // Domain property (sc-domain:tipjar.live) requires DNS TXT verification only – see TIPJAR_GOOGLE_SEARCH_CONSOLE.md.
+  verification: {
+    google: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION_TIPJAR || 'gvyoj4VOR-ZSnrkrcpUfKdX4Qh81QsZBuIviCWJDSAI',
+  },
 };
 
 export default function TipJarLayout({ children }: PropsWithChildren) {

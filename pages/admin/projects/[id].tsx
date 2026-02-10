@@ -466,7 +466,7 @@ export default function ProjectDetailPage() {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center pt-16 lg:pt-0 px-4">
         <div className="text-center">
           <h1 className="text-xl sm:text-2xl font-bold text-gray-900 mb-4">Project Not Found</h1>
-          <p className="text-sm sm:text-base text-gray-600 mb-6">The project you're looking for doesn't exist or you don't have access to it.</p>
+          <p className="text-sm sm:text-base text-gray-600 mb-6">The project you&apos;re looking for doesn&apos;t exist or you don&apos;t have access to it.</p>
           <Link href="/admin/projects">
             <Button>Back to Projects</Button>
           </Link>

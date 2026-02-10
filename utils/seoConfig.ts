@@ -222,6 +222,11 @@ export const faqData = {
   ],
   wedding: [
     {
+      question: 'What does a Memphis wedding DJ do?',
+      answer: 'A Memphis wedding DJ provides ceremony music (processional, recessional), cocktail hour and dinner music, reception entertainment, and MC services—announcements, introductions, and timeline coordination. M10 DJ Company includes all of this with professional equipment and 15+ years of Memphis wedding experience.',
+      category: 'Wedding Services'
+    },
+    {
       question: 'What is included in your wedding DJ packages?',
       answer: 'Our wedding DJ packages include professional DJ, premium sound system, wireless microphones, MC services, basic uplighting, online planning portal, and music for ceremony and reception.',
       category: 'Wedding Services'
@@ -230,6 +235,31 @@ export const faqData = {
       question: 'Can you provide music for both ceremony and reception?',
       answer: 'Yes, we provide complete wedding day music including ceremony processional/recessional, cocktail hour background music, dinner music, and reception dance music.',
       category: 'Wedding Services'
+    },
+    {
+      question: 'How much does a Memphis wedding DJ cost?',
+      answer: 'Memphis wedding DJ pricing typically ranges from $1,200 to $3,500 depending on hours, equipment, and services. M10 DJ Company offers transparent, all-inclusive quotes with ceremony and reception music, MC services, and uplighting. Call (901) 410-2020 for a same-day quote.',
+      category: 'Wedding Pricing'
+    },
+    {
+      question: 'How far in advance should I book a Memphis wedding DJ?',
+      answer: 'We recommend booking your Memphis wedding DJ 6–12 months in advance, especially for peak season (May–October). Popular dates fill first. Call (901) 410-2020 to check availability.',
+      category: 'Wedding Booking'
+    },
+    {
+      question: 'Do Memphis wedding DJs provide ceremony music?',
+      answer: 'Yes. M10 DJ Company includes ceremony sound systems, wireless microphones for officiant and vows, and processional/recessional music coordination. Ceremony and reception music are included in our wedding packages.',
+      category: 'Wedding Services'
+    },
+    {
+      question: 'What Memphis wedding venues have you worked at?',
+      answer: 'We have performed at The Peabody, Graceland Wedding Chapel, Memphis Botanic Garden, Dixon Gallery & Gardens, The Columns, Woodruff-Fontaine House, and 27+ Memphis-area venues. We are approved vendors at many premier locations.',
+      category: 'Wedding Venues'
+    },
+    {
+      question: 'Do you offer wedding DJ services near me in the Memphis area?',
+      answer: 'Yes. We serve Memphis and the greater metro area including Germantown, Collierville, Bartlett, Cordova, Southaven MS, and Olive Branch MS. Same-day quotes and 15+ years of local wedding experience. Call (901) 410-2020.',
+      category: 'Wedding Service Area'
     }
   ]
 };

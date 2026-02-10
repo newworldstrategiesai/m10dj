@@ -268,7 +268,7 @@ export default function HowItWorksPage() {
             </h1>
             <p className="text-xl md:text-2xl text-emerald-50 mb-8 leading-relaxed">
               Everything you need to know to start collecting tips and managing song requests. 
-              From setup to getting paid—we've got you covered.
+              From setup to getting paid—we&apos;ve got you covered.
             </p>
             <div className="flex flex-wrap items-center justify-center gap-6 text-sm text-emerald-50">
               <div className="flex items-center space-x-2">

@@ -444,7 +444,7 @@ export default function StreamAlertsDashboard() {
                 )}
 
                 <div className="flex items-center justify-between">
-                  <Label>Show "Powered by TipJar.live" Badge</Label>
+                  <Label>Show &quot;Powered by TipJar.live&quot; Badge</Label>
                   <Switch
                     checked={config.show_branding}
                     onCheckedChange={(checked) => setConfig({ ...config, show_branding: checked })}

@@ -131,7 +131,7 @@ export default function BookingConfirmation() {
           <div className="max-w-2xl mx-auto text-center">
             <div className="bg-white rounded-xl p-8 shadow-lg">
               <h1 className="text-2xl font-bold text-gray-900 mb-4">Booking Not Found</h1>
-              <p className="text-gray-600 mb-6">{error || 'The booking you\'re looking for doesn\'t exist.'}</p>
+              <p className="text-gray-600 mb-6">{error || "The booking you're looking for doesn't exist."}</p>
               <Button
                 onClick={() => router.push('/schedule')}
                 className="bg-[#fcba00] hover:bg-[#d99f00] text-black"
@@ -333,15 +333,15 @@ export default function BookingConfirmation() {
 
           {/* Important Information */}
           <Card className="p-6 bg-blue-50 border-blue-200">
-            <h3 className="font-semibold text-gray-900 mb-3">What's Next?</h3>
+            <h3 className="font-semibold text-gray-900 mb-3">What&apos;s Next?</h3>
             <ul className="space-y-2 text-sm text-gray-700">
               <li className="flex items-start gap-2">
                 <CheckCircle className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
-                <span>You'll receive a confirmation email with all the details</span>
+                <span>You&apos;ll receive a confirmation email with all the details</span>
               </li>
               <li className="flex items-start gap-2">
                 <CheckCircle className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
-                <span>We'll send you a reminder 24 hours before your meeting</span>
+                <span>We&apos;ll send you a reminder 24 hours before your meeting</span>
               </li>
               <li className="flex items-start gap-2">
                 <CheckCircle className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />

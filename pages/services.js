@@ -177,19 +177,19 @@ export default function Services() {
   return (
     <>
       <Head>
-        <title>Memphis DJ Services & Pricing | M10 DJ</title>
+        <title>Professional DJ Services Memphis | Weddings, Corporate, Parties | M10 DJ</title>
         <meta 
           name="description" 
-          content="Memphis DJ services for weddings, corporate events & parties. Professional sound, lighting & MC services with transparent pricing. Free quotes. Call (901) 410-2020!" 
+          content="DJ service & dj services near me. Disc jockey services for weddings, corporate events & parties in Memphis. Free quote! (901) 410-2020" 
         />
-        <meta name="keywords" content="professional DJ Memphis, pro DJ Memphis, DJ services Memphis, professional DJ services Memphis, wedding DJ pricing Memphis, corporate DJ services, sound system rental Memphis, uplighting Memphis, MC services Memphis TN" />
+        <meta name="keywords" content="dj service, dj services, dj services near me, disc jockey services, professional DJ Memphis, wedding DJ Memphis, corporate DJ Memphis, party DJ Memphis, MC services Memphis TN" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <link rel="canonical" href="https://m10djcompany.com/services" />
+        <link rel="canonical" href="https://www.m10djcompany.com/services" />
         
         {/* Open Graph tags */}
-        <meta property="og:title" content="Professional DJ Services & Pricing in Memphis | M10 DJ Company" />
-        <meta property="og:description" content="Complete DJ services for Memphis weddings, corporate events & parties with transparent pricing." />
-        <meta property="og:url" content="https://m10djcompany.com/services" />
+        <meta property="og:title" content="Professional DJ Services Memphis | Weddings, Corporate, Parties | M10 DJ" />
+        <meta property="og:description" content="DJ service & dj services near me. Disc jockey services for weddings, corporate events & parties. Free quote! (901) 410-2020" />
+        <meta property="og:url" content="https://www.m10djcompany.com/services" />
         <meta property="og:type" content="website" />
         
         {/* Additional SEO tags */}

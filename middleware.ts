@@ -174,20 +174,23 @@ export async function middleware(request: NextRequest) {
   const isDJDashDomain = hostnameLower === 'djdash.net' || 
                          hostnameLower === 'www.djdash.net' ||
                          hostnameLower.endsWith('.djdash.net');
+
+  // SEO: Redirect non-www M10 domain to www so one canonical (M10DJ_SEO_IMPROVEMENTS_2026.md §3.3)
+  const isLocalhostForRedirect = hostnameLower.includes('localhost') || hostnameLower.includes('127.0.0.1');
+  if (!isLocalhostForRedirect && hostnameLower === 'm10djcompany.com') {
+    const canonicalUrl = new URL(request.url);
+    canonicalUrl.host = 'www.m10djcompany.com';
+    canonicalUrl.protocol = 'https:';
+    return NextResponse.redirect(canonicalUrl, 301);
+  }
   
   // Route tipjar.live to marketing pages
   if (isTipJarDomain) {
     const path = url.pathname;
     let rewritePath = '';
     
-    // Route sitemap and robots to domain-specific versions
-    if (path === '/sitemap.xml' || path === '/sitemap') {
-      url.pathname = '/sitemap-tipjar.xml';
-      return NextResponse.rewrite(url);
-    } else if (path === '/robots.txt' || path === '/robots') {
-      url.pathname = '/robots-tipjar.txt';
-      return NextResponse.rewrite(url);
-    }
+    // Let /sitemap.xml and /robots.txt pass through – app/sitemap.ts and app/robots.ts
+    // serve domain-specific content based on Host header (no rewrite needed).
     
     // If path already starts with /tipjar/, let it pass through without rewriting
     if (path.startsWith('/tipjar/')) {
@@ -425,14 +428,8 @@ export async function middleware(request: NextRequest) {
     const path = url.pathname;
     let rewritePath = '';
     
-    // Route sitemap and robots to domain-specific versions
-    if (path === '/sitemap.xml' || path === '/sitemap') {
-      url.pathname = '/sitemap-djdash.xml';
-      return NextResponse.rewrite(url);
-    } else if (path === '/robots.txt' || path === '/robots') {
-      url.pathname = '/robots-djdash.txt';
-      return NextResponse.rewrite(url);
-    }
+    // Let /sitemap.xml and /robots.txt pass through – app/sitemap.ts and app/robots.ts
+    // serve domain-specific content based on Host header (no rewrite needed).
     
     // Rewrite paths to djdash marketing routes
     if (path === '/' || path === '') {

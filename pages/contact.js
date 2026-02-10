@@ -67,7 +67,7 @@ export default function Contact() {
   return (
     <>
       <Head>
-        <title>Contact M10 DJ Company | Memphis Wedding DJ</title>
+        <title>Contact M10 DJ Company | Memphis DJ Services</title>
         <meta name="description" content="Contact M10 DJ Company for Memphis wedding DJ services, corporate events & private parties. Call (901) 410-2020 or email info@m10djcompany.com. Free consultations!" />
         <meta name="keywords" content="contact Memphis DJ, wedding DJ contact, event DJ Memphis, DJ booking Memphis, Memphis DJ company contact" />
         <link rel="canonical" href="https://m10djcompany.com/contact" />
@@ -276,7 +276,7 @@ export default function Contact() {
               </div>
 
               <div className="bg-gray-50 rounded-xl p-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-3">What's included in your packages?</h3>
+                <h3 className="text-lg font-semibold text-gray-900 mb-3">What&apos;s included in your packages?</h3>
                 <p className="text-gray-700">
                   All packages include professional-grade sound systems, wireless microphones, basic uplighting, and experienced MC services. We also provide free consultation and planning assistance.
                 </p>

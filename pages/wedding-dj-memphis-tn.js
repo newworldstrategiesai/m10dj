@@ -229,7 +229,8 @@ export default function WeddingDJMemphisTN() {
                   
                   <p className="text-xl text-gray-300 mb-8 leading-relaxed">
                     The premier wedding DJ Memphis TN couples trust for their special day. With over 10 years of experience 
-                    serving Tennessee brides and grooms, we create unforgettable celebrations from ceremony to reception.
+                    serving Tennessee brides and grooms, we create unforgettable celebrations from ceremony to reception.{' '}
+                    <Link href="/memphis-wedding-dj" className="text-brand-gold hover:underline font-medium">Memphis Wedding DJ</Link> packages, venues, and FAQs are on our main wedding page.
                   </p>
 
                   <div className="flex flex-col sm:flex-row gap-4 mb-8">
@@ -268,7 +269,7 @@ export default function WeddingDJMemphisTN() {
                     <div className="space-y-4">
                       <div className="flex items-center">
                         <CheckCircle className="w-5 h-5 text-brand-gold mr-3" />
-                        <span>Memphis, Tennessee's most trusted wedding DJ</span>
+                        <span>Memphis, Tennessee&apos;s most trusted wedding DJ</span>
                       </div>
                       <div className="flex items-center">
                         <CheckCircle className="w-5 h-5 text-brand-gold mr-3" />
