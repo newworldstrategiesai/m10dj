@@ -16,6 +16,7 @@ import {
   MessageSquare,
   Settings,
   Instagram,
+  Image as ImageIcon,
   Music,
   Mic,
   LogOut,
@@ -201,6 +202,7 @@ export default function AdminSidebar({ onSignOut, isMobileOpen: externalIsMobile
     { label: 'Karaoke Queue', href: '/admin/karaoke', icon: <Mic className="w-5 h-5" /> },
     { label: 'Request Page', href: '/admin/requests-page', icon: <Music className="w-5 h-5" /> },
     { label: 'Social Media', href: '/admin/instagram', icon: <Instagram className="w-5 h-5" /> },
+    { label: 'Gallery', href: '/admin/gallery', icon: <ImageIcon className="w-5 h-5" /> },
     { label: 'Affiliates', href: '/admin/affiliates', icon: <UserPlus className="w-5 h-5" /> },
   ];
 

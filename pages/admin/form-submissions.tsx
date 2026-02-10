@@ -916,9 +916,28 @@ export default function FormSubmissionsPage() {
                 </a>
               )}
               <button
-                onClick={() => {
-                  if (confirm('Mark this submission as spam? This will help filter out unwanted submissions.')) {
-                    updateSubmissionStatus(selectedSubmission.id, 'spam');
+                onClick={async () => {
+                  if (!confirm('Mark this submission as spam? The email will be blocked from submitting again.')) return;
+                  try {
+                    const response = await fetch('/api/admin/mark-submission-spam', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ submissionId: selectedSubmission.id }),
+                    });
+                    const data = await response.json();
+                    if (!response.ok) {
+                      alert(data.error || data.details || 'Failed to mark as spam');
+                      return;
+                    }
+                    setSelectedSubmission(null);
+                    setSubmissions(prev =>
+                      prev.map(s =>
+                        s.id === selectedSubmission.id ? { ...s, status: 'spam' as const } : s
+                      )
+                    );
+                  } catch (err: any) {
+                    console.error('Mark as spam failed:', err);
+                    alert(err.message || 'Failed to mark as spam');
                   }
                 }}
                 className="flex items-center justify-center gap-2 px-4 py-3 bg-orange-50 text-orange-600 rounded-lg hover:bg-orange-100 transition-colors font-medium border border-orange-200"

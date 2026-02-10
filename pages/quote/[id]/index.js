@@ -5,7 +5,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import QuoteBottomNav from '../../../components/quote/QuoteBottomNav';
 import Header from '../../../components/company/Header';
-import { CheckCircle, Sparkles, Music, Calendar, MapPin, Users, Heart, Star, ArrowLeft, Loader2, ChevronDown, ChevronUp, FileText, Menu, X, Tag, XCircle, Settings, Trash2 } from 'lucide-react';
+import { CheckCircle, Sparkles, Music, Calendar, MapPin, Users, Heart, Star, ArrowLeft, Loader2, ChevronDown, ChevronUp, FileText, Menu, X, Tag, XCircle, Settings, Trash2, Clock } from 'lucide-react';
 import { createClient } from '@supabase/supabase-js';
 
 // Helper function to format date without timezone conversion issues
@@ -62,6 +62,8 @@ export default function PersonalizedQuote() {
   const [showSpeakerUpsell, setShowSpeakerUpsell] = useState(false);
   const [calculatedHours, setCalculatedHours] = useState(0);
   const [additionalHoursSelected, setAdditionalHoursSelected] = useState(0);
+  const [pageViewTimeline, setPageViewTimeline] = useState([]);
+  const [pageViewTimelineLoading, setPageViewTimelineLoading] = useState(false);
 
   const fetchLeadData = useCallback(async () => {
     // Validate ID before making request
@@ -479,6 +481,28 @@ export default function PersonalizedQuote() {
     
     checkAdmin();
   }, []);
+
+  // Admin: fetch page view timeline for this quote
+  useEffect(() => {
+    if (!isAdmin || !id) return;
+    let cancelled = false;
+    setPageViewTimelineLoading(true);
+    setPageViewTimeline([]);
+    fetch(`/api/admin/quote-page-views?contactId=${encodeURIComponent(id)}`)
+      .then((res) => (res.ok ? res.json() : Promise.reject(new Error('Failed to load'))))
+      .then((data) => {
+        if (!cancelled && Array.isArray(data?.views)) {
+          setPageViewTimeline(data.views);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setPageViewTimeline([]);
+      })
+      .finally(() => {
+        if (!cancelled) setPageViewTimelineLoading(false);
+      });
+    return () => { cancelled = true; };
+  }, [isAdmin, id]);
 
   // Track page view and time on page
   useEffect(() => {
@@ -2493,6 +2517,45 @@ export default function PersonalizedQuote() {
               )}
             </div>
           </div>
+
+          {/* Admin: Page view timeline */}
+          {isAdmin && (
+            <div className="mb-8 rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-900/10 p-4 sm:p-6">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
+                <Clock className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+                Page view timeline
+              </h2>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                Each time this quote page was viewed (by client or admin).
+              </p>
+              {pageViewTimelineLoading ? (
+                <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400 text-sm">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Loading…
+                </div>
+              ) : pageViewTimeline.length === 0 ? (
+                <p className="text-sm text-gray-500 dark:text-gray-400">No page views recorded yet.</p>
+              ) : (
+                <ul className="space-y-3">
+                  {pageViewTimeline.map((view) => (
+                    <li
+                      key={view.id}
+                      className="flex items-start gap-3 text-sm border-l-2 border-amber-300 dark:border-amber-700 pl-4 py-1"
+                    >
+                      <span className="text-gray-700 dark:text-gray-300 font-medium whitespace-nowrap">
+                        {view.createdAt ? new Date(view.createdAt).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }) : '—'}
+                      </span>
+                      {view.timeSpent != null && view.timeSpent > 0 && (
+                        <span className="text-gray-500 dark:text-gray-400">
+                          ({view.timeSpent}s on page)
+                        </span>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
 
           {/* Existing Selection Banner */}
           {existingSelection && !contractSigned && (() => {

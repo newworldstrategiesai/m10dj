@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useRouter } from 'next/router';
-import { ArrowLeft, Save, Phone, Mail, Calendar, MapPin, Music, DollarSign, User, MessageSquare, Edit3, Trash2, CheckCircle, Loader2, FileText, Copy, Clock, Sparkles, Link2, Unlink, ShieldX, AlertTriangle, Video, CalendarCheck } from 'lucide-react';
+import { ArrowLeft, Save, Phone, Mail, Calendar, MapPin, Music, DollarSign, User, MessageSquare, Edit3, Trash2, CheckCircle, Loader2, FileText, Copy, Clock, Sparkles, Link2, Unlink, ShieldX, AlertTriangle, Video, CalendarCheck, ExternalLink } from 'lucide-react';
 import { createClient } from '@/utils/supabase/client';
 import { isRateLimited, setRateLimited } from '@/utils/supabase/rate-limiter';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -130,6 +130,8 @@ export default function ContactDetailPage() {
   const [contractsLoading, setContractsLoading] = useState(false);
   const [quoteSelections, setQuoteSelections] = useState<any[]>([]);
   const [quoteSelectionsLoading, setQuoteSelectionsLoading] = useState(false);
+  const [quoteStatus, setQuoteStatus] = useState<{ viewed: boolean; viewedAt: string | null; hasSelection: boolean; selectionAt?: string | null } | null>(null);
+  const [quoteStatusLoading, setQuoteStatusLoading] = useState(false);
   const [communications, setCommunications] = useState<any[]>([]);
   const [communicationsLoading, setCommunicationsLoading] = useState(false);
   const [user, setUser] = useState<any>(null);
@@ -190,6 +192,7 @@ export default function ContactDetailPage() {
       fetchSocialMessages();
       fetchContracts();
       fetchQuoteSelections();
+      fetchQuoteStatus();
       checkEventStatus();
       fetchScheduledMeetings();
       // Communications are now handled by UnifiedCommunicationHub component
@@ -650,6 +653,28 @@ export default function ContactDetailPage() {
       console.error('Error fetching quote selections:', error);
     } finally {
       setQuoteSelectionsLoading(false);
+    }
+  };
+
+  const fetchQuoteStatus = async () => {
+    if (!id) return;
+    setQuoteStatusLoading(true);
+    setQuoteStatus(null);
+    try {
+      const res = await fetch(`/api/admin/quote-status?contactId=${encodeURIComponent(id)}`);
+      if (res.ok) {
+        const data = await res.json();
+        setQuoteStatus({
+          viewed: data.viewed ?? false,
+          viewedAt: data.viewedAt ?? null,
+          hasSelection: data.hasSelection ?? false,
+          selectionAt: data.selectionAt ?? null,
+        });
+      }
+    } catch (err) {
+      console.error('Error fetching quote status:', err);
+    } finally {
+      setQuoteStatusLoading(false);
     }
   };
 
@@ -1309,6 +1334,73 @@ export default function ContactDetailPage() {
                       )}
                     </div>
                   )}
+        </div>
+
+        {/* Quote page link and client activity */}
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border dark:border-gray-700 p-4 sm:p-6 mb-4 sm:mb-6">
+          <h3 className="text-base sm:text-lg font-semibold mb-3 text-gray-900 dark:text-gray-100">Quote</h3>
+          <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+            Client quote page and activity status.
+          </p>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div className="flex flex-wrap items-center gap-2">
+              <a
+                href={`/quote/${contact.id}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 text-blue-600 dark:text-blue-400 hover:underline font-medium"
+              >
+                <ExternalLink className="h-4 w-4" />
+                View quote page
+              </a>
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1.5 text-gray-600 dark:text-gray-400 border-gray-300 dark:border-gray-600"
+                onClick={() => {
+                  const url = typeof window !== 'undefined'
+                    ? `${window.location.origin}/quote/${contact.id}`
+                    : `${process.env.NEXT_PUBLIC_SITE_URL || 'https://www.m10djcompany.com'}/quote/${contact.id}`;
+                  navigator.clipboard.writeText(url).then(
+                    () => toast({ title: 'Link copied', description: 'Quote link copied to clipboard.' }),
+                    () => toast({ title: 'Copy failed', description: 'Could not copy link.', variant: 'destructive' })
+                  );
+                }}
+              >
+                <Copy className="h-3.5 w-3.5" />
+                Copy link
+              </Button>
+            </div>
+            <div className="flex flex-wrap gap-x-6 gap-y-1 text-sm">
+              {quoteStatusLoading ? (
+                <span className="text-gray-500 dark:text-gray-400 flex items-center gap-1">
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  Loading…
+                </span>
+              ) : quoteStatus ? (
+                <>
+                  <span className="text-gray-600 dark:text-gray-300">
+                    Page viewed: {quoteStatus.viewed ? (
+                      <span className="text-green-600 dark:text-green-400">
+                        Yes{quoteStatus.viewedAt ? ` (${new Date(quoteStatus.viewedAt).toLocaleString()})` : ''}
+                      </span>
+                    ) : (
+                      <span className="text-amber-600 dark:text-amber-400">No</span>
+                    )}
+                  </span>
+                  <span className="text-gray-600 dark:text-gray-300">
+                    Selection made: {quoteStatus.hasSelection ? (
+                      <span className="text-green-600 dark:text-green-400">
+                        Yes{quoteStatus.selectionAt ? ` (${new Date(quoteStatus.selectionAt).toLocaleString()})` : ''}
+                      </span>
+                    ) : (
+                      <span className="text-amber-600 dark:text-amber-400">No</span>
+                    )}
+                  </span>
+                </>
+              ) : null}
+            </div>
+          </div>
         </div>
                   
         {/* Service Selection Link Generator */}

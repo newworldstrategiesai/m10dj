@@ -1,4 +1,11 @@
 /** @type {import('next').NextConfig} */
+let supabaseHost = null;
+try {
+  if (process.env.NEXT_PUBLIC_SUPABASE_URL) {
+    supabaseHost = new URL(process.env.NEXT_PUBLIC_SUPABASE_URL).hostname;
+  }
+} catch (_) {}
+
 module.exports = {
   reactStrictMode: false, // Disabled to prevent double renders and fast refresh issues
   // SEO: consolidate URLs so one canonical ranks (see M10DJ_SEO_IMPROVEMENTS_2026.md §3.4, §3.2)
@@ -110,6 +117,7 @@ module.exports = {
         port: '',
         pathname: '/**',
       },
+      ...(supabaseHost ? [{ protocol: 'https', hostname: supabaseHost, port: '', pathname: '/**' }] : []),
     ],
   },
   // Exclude backup and copy files from build

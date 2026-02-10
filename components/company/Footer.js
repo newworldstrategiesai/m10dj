@@ -109,6 +109,11 @@ export default function Footer() {
                   DJ Equipment Rentals
                 </Link>
               </li>
+              <li>
+                <Link href="/gallery" className="text-gray-300 hover:text-brand transition-colors font-inter hover:pl-2 block py-1 text-sm md:text-base">
+                  Photo Gallery
+                </Link>
+              </li>
             </ul>
           </div>
           

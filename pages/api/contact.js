@@ -245,7 +245,29 @@ export default async function handler(req, res) {
         }
       }
     }
-    
+
+    // Blocked emails (e.g. marked as spam): reject with generic success so we don't leak block status
+    const emailLower = (sanitizedData.email || '').toLowerCase().trim();
+    if (emailLower) {
+      const orFilter = organizationId
+        ? `organization_id.eq.${organizationId},organization_id.is.null`
+        : 'organization_id.is.null';
+      const { data: blocked } = await supabase
+        .from('blocked_emails')
+        .select('id')
+        .eq('email_lower', emailLower)
+        .or(orFilter)
+        .limit(1)
+        .maybeSingle();
+      if (blocked) {
+        console.log('⚠️ Blocked email attempted submission:', emailLower);
+        return res.status(200).json({
+          success: true,
+          message: 'Thank you for your message! We\'ll be in touch soon.'
+        });
+      }
+    }
+
     // Save to database first - THIS IS CRITICAL
     // Use sanitized data
     const submissionData = {
