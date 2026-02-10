@@ -36,6 +36,7 @@ const logoSets = {
     { name: 'Ridgeway Country Club', stackedLogos: ['Ridgeway-Country-Club-Logo.svg', 'Ridgeway-Country-Club-Logo-Typography.svg'], stackedInvert: [true, false], category: 'venue', url: 'https://www.ridgewaycountryclub.com' },
     { name: 'Madison Tavern', logoFile: 'Madison-Tavern-Logo.jpeg', category: 'venue', url: 'https://www.madisontavern.com' },
     { name: 'Overton Square', logoFile: 'Overton-Square-logo.png', category: 'venue', url: 'https://www.overtonsquare.com' },
+    { name: "Silky O'Sullivan's", logoFile: 'Silky-O-Sullivans-Logo.png', category: 'venue', url: 'https://silkyosullivans.com/' },
     { name: 'Xfinity', logoFile: 'Xfinity-logo.jpg', category: 'corporate', url: 'https://www.xfinity.com' },
     { name: 'Lichterman Nature Center', logoFile: 'Lichterman-Nature-Center-Logo.png', category: 'venue', url: 'https://www.memphismuseums.org/lichterman-nature-center' },
     { name: 'Historic Elmwood Cemetery', nameOnly: true, category: 'venue', url: 'https://www.elmwoodcemetery.org' },
@@ -56,6 +57,7 @@ const logoSets = {
     { name: 'Ridgeway Country Club', stackedLogos: ['Ridgeway-Country-Club-Logo.svg', 'Ridgeway-Country-Club-Logo-Typography.svg'], stackedInvert: [true, false], category: 'venue', url: 'https://www.ridgewaycountryclub.com' },
     { name: 'Madison Tavern', logoFile: 'Madison-Tavern-Logo.jpeg', category: 'venue', url: 'https://www.madisontavern.com' },
     { name: 'Overton Square', logoFile: 'Overton-Square-logo.png', category: 'venue', url: 'https://www.overtonsquare.com' },
+    { name: "Silky O'Sullivan's", logoFile: 'Silky-O-Sullivans-Logo.png', category: 'venue', url: 'https://silkyosullivans.com/' },
     { name: 'International Paper', nameOnly: true, category: 'corporate', url: 'https://www.internationalpaper.com' },
     { name: 'Crosstown Concourse', nameOnly: true, category: 'venue', url: 'https://crosstownconcourse.org' },
     { name: 'FedExForum', nameOnly: true, category: 'venue', url: 'https://www.fedexforum.com' },
@@ -80,6 +82,7 @@ const logoSets = {
     { name: 'Ridgeway Country Club', stackedLogos: ['Ridgeway-Country-Club-Logo.svg', 'Ridgeway-Country-Club-Logo-Typography.svg'], stackedInvert: [true, false], category: 'venue', url: 'https://www.ridgewaycountryclub.com' },
     { name: 'Madison Tavern', logoFile: 'Madison-Tavern-Logo.jpeg', category: 'venue', url: 'https://www.madisontavern.com' },
     { name: 'Overton Square', logoFile: 'Overton-Square-logo.png', category: 'venue', url: 'https://www.overtonsquare.com' },
+    { name: "Silky O'Sullivan's", logoFile: 'Silky-O-Sullivans-Logo.png', category: 'venue', url: 'https://silkyosullivans.com/' },
     { name: 'Xfinity', logoFile: 'Xfinity-logo.jpg', category: 'corporate', url: 'https://www.xfinity.com' },
   ],
 };
