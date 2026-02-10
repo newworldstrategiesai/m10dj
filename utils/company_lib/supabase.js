@@ -585,14 +585,15 @@ export const db = {
       number_of_guests: contactData.guest_count || null,
       special_requests: contactData.special_requests || null,
       status: 'confirmed', // Default status for new projects (changed from 'pending' to match schema)
-      timeline_notes: `Auto-generated project from contact form submission. Created on ${new Date().toLocaleDateString()}.`
+      timeline_notes: `Auto-generated project from contact form submission. Created on ${new Date().toLocaleDateString()}.`,
+      playlist_notes: null
     };
 
     console.log('Creating project with data:', projectData);
 
     const { data, error } = await supabase
       .from('events')
-      .insert([projectData])
+      .insert(projectData)
       .select();
 
     if (error) {

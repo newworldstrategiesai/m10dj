@@ -955,38 +955,38 @@ export default function MemphisWeddingDJ() {
           </div>
         </section>
 
-        {/* Memphis Wedding DJ Pricing Section */}
+        {/* Memphis Wedding DJ Packages Section - no exact pricing */}
         <section className="py-20 bg-gray-50">
           <div className="section-container">
             <div className="max-w-4xl mx-auto text-center">
               <h2 className="heading-2 text-gray-900 mb-6">
-                Transparent Memphis Wedding DJ Pricing
+                Memphis Wedding DJ Packages
               </h2>
               <p className="text-xl text-gray-600 mb-12">
-                No hidden fees or surprise charges. Our Memphis wedding DJ packages 
-                include everything you need for your special day.
+                No hidden fees. Custom packages for reception-only, ceremony + reception, 
+                or full-day coverage. Get a free quote tailored to your date and venue.
               </p>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
                 <div className="bg-white rounded-xl p-8 shadow-lg">
-                  <div className="text-brand-gold text-4xl font-bold mb-2">$295</div>
-                  <div className="text-gray-600 mb-4">Starting Price</div>
-                  <div className="text-sm text-gray-500">4-hour reception package</div>
+                  <div className="text-brand-gold text-xl font-bold mb-2">Reception</div>
+                  <div className="text-gray-600 mb-4">Reception-only package</div>
+                  <div className="text-sm text-gray-500">DJ, MC, and sound for your reception</div>
                 </div>
                 <div className="bg-white rounded-xl p-8 shadow-lg border-2 border-brand-gold">
-                  <div className="text-brand-gold text-4xl font-bold mb-2">$595</div>
+                  <div className="text-brand-gold text-xl font-bold mb-2">Ceremony + Reception</div>
                   <div className="text-gray-600 mb-4">Most Popular</div>
-                  <div className="text-sm text-gray-500">Ceremony + 6-hour reception</div>
+                  <div className="text-sm text-gray-500">Ceremony audio and full reception coverage</div>
                 </div>
                 <div className="bg-white rounded-xl p-8 shadow-lg">
-                  <div className="text-brand-gold text-4xl font-bold mb-2">$795</div>
-                  <div className="text-gray-600 mb-4">Premium Package</div>
-                  <div className="text-sm text-gray-500">Full day with lighting</div>
+                  <div className="text-brand-gold text-xl font-bold mb-2">Premium</div>
+                  <div className="text-gray-600 mb-4">Full-day package</div>
+                  <div className="text-sm text-gray-500">Full day with optional lighting and extras</div>
                 </div>
               </div>
 
-              <Link href="/services" className="btn-primary text-lg">
-                View Detailed Wedding DJ Packages
+              <Link href="/contact" className="btn-primary text-lg">
+                Get Your Free Quote
               </Link>
             </div>
           </div>

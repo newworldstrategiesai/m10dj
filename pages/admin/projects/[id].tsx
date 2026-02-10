@@ -318,7 +318,7 @@ export default function ProjectDetailPage() {
 
         const { data: newProject, error } = await (supabase
           .from('events') as any)
-          .insert([projectData])
+          .insert(projectData)
           .select()
           .single();
 

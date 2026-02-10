@@ -12,12 +12,15 @@ interface EmailSignInProps {
   allowPassword: boolean;
   redirectMethod: string;
   disableButton?: boolean;
+  /** When false, hide "Don't have an account? Sign up" (e.g. M10 admin-only) */
+  showSignUpLink?: boolean;
 }
 
 export default function EmailSignIn({
   allowPassword,
   redirectMethod,
-  disableButton
+  disableButton,
+  showSignUpLink = true
 }: EmailSignInProps) {
   // Always call hooks unconditionally (Rules of Hooks)
   const router = useRouter();
@@ -69,11 +72,13 @@ export default function EmailSignIn({
               Sign in with email and password
             </Link>
           </p>
-          <p>
-            <Link href="/signin/signup" className="font-light text-sm text-gray-400 hover:text-brand transition-colors">
-              Don't have an account? Sign up
-            </Link>
-          </p>
+          {showSignUpLink && (
+            <p>
+              <Link href="/signin/signup" className="font-light text-sm text-gray-400 hover:text-brand transition-colors">
+                Don&apos;t have an account? Sign up
+              </Link>
+            </p>
+          )}
         </>
       )}
     </div>

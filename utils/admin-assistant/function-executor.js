@@ -1812,7 +1812,7 @@ async function createProject(args, supabase) {
     venue_address: contact.venue_address || null,
     number_of_guests: contact.guest_count || null,
     status: status || 'confirmed',
-    notes: `Auto-generated project from contact. Created on ${new Date().toLocaleDateString()}.`
+    timeline_notes: `Auto-generated project from contact. Created on ${new Date().toLocaleDateString()}.`
   };
 
   // Add start_time and end_time if provided
@@ -1825,7 +1825,7 @@ async function createProject(args, supabase) {
 
   const { data, error } = await supabase
     .from('events')
-    .insert([projectData])
+    .insert(projectData)
     .select()
     .single();
 

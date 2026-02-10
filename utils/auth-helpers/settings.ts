@@ -3,6 +3,10 @@ const allowOauth = true;
 const allowEmail = true;
 const allowPassword = true;
 
+// When false, sign-up is hidden and blocked (e.g. M10 DJ Company: admin-only accounts).
+// Set NEXT_PUBLIC_ALLOW_PUBLIC_SIGNUP=false on M10 deployment to disable signup globally.
+const defaultAllowSignup = typeof process !== 'undefined' && process.env.NEXT_PUBLIC_ALLOW_PUBLIC_SIGNUP !== 'false';
+
 // Boolean toggle to determine whether auth interface should route through server or client
 // (Currently set to false because screen sometimes flickers with server redirects)
 const allowServerRedirect = false;
@@ -15,8 +19,11 @@ export const getAuthTypes = () => {
   return { allowOauth, allowEmail, allowPassword };
 };
 
-export const getViewTypes = () => {
-  // Define the valid view types
+/**
+ * Valid view types for the sign-in page.
+ * @param allowSignup - When false, 'signup' is excluded (e.g. for M10 admin-only). Defaults from env NEXT_PUBLIC_ALLOW_PUBLIC_SIGNUP.
+ */
+export const getViewTypes = (allowSignup: boolean = defaultAllowSignup) => {
   let viewTypes: string[] = [];
   if (allowEmail) {
     viewTypes = [...viewTypes, 'email_signin'];
@@ -27,20 +34,22 @@ export const getViewTypes = () => {
       'password_signin',
       'forgot_password',
       'update_password',
-      'signup'
+      ...(allowSignup ? ['signup'] : []),
     ];
   }
 
   return viewTypes;
 };
 
-export const getDefaultSignInView = (preferredSignInView: string | null) => {
-  // Define the default sign in view
+/**
+ * Default sign-in view. Never returns 'signup' when allowSignup is false.
+ */
+export const getDefaultSignInView = (preferredSignInView: string | null, allowSignup: boolean = defaultAllowSignup) => {
   let defaultView = allowPassword ? 'password_signin' : 'email_signin';
-  if (preferredSignInView && getViewTypes().includes(preferredSignInView)) {
+  const viewTypes = getViewTypes(allowSignup);
+  if (preferredSignInView && viewTypes.includes(preferredSignInView)) {
     defaultView = preferredSignInView;
   }
-
   return defaultView;
 };
 

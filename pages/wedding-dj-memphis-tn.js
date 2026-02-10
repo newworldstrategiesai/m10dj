@@ -152,7 +152,7 @@ export default function WeddingDJMemphisTN() {
         <title>Wedding DJ Memphis TN ★★★★★ | 500+ Weddings | M10 DJ Company</title>
         <meta 
           name="description" 
-          content="Best wedding DJ in Memphis, Tennessee. 500+ weddings at The Peabody, Graceland & top TN venues. Ceremony, reception & MC. From $795. Free quotes! (901) 410-2020" 
+          content="Best wedding DJ in Memphis, Tennessee. 500+ weddings at The Peabody, Graceland & top TN venues. Ceremony, reception & MC. Free quotes! (901) 410-2020" 
         />
         <meta name="keywords" content="Tennessee wedding DJ, wedding DJ Tennessee, TN wedding entertainment, Memphis TN wedding DJ, Tennessee wedding entertainment, wedding DJ services TN" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -160,7 +160,7 @@ export default function WeddingDJMemphisTN() {
         
         {/* Open Graph tags */}
         <meta property="og:title" content="Wedding DJ Memphis TN | 500+ Weddings | M10 DJ Company" />
-        <meta property="og:description" content="Best wedding DJ in Memphis, Tennessee. 500+ weddings at The Peabody, Graceland & top TN venues. Ceremony, reception & MC included. From $795." />
+        <meta property="og:description" content="Best wedding DJ in Memphis, Tennessee. 500+ weddings at The Peabody, Graceland & top TN venues. Ceremony, reception & MC included. Free quotes." />
         <meta property="og:url" content="https://www.m10djcompany.com/wedding-dj-memphis-tn" />
         <meta property="og:type" content="website" />
         <meta property="og:image" content="https://m10djcompany.com/logo-static.jpg" />
@@ -201,8 +201,7 @@ export default function WeddingDJMemphisTN() {
                   "sameAs": "https://en.wikipedia.org/wiki/Memphis,_Tennessee"
                 }
               ],
-              "serviceType": "Wedding DJ Services",
-              "priceRange": "$799-$1899"
+              "serviceType": "Wedding DJ Services"
             })
           }}
         />
@@ -281,7 +280,7 @@ export default function WeddingDJMemphisTN() {
                       </div>
                       <div className="flex items-center">
                         <CheckCircle className="w-5 h-5 text-brand-gold mr-3" />
-                        <span>Transparent pricing for Tennessee couples</span>
+                        <span>Custom quotes for Tennessee couples</span>
                       </div>
                       <div className="flex items-center">
                         <CheckCircle className="w-5 h-5 text-brand-gold mr-3" />
@@ -339,7 +338,6 @@ export default function WeddingDJMemphisTN() {
                   )}
                   
                   <h3 className="text-2xl font-bold mb-2">{pkg.name}</h3>
-                  <div className="text-4xl font-bold text-brand mb-2">{pkg.price}</div>
                   <div className="text-gray-600 mb-6">{pkg.duration}</div>
                   
                   <ul className="space-y-3 mb-8">

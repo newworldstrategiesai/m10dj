@@ -1,7 +1,7 @@
 'use server';
 
 import { createClient } from '@/utils/supabase/server';
-import { cookies } from 'next/headers';
+import { cookies, headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { getURL, getErrorRedirect, getStatusRedirect } from 'utils/helpers';
 import { getAuthTypes } from 'utils/auth-helpers/settings';
@@ -219,6 +219,18 @@ export async function signInWithPassword(formData: FormData) {
 }
 
 export async function signUp(formData: FormData) {
+  // M10 DJ Company: block new account creation (admin-only). Stops spammers and saves email bandwidth.
+  const host = (await headers()).get('host') || '';
+  const isM10 = host.toLowerCase().includes('m10djcompany');
+  const signupDisabledByEnv = process.env.NEXT_PUBLIC_ALLOW_PUBLIC_SIGNUP === 'false';
+  if (isM10 || signupDisabledByEnv) {
+    return getErrorRedirect(
+      '/signin/password_signin',
+      'Sign up is not available',
+      'This site is for administrators only. Please sign in with your existing account.'
+    );
+  }
+
   const callbackURL = getURL('/auth/callback');
 
   const email = String(formData.get('email')).trim();

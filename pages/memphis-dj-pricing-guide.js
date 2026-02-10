@@ -32,103 +32,102 @@ import {
 import Header from '../components/company/Header';
 import Footer from '../components/company/Footer';
 import ContactForm from '../components/company/ContactForm';
-import { scrollToContact } from '../utils/scroll-helpers';
 
 const marketPricing = [
   {
-    category: "Budget DJs",
-    priceRange: "$200-400",
-    description: "Part-time or amateur DJs with basic equipment",
-    includes: ["Basic sound system", "Limited music library", "Minimal experience"],
-    considerations: ["May lack backup equipment", "Limited event coordination", "No insurance coverage"]
+    category: "Entry / Budget DJ",
+    priceRange: "~$600 – $900",
+    description: "Budget-friendly option for reception-only or shorter events",
+    includes: ["Basic sound system", "Limited music library", "Reception DJ"],
+    considerations: ["May lack backup equipment", "Limited event coordination", "Check for insurance coverage"]
   },
   {
-    category: "Mid-Range Professional DJs",
-    priceRange: "$400-800",
-    description: "Experienced DJs with quality equipment and professional service",
+    category: "Standard Wedding DJ",
+    priceRange: "~$900 – $1,200",
+    description: "Most Memphis pros — reception + MC combination",
     includes: ["Professional sound system", "Extensive music library", "MC services", "Event coordination"],
     considerations: ["Good balance of cost and quality", "Reliable service", "Professional equipment"],
     popular: true
   },
   {
-    category: "Premium DJ Services",
-    priceRange: "$800-1,500",
-    description: "Top-tier DJs with premium equipment and comprehensive services",
-    includes: ["High-end sound systems", "Full lighting packages", "Multiple DJs", "Complete event coordination"],
+    category: "Mid-Range Packages",
+    priceRange: "~$1,200 – $2,000",
+    description: "May include lighting or ceremony music",
+    includes: ["Professional sound", "MC services", "Uplighting or ceremony audio", "Coordination"],
+    considerations: ["More comprehensive coverage", "Common add-ons included", "Premium equipment"]
+  },
+  {
+    category: "Premium / Full Service",
+    priceRange: "$2,000+",
+    description: "Extensive add-ons and advanced production",
+    includes: ["High-end sound systems", "Full lighting packages", "Ceremony + reception", "Complete event coordination"],
     considerations: ["Highest quality service", "Premium equipment", "Comprehensive coverage"]
   }
 ];
 
 const pricingFactors = [
   {
+    icon: Award,
+    title: "Experience Level",
+    description: "Beginner vs. wedding-specialized pros",
+    impact: "Quality Factor",
+    details: "Beginner DJs tend to charge less (often under $1,000). Experienced/wedding-specialized pros command higher rates."
+  },
+  {
     icon: Clock,
-    title: "Event Duration",
-    description: "Most events range from 4-8 hours",
+    title: "Hours of Coverage",
+    description: "Many packages are 3–6 hours (cocktail + dinner + reception)",
     impact: "Primary Factor",
-    details: "Each additional hour typically adds $75-150 to the total cost"
-  },
-  {
-    icon: Users,
-    title: "Guest Count",
-    description: "Determines sound system requirements",
-    impact: "Significant Factor", 
-    details: "Larger events require more powerful sound systems and additional equipment"
-  },
-  {
-    icon: Calendar,
-    title: "Date & Season",
-    description: "Peak wedding season affects pricing",
-    impact: "Moderate Factor",
-    details: "May-October typically sees 15-25% higher rates than off-season"
-  },
-  {
-    icon: Building,
-    title: "Venue Type",
-    description: "Indoor vs outdoor, size, and technical requirements",
-    impact: "Variable Factor",
-    details: "Outdoor events and unique venues may require additional equipment"
+    details: "Additional hours cost extra. Typical wedding packages run 6–8 hours."
   },
   {
     icon: Music,
-    title: "Service Complexity",
-    description: "MC duties, special requests, coordination needs",
+    title: "Included Services",
+    description: "MC duties, ceremony audio, lighting & effects",
     impact: "Add-on Factor",
-    details: "Additional services like uplighting, ceremony audio, and coordination increase costs"
+    details: "MC duties are often bundled. Ceremony audio may be an add-on. Uplighting, dance lighting, monogram projections increase price."
   },
   {
-    icon: Award,
-    title: "DJ Experience Level",
-    description: "Years in business and reputation",
-    impact: "Quality Factor",
-    details: "More experienced DJs command higher rates but provide better service"
+    icon: Volume2,
+    title: "Equipment & Setup",
+    description: "Sound systems, backups, multiple speakers",
+    impact: "Significant Factor",
+    details: "Higher-end equipment, professional sound systems, backups, multiple speakers = higher cost."
+  },
+  {
+    icon: MapPin,
+    title: "Location & Demand",
+    description: "City size, competition, vendor reputation",
+    impact: "Variable Factor",
+    details: "Prices differ by city size, competition, and reputation. Metro areas usually trend higher than rural regions."
   }
 ];
 
 const eventTypePricing = [
   {
     eventType: "Wedding Receptions",
-    averagePrice: "$600-1,200",
+    averagePrice: "~$900 – $1,200+",
     duration: "6-8 hours",
     commonServices: ["Ceremony music", "Cocktail hour", "Reception DJ", "MC services", "Uplighting"],
-    notes: "Most comprehensive DJ services with multiple event phases"
+    notes: "Memphis standard reception + MC; lighting and ceremony often extras. National range ~$800 – $1,600+."
   },
   {
     eventType: "Corporate Events",
-    averagePrice: "$400-800",
+    averagePrice: "~$400 – $800",
     duration: "3-6 hours",
     commonServices: ["Background music", "Presentation support", "Award ceremonies", "Networking music"],
     notes: "Professional atmosphere with business-appropriate music"
   },
   {
     eventType: "Birthday Parties",
-    averagePrice: "$300-600",
+    averagePrice: "~$300 – $600",
     duration: "3-5 hours",
     commonServices: ["DJ entertainment", "Dance music", "Special announcements", "Games coordination"],
     notes: "Age-appropriate music and interactive entertainment"
   },
   {
     eventType: "School Dances",
-    averagePrice: "$400-700",
+    averagePrice: "~$400 – $700",
     duration: "3-4 hours",
     commonServices: ["Clean music playlists", "Interactive DJ", "Sound system", "Lighting effects"],
     notes: "Age-appropriate content with high energy entertainment"
@@ -247,34 +246,44 @@ export default function MemphisDJPricingGuide() {
               Wedding DJ Cost Guide 2025: Average Prices & What to Expect
             </h1>
 
-            {/* Direct Answer for Featured Snippet */}
+            {/* National Wedding DJ Pricing Trends - no specific prices shown */}
+            <div className="bg-gray-50 rounded-xl p-6 mb-8">
+              <h2 className="text-2xl font-bold text-gray-900 mb-4">National Wedding DJ Pricing Trends</h2>
+              <p className="text-gray-800 mb-4">
+                Wedding DJ costs vary by region, experience level, hours of coverage, and included services. Budget options, mid-range pros, and premium full-service packages are available nationwide.
+              </p>
+              <p className="text-gray-700 text-sm bg-white p-3 rounded border-l-4 border-brand-gold">
+                <strong>💡</strong> A wedding DJ does much more than play music — preparation meetings, timeline coordination, ceremony mics, backups, and emcee hosting all factor into pricing. <strong>Get a custom quote</strong> for your event.
+              </p>
+            </div>
+
+            {/* Memphis, Tennessee – DJ Cost Breakdown - no specific prices shown */}
+            <div className="bg-brand-gold/10 border-l-4 border-brand-gold rounded-r-xl p-6 mb-8">
+              <h2 className="text-2xl font-bold text-gray-900 mb-4">Memphis, Tennessee – DJ Cost</h2>
+              <p className="text-gray-800 mb-3">
+                Memphis wedding DJ pricing varies by package (reception-only, ceremony + reception, full-day), add-ons (lighting, ceremony audio, extended hours), and vendor experience. Local cost data is available upon request.
+              </p>
+              <p className="text-gray-700">
+                <strong>Get a custom quote</strong> for your Memphis event — we’ll tailor pricing to your date, venue, and needs.
+              </p>
+            </div>
+
+            {/* Memphis vs. National - no prices */}
+            <div className="bg-gray-50 rounded-xl p-6 mb-8">
+              <h2 className="text-2xl font-bold text-gray-900 mb-4">Memphis vs. National</h2>
+              <p className="text-gray-700">
+                Memphis falls within typical national ranges for urban DJ pricing — neither extremely low nor very high. <strong>Request a quote</strong> to see pricing for your specific event.
+              </p>
+            </div>
+
+            {/* Direct Answer for Featured Snippet - no specific prices */}
             <div className="bg-brand-gold/10 border-l-4 border-brand-gold rounded-r-xl p-6 mb-8">
               <h2 className="text-2xl font-bold text-gray-900 mb-4">How Much Does a Wedding DJ Cost?</h2>
               <p className="text-lg text-gray-800 mb-4 leading-relaxed">
-                <strong>Professional wedding DJ services typically cost $1,200-$3,500+</strong> for quality celebrations, with most couples investing around <strong>$1,800-$2,500</strong> for complete ceremony and reception coverage with an experienced DJ.
-              </p>
-              <div className="bg-white rounded-lg p-4 mb-4">
-                <h3 className="font-bold text-gray-900 mb-3">Wedding DJ Pricing Breakdown by Quality Level:</h3>
-                <ul className="space-y-2">
-                  <li className="flex items-start">
-                    <CheckCircle className="w-5 h-5 text-brand-gold mr-2 flex-shrink-0 mt-0.5" />
-                    <span><strong>$500-$1,000:</strong> Budget/part-time DJs with basic equipment (⚠️ Higher risk - limited experience, no backup systems)</span>
-                  </li>
-                  <li className="flex items-start">
-                    <CheckCircle className="w-5 h-5 text-brand-gold mr-2 flex-shrink-0 mt-0.5" />
-                    <span><strong>$1,200-$2,500:</strong> Professional DJs with quality equipment, MC services, lighting, backup systems & insurance (✅ Most popular - 70% of couples choose this range)</span>
-                  </li>
-                  <li className="flex items-start">
-                    <CheckCircle className="w-5 h-5 text-brand-gold mr-2 flex-shrink-0 mt-0.5" />
-                    <span><strong>$2,500-$4,000+:</strong> Premium full-service DJ companies with complete production, multiple DJs, luxury packages, and special effects</span>
-                  </li>
-                </ul>
-              </div>
-              <p className="text-gray-700 mb-3">
-                <strong>What affects the cost:</strong> Event duration (6-8 hours typical), DJ experience level (15+ years commands premium rates), equipment quality, backup systems, insurance coverage, venue complexity, peak season dates (May-October), and additional services like ceremony audio, uplighting (up to 16 fixtures), monogram projection, and special effects.
+                Wedding DJ pricing <strong>varies by event type, duration, and services</strong>. Standard packages typically include reception + MC; ceremony audio, lighting, and extended hours are common add-ons.
               </p>
               <p className="text-gray-700 text-sm bg-white p-3 rounded">
-                <strong>💡 Pro Tip:</strong> Wedding planners recommend budgeting 8-12% of your total wedding budget for entertainment, as the DJ is the #1 factor guests remember. Investing $1,500-$2,500 in a professional DJ protects your $20,000-$40,000 wedding investment.
+                <strong>💡 Pro Tip:</strong> Budget 8–12% of your wedding budget for entertainment. <strong>Get your free custom quote</strong> for accurate pricing.
               </p>
             </div>
 
@@ -284,30 +293,68 @@ export default function MemphisDJPricingGuide() {
               pricing factors, and money-saving tips from experienced event professionals.
             </p>
 
-            {/* Quick Stats */}
+            {/* Quick Stats - no prices shown */}
             <div className="bg-gray-50 rounded-xl p-6 mb-8">
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div className="text-center">
-                  <div className="text-2xl font-bold text-brand-gold">$600</div>
-                  <div className="text-sm text-gray-600">Average Wedding</div>
-                  <div className="text-xs text-gray-500">Most popular package</div>
+                  <div className="text-2xl font-bold text-brand-gold">Custom</div>
+                  <div className="text-sm text-gray-600">Wedding Packages</div>
+                  <div className="text-xs text-gray-500">Request a quote</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-2xl font-bold text-brand-gold">$500</div>
-                  <div className="text-sm text-gray-600">Corporate Events</div>
-                  <div className="text-xs text-gray-500">Professional service</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-brand-gold">6hrs</div>
-                  <div className="text-sm text-gray-600">Average Duration</div>
+                  <div className="text-2xl font-bold text-brand-gold">6–8 hrs</div>
+                  <div className="text-sm text-gray-600">Typical Duration</div>
                   <div className="text-xs text-gray-500">Standard package</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-2xl font-bold text-brand-gold">$0</div>
+                  <div className="text-2xl font-bold text-brand-gold">No</div>
                   <div className="text-sm text-gray-600">Hidden Fees</div>
-                  <div className="text-xs text-gray-500">Transparent pricing</div>
+                  <div className="text-xs text-gray-500">Transparent quote</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-brand-gold">Free</div>
+                  <div className="text-sm text-gray-600">Quote</div>
+                  <div className="text-xs text-gray-500">No obligation</div>
                 </div>
               </div>
+            </div>
+          </div>
+        </section>
+
+        {/* What You Can Expect to Pay / Bottom Line */}
+        <section className="py-16 bg-white">
+          <div className="section-container max-w-4xl">
+            <h2 className="text-3xl font-bold text-gray-900 mb-6">What You Can Expect to Pay</h2>
+            <p className="text-lg text-gray-700 mb-6">
+              Based on local Memphis data and national pricing:
+            </p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+              <div className="bg-gray-50 rounded-xl p-4">
+                <div className="font-semibold text-gray-900 mb-1">Entry / Budget DJ</div>
+                <div className="text-brand font-bold">Request a quote</div>
+              </div>
+              <div className="bg-gray-50 rounded-xl p-4 border-2 border-brand-gold">
+                <div className="font-semibold text-gray-900 mb-1">Standard Wedding DJ (most Memphis pros)</div>
+                <div className="text-brand font-bold">Request a quote</div>
+                <div className="text-sm text-gray-600">Reception + MC</div>
+              </div>
+              <div className="bg-gray-50 rounded-xl p-4">
+                <div className="font-semibold text-gray-900 mb-1">Mid-Range Packages</div>
+                <div className="text-brand font-bold">Request a quote</div>
+                <div className="text-sm text-gray-600">May include lighting or ceremony music</div>
+              </div>
+              <div className="bg-gray-50 rounded-xl p-4">
+                <div className="font-semibold text-gray-900 mb-1">Premium / Full Service</div>
+                <div className="text-brand font-bold">Request a quote</div>
+                <div className="text-sm text-gray-600">Extensive add-ons, advanced production</div>
+              </div>
+            </div>
+            <div className="bg-brand-gold/10 border-l-4 border-brand-gold rounded-r-xl p-6">
+              <h3 className="font-bold text-gray-900 mb-2">Bottom Line</h3>
+              <ul className="text-gray-700 space-y-1 text-sm">
+                <li>• Wedding DJ pricing varies by package (reception-only, ceremony + reception, full-day), add-ons (ceremony music, lighting, uplights, extended hours), and market.</li>
+                <li>• <strong>Get your free custom quote</strong> for accurate pricing for your Memphis event.</li>
+              </ul>
             </div>
           </div>
         </section>
@@ -318,11 +365,11 @@ export default function MemphisDJPricingGuide() {
             <h2 className="text-3xl font-bold text-gray-900 text-center mb-8">Memphis DJ Market Pricing Overview</h2>
             
             <p className="text-lg text-gray-700 text-center mb-12 max-w-3xl mx-auto">
-              Understanding the Memphis DJ market helps you make informed decisions. Here's a breakdown of 
+              Understanding the Memphis DJ market helps you make informed decisions. Here&apos;s a breakdown of 
               typical pricing tiers and what to expect at each level.
             </p>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-12">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
               {marketPricing.map((tier, index) => (
                 <div key={index} className={`rounded-xl p-8 ${tier.popular ? 'bg-brand text-white ring-4 ring-brand-gold shadow-xl' : 'bg-white border-2 border-gray-200'} relative`}>
                   {tier.popular && (
@@ -335,7 +382,7 @@ export default function MemphisDJPricingGuide() {
                   
                   <div className="text-center mb-6">
                     <h3 className={`text-2xl font-bold mb-2 ${tier.popular ? 'text-white' : 'text-gray-900'}`}>{tier.category}</h3>
-                    <div className={`text-3xl font-bold mb-2 ${tier.popular ? 'text-brand-gold' : 'text-brand'}`}>{tier.priceRange}</div>
+                    <div className={`text-lg font-semibold mb-2 ${tier.popular ? 'text-brand-gold' : 'text-brand'}`}>Request a quote</div>
                     <p className={`text-sm ${tier.popular ? 'text-white/80' : 'text-gray-600'}`}>{tier.description}</p>
                   </div>
 
@@ -368,11 +415,11 @@ export default function MemphisDJPricingGuide() {
         {/* Pricing Factors */}
         <section className="py-16 bg-white">
           <div className="section-container max-w-4xl">
-            <h2 className="text-3xl font-bold text-gray-900 mb-8">What Affects Memphis DJ Pricing?</h2>
+            <h2 className="text-3xl font-bold text-gray-900 mb-8">What Affects DJ Pricing (Everywhere)</h2>
             
             <p className="text-lg text-gray-700 mb-8">
-              Understanding these key factors helps you budget appropriately and make informed decisions 
-              about your Memphis event entertainment.
+              Several factors consistently drive different price points and help you budget appropriately 
+              for Memphis or any market.
             </p>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
@@ -414,7 +461,7 @@ export default function MemphisDJPricingGuide() {
             <h2 className="text-3xl font-bold text-gray-900 mb-8">Memphis DJ Pricing by Event Type</h2>
             
             <p className="text-lg text-gray-700 mb-8">
-              Different event types have varying requirements and pricing structures. Here's what to expect 
+              Different event types have varying requirements and pricing structures. Here&apos;s what to expect 
               for common Memphis events.
             </p>
 
@@ -424,7 +471,7 @@ export default function MemphisDJPricingGuide() {
                   <div className="flex flex-col md:flex-row md:items-center justify-between mb-4">
                     <h3 className="text-xl font-semibold text-gray-900 mb-2 md:mb-0">{event.eventType}</h3>
                     <div className="flex items-center space-x-4">
-                      <span className="text-brand font-bold text-lg">{event.averagePrice}</span>
+                      <span className="text-brand font-bold text-lg">Request a quote</span>
                       <span className="text-gray-500 text-sm">{event.duration}</span>
                     </div>
                   </div>
@@ -492,16 +539,16 @@ export default function MemphisDJPricingGuide() {
             <h2 className="text-3xl font-bold mb-4">Ready to Get Your Custom Quote?</h2>
             <p className="text-white/90 mb-8 max-w-2xl mx-auto text-lg">
               Get accurate pricing for your specific Memphis event with our free, no-obligation consultation. 
-              We'll help you understand all options and find the perfect entertainment solution for your budget.
+              We&apos;ll help you understand all options and find the perfect entertainment solution for your budget.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <button 
-                onClick={scrollToContact}
-                className="bg-brand-gold text-black px-8 py-3 rounded-lg font-semibold hover:bg-yellow-400 transition-colors"
+              <Link 
+                href="/contact"
+                className="inline-flex items-center justify-center bg-brand-gold text-black px-8 py-3 rounded-lg font-semibold hover:bg-yellow-400 transition-colors"
               >
                 Get Free Quote
                 <ChevronRight className="ml-2 w-5 h-5 inline" />
-              </button>
+              </Link>
               <a href="tel:(901)410-2020" className="bg-white/10 text-white px-8 py-3 rounded-lg font-semibold hover:bg-white/20 transition-colors">
                 <Phone className="mr-2 w-5 h-5 inline" />
                 Call (901) 410-2020
@@ -600,50 +647,33 @@ export default function MemphisDJPricingGuide() {
                     How much does a wedding DJ cost?
                   </h3>
                   <p className="text-gray-700 leading-relaxed mb-4">
-                    <strong>Professional wedding DJ services typically cost $1,200-$3,500+</strong> for quality celebrations, with most couples investing <strong>$1,800-$2,500</strong> for an experienced DJ with 6-8 hours of complete ceremony and reception coverage. This includes professional equipment, MC services, lighting, and music coordination.
+                    Wedding DJ pricing <strong>varies by package, duration, and services</strong>. Quality celebrations typically include 6–8 hours of coverage with ceremony and reception, professional equipment, MC services, lighting, and music coordination. Budget options, mid-range pros, and premium full-service packages are available.
                   </p>
-                  <ul className="space-y-2 text-gray-700">
-                    <li className="flex items-start">
-                      <CheckCircle className="w-5 h-5 text-brand-gold mr-2 flex-shrink-0 mt-0.5" />
-                      <span><strong>$500-$1,000:</strong> Budget/part-time DJs with basic equipment (⚠️ Limited experience, no backup systems, higher risk)</span>
-                    </li>
-                    <li className="flex items-start">
-                      <CheckCircle className="w-5 h-5 text-brand-gold mr-2 flex-shrink-0 mt-0.5" />
-                      <span><strong>$1,200-$2,500:</strong> Professional DJs with quality equipment, MC services, lighting, backup systems & insurance (✅ Most popular choice)</span>
-                    </li>
-                    <li className="flex items-start">
-                      <CheckCircle className="w-5 h-5 text-brand-gold mr-2 flex-shrink-0 mt-0.5" />
-                      <span><strong>$2,500-$4,000+:</strong> Premium full-service DJ companies with complete production, multiple DJs, and luxury entertainment packages</span>
-                    </li>
-                  </ul>
                   <p className="text-gray-700 mt-4 text-sm">
-                    <strong>💡 Pro Tip:</strong> Most wedding planners recommend budgeting 8-12% of your total wedding budget for entertainment, as the DJ significantly impacts your guests' experience and memories.
+                    <strong>💡 Pro Tip:</strong> Most wedding planners recommend budgeting 8–12% of your total wedding budget for entertainment. <strong>Request a free custom quote</strong> for accurate pricing.
                   </p>
                 </div>
 
-                {/* FAQ targeting "average price for wedding dj" - 8 impressions, position 74 */}
+                {/* FAQ targeting "average price for wedding dj" */}
                 <div className="bg-gray-50 rounded-xl p-8">
                   <h3 className="text-xl font-bold text-gray-900 mb-4">
                     What is the average price for a wedding DJ?
                   </h3>
                   <p className="text-gray-700 leading-relaxed mb-4">
-                    The average price for a professional wedding DJ is <strong>$1,800-$2,500 for complete coverage</strong> (6-8 hours including ceremony and reception). This typically includes ceremony music, cocktail hour entertainment, reception DJ services, expert MC duties, professional sound system, wireless microphones, dance floor lighting, elegant uplighting (up to 16 fixtures), backup equipment, liability insurance, and personalized music consultation with online planning.
+                    Pricing varies by market, package (reception-only vs. ceremony + reception), and add-ons. Complete coverage typically includes 6–8 hours, ceremony music, cocktail hour, reception DJ, MC duties, professional sound, wireless mics, lighting, backup equipment, and consultation. Budget options may lack backup systems and insurance — investing in a quality DJ helps your celebration run smoothly.
                   </p>
                   <p className="text-gray-700 text-sm">
-                    <strong>Note:</strong> While you may find cheaper options ($500-$1,000), these often lack professional equipment, backup systems, experience with venues, and insurance coverage. Investing in a quality DJ ensures your celebration runs smoothly and your guests have an unforgettable experience. Wedding coordinators report that entertainment quality is the #1 factor guests remember about weddings.
+                    <strong>Get your free custom quote</strong> for your Memphis event.
                   </p>
                 </div>
 
-                {/* FAQ targeting "average dj cost for wedding" - 3 impressions, position 99 */}
+                {/* FAQ targeting "average dj cost for wedding" */}
                 <div className="bg-gray-50 rounded-xl p-8">
                   <h3 className="text-xl font-bold text-gray-900 mb-4">
                     What is the average DJ cost for a wedding?
                   </h3>
                   <p className="text-gray-700 leading-relaxed mb-4">
-                    The average DJ cost for a wedding ranges from <strong>$1,500-$2,800</strong> for complete professional service, with most couples investing around <strong>$2,000-$2,500</strong> for a complete wedding package including both ceremony and reception coverage. This includes 6-8 hours of service, professional sound and lighting equipment, MC services, and complete coordination.
-                  </p>
-                  <p className="text-gray-700 text-sm">
-                    Factors affecting cost include event duration, venue complexity, peak season dates (May-October typically 15-25% higher), equipment quality, DJ experience level (15+ years commands premium rates), and included services like ceremony audio, uplighting (up to 16 fixtures), monogram projection, special effects, and extended coverage. <strong>Professional DJs with backup equipment and insurance typically start at $1,500-$2,000</strong> for quality service.
+                    DJ cost for a wedding <strong>varies</strong> by event duration, venue, season, equipment quality, DJ experience, and included services (ceremony audio, uplighting, monogram, extended hours). Professional DJs with backup equipment and insurance provide quality service — <strong>request a quote</strong> for your date and needs.
                   </p>
                 </div>
 
@@ -659,31 +689,31 @@ export default function MemphisDJPricingGuide() {
                     <li className="flex items-start">
                       <Clock className="w-5 h-5 text-brand-gold mr-3 flex-shrink-0 mt-0.5" />
                       <div>
-                        <strong>Event Duration:</strong> Most weddings need 4-8 hours of service. Each additional hour typically adds $75-150 to the total cost.
+                        <strong>Event Duration:</strong> Most weddings need 4–8 hours of service. Additional hours affect total cost.
                       </div>
                     </li>
                     <li className="flex items-start">
                       <Users className="w-5 h-5 text-brand-gold mr-3 flex-shrink-0 mt-0.5" />
                       <div>
-                        <strong>Guest Count:</strong> Larger weddings require more powerful sound systems and additional equipment, increasing costs by 10-20%.
+                        <strong>Guest Count:</strong> Larger weddings may require more powerful sound and additional equipment.
                       </div>
                     </li>
                     <li className="flex items-start">
                       <Calendar className="w-5 h-5 text-brand-gold mr-3 flex-shrink-0 mt-0.5" />
                       <div>
-                        <strong>Peak Season:</strong> May-October weddings typically cost 15-25% more than off-season dates.
+                        <strong>Peak Season:</strong> May–October weddings often cost more than off-season dates.
                       </div>
                     </li>
                     <li className="flex items-start">
                       <Volume2 className="w-5 h-5 text-brand-gold mr-3 flex-shrink-0 mt-0.5" />
                       <div>
-                        <strong>Additional Services:</strong> Ceremony music, uplighting, photo booth, and extended coverage add $100-500+ to base pricing.
+                        <strong>Additional Services:</strong> Ceremony music, uplighting, photo booth, and extended coverage affect pricing.
                       </div>
                     </li>
                     <li className="flex items-start">
                       <Award className="w-5 h-5 text-brand-gold mr-3 flex-shrink-0 mt-0.5" />
                       <div>
-                        <strong>DJ Experience:</strong> Experienced DJs with 10+ years and 500+ weddings command premium rates but provide superior service.
+                        <strong>DJ Experience:</strong> Experienced DJs with 10+ years and 500+ weddings provide superior service.
                       </div>
                     </li>
                   </ul>
@@ -692,52 +722,52 @@ export default function MemphisDJPricingGuide() {
                 {/* FAQ for value justification */}
                 <div className="bg-gray-50 rounded-xl p-8">
                   <h3 className="text-xl font-bold text-gray-900 mb-4">
-                    Why do professional wedding DJs cost $1,500-$3,000+?
+                    Why do professional wedding DJs cost more than budget options?
                   </h3>
                   <p className="text-gray-700 leading-relaxed mb-4">
-                    Professional wedding DJ pricing ($1,500-$3,000+) reflects significant business investment and expertise that budget DJs simply can't provide. The cost covers far more than just "playing music":
+                    Professional wedding DJ pricing reflects significant business investment and expertise. The cost covers far more than just playing music:
                   </p>
                   <ul className="space-y-3 text-gray-700">
                     <li className="flex items-start">
                       <CheckCircle className="w-5 h-5 text-brand-gold mr-2 flex-shrink-0 mt-0.5" />
                       <div>
-                        <strong>Professional Equipment Investment:</strong> $15,000-$40,000 in premium sound systems, wireless microphones, elegant lighting, backup equipment, and transportation
+                        <strong>Professional Equipment:</strong> Premium sound systems, wireless microphones, lighting, backup equipment, and transportation
                       </div>
                     </li>
                     <li className="flex items-start">
                       <CheckCircle className="w-5 h-5 text-brand-gold mr-2 flex-shrink-0 mt-0.5" />
                       <div>
-                        <strong>Experience & Expertise:</strong> 10-15+ years, 500+ weddings, crowd-reading skills, MC training, venue knowledge, and seamless timeline coordination
+                        <strong>Experience & Expertise:</strong> 10–15+ years, 500+ weddings, crowd-reading skills, MC training, venue knowledge, and timeline coordination
                       </div>
                     </li>
                     <li className="flex items-start">
                       <CheckCircle className="w-5 h-5 text-brand-gold mr-2 flex-shrink-0 mt-0.5" />
                       <div>
-                        <strong>Business Operating Costs:</strong> $2,000-$3,000/year liability insurance, business licenses, music licensing fees, equipment maintenance, continuing education
+                        <strong>Business Operating Costs:</strong> Liability insurance, business licenses, music licensing, equipment maintenance, continuing education
                       </div>
                     </li>
                     <li className="flex items-start">
                       <CheckCircle className="w-5 h-5 text-brand-gold mr-2 flex-shrink-0 mt-0.5" />
                       <div>
-                        <strong>Time Investment:</strong> 15-20 hours per wedding including consultation meetings, custom playlist creation, venue coordination, setup (2-3 hours), event (6-8 hours), and teardown (1-2 hours)
+                        <strong>Time Investment:</strong> Consultation meetings, custom playlists, venue coordination, setup, event (6–8 hours), and teardown
                       </div>
                     </li>
                     <li className="flex items-start">
                       <CheckCircle className="w-5 h-5 text-brand-gold mr-2 flex-shrink-0 mt-0.5" />
                       <div>
-                        <strong>Risk Protection:</strong> Full backup systems, contingency plans, and insurance protecting you from disasters that could ruin your celebration
+                        <strong>Risk Protection:</strong> Full backup systems, contingency plans, and insurance
                       </div>
                     </li>
                   </ul>
                   <p className="text-gray-700 mt-4 text-sm bg-amber-50 p-3 rounded border-l-4 border-amber-400">
-                    <strong>⚠️ Warning:</strong> Budget DJs ($500-$1,000) often lack insurance, backup equipment, venue experience, and professional training. Wedding planners report that entertainment failures (equipment breakdown, inexperienced DJs, poor crowd reading) are among the top 3 wedding disasters. <strong>Investing $1,500-$2,500 in a professional DJ protects a $20,000-$40,000 investment in your wedding.</strong>
+                    <strong>⚠️ Note:</strong> Budget options often lack insurance, backup equipment, and professional training. Wedding planners report that entertainment quality is among the top factors guests remember. <strong>Request a custom quote</strong> for professional DJ services.
                   </p>
                 </div>
 
                 {/* FAQ for package inclusions */}
                 <div className="bg-gray-50 rounded-xl p-8">
                   <h3 className="text-xl font-bold text-gray-900 mb-4">
-                    What's included in typical wedding DJ pricing?
+                    What&apos;s included in typical wedding DJ pricing?
                   </h3>
                   <p className="text-gray-700 leading-relaxed mb-4">
                     Professional wedding DJ packages typically include:
@@ -838,13 +868,13 @@ export default function MemphisDJPricingGuide() {
                   <p className="text-lg mb-6 text-white/90">
                     Transparent pricing with no hidden fees. Same-day quotes available!
                   </p>
-                  <button 
-                    onClick={scrollToContact}
-                    className="bg-brand-gold text-black px-8 py-4 rounded-lg font-bold text-lg hover:bg-brand-gold/90 transition-colors inline-flex items-center"
+                  <Link 
+                    href="/contact"
+                    className="inline-flex items-center justify-center bg-brand-gold text-black px-8 py-4 rounded-lg font-bold text-lg hover:bg-brand-gold/90 transition-colors"
                   >
                     Request Free Quote
                     <ChevronRight className="ml-2 w-5 h-5" />
-                  </button>
+                  </Link>
                   <p className="mt-4 text-sm text-white/80">
                     ⭐ 5.0 Rating | 500+ Weddings | Call (901) 410-2020
                   </p>
@@ -931,7 +961,7 @@ export default function MemphisDJPricingGuide() {
                 "name": "How much does a DJ cost for a wedding in Memphis?",
                 "acceptedAnswer": {
                   "@type": "Answer",
-                  "text": "Memphis wedding DJ costs typically range from $400-1,200 depending on the duration, services included, and experience level. Most professional wedding DJs charge $600-800 for a 6-hour reception with full services including ceremony music, MC duties, and basic lighting."
+                  "text": "Memphis wedding DJ pricing varies by duration, services included, and experience level. Professional wedding DJs offer packages for reception, ceremony, and full-day coverage. Request a free custom quote for your event."
                 }
               },
               {

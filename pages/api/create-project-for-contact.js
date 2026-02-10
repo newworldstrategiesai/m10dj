@@ -171,12 +171,12 @@ export default async function handler(req, res) {
         number_of_guests: contact.guest_count || null,
         special_requests: contact.special_requests || null,
         status: 'confirmed',
-        notes: `Auto-generated project from contact. Created on ${new Date().toLocaleDateString()}.`
+        timeline_notes: `Auto-generated project from contact. Created on ${new Date().toLocaleDateString()}.`
       };
 
       const { data: project, error: projectError } = await supabaseAdmin
         .from('events')
-        .insert([projectData])
+        .insert(projectData)
         .select()
         .single();
 

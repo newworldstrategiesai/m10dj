@@ -15,6 +15,8 @@ interface PasswordSignInProps {
   redirectTo?: string;
   initialEmail?: string;
   message?: string;
+  /** When false, hide "Don't have an account? Sign up" (e.g. M10 admin-only) */
+  showSignUpLink?: boolean;
 }
 
 export default function PasswordSignIn({
@@ -22,7 +24,8 @@ export default function PasswordSignIn({
   redirectMethod,
   redirectTo,
   initialEmail,
-  message
+  message,
+  showSignUpLink = true
 }: PasswordSignInProps) {
   // Always call hooks unconditionally (Rules of Hooks)
   const router = useRouter();
@@ -156,14 +159,16 @@ export default function PasswordSignIn({
             </Link>
           </div>
         )}
-        <div>
-          <Link 
-            href={`${signinBase}/signup`}
-            className="text-sm text-gray-600 dark:text-gray-400 hover:text-brand dark:hover:text-brand transition-colors"
-          >
-            Don&apos;t have an account? Sign up
-          </Link>
-        </div>
+        {showSignUpLink && (
+          <div>
+            <Link 
+              href={`${signinBase}/signup`}
+              className="text-sm text-gray-600 dark:text-gray-400 hover:text-brand dark:hover:text-brand transition-colors"
+            >
+              Don&apos;t have an account? Sign up
+            </Link>
+          </div>
+        )}
       </div>
     </div>
   );

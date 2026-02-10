@@ -1,5 +1,5 @@
 import { createClient } from '@/utils/supabase/server';
-import { cookies } from 'next/headers';
+import { cookies, headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 import {
   getAuthTypes,
@@ -27,29 +27,30 @@ export default async function SignIn({
   searchParams: { disable_button?: boolean; redirect?: string; email?: string; message?: string };
 }) {
   const { allowOauth, allowEmail, allowPassword } = getAuthTypes();
-  const viewTypes = getViewTypes();
   const redirectMethod = getRedirectMethod();
 
-  // Declare 'viewProp' and initialize with the default value
+  // M10 DJ Company: disable sign-up (admin-only accounts). Other products keep signup.
+  const host = (await headers()).get('host') || '';
+  const allowSignup =
+    process.env.NEXT_PUBLIC_ALLOW_PUBLIC_SIGNUP !== 'false' &&
+    !host.toLowerCase().includes('m10djcompany');
+
+  const viewTypes = getViewTypes(allowSignup);
   let viewProp: string;
 
-  // Assign url id to 'viewProp' if it's a valid string and ViewTypes includes it
   if (params?.id && typeof params.id === 'string' && viewTypes.includes(params.id)) {
     viewProp = params.id;
   } else {
-    // Safely get preferred sign in view from cookies
     let preferredSignInView: string | null = null;
     try {
-      preferredSignInView = cookies().get('preferredSignInView')?.value || null;
-    } catch (cookieError) {
-      // If cookies() fails (e.g., in some browser contexts), use default
-      console.warn('Could not read cookies, using default sign in view:', cookieError);
+      const cookieStore = await cookies();
+      preferredSignInView = cookieStore.get('preferredSignInView')?.value || null;
+    } catch {
       preferredSignInView = null;
     }
-    viewProp = getDefaultSignInView(preferredSignInView);
-    // Preserve redirect query parameter when redirecting to view-specific page
-    const redirectParam = searchParams?.redirect 
-      ? `?redirect=${encodeURIComponent(searchParams.redirect)}` 
+    viewProp = getDefaultSignInView(preferredSignInView, allowSignup);
+    const redirectParam = searchParams?.redirect
+      ? `?redirect=${encodeURIComponent(searchParams.redirect)}`
       : '';
     redirect(`/signin/${viewProp}${redirectParam}`);
   }
@@ -164,6 +165,7 @@ export default async function SignIn({
                 redirectTo={searchParams?.redirect ? decodeURIComponent(searchParams.redirect) : ''}
                 initialEmail={searchParams?.email || undefined}
                 message={searchParams?.message || undefined}
+                showSignUpLink={allowSignup}
               />
             )}
             {viewProp === 'email_signin' && (
@@ -171,6 +173,7 @@ export default async function SignIn({
                 allowPassword={allowPassword}
                 redirectMethod={redirectMethod}
                 disableButton={searchParams.disable_button}
+                showSignUpLink={allowSignup}
               />
             )}
             {viewProp === 'forgot_password' && (

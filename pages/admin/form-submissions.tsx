@@ -26,7 +26,8 @@ import {
   Link as LinkIcon,
   Loader,
   X,
-  ShieldAlert
+  ShieldAlert,
+  UserPlus
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -73,6 +74,7 @@ export default function FormSubmissionsPage() {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [lookingUpContact, setLookingUpContact] = useState<string | null>(null);
   const [fetchingVenueImage, setFetchingVenueImage] = useState<string | null>(null);
+  const [creatingContactAndProject, setCreatingContactAndProject] = useState(false);
 
   useEffect(() => {
     fetchSubmissions();
@@ -216,6 +218,39 @@ export default function FormSubmissionsPage() {
       } else {
         alert(`Failed to delete submission: ${error.message || 'Unknown error'}`);
       }
+    }
+  };
+
+  const createContactAndProject = async (submission: FormSubmission) => {
+    setCreatingContactAndProject(true);
+    try {
+      const response = await fetch('/api/admin/create-contact-and-project-from-submission', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ submissionId: submission.id }),
+      });
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || data.details || 'Failed to create contact and project');
+      }
+
+      setSelectedSubmission(null);
+      await fetchSubmissions();
+      const contactId = data.contact?.id;
+      const projectId = data.project?.id;
+      if (contactId && projectId) {
+        if (confirm(`${data.message}\n\nOpen the contact page?`)) {
+          router.push(`/admin/contacts/${contactId}`);
+        }
+      } else {
+        alert(data.message || 'Contact and project created successfully.');
+      }
+    } catch (err: any) {
+      console.error('Create contact and project failed:', err);
+      alert(err.message || 'Failed to create contact and project.');
+    } finally {
+      setCreatingContactAndProject(false);
     }
   };
 
@@ -847,6 +882,23 @@ export default function FormSubmissionsPage() {
 
             {/* Modal Footer */}
             <div className="bg-white px-6 py-4 border-t border-gray-200 flex flex-wrap gap-3">
+              <button
+                onClick={() => createContactAndProject(selectedSubmission)}
+                disabled={creatingContactAndProject}
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-[#fcba00] text-gray-900 rounded-lg hover:bg-[#e5a800] transition-colors font-semibold min-w-[180px] disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {creatingContactAndProject ? (
+                  <>
+                    <Loader className="w-4 h-4 animate-spin" />
+                    <span>Creating...</span>
+                  </>
+                ) : (
+                  <>
+                    <UserPlus className="w-4 h-4" />
+                    <span>Create Contact & Project</span>
+                  </>
+                )}
+              </button>
               <button
                 onClick={() => setShowEmailModal(true)}
                 className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium min-w-[140px]"
