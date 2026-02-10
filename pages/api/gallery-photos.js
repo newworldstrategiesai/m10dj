@@ -17,7 +17,7 @@ export default async function handler(req, res) {
     const supabase = createClient(supabaseUrl, supabaseAnonKey);
     const { data, error } = await supabase
       .from('gallery_photos')
-      .select('id, src, alt, caption, sort_order')
+      .select('id, src, alt, caption, sort_order, created_at, updated_at')
       .order('sort_order', { ascending: true })
       .order('created_at', { ascending: true });
 

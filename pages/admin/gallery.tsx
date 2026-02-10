@@ -39,7 +39,18 @@ type GalleryPhoto = {
   caption: string;
   sort_order: number;
   created_at?: string;
+  updated_at?: string;
 };
+
+function formatMetaDate(iso?: string) {
+  if (!iso) return '—';
+  try {
+    const d = new Date(iso);
+    return d.toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' });
+  } catch {
+    return iso;
+  }
+}
 
 const ADMIN_EMAILS = [
   'admin@m10djcompany.com',
@@ -293,6 +304,14 @@ export default function AdminGalleryPage() {
                       </p>
                     )}
                     <p className="text-xs text-zinc-400">Order: {photo.sort_order}</p>
+                    <div className="mt-2 pt-2 border-t border-zinc-200 dark:border-zinc-700">
+                      <p className="text-xs text-zinc-400" title={photo.created_at}>
+                        Created: {formatMetaDate(photo.created_at)}
+                      </p>
+                      <p className="text-xs text-zinc-400" title={photo.updated_at}>
+                        Updated: {formatMetaDate(photo.updated_at)}
+                      </p>
+                    </div>
                   </CardHeader>
                   <CardContent className="p-4 pt-0 flex gap-2">
                     <Button
@@ -351,32 +370,53 @@ export default function AdminGalleryPage() {
                   </div>
                 )}
               </div>
-              <div className="grid gap-2">
-                <Label htmlFor="alt">Alt text</Label>
-                <Input
-                  id="alt"
-                  value={formAlt}
-                  onChange={(e) => setFormAlt(e.target.value)}
-                  placeholder="Describe the image for accessibility"
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="caption">Caption</Label>
-                <Input
-                  id="caption"
-                  value={formCaption}
-                  onChange={(e) => setFormCaption(e.target.value)}
-                  placeholder="Short caption (e.g. venue or event)"
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="sort">Sort order</Label>
-                <Input
-                  id="sort"
-                  type="number"
-                  value={formSortOrder}
-                  onChange={(e) => setFormSortOrder(Number(e.target.value) || 0)}
-                />
+
+              {editing && (
+                <div className="grid gap-2 rounded-md border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900/50 p-3">
+                  <Label className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Metadata (read-only)</Label>
+                  <div className="grid grid-cols-2 gap-2 text-xs text-zinc-600 dark:text-zinc-400">
+                    <span>Created:</span>
+                    <span>{formatMetaDate(editing.created_at)}</span>
+                    <span>Updated:</span>
+                    <span>{formatMetaDate(editing.updated_at)}</span>
+                  </div>
+                </div>
+              )}
+
+              <div className="grid gap-2 rounded-md border border-zinc-200 dark:border-zinc-700 p-3">
+                <Label className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Editable metadata</Label>
+                <div className="grid gap-2 mt-1">
+                  <div>
+                    <Label htmlFor="alt" className="text-xs">Alt text</Label>
+                    <Input
+                      id="alt"
+                      value={formAlt}
+                      onChange={(e) => setFormAlt(e.target.value)}
+                      placeholder="Describe the image for accessibility"
+                      className="mt-1"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="caption" className="text-xs">Caption</Label>
+                    <Input
+                      id="caption"
+                      value={formCaption}
+                      onChange={(e) => setFormCaption(e.target.value)}
+                      placeholder="Short caption (e.g. venue or event)"
+                      className="mt-1"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="sort" className="text-xs">Sort order</Label>
+                    <Input
+                      id="sort"
+                      type="number"
+                      value={formSortOrder}
+                      onChange={(e) => setFormSortOrder(Number(e.target.value) || 0)}
+                      className="mt-1"
+                    />
+                  </div>
+                </div>
               </div>
             </div>
             <DialogFooter>
