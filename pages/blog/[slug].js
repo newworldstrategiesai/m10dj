@@ -137,7 +137,9 @@ export default function BlogPost({ post: initialPost, relatedPosts: initialRelat
     return `${readingTime} min read`;
   };
 
-  const shareUrl = `https://m10djcompany.com/blog/${post.slug}`;
+  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://m10djcompany.com';
+  const shareUrl = `${baseUrl}/blog/${post.slug}`;
+  const ogImageUrl = `${baseUrl}/api/og/blog/${post.slug}`;
   const shareTitle = encodeURIComponent(post.title);
   const shareText = encodeURIComponent(post.excerpt || post.title);
   const articleHtml = useMemo(() => getArticleHtml(post.content), [post.content]);
@@ -167,20 +169,19 @@ export default function BlogPost({ post: initialPost, relatedPosts: initialRelat
           <meta key={tag} property="article:tag" content={tag} />
         ))}
         
-        {post.featured_image_url && (
-          <>
-            <meta property="og:image" content={post.featured_image_url} />
-            <meta property="og:image:alt" content={post.title} />
-          </>
-        )}
+        {/* Custom OG image: title + photo/gradient + overlay (generated at /api/og/blog/[slug]) */}
+        <meta property="og:image" content={ogImageUrl} />
+        <meta property="og:image:width" content="1200" />
+        <meta property="og:image:height" content="630" />
+        <meta property="og:image:alt" content={post.title} />
+        <meta property="og:image:type" content="image/png" />
         
         {/* Twitter Card tags */}
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content={post.title} />
         <meta name="twitter:description" content={post.excerpt || post.title} />
-        {post.featured_image_url && (
-          <meta name="twitter:image" content={post.featured_image_url} />
-        )}
+        <meta name="twitter:image" content={ogImageUrl} />
+        <meta name="twitter:image:alt" content={post.title} />
         
         {/* Additional SEO tags */}
         <meta name="geo.region" content="US-TN" />
@@ -416,7 +417,7 @@ export default function BlogPost({ post: initialPost, relatedPosts: initialRelat
             "@type": "BlogPosting",
             "headline": post.title,
             "description": post.excerpt || post.title,
-            "image": post.featured_image_url || "https://m10djcompany.com/logo-static.jpg",
+            "image": ogImageUrl,
             "url": shareUrl,
             "datePublished": post.published_at,
             "dateModified": post.updated_at,

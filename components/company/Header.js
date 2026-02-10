@@ -16,32 +16,11 @@ const ThemeToggle = dynamic(() => import('./ThemeToggle'), { ssr: false });
 
 // Helper function to get absolute URL for assets (works across domains)
 // For shared assets, use the appropriate domain based on the product
+// Use relative path so server and client render the same (avoids hydration mismatch).
+// Assets are served from the same origin; do not branch on window so SSR and client match.
 const getAssetUrl = (path) => {
-  // Determine the main domain for shared assets
-  const mainDomain = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.m10djcompany.com';
-  
-  if (typeof window === 'undefined') {
-    // Server-side: use main domain for shared assets
-    return `${mainDomain}${path}`;
-  }
-  
-  // Client-side: use relative paths for localhost (development)
-  const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-  
-  if (isLocalhost) {
-    // Return relative path for localhost - Next.js Image will treat it as a local image
-    return path.startsWith('/') ? path : `/${path}`;
-  }
-  
-  // For production domains, use main domain for shared assets
-  // TipJar logos should be on tipjar.live, M10 logos on m10djcompany.com
-  if (path.startsWith('http://') || path.startsWith('https://')) {
-    return path; // Already absolute
-  }
-  
-  // Use main domain for shared assets
-  // Note: Each product should use its own domain for logos (TipJar uses tipjar.live, M10 uses m10djcompany.com)
-  return `${mainDomain}${path.startsWith('/') ? path : `/${path}`}`;
+  if (path.startsWith('http://') || path.startsWith('https://')) return path;
+  return path.startsWith('/') ? path : `/${path}`;
 };
 
 // Helper function to detect domain
@@ -824,11 +803,9 @@ export default function Header({
                       );
                     }
                     
-                    // Default fallback: Show M10 logo if not on TipJar or DJ Dash domains
-                    // This handles SSR cases where domain detection might not work, and ensures
-                    // M10 logo shows on m10djcompany.com as the default
-                    const isNotTipJarOrDJDash = typeof window === 'undefined' || 
-                      (!isTipJarDomain() && !isDJDashDomain());
+                    // Default fallback: Show M10 logo if not on TipJar or DJ Dash domains.
+                    // Use isMounted so server and initial client render the same (avoids hydration mismatch).
+                    const isNotTipJarOrDJDash = !isMounted || (!isTipJarDomain() && !isDJDashDomain());
                     
                     if (isNotTipJarOrDJDash) {
                       if (shouldBeTransparent) {

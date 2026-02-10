@@ -240,7 +240,7 @@ export default function Footer() {
         <div className="flex flex-col md:flex-row items-center justify-between space-y-4 md:space-y-0">
           <div className="text-center md:text-left">
             <p className="text-gray-400 font-inter text-sm md:text-base">
-              © {currentYear} <span className="text-brand font-semibold">M10 DJ Company</span>. All rights reserved.
+              © <span suppressHydrationWarning>{currentYear}</span> <span className="text-brand font-semibold">M10 DJ Company</span>. All rights reserved.
             </p>
             <p className="text-gray-500 text-xs md:text-sm font-inter mt-1">
               Licensed & Insured • Professional Event Entertainment
