@@ -1,7 +1,7 @@
 import Head from 'next/head';
 import Header from '../components/company/Header';
-import HeroPhotoCarousel from '../components/company/HeroPhotoCarousel';
 import PhotoGallery from '../components/company/PhotoGallery';
+import { Music } from 'lucide-react';
 
 // Fallback when API returns empty or before migration (admin-managed photos in DB)
 const FALLBACK_PHOTOS = [
@@ -75,12 +75,26 @@ export default function GalleryPage({ photos }) {
       <Header />
 
       <main className="min-h-screen bg-white dark:bg-zinc-950">
-        <HeroPhotoCarousel
-          photos={galleryPhotos}
-          title="Photo Gallery"
-          subtitle="M10 DJ Company"
-          description="Moments from weddings, corporate events, New Year's Eve on Beale Street, and more. Click any photo to view full size and browse."
-        />
+        {/* Hero */}
+        <section className="section-container py-12 md:py-16">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-10 h-10 md:w-12 md:h-12 bg-amber-400 text-black rounded-lg flex items-center justify-center flex-shrink-0">
+              <Music className="w-5 h-5 md:w-6 md:h-6" />
+            </div>
+            <div>
+              <h1 className="text-3xl md:text-4xl font-bold text-zinc-900 dark:text-white font-sans">
+                Photo Gallery
+              </h1>
+              <p className="text-amber-500 dark:text-amber-400 font-semibold font-inter">
+                M10 DJ Company
+              </p>
+            </div>
+          </div>
+          <p className="text-zinc-600 dark:text-zinc-400 max-w-2xl text-base md:text-lg">
+            Moments from weddings, corporate events, New Year&apos;s Eve on Beale Street, and more.
+            Click any photo to view full size and browse.
+          </p>
+        </section>
 
         {/* Gallery grid + modal (admin-managed via /admin/gallery or fallback) */}
         <section className="section-container pb-16 md:pb-24">
