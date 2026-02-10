@@ -374,14 +374,14 @@ export default function NewYearsEveBealeStreet2026() {
                 countdowns, and live feeds to the thousands below. From this elevated stage, <strong className="text-gray-900 dark:text-white">DJ Ben Murray</strong> and{' '}
                 <strong className="text-gray-900 dark:text-white">DJ Tree</strong> delivered high-energy sets that anchored the night&apos;s soundtrack.
               </p>
-              <div className="rounded-2xl overflow-hidden shadow-xl mb-8">
-                <div className="relative aspect-[16/10] w-full">
+              <div className="rounded-2xl overflow-hidden shadow-xl mb-8 flex justify-center">
+                <div className="relative w-full max-w-[280px] sm:max-w-[320px] md:max-w-[360px] aspect-[3/4] bg-gray-100 dark:bg-gray-700/50">
                   <Image
                     src={PHOTO_2}
                     alt="NYE on Beale Street 2026 - tower stage, LED screens, and crowd on Beale Street"
                     fill
-                    className="object-cover"
-                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 80vw, 1024px"
+                    className="object-contain"
+                    sizes="(max-width: 640px) 280px, (max-width: 768px) 320px, 360px"
                   />
                 </div>
               </div>

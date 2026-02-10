@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/router';
-import { 
+import { marked } from 'marked';
+import {
   Calendar,
   User,
   Tag,
@@ -18,6 +19,22 @@ import {
 import Header from '../../components/company/Header';
 import Footer from '../../components/company/Footer';
 import { db } from '../../utils/company_lib/supabase';
+
+// Render markdown blog content as HTML (WordPress-style article formatting)
+function getArticleHtml(content) {
+  if (!content || typeof content !== 'string') return '';
+  const trimmed = content.trim();
+  // Already HTML (e.g. from editor)
+  if (trimmed.startsWith('<') && (trimmed.startsWith('<p>') || trimmed.startsWith('<div') || trimmed.startsWith('<h'))) {
+    return content;
+  }
+  // Markdown: convert to HTML
+  marked.setOptions({ gfm: true, breaks: true });
+  let html = marked.parse(content);
+  // Add target="_blank" and rel="noopener" to external links (prose styles links via parent)
+  html = html.replace(/<a href="(https?:\/\/[^"]*)"/g, '<a href="$1" target="_blank" rel="noopener noreferrer"');
+  return html;
+}
 
 export default function BlogPost({ post: initialPost, relatedPosts: initialRelatedPosts }) {
   const router = useRouter();
@@ -123,6 +140,7 @@ export default function BlogPost({ post: initialPost, relatedPosts: initialRelat
   const shareUrl = `https://m10djcompany.com/blog/${post.slug}`;
   const shareTitle = encodeURIComponent(post.title);
   const shareText = encodeURIComponent(post.excerpt || post.title);
+  const articleHtml = useMemo(() => getArticleHtml(post.content), [post.content]);
 
   return (
     <>
@@ -242,15 +260,19 @@ export default function BlogPost({ post: initialPost, relatedPosts: initialRelat
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
               {/* Main Content */}
               <div className="lg:col-span-3">
-                <div 
+                <div
                   className="prose prose-lg dark:prose-invert max-w-none
-                    prose-headings:text-gray-900 dark:prose-headings:text-white
+                    prose-headings:text-gray-900 dark:prose-headings:text-white prose-headings:font-bold
+                    prose-h2:text-2xl prose-h2:mt-10 prose-h2:mb-4 prose-h2:pb-2 prose-h2:border-b prose-h2:border-gray-200 dark:prose-h2:border-gray-700
+                    prose-h3:text-xl prose-h3:mt-6 prose-h3:mb-3
+                    prose-p:text-gray-600 dark:prose-p:text-gray-300 prose-p:leading-relaxed
                     prose-a:text-brand-gold prose-a:no-underline hover:prose-a:underline
                     prose-strong:text-gray-900 dark:prose-strong:text-white
-                    prose-code:text-brand-gold prose-code:bg-gray-100 dark:prose-code:bg-gray-800
-                    prose-blockquote:border-brand-gold prose-blockquote:bg-gray-50 dark:prose-blockquote:bg-gray-800
+                    prose-ul:my-4 prose-li:my-1
+                    prose-code:text-brand-gold prose-code:bg-gray-100 dark:prose-code:bg-gray-800 prose-code:px-1 prose-code:rounded
+                    prose-blockquote:border-l-4 prose-blockquote:border-brand-gold prose-blockquote:bg-gray-50 dark:prose-blockquote:bg-gray-800 prose-blockquote:py-1 prose-blockquote:pl-4
                     prose-img:rounded-lg prose-img:shadow-lg"
-                  dangerouslySetInnerHTML={{ __html: post.content }}
+                  dangerouslySetInnerHTML={{ __html: articleHtml }}
                 />
 
                 {/* Tags */}
