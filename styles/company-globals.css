@@ -425,6 +425,20 @@ section:first-child {
   box-shadow: 0 0 0 3px rgba(252, 186, 0, 0.1) !important;
 }
 
+/* Modal form: same height for all fields (input, select, date) */
+.modal-form .modern-input,
+.modal-form .modern-select,
+.modal-form input[type="date"] {
+  min-height: 2.5rem !important;
+  box-sizing: border-box !important;
+}
+
+/* Modal form: compact textarea so form fits one screen */
+.modal-form .modal-textarea-compact {
+  min-height: 2.5rem !important;
+  resize: none !important;
+}
+
 .modern-textarea {
   width: 100% !important;
   padding: 1rem 1.25rem !important;

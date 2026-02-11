@@ -2,7 +2,6 @@
 
 import React, { useEffect, useRef } from 'react';
 import Image from 'next/image';
-import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronLeft, ChevronRight, X } from 'lucide-react';
@@ -50,6 +49,10 @@ export default function PhotoGallery({ photos }) {
     goTo(index + 1);
   };
 
+  const openPhoto = (photo) => {
+    router.push(`/gallery?photoId=${photo.id}`, undefined, { shallow: true, scroll: false });
+  };
+
   useEffect(() => {
     const onKey = (e) => {
       if (e.key === 'Escape') closeModal();
@@ -71,13 +74,18 @@ export default function PhotoGallery({ photos }) {
       {/* Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
         {photos.map((photo, i) => (
-          <Link
+          <button
             key={photo.id}
-            href={`/gallery?photoId=${photo.id}`}
-            shallow
-            scroll={false}
+            type="button"
             data-photo-id={photo.id}
-            className="group relative block aspect-[3/2] overflow-hidden rounded-lg bg-zinc-200 dark:bg-zinc-800 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-zinc-950"
+            onClick={() => openPhoto(photo)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                openPhoto(photo);
+              }
+            }}
+            className="group relative block w-full aspect-[3/2] overflow-hidden rounded-lg bg-zinc-200 dark:bg-zinc-800 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-zinc-950 touch-manipulation cursor-pointer text-left"
           >
             <motion.div
               initial={{ opacity: 0, y: 12 }}
@@ -92,14 +100,14 @@ export default function PhotoGallery({ photos }) {
                 height={GRID_SIZE * (2 / 3)}
                 placeholder="blur"
                 blurDataURL={BLUR_DATA_URL}
-                className="object-cover transition duration-300 group-hover:brightness-110"
+                className="object-cover transition duration-300 group-hover:brightness-110 pointer-events-none"
                 style={{ transform: 'translate3d(0, 0, 0)' }}
                 sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
                 loading={i < 4 ? 'eager' : 'lazy'}
               />
               <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors pointer-events-none rounded-lg" />
             </motion.div>
-          </Link>
+          </button>
         ))}
       </div>
 

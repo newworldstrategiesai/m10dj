@@ -1,13 +1,12 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
-
-const BLUR_DATA_URL =
-  'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/2wBDAQkJCQwLDBgNDRgyIRwhMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjL/wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBEQACEQADAPwA/9k=';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 const ROTATE_INTERVAL_MS = 5000;
+const SWIPE_THRESHOLD_PX = 50;
 
 /**
  * Hero header with photo carousel, dark gradient overlay, and overlaid title/subtitle.
@@ -28,14 +27,54 @@ export default function HeroPhotoCarousel({
 }) {
   const [index, setIndex] = useState(0);
   const items = Array.isArray(photos) && photos.length > 0 ? photos : [];
+  const itemsLengthRef = useRef(items.length);
+  const touchStartX = useRef(0);
+  const touchEndX = useRef(0);
 
   useEffect(() => {
-    if (items.length <= 1) return;
-    const t = setInterval(() => {
-      setIndex((i) => (i + 1) % items.length);
-    }, ROTATE_INTERVAL_MS);
-    return () => clearInterval(t);
+    itemsLengthRef.current = items.length;
   }, [items.length]);
+
+  const goTo = useCallback((nextIndex) => {
+    if (items.length <= 1) return;
+    setIndex((nextIndex + items.length) % items.length);
+  }, [items.length]);
+
+  const goPrev = useCallback(() => goTo(index - 1), [index, goTo]);
+  const goNext = useCallback(() => goTo(index + 1), [index, goTo]);
+
+  // Auto-advance on desktop and mobile (ref avoids stale closure)
+  useEffect(() => {
+    if (items.length <= 1) return;
+    const t = setInterval(() => goNext(), ROTATE_INTERVAL_MS);
+    return () => clearInterval(t);
+  }, [items.length, goNext]);
+
+  // Preload next/prev images so transition never shows placeholder or broken icon
+  useEffect(() => {
+    if (items.length <= 1 || typeof window === 'undefined') return;
+    const nextIdx = (index + 1) % items.length;
+    const prevIdx = (index - 1 + items.length) % items.length;
+    [items[nextIdx], items[prevIdx]].forEach((item) => {
+      if (!item?.src) return;
+      const img = new window.Image();
+      img.src = item.src.startsWith('/') ? window.location.origin + item.src : item.src;
+    });
+  }, [index, items]);
+
+  const onTouchStart = (e) => {
+    touchStartX.current = e.targetTouches[0].clientX;
+  };
+  const onTouchEnd = () => {
+    const diff = touchStartX.current - touchEndX.current;
+    if (Math.abs(diff) >= SWIPE_THRESHOLD_PX) {
+      if (diff > 0) goNext();
+      else goPrev();
+    }
+  };
+  const onTouchMove = (e) => {
+    touchEndX.current = e.targetTouches[0].clientX;
+  };
 
   if (items.length === 0) {
     return (
@@ -55,11 +94,14 @@ export default function HeroPhotoCarousel({
 
   return (
     <section
-      className={`relative h-[320px] overflow-hidden md:h-[420px] ${className}`}
+      className={`relative h-[320px] overflow-hidden md:h-[420px] touch-pan-y ${className}`}
       aria-label="Hero carousel"
+      onTouchStart={onTouchStart}
+      onTouchMove={onTouchMove}
+      onTouchEnd={onTouchEnd}
     >
-      {/* Carousel background images — explicit height so Next/Image fill has a container */}
-      <div className="absolute inset-0 z-0">
+      {/* Carousel background — solid dark behind so no broken/placeholder icon ever shows */}
+      <div className="absolute inset-0 z-0 bg-zinc-900">
         <AnimatePresence mode="wait" initial={false}>
           <motion.div
             key={current.id}
@@ -76,17 +118,37 @@ export default function HeroPhotoCarousel({
               className="object-cover"
               sizes="100vw"
               priority={index === 0}
-              placeholder="blur"
-              blurDataURL={BLUR_DATA_URL}
               unoptimized={current.src.startsWith('http') && current.src.includes('supabase')}
             />
           </motion.div>
         </AnimatePresence>
       </div>
 
+      {/* Desktop: prev/next click buttons — z-10 so they sit above the text overlay and receive clicks */}
+      {items.length > 1 && (
+        <>
+          <button
+            type="button"
+            onClick={goPrev}
+            className="absolute left-2 top-1/2 z-10 -translate-y-1/2 rounded-full bg-black/40 p-2 text-white hover:bg-black/60 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:ring-offset-2 focus:ring-offset-transparent md:left-4 md:p-2.5"
+            aria-label="Previous slide"
+          >
+            <ChevronLeft className="h-5 w-5 md:h-6 md:w-6" />
+          </button>
+          <button
+            type="button"
+            onClick={goNext}
+            className="absolute right-2 top-1/2 z-10 -translate-y-1/2 rounded-full bg-black/40 p-2 text-white hover:bg-black/60 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:ring-offset-2 focus:ring-offset-transparent md:right-4 md:p-2.5"
+            aria-label="Next slide"
+          >
+            <ChevronRight className="h-5 w-5 md:h-6 md:w-6" />
+          </button>
+        </>
+      )}
+
       {/* Dark gradient overlay — dark at bottom for text readability; top stays lighter so more photo shows on mobile */}
       <div
-        className="absolute inset-0 z-[1] bg-gradient-to-t from-black via-black/50 to-transparent md:from-black/90 md:via-black/50 md:to-black/40"
+        className="absolute inset-0 z-[1] bg-gradient-to-t from-black via-black/50 to-transparent md:from-black/90 md:via-black/50 md:to-black/40 pointer-events-none"
         aria-hidden
       />
 

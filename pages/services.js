@@ -62,11 +62,6 @@ export default function Services() {
 
   const categories = [...new Set(services.map(s => s.category))];
 
-  const formatPrice = (price) => {
-    if (!price) return 'Contact for pricing';
-    return `$${price.toLocaleString()}`;
-  };
-
   const ServiceCard = ({ service }) => {
     const IconComponent = categoryIcons[service.category] || Music;
     
@@ -138,17 +133,12 @@ export default function Services() {
             </div>
           )}
 
-          {/* Pricing */}
+          {/* CTA — no specific pricing listed */}
           <div className="flex items-center justify-between pt-6 border-t border-gray-200 dark:border-gray-700">
             <div>
-              <div className="text-2xl font-bold text-gray-900 dark:text-white">
-                {formatPrice(service.base_price)}
+              <div className="text-lg font-semibold text-gray-700 dark:text-gray-300">
+                Contact for pricing
               </div>
-              {service.price_unit && service.base_price && (
-                <div className="text-sm text-gray-500 dark:text-gray-400">
-                  per {service.price_unit}
-                </div>
-              )}
               {service.is_addon && (
                 <div className="text-xs bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-300 px-2 py-1 rounded-full mt-2 inline-block">
                   Add-on Service
@@ -216,7 +206,7 @@ export default function Services() {
               
               <p className="text-xl text-gray-300 mb-8 max-w-3xl mx-auto leading-relaxed">
                 Memphis's premier professional DJ services for intimate celebrations to grand events. Our experienced pro DJs deliver 
-                comprehensive entertainment with professional-grade equipment, skilled performances, and transparent pricing. Every event is customized to your unique vision.
+                comprehensive entertainment with professional-grade equipment and skilled performances. Request a custom quote for your event. Every event is customized to your unique vision.
               </p>
 
               <div className="grid grid-cols-2 md:grid-cols-4 gap-6 max-w-2xl mx-auto">
@@ -225,8 +215,8 @@ export default function Services() {
                   <div className="text-sm text-gray-300">Service Options</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-3xl font-bold text-brand-gold">$295</div>
-                  <div className="text-sm text-gray-300">Starting Price</div>
+                  <div className="text-3xl font-bold text-brand-gold">Free</div>
+                  <div className="text-sm text-gray-300">Custom Quotes</div>
                 </div>
                 <div className="text-center">
                   <div className="text-3xl font-bold text-brand-gold">8</div>
@@ -330,7 +320,7 @@ export default function Services() {
                     <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
                       Wedding Package
                     </h3>
-                    <div className="text-3xl font-bold text-brand-gold mb-2">$895</div>
+                    <div className="text-lg font-semibold text-gray-600 dark:text-gray-400 mb-2">Contact for pricing</div>
                     <div className="text-sm text-gray-500 dark:text-gray-400">Complete wedding entertainment</div>
                   </div>
                   <ul className="space-y-3 mb-8">
@@ -369,7 +359,7 @@ export default function Services() {
                     <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
                       Corporate Package
                     </h3>
-                    <div className="text-3xl font-bold text-brand-gold mb-2">$695</div>
+                    <div className="text-lg font-semibold text-gray-600 dark:text-gray-400 mb-2">Contact for pricing</div>
                     <div className="text-sm text-gray-500 dark:text-gray-400">Professional business events</div>
                   </div>
                   <ul className="space-y-3 mb-8">
@@ -408,7 +398,7 @@ export default function Services() {
                     <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
                       Party Package
                     </h3>
-                    <div className="text-3xl font-bold text-brand-gold mb-2">$495</div>
+                    <div className="text-lg font-semibold text-gray-600 dark:text-gray-400 mb-2">Contact for pricing</div>
                     <div className="text-sm text-gray-500 dark:text-gray-400">Birthday & celebration parties</div>
                   </div>
                   <ul className="space-y-3 mb-8">
@@ -549,9 +539,7 @@ export default function Services() {
             "offers": services.map(service => ({
               "@type": "Offer",
               "name": service.service_name,
-              "description": service.short_description,
-              "price": service.base_price || 0,
-              "priceCurrency": "USD"
+              "description": service.short_description
             }))
           })
         }}

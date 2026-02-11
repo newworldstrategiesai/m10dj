@@ -928,7 +928,7 @@ export default function Header({
                         }`}
                         onClick={() => toggleDropdown('areas')}
                       >
-                        Service Areas
+                        Areas
                         <ChevronDown className="ml-1 w-4 h-4 transition-transform group-hover:rotate-180" />
                       </button>
                       {openDropdown === 'areas' && (
@@ -1048,10 +1048,10 @@ export default function Header({
                   </>
                 )}
                 
-                {/* Phone Number */}
+                {/* Phone Number — single line, scales to fit */}
                 <a 
                   href="tel:+19014102020" 
-                  className={`flex items-center space-x-2 font-medium text-sm transition-colors px-3 py-2 rounded-md ${
+                  className={`flex items-center shrink-0 min-w-0 space-x-2 font-medium text-sm transition-colors px-3 py-2 rounded-md ${
                     shouldBeTransparent && !isScrolled
                       ? 'text-white hover:text-brand hover:bg-white/10'
                       : 'text-gray-700 dark:text-gray-200 hover:text-brand hover:bg-gray-50 dark:hover:bg-black/50'
@@ -1060,9 +1060,8 @@ export default function Header({
                     // trackContactAction('phone', 'header_desktop');
                   }}
                 >
-                  <Phone className={`w-4 h-4 ${shouldBeTransparent && !isScrolled ? '' : 'text-brand'}`} />
-                  <span className="hidden xl:inline">(901) 410-2020</span>
-                  <span className="xl:hidden">(901) 410-2020</span>
+                  <Phone className={`w-4 h-4 flex-shrink-0 ${shouldBeTransparent && !isScrolled ? '' : 'text-brand'}`} />
+                  <span className="whitespace-nowrap text-[clamp(0.625rem,1.5vw,0.875rem)]">(901) 410-2020</span>
                 </a>
                 
                 {/* Theme Toggle - Always show */}
@@ -1320,7 +1319,7 @@ export default function Header({
                       >
                         <span className="flex items-center gap-2">
                           <MapPin className="w-4 h-4 text-brand" />
-                        Service Areas
+                        Areas
                         </span>
                         <ChevronDown className={`w-5 h-5 transition-transform ${openDropdown === 'mobile-areas' ? 'rotate-180' : ''} text-brand`} />
                       </button>

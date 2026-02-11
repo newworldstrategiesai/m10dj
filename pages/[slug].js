@@ -760,7 +760,8 @@ export async function getStaticPaths() {
 
   return {
     paths,
-    fallback: 'blocking', // Check if it's a location or organization
+    // Only serve known location slugs; /gallery and other paths are handled by their own pages
+    fallback: false,
   };
 }
 

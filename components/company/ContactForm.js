@@ -644,12 +644,12 @@ export default function ContactForm({ className = '', showSubmitButton = true, i
   if (modalLayout) {
     return (
       <div className={`${className} flex flex-col`} style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-        <form onSubmit={handleSubmit} className={`flex flex-col flex-1 min-h-0 ${isModal ? 'space-y-3' : 'space-y-6'}`} style={{ display: 'flex', flexDirection: 'column', flex: '1 1 0%', minHeight: 0, overflow: 'hidden' }}>
-          {/* Scrollable form fields */}
-          <div className="flex-1 overflow-y-auto" style={{ WebkitOverflowScrolling: 'touch', flex: '1 1 0%', minHeight: 0, overflowY: 'auto' }}>
-            <div className="p-4">
+        <form onSubmit={handleSubmit} className={`flex flex-col flex-1 min-h-0 ${isModal ? 'space-y-2' : 'space-y-6'}`} style={{ display: 'flex', flexDirection: 'column', flex: '1 1 0%', minHeight: 0, overflow: 'hidden' }}>
+          {/* Form fields - no scroll in modal */}
+          <div className={`flex-1 min-h-0 flex flex-col ${isModal ? 'overflow-hidden' : 'overflow-y-auto'}`} style={isModal ? { flex: '1 1 0%', minHeight: 0 } : { WebkitOverflowScrolling: 'touch' }}>
+            <div className={isModal ? 'p-2 flex-1 min-h-0 flex flex-col' : 'p-4'}>
               {showRestoredNotice && (
-                <div className={`${isModal ? 'mb-3 p-2' : 'mb-6 p-4'} bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg flex items-start`}>
+                <div className={`${isModal ? 'mb-2 p-1.5' : 'mb-6 p-4'} bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg flex items-start`}>
                   <AlertCircle className={`${isModal ? 'w-4 h-4' : 'w-5 h-5'} text-blue-600 dark:text-blue-400 mr-2 mt-0.5 flex-shrink-0`} />
                   <div>
                     <p className={`text-blue-800 dark:text-blue-300 ${isModal ? 'text-xs' : 'text-sm'} font-inter font-semibold`}>
@@ -660,7 +660,7 @@ export default function ContactForm({ className = '', showSubmitButton = true, i
               )}
 
               {error && (
-                <div className={`${isModal ? 'mb-3 p-2' : 'mb-6 p-4'} bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg`}>
+                <div className={`${isModal ? 'mb-2 p-1.5' : 'mb-6 p-4'} bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg`}>
                   <p className={`text-red-700 dark:text-red-400 ${isModal ? 'text-xs' : 'text-sm'} font-inter`}>{error}</p>
                 </div>
               )}
@@ -680,7 +680,7 @@ export default function ContactForm({ className = '', showSubmitButton = true, i
               </div>
 
               {/* Form fields - same as below */}
-              <div className={`grid grid-cols-1 ${isModal ? 'md:grid-cols-2 gap-3' : 'md:grid-cols-2 gap-6'}`}>
+              <div className={`grid grid-cols-1 ${isModal ? 'md:grid-cols-2 gap-2' : 'md:grid-cols-2 gap-6'}`}>
                 <div>
                   <label htmlFor="name" className={`block ${isModal ? 'text-xs' : 'text-sm'} font-semibold text-gray-900 dark:text-gray-100 ${isModal ? 'mb-1' : 'mb-2'} font-inter`}>
                     Full Name *
@@ -738,7 +738,7 @@ export default function ContactForm({ className = '', showSubmitButton = true, i
                 </div>
               </div>
 
-              <div className={`grid grid-cols-1 ${isModal ? 'md:grid-cols-2 gap-3' : 'md:grid-cols-2 gap-6'}`}>
+              <div className={`grid grid-cols-1 ${isModal ? 'md:grid-cols-2 gap-2' : 'md:grid-cols-2 gap-6'}`}>
                 <div>
                   <label htmlFor="phone" className={`block ${isModal ? 'text-xs' : 'text-sm'} font-semibold text-gray-900 dark:text-gray-100 ${isModal ? 'mb-1' : 'mb-2'} font-inter`}>
                     Phone Number *
@@ -751,7 +751,6 @@ export default function ContactForm({ className = '', showSubmitButton = true, i
                     value={formData.phone}
                     onChange={handleInputChange}
                     className={`modern-input ${isModal ? 'py-2 text-sm' : ''} ${fieldErrors.phone ? 'border-red-500 dark:border-red-500 focus:border-red-500 focus:ring-red-500' : ''}`}
-                    placeholder="(901) 410-2020"
                   />
                   {fieldErrors.phone && (
                     <p className="mt-1 text-xs text-red-600 dark:text-red-400 flex items-start">
@@ -798,7 +797,7 @@ export default function ContactForm({ className = '', showSubmitButton = true, i
                 </div>
               </div>
 
-              <div className={`grid grid-cols-1 ${isModal ? 'md:grid-cols-2 gap-3' : 'md:grid-cols-2 gap-6'}`}>
+              <div className={`grid grid-cols-1 ${isModal ? 'md:grid-cols-2 gap-2' : 'md:grid-cols-2 gap-6'}`}>
                 <div>
                   <label htmlFor="eventDate" className={`block ${isModal ? 'text-xs' : 'text-sm'} font-semibold text-gray-900 dark:text-gray-100 ${isModal ? 'mb-1' : 'mb-2'} font-inter`}>
                     Event Date
@@ -873,10 +872,10 @@ export default function ContactForm({ className = '', showSubmitButton = true, i
                 <textarea
                   id="message"
                   name="message"
-                  rows={isModal ? "2" : "4"}
+                  rows={isModal ? "1" : "4"}
                   value={formData.message}
                   onChange={handleInputChange}
-                  className={`modern-textarea ${isModal ? 'py-2 text-sm' : ''}`}
+                  className={`modern-textarea ${isModal ? 'py-2 text-sm modal-textarea-compact' : ''}`}
                   placeholder="Tell us more about your event, special requests, or any questions you have..."
                 />
                 {fieldWarnings.message && (
@@ -890,7 +889,7 @@ export default function ContactForm({ className = '', showSubmitButton = true, i
           </div>
 
           {/* Sticky Submit Button Footer */}
-          <div className="flex-shrink-0 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-black shadow-lg" style={{ flexShrink: 0, flex: '0 0 auto', padding: '16px', paddingBottom: `max(16px, calc(env(safe-area-inset-bottom, 0px) + 16px))` }}>
+          <div className={`flex-shrink-0 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-black shadow-lg ${isModal ? 'px-2 py-2' : ''}`} style={isModal ? { flexShrink: 0, flex: '0 0 auto', paddingBottom: `max(8px, calc(env(safe-area-inset-bottom, 0px) + 8px))` } : { flexShrink: 0, flex: '0 0 auto', padding: '16px', paddingBottom: `max(16px, calc(env(safe-area-inset-bottom, 0px) + 16px))` }}>
             <button
               type="submit"
               disabled={isSubmitting}
@@ -917,7 +916,7 @@ export default function ContactForm({ className = '', showSubmitButton = true, i
               </div>
             )}
             
-            <p className={`text-center text-xs text-gray-500 dark:text-gray-400 ${isModal ? 'mt-2' : 'mt-4'} font-inter`}>
+            <p className={`text-center text-xs text-gray-500 dark:text-gray-400 ${isModal ? 'mt-1' : 'mt-4'} font-inter`}>
               We&apos;ll respond within 24 hours • <a href="tel:+19014102020" className="text-brand hover:underline font-semibold">Call (901) 410-2020</a> for immediate assistance
             </p>
           </div>
@@ -966,7 +965,7 @@ export default function ContactForm({ className = '', showSubmitButton = true, i
             autoComplete="off"
           />
         </div>
-        <div className={`grid grid-cols-1 ${isModal ? 'md:grid-cols-2 gap-3' : 'md:grid-cols-2 gap-6'}`}>
+        <div className={`grid grid-cols-1 ${isModal ? 'md:grid-cols-2 gap-2' : 'md:grid-cols-2 gap-6'}`}>
           <div>
             <label htmlFor="name" className={`block ${isModal ? 'text-xs' : 'text-sm'} font-semibold text-gray-900 dark:text-gray-100 ${isModal ? 'mb-1' : 'mb-2'} font-inter`}>
               Full Name *
@@ -1024,7 +1023,7 @@ export default function ContactForm({ className = '', showSubmitButton = true, i
           </div>
         </div>
 
-        <div className={`grid grid-cols-1 ${isModal ? 'md:grid-cols-2 gap-3' : 'md:grid-cols-2 gap-6'}`}>
+        <div className={`grid grid-cols-1 ${isModal ? 'md:grid-cols-2 gap-2' : 'md:grid-cols-2 gap-6'}`}>
           <div>
             <label htmlFor="phone" className={`block ${isModal ? 'text-xs' : 'text-sm'} font-semibold text-gray-900 dark:text-gray-100 ${isModal ? 'mb-1' : 'mb-2'} font-inter`}>
               Phone Number *
@@ -1037,7 +1036,6 @@ export default function ContactForm({ className = '', showSubmitButton = true, i
               value={formData.phone}
               onChange={handleInputChange}
               className={`modern-input ${isModal ? 'py-2 text-sm' : ''} ${fieldErrors.phone ? 'border-red-500 dark:border-red-500 focus:border-red-500 focus:ring-red-500' : ''}`}
-              placeholder="(901) 410-2020"
             />
             {fieldErrors.phone && (
               <p className="mt-1 text-xs text-red-600 dark:text-red-400 flex items-start">
@@ -1084,7 +1082,7 @@ export default function ContactForm({ className = '', showSubmitButton = true, i
           </div>
         </div>
 
-        <div className={`grid grid-cols-1 ${isModal ? 'md:grid-cols-2 gap-3' : 'md:grid-cols-2 gap-6'}`}>
+        <div className={`grid grid-cols-1 ${isModal ? 'md:grid-cols-2 gap-2' : 'md:grid-cols-2 gap-6'}`}>
           <div>
             <label htmlFor="eventDate" className={`block ${isModal ? 'text-xs' : 'text-sm'} font-semibold text-gray-900 dark:text-gray-100 ${isModal ? 'mb-1' : 'mb-2'} font-inter`}>
               Event Date

@@ -230,7 +230,7 @@ export default function VenueInput({
   };
 
   return (
-    <div ref={containerRef} className={`space-y-3 ${className}`}>
+    <div ref={containerRef} className={`${isModal ? 'space-y-2' : 'space-y-3'} ${className}`}>
       {/* Main Search Input - Show when no venue has been selected/entered */}
       {shouldShowSearchField && (
         <div className="relative">
@@ -298,7 +298,7 @@ export default function VenueInput({
                   setShowResults(false);
                 }, 200);
               }}
-              className={`w-full px-4 ${isModal ? 'py-2 text-sm' : 'py-3'} pr-10 border ${error ? 'border-red-500 dark:border-red-500' : 'border-gray-300 dark:border-gray-600'} rounded-lg bg-white dark:bg-black text-gray-900 dark:text-white focus:ring-2 ${error ? 'focus:ring-red-500 focus:border-red-500' : 'focus:ring-blue-500 focus:border-transparent'}`}
+              className={`w-full px-4 pr-10 border ${error ? 'border-red-500 dark:border-red-500' : 'border-gray-300 dark:border-gray-600'} rounded-lg bg-white dark:bg-black text-gray-900 dark:text-white focus:ring-2 ${error ? 'focus:ring-red-500 focus:border-red-500' : 'focus:ring-blue-500 focus:border-transparent'} ${isModal ? 'py-2 text-sm min-h-[2.5rem]' : 'py-3'}`}
               placeholder="Venue name or full address (e.g., 'Peabody' or '149 Union Ave, Memphis')"
             />
             <div className="absolute right-3 top-1/2 transform -translate-y-1/2 flex items-center gap-2">
@@ -384,7 +384,7 @@ export default function VenueInput({
                     setShowResults(false);
                   }, 200);
                 }}
-                className={`w-full px-4 ${isModal ? 'py-2 text-sm' : 'py-3'} border ${error ? 'border-red-500 dark:border-red-500' : 'border-gray-300 dark:border-gray-600'} rounded-lg bg-white dark:bg-black text-gray-900 dark:text-white focus:ring-2 ${error ? 'focus:ring-red-500 focus:border-red-500' : 'focus:ring-blue-500 focus:border-transparent'}`}
+                className={`w-full px-4 border ${error ? 'border-red-500 dark:border-red-500' : 'border-gray-300 dark:border-gray-600'} rounded-lg bg-white dark:bg-black text-gray-900 dark:text-white focus:ring-2 ${error ? 'focus:ring-red-500 focus:border-red-500' : 'focus:ring-blue-500 focus:border-transparent'} ${isModal ? 'py-2 text-sm min-h-[2.5rem]' : 'py-3'}`}
                 placeholder="Venue name"
               />
               {/* Results Dropdown for Venue Name */}
@@ -444,7 +444,7 @@ export default function VenueInput({
                     setShowResults(false);
                   }, 200);
                 }}
-                className={`w-full px-4 ${isModal ? 'py-2 text-sm' : 'py-3'} border ${error ? 'border-red-500 dark:border-red-500' : 'border-gray-300 dark:border-gray-600'} rounded-lg bg-white dark:bg-black text-gray-900 dark:text-white focus:ring-2 ${error ? 'focus:ring-red-500 focus:border-red-500' : 'focus:ring-blue-500 focus:border-transparent'}`}
+                className={`w-full px-4 border ${error ? 'border-red-500 dark:border-red-500' : 'border-gray-300 dark:border-gray-600'} rounded-lg bg-white dark:bg-black text-gray-900 dark:text-white focus:ring-2 ${error ? 'focus:ring-red-500 focus:border-red-500' : 'focus:ring-blue-500 focus:border-transparent'} ${isModal ? 'py-2 text-sm min-h-[2.5rem]' : 'py-3'}`}
                 placeholder="Full address"
               />
               {/* Results Dropdown for Venue Address */}

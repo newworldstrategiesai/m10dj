@@ -129,8 +129,8 @@ export default function Home({ heroPhotos = [] }) {
           description="Trusted Memphis Wedding DJ – 15+ Years, 500+ Celebrations"
         />
 
-        {/* Content section below hero (headline is on carousel above) */}
-        <section id="home" className={`relative flex items-center justify-center bg-gradient-to-br from-slate-50 via-white to-amber-50/30 dark:from-black dark:via-black dark:to-black text-gray-900 dark:text-white overflow-hidden py-16 md:py-24 ${isVisible ? 'animate-fade-in' : 'opacity-0'}`}>
+        {/* Content section below hero (headline is on carousel above) — always visible so no blank space on desktop */}
+        <section id="home" className={`relative flex items-center justify-center bg-gradient-to-br from-slate-50 via-white to-amber-50/30 dark:from-black dark:via-black dark:to-black text-gray-900 dark:text-white overflow-hidden py-16 md:py-24 opacity-100 ${isVisible ? 'animate-fade-in' : ''}`}>
           <div className="section-container relative z-10 text-center">
             <div className="max-w-5xl mx-auto">
               {/* Content Block with Better Shadows */}
