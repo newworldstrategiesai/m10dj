@@ -31,6 +31,7 @@
     "generate:og-simple": "node scripts/generate-og-simple.js",
     "agent:dev": "tsx watch agents/index.ts",
     "agent:start": "tsx agents/index.ts",
+    "verify:inbound-agent": "node scripts/verify-livekit-inbound-agent.js",
     "audit:sync": "node scripts/sync-audit.js",
     "audit:sync:json": "node scripts/sync-audit.js --json",
     "audit:sync:md": "node scripts/sync-audit.js --markdown"

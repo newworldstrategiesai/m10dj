@@ -7,9 +7,15 @@ Set in env:
   LIVEKIT_AGENT_CONFIG_URL  – e.g. https://m10djcompany.com/api/livekit/agent-config
   LIVEKIT_AGENT_CONFIG_TOKEN – same as LIVEKIT_AGENT_CONFIG_TOKEN in the Next.js app
   OPENAI_API_KEY, ELEVENLABS_API_KEY (or as required by plugins)
+  AGENT_SEND_SMS_URL – e.g. https://m10djcompany.com/api/livekit/agent-send-sms (optional; enables send_sms tool)
+  AGENT_SEND_SMS_TOKEN or LIVEKIT_AGENT_CONFIG_TOKEN – Bearer token for agent-send-sms API
 """
+import asyncio
+import json
 import logging
 import os
+import urllib.error
+import urllib.request
 from dotenv import load_dotenv
 from livekit import rtc
 from livekit.agents import (
@@ -21,7 +27,10 @@ from livekit.agents import (
     BuiltinAudioClip,
     JobContext,
     JobProcess,
+    RunContext,
     cli,
+    function_tool,
+    get_job_context,
     inference,
     room_io,
 )
@@ -73,6 +82,36 @@ def fetch_agent_config() -> dict:
         return {}
 
 
+def _send_sms_sync(url: str, token: str, room_name: str, body: str) -> tuple[bool, str]:
+    """Blocking HTTP POST to agent-send-sms API. Returns (ok, message)."""
+    try:
+        data = json.dumps({"roomName": room_name, "body": body}).encode("utf-8")
+        req = urllib.request.Request(
+            url,
+            data=data,
+            headers={
+                "Authorization": f"Bearer {token}",
+                "Content-Type": "application/json",
+            },
+            method="POST",
+        )
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            result = json.loads(resp.read().decode())
+            if result.get("success"):
+                return True, "Text message sent."
+            return False, result.get("error", "Failed to send SMS.")
+    except urllib.error.HTTPError as e:
+        try:
+            err_body = e.read().decode()
+            err_json = json.loads(err_body)
+            msg = err_json.get("error", err_body)
+        except Exception:
+            msg = str(e)
+        return False, msg
+    except Exception as e:
+        return False, str(e)
+
+
 class DefaultAgent(Agent):
     def __init__(self, instructions: str, greeting_text: str) -> None:
         super().__init__(instructions=instructions)
@@ -83,6 +122,24 @@ class DefaultAgent(Agent):
             instructions=greeting,
             allow_interruptions=True,
         )
+
+    @function_tool()
+    async def send_sms(self, context: RunContext, message: str) -> str:
+        """Send an SMS to the caller on the current call. Use when the user asks to be texted a link, summary, or follow-up (e.g. booking link, quote confirmation, callback reminder). The message will be sent to the caller's phone for this call.
+
+        Args:
+            message: The exact text to send in the SMS. Keep it brief and include any link or details the user requested.
+        """
+        url = os.environ.get("AGENT_SEND_SMS_URL", "").rstrip("/")
+        token = os.environ.get("AGENT_SEND_SMS_TOKEN") or os.environ.get("LIVEKIT_AGENT_CONFIG_TOKEN", "")
+        if not url or not token:
+            return "SMS is not configured; I can't send a text right now."
+        job_ctx = get_job_context()
+        room_name = job_ctx.room.name if job_ctx and job_ctx.room else ""
+        if not room_name:
+            return "I couldn't determine the current call; I can't send an SMS."
+        ok, msg = await asyncio.to_thread(_send_sms_sync, url, token, room_name, message.strip())
+        return msg
 
 
 server = AgentServer()
