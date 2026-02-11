@@ -18,10 +18,10 @@ This checks: LiveKit env and API, agent dispatch (`createDispatch(roomName, "Ben
    Caller dials your Twilio number → Twilio **Elastic SIP Trunk** sends SIP to **LiveKit SIP** (not Twilio Programmable Voice).
 
 2. **LiveKit creates room**  
-   LiveKit **SIP dispatch rule** creates a room and attaches the SIP participant. **Room names must start with `inbound-`** (e.g. `inbound-19015551234-1739123456`).
+   LiveKit **SIP dispatch rule** creates a room and attaches the SIP participant. **Room names should start with `inbound-` or `sip-`** (e.g. `inbound-19015551234-1739123456`). Both prefixes create a row in admin call history.
 
 3. **Webhook runs**  
-   LiveKit sends `participant_joined` to your webhook (`/api/livekit/webhook`). The app only handles this for rooms whose name starts with **`inbound-`**.
+   LiveKit sends `room_started` and `participant_joined` to your webhook (`/api/livekit/webhook`). The app creates/updates `voice_calls` for rooms whose name starts with **`inbound-`** or **`sip-`**.
 
 4. **App creates voice_calls and notifies admins**  
    `handleInboundSipCall` inserts a `voice_calls` row and broadcasts to admins (IncomingCallOverlay).
@@ -39,7 +39,7 @@ This checks: LiveKit env and API, agent dispatch (`createDispatch(roomName, "Ben
 | Cause | What to check |
 |-------|----------------|
 | **Calls not going to LiveKit SIP** | Twilio number must use **Elastic SIP Trunk** with origination URI pointing at **LiveKit SIP endpoint**. If the number uses a **Voice webhook** (e.g. `pages/api/voice/incoming-call.js`), the call never hits LiveKit; the app creates a `call-*` room but the caller is dialed to the admin and never joins that room. |
-| **Dispatch rule room prefix** | In LiveKit Cloud → Telephony → SIP → Dispatch rules, the rule that creates the room for inbound calls must use a room name **starting with `inbound-`**. If the prefix is different (e.g. `sip-` or no prefix), the webhook does not run `handleInboundSipCall` or `scheduleAutoAnswer`. |
+| **Dispatch rule room prefix** | In LiveKit Cloud → Telephony → SIP → Dispatch rules, the room name must **start with `inbound-` or `sip-`**. Both are supported; if you use another prefix, the app will not create `voice_calls` rows and calls will not appear in admin call history. |
 | **Webhook URL missing or wrong** | LiveKit project must have webhook URL set to `https://<your-domain>/api/livekit/webhook`. Otherwise `participant_joined` never hits your app. |
 | **Agent not running or wrong name** | The Python agent (`agents/ben_agent.py`) must be **running** and registered with **agent_name="Ben"**. If you use a different agent (e.g. TS `agents/index.ts`), it must also register with the same name. `createDispatch(roomName, "Ben", …)` only reaches workers that registered as "Ben". |
 | **Agent name mismatch** | `livekit_agent_settings.default_m10.agent_name` should be **"Ben"** (or whatever name the agent registers). If the DB says another name, dispatch still uses that name; the worker must match. |
@@ -73,7 +73,22 @@ LiveKit sends **200 OK** (answers the call) only when **another participant publ
 | **Agent is slow (cold start / TTS)** | Time from INVITE to first agent audio can be long (cold start, model load, first TTS). Caller may hear ringback for 10–30+ seconds. Reduce by: keeping the agent warm, using faster TTS/STT models, or a very short first utterance so tracks publish sooner. |
 | **Errors in agent** | Check LiveKit Cloud agent logs (or your agent logs) during a test call: does the job start? Does the agent join the room? Does it reach `on_enter` and `generate_reply`? Any exceptions (e.g. OPENAI_API_KEY, ELEVENLABS_API_KEY)? |
 
-**Quick check:** During a live test call, open LiveKit Cloud → Rooms → open the `inbound-*` room. Is there a second participant (the agent)? Does that participant have a published audio track? If no second participant or no track, fix dispatch/agent or agent code so the agent joins and publishes a greeting immediately.
+**Quick check:** During a live test call, open LiveKit Cloud → Rooms → open the `inbound-*` or `sip-*` room. Is there a second participant (the agent)? Does that participant have a published audio track? If no second participant or no track, fix dispatch/agent or agent code so the agent joins and publishes a greeting immediately.
+
+---
+
+## Calls in LiveKit but not in admin call history
+
+You see rooms/calls in **LiveKit Cloud → Rooms** but nothing at **Admin → Calls → History** ([/admin/calls/history](https://www.m10djcompany.com/admin/calls/history)). That page reads from the **`voice_calls`** table; rows are created only when your app’s webhook runs for those rooms.
+
+| Check | What to do |
+|-------|------------|
+| **Webhook URL** | In LiveKit Cloud → Project → Webhooks, set the URL to `https://<your-app-domain>/api/livekit/webhook` (e.g. `https://www.m10djcompany.com/api/livekit/webhook`). Use the same domain as your deployed app. Without this, the app never receives `room_started` / `participant_joined` and never creates `voice_calls` rows. |
+| **Room name prefix** | The app creates `voice_calls` only for rooms whose name **starts with `inbound-` or `sip-`**. In LiveKit Cloud → Telephony → SIP → Dispatch rules, set the inbound rule’s room name to use one of these prefixes (e.g. `inbound-{{.CallID}}` or `sip-{{.CallID}}`). If your rooms use a different prefix, they will not appear in call history. |
+| **RLS / admin access** | Call history is visible only to users who pass the “Admins can view all voice calls” RLS policy (i.e. in `admin_roles` with `is_active = true`). If you’re not in `admin_roles`, you won’t see any rows. |
+| **Deploy** | After changing the webhook or room names, new calls should create rows. Existing LiveKit rooms created before the fix will not have rows unless you backfill or the room is recreated. |
+
+The app now creates a **minimal** `voice_calls` row on **`room_started`** for `inbound-*` and `sip-*` rooms, then updates **`client_phone`** on **`participant_joined`**. So you get a row as soon as the room exists, even if `participant_joined` is delayed.
 
 ---
 

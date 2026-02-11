@@ -27,8 +27,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Only allow joining inbound-* rooms (SIP inbound convention)
-    if (!roomName.startsWith('inbound-')) {
+    // Only allow joining inbound-* or sip-* rooms (SIP inbound convention)
+    if (!roomName.startsWith('inbound-') && !roomName.startsWith('sip-')) {
       return NextResponse.json(
         { error: 'Invalid room for inbound answer' },
         { status: 400 }

@@ -17,6 +17,7 @@ export default function ConfirmationPage() {
   const [hasPayment, setHasPayment] = useState(false);
 
   const fetchData = useCallback(async (retryCount = 0) => {
+    let skipLoadingFalse = false; // when true, we're retrying so keep loading spinner until retry completes
     try {
       const [leadResponse, quoteResponse] = await Promise.all([
         fetch(`/api/leads/get-lead?id=${id}?_t=${Date.now()}`),
@@ -48,14 +49,14 @@ export default function ConfirmationPage() {
           addonsTotal: (quote.addons || []).reduce((sum, a) => sum + (Number(a.price) || 0), 0)
         });
       } else if (quoteResponse.status === 404 && retryCount < 3) {
-        // Quote not found - might be a timing issue, retry after a short delay
+        // Quote not found - likely timing (save just committed). Retry without showing "Quote Not Found".
         console.log(`⚠️ Quote not found, retrying... (attempt ${retryCount + 1}/3)`);
-        // Don't set loading to false yet - we're retrying
-        // Schedule retry but don't return - let the finally block handle loading state
+        skipLoadingFalse = true;
+        const delayMs = [400, 800, 1200][retryCount]; // shorter first delays so we don't flash error
         setTimeout(async () => {
           await fetchData(retryCount + 1);
-        }, 1000 * (retryCount + 1)); // Exponential backoff: 1s, 2s, 3s
-        // Continue to finally block to set loading to false for this attempt
+        }, delayMs);
+        return;
       } else if (quoteResponse.status === 404) {
         console.error('❌ Quote not found after retries');
         // Set quoteData to null so the page can render the "no quote" message
@@ -115,7 +116,7 @@ export default function ConfirmationPage() {
     } catch (error) {
       console.error('Error fetching data:', error);
     } finally {
-      setLoading(false);
+      if (!skipLoadingFalse) setLoading(false);
     }
   }, [id, payment_intent]);
 

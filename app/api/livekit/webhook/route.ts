@@ -40,6 +40,10 @@ export async function POST(request: NextRequest) {
         // Update stream status to live
         if (event.room) {
           await updateStreamStatus(event.room.name, true);
+          // Inbound voice: create voice_calls row as soon as room exists (admin history shows call even if participant_joined is delayed or room name is only checked here)
+          if (event.room.name.startsWith('inbound-') || event.room.name.startsWith('sip-')) {
+            await ensureInboundVoiceCallRow(event.room.name);
+          }
           // Meet rooms: set metadata with startedAt for master timer (visible to all participants)
           if (event.room.name.startsWith('meet-')) {
             try {
@@ -64,8 +68,12 @@ export async function POST(request: NextRequest) {
         // Update stream status to offline
         if (event.room) {
           await updateStreamStatus(event.room.name, false);
-          // Voice call end: update voice_calls for outbound-* / inbound-* rooms
-          if (event.room.name.startsWith('outbound-') || event.room.name.startsWith('inbound-')) {
+          // Voice call end: update voice_calls for outbound-* / inbound-* / sip-* rooms
+          if (
+            event.room.name.startsWith('outbound-') ||
+            event.room.name.startsWith('inbound-') ||
+            event.room.name.startsWith('sip-')
+          ) {
             await handleCallEnd(event.room.name);
           }
         }
@@ -76,14 +84,17 @@ export async function POST(request: NextRequest) {
         if (event.room) {
           console.log(`Participant joined: ${event.participant?.identity} to room ${event.room.name}`);
           await broadcastViewerCount(event.room.name);
-          // Inbound SIP call: room name prefix "inbound-" (LiveKit SIP dispatch rule convention)
-          if (event.room.name.startsWith('inbound-') && event.participant) {
+          // Inbound SIP call: room name prefix "inbound-" or "sip-" (LiveKit SIP dispatch rule)
+          if (
+            (event.room.name.startsWith('inbound-') || event.room.name.startsWith('sip-')) &&
+            event.participant
+          ) {
             const participantInfo = event.participant as unknown as MinimalParticipant;
             await handleInboundSipCall(event.room.name, participantInfo);
           }
 
           if (
-            event.room.name.startsWith('inbound-') &&
+            (event.room.name.startsWith('inbound-') || event.room.name.startsWith('sip-')) &&
             event.participant &&
             !isSipParticipant(event.participant as unknown as MinimalParticipant)
           ) {
@@ -125,7 +136,11 @@ export async function POST(request: NextRequest) {
         }));
         const egressId = (info?.egressId ?? info?.egress_id) as string | undefined;
         if (roomName) {
-          if (roomName.startsWith('outbound-') || roomName.startsWith('inbound-')) {
+          if (
+            roomName.startsWith('outbound-') ||
+            roomName.startsWith('inbound-') ||
+            roomName.startsWith('sip-')
+          ) {
             await handleEgressEnded({ roomName, egressId, fileResults });
           } else if (roomName.startsWith('meet-')) {
             await handleMeetEgressEnded({ roomName, egressId, fileResults });
@@ -180,10 +195,11 @@ async function handleCallTranscription(
   text: string,
   isFinal: boolean
 ) {
-  // Process SIP call rooms: outbound-*, inbound-*, and legacy call-*
+  // Process SIP call rooms: outbound-*, inbound-*, sip-*, and legacy call-*
   const isCallRoom =
     roomName.startsWith('outbound-') ||
     roomName.startsWith('inbound-') ||
+    roomName.startsWith('sip-') ||
     roomName.startsWith('call-');
   if (!isCallRoom) return;
 
@@ -279,21 +295,37 @@ async function handleMeetTranscription(
   }
 }
 
-/** Handle inbound SIP call: create voice_calls row and notify admins to answer in browser */
-async function handleInboundSipCall(roomName: string, participant: MinimalParticipant) {
+/** Create a minimal voice_calls row when an inbound room starts (so admin history shows the call even if participant_joined is delayed or missed). */
+async function ensureInboundVoiceCallRow(roomName: string) {
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   );
-
   const { data: existing } = await supabase
     .from('voice_calls')
     .select('id')
     .eq('room_name', roomName)
     .limit(1)
-    .single();
-
+    .maybeSingle();
   if (existing) return;
+  await supabase.from('voice_calls').insert({
+    room_name: roomName,
+    contact_id: null,
+    client_phone: null,
+    admin_phone: null,
+    direction: 'inbound',
+    call_type: 'inbound',
+    status: 'ringing',
+    started_at: new Date().toISOString(),
+  });
+}
+
+/** Handle inbound SIP call: create or update voice_calls row and notify admins to answer in browser */
+async function handleInboundSipCall(roomName: string, participant: MinimalParticipant) {
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
 
   let phoneNumber = participant.identity ?? roomName;
   if (participant.metadata) {
@@ -303,6 +335,21 @@ async function handleInboundSipCall(roomName: string, participant: MinimalPartic
     } catch {
       // ignore
     }
+  }
+
+  const { data: existing } = await supabase
+    .from('voice_calls')
+    .select('id')
+    .eq('room_name', roomName)
+    .limit(1)
+    .maybeSingle();
+
+  if (existing) {
+    await supabase
+      .from('voice_calls')
+      .update({ client_phone: phoneNumber, updated_at: new Date().toISOString() })
+      .eq('room_name', roomName);
+    return;
   }
 
   await supabase.from('voice_calls').insert({

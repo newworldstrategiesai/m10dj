@@ -2308,6 +2308,17 @@ export default function PersonalizedQuote() {
               total_price: result.data.total_price,
               package_name: result.data.package_name
             });
+            // Brief wait so DB commit is visible before confirmation page loads
+            await new Promise(resolve => setTimeout(resolve, 450));
+            // Verify quote is readable so confirmation page doesn't show "Quote Not Found"
+            try {
+              const verifyResponse = await fetch(`/api/quote/${id}?_t=${Date.now()}`);
+              if (!verifyResponse.ok) {
+                await new Promise(resolve => setTimeout(resolve, 400));
+              }
+            } catch (_) {
+              // ignore; confirmation page will retry
+            }
           } else if (result.logged) {
             console.warn('⚠️ Quote was logged but may not have been saved to database');
             console.warn('⚠️ Error:', result.error);
@@ -2342,6 +2353,7 @@ export default function PersonalizedQuote() {
           console.log('🔄 Redirecting to confirmation...');
         } else {
           console.log('⚠️ API response indicates potential issue, but redirecting anyway');
+          await new Promise(resolve => setTimeout(resolve, 400));
         }
         
         // Always redirect to confirmation page
