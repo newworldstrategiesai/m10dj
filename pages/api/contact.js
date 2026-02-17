@@ -373,8 +373,34 @@ export default async function handler(req, res) {
           dbSubmission = updatedSubmission;
           console.log('✅ Updated existing draft to complete submission:', dbSubmission.id);
         } else {
-          // Create new submission
-          dbSubmission = await db.createContactSubmission(submissionData);
+          // Create new submission (use service role to bypass RLS - API handles auth)
+          const insertData = {
+            name: sanitizedData.name,
+            email: sanitizedData.email,
+            phone: sanitizedData.phone,
+            event_type: sanitizedData.eventType,
+            event_date: sanitizedData.eventDate,
+            location: sanitizedData.location,
+            message: sanitizedData.message,
+            organization_id: organizationId || null,
+            visitor_id: submissionData.visitor_id || null,
+            venue_name: submissionData.venueName || null,
+            venue_address: submissionData.venueAddress || null,
+            guests: req.body.guests || null,
+            status: 'new',
+            is_draft: false
+          };
+          if (submissionData.cta_source) insertData.cta_source = submissionData.cta_source;
+          if (submissionData.source_page) insertData.source_page = submissionData.source_page;
+
+          const { data: inserted, error: insertError } = await supabase
+            .from('contact_submissions')
+            .insert([insertData])
+            .select()
+            .single();
+
+          if (insertError) throw insertError;
+          dbSubmission = inserted;
           console.log('✅ Contact submission saved to database:', dbSubmission.id);
         }
 
@@ -1528,6 +1554,11 @@ export default async function handler(req, res) {
       stack: error.stack,
       operations: criticalOperations
     });
+
+    // Clear idempotency on failure so user can retry
+    if (idempotencyKey) {
+      serverIdempotency.clearKey(idempotencyKey);
+    }
     
     // Provide specific error messages based on what failed
     let userMessage = 'Something went wrong. ';

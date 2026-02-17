@@ -94,6 +94,13 @@ class IdempotencyManager {
   }
 
   /**
+   * Clear a specific key (e.g. on failure so user can retry)
+   */
+  clearKey(key) {
+    if (key) this.processedRequests.delete(key);
+  }
+
+  /**
    * Clear all entries
    */
   clear() {
