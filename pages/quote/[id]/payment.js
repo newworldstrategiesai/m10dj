@@ -44,10 +44,10 @@ export default function PaymentPage() {
   const [customTipAmount, setCustomTipAmount] = useState('');
 
   useEffect(() => {
-    if (id) {
+    if (router.isReady && id) {
       fetchData();
     }
-  }, [id]);
+  }, [router.isReady, id]);
 
   // Refetch data when the page becomes visible (e.g., navigating from other quote pages)
   useEffect(() => {
@@ -66,11 +66,25 @@ export default function PaymentPage() {
 
   const fetchData = async () => {
     try {
-      // Add cache-busting timestamp to ensure fresh data
+      // Check sessionStorage first (confirmation stores quote when user proceeds to payment)
+      let quote = null;
+      try {
+        const saved = sessionStorage.getItem(`quote_for_payment_${id}`);
+        if (saved) {
+          const { quote: savedQuote, storedAt } = JSON.parse(saved);
+          if (savedQuote && (Date.now() - storedAt) < 600000) { // valid for 10 min
+            quote = savedQuote;
+            console.log('📦 Using quote from confirmation (sessionStorage)');
+          }
+        }
+      } catch (e) {
+        console.warn('Could not read quote from sessionStorage:', e);
+      }
+
       const timestamp = new Date().getTime();
       const [leadResponse, quoteResponse] = await Promise.all([
         fetch(`/api/leads/get-lead?id=${id}&_t=${timestamp}`, { cache: 'no-store' }),
-        fetch(`/api/quote/${id}?_t=${timestamp}`, { cache: 'no-store' })
+        quote ? Promise.resolve({ ok: false }) : fetch(`/api/quote/${id}?_t=${timestamp}`, { cache: 'no-store' })
       ]);
 
       if (leadResponse.ok) {
@@ -90,8 +104,18 @@ export default function PaymentPage() {
         }
       }
 
-      if (quoteResponse.ok) {
-        const quote = await quoteResponse.json();
+      if (quote) {
+        if (quote.speaker_rental && typeof quote.speaker_rental === 'string') {
+          try {
+            quote.speaker_rental = JSON.parse(quote.speaker_rental);
+          } catch (e) {
+            console.error('Error parsing speaker_rental:', e);
+          }
+        }
+        setQuoteData(quote);
+        setError(null);
+      } else if (quoteResponse.ok) {
+        quote = await quoteResponse.json();
         
         // Parse speaker_rental if it's a JSON string
         if (quote.speaker_rental && typeof quote.speaker_rental === 'string') {
@@ -116,8 +140,10 @@ export default function PaymentPage() {
           typeof_total_price: typeof quote.total_price
         });
         setQuoteData(quote);
-        
-        // Fetch payment history
+      }
+
+      // Fetch payment history when we have quote (from sessionStorage or API)
+      if (quote) {
         try {
           const paymentsResponse = await fetch(`/api/quote/${id}/payments?_t=${timestamp}`, { cache: 'no-store' });
           if (paymentsResponse.ok) {

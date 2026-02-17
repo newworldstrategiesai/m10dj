@@ -97,15 +97,30 @@ export default function PersonalizedQuote() {
     }
 
     try {
-      // Add cache-busting timestamp to ensure fresh data
       const timestamp = new Date().getTime();
+      let data = null; // Scope for quote block (used for eventType when lead ok)
+
+      // Check sessionStorage first for previously loaded/saved quote (survives reload)
+      let quoteFromStorage = null;
+      try {
+        const saved = sessionStorage.getItem(`quote_for_page_${id}`);
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (parsed?.quote && parsed?.storedAt && (Date.now() - parsed.storedAt) < 3600000) { // 1 hour
+            quoteFromStorage = parsed.quote;
+          }
+        }
+      } catch (e) {
+        console.warn('Could not read quote from sessionStorage:', e);
+      }
+
       const [leadResponse, quoteResponse] = await Promise.all([
         fetch(`/api/leads/get-lead?id=${id}&_t=${timestamp}`, { cache: 'no-store' }),
-        fetch(`/api/quote/${id}?_t=${timestamp}`, { cache: 'no-store' }).catch(() => null) // Quote might not exist yet
+        quoteFromStorage ? Promise.resolve({ ok: false }) : fetch(`/api/quote/${id}?_t=${timestamp}`, { cache: 'no-store' }).catch(() => null)
       ]);
 
       if (leadResponse.ok) {
-        const data = await leadResponse.json();
+        data = await leadResponse.json();
         if (data && data.id) {
           setLeadData(data);
           setError(null);
@@ -177,7 +192,7 @@ export default function PersonalizedQuote() {
           setError('Quote data is invalid. Please contact us for assistance.');
         }
       } else {
-        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        const errorData = await leadResponse.json().catch(() => ({ error: 'Unknown error' }));
         console.error('API error:', response.status, errorData);
         
         // Try fallback with saved form data
@@ -206,11 +221,19 @@ export default function PersonalizedQuote() {
         setError(errorData.error || 'Quote not found. Please contact us to get your personalized quote.');
       }
 
-      // Check for existing quote selection
-      if (quoteResponse && quoteResponse.ok) {
-        const quoteData = await quoteResponse.json();
-        if (quoteData && quoteData.package_name !== 'Service Selection Pending') {
-          setExistingSelection(quoteData);
+      // Check for existing quote selection (from API or sessionStorage)
+      let quoteData = quoteFromStorage;
+      if (!quoteData && quoteResponse && quoteResponse.ok) {
+        quoteData = await quoteResponse.json();
+      }
+      if (quoteData && quoteData.package_name !== 'Service Selection Pending') {
+        // Store for reload / return visits
+        try {
+          sessionStorage.setItem(`quote_for_page_${id}`, JSON.stringify({ quote: quoteData, storedAt: Date.now() }));
+        } catch (e) {
+          console.warn('Could not store quote in sessionStorage:', e);
+        }
+        setExistingSelection(quoteData);
           
           // Pre-populate selections if they exist
           // Skip if package_id is 'speaker_rental' (that's handled separately)
@@ -2308,12 +2331,11 @@ export default function PersonalizedQuote() {
               total_price: result.data.total_price,
               package_name: result.data.package_name
             });
-            // Pass saved quote to confirmation so it never shows "Quote not found"
+            // Pass saved quote to confirmation and store for reload/return visits
             try {
-              sessionStorage.setItem(`quote_saved_${id}`, JSON.stringify({
-                quote: result.data,
-                savedAt: Date.now()
-              }));
+              const payload = { quote: result.data, storedAt: Date.now() };
+              sessionStorage.setItem(`quote_saved_${id}`, JSON.stringify(payload));
+              sessionStorage.setItem(`quote_for_page_${id}`, JSON.stringify(payload));
             } catch (e) {
               console.warn('Could not store quote in sessionStorage:', e);
             }

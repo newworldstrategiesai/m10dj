@@ -155,6 +155,20 @@ export default function ConfirmationPage() {
     }
   }, [router.isReady, id, fetchData]);
 
+  // Store quote for payment page (so it never shows "select services first" after confirmation)
+  useEffect(() => {
+    if (quoteData && id && typeof window !== 'undefined') {
+      try {
+        sessionStorage.setItem(`quote_for_payment_${id}`, JSON.stringify({
+          quote: quoteData,
+          storedAt: Date.now()
+        }));
+      } catch (e) {
+        console.warn('Could not store quote for payment page:', e);
+      }
+    }
+  }, [quoteData, id]);
+
   // Calculate total amount - use total_price if available, otherwise calculate from package/speaker rental + addons
   // IMPORTANT: Must apply discounts the same way the invoice page does
   const calculateTotalAmount = useMemo(() => {
