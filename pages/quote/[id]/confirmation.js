@@ -19,9 +19,25 @@ export default function ConfirmationPage() {
   const fetchData = useCallback(async (retryCount = 0) => {
     let skipLoadingFalse = false; // when true, we're retrying so keep loading spinner until retry completes
     try {
+      // Use saved quote from sessionStorage if coming from successful save (never show "Quote not found" after save)
+      let quote = null;
+      try {
+        const saved = sessionStorage.getItem(`quote_saved_${id}`);
+        if (saved) {
+          const { quote: savedQuote, savedAt } = JSON.parse(saved);
+          if (savedQuote && (Date.now() - savedAt) < 60000) { // valid for 1 min
+            quote = savedQuote;
+            sessionStorage.removeItem(`quote_saved_${id}`);
+            console.log('📦 Using quote from save (sessionStorage)');
+          }
+        }
+      } catch (e) {
+        console.warn('Could not read saved quote from sessionStorage:', e);
+      }
+
       const [leadResponse, quoteResponse] = await Promise.all([
         fetch(`/api/leads/get-lead?id=${id}?_t=${Date.now()}`),
-        fetch(`/api/quote/${id}?_t=${Date.now()}`)
+        quote ? Promise.resolve({ ok: false }) : fetch(`/api/quote/${id}?_t=${Date.now()}`)
       ]);
 
       if (leadResponse.ok) {
@@ -29,8 +45,21 @@ export default function ConfirmationPage() {
         setLeadData(lead);
       }
 
-      if (quoteResponse.ok) {
-        const quote = await quoteResponse.json();
+      if (quote) {
+        if (quote.speaker_rental && typeof quote.speaker_rental === 'string') {
+          try {
+            quote.speaker_rental = JSON.parse(quote.speaker_rental);
+          } catch (e) {
+            console.error('Error parsing speaker_rental:', e);
+          }
+        }
+        setQuoteData(quote);
+        console.log('📦 Quote data from save:', {
+          total_price: quote.total_price,
+          package_name: quote.package_name
+        });
+      } else if (quoteResponse.ok) {
+        quote = await quoteResponse.json();
         // Parse speaker_rental if it's a JSON string
         if (quote.speaker_rental && typeof quote.speaker_rental === 'string') {
           try {
