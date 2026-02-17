@@ -64,14 +64,21 @@ export default async function handler(req, res) {
         .maybeSingle(),
       supabaseAdmin
         .from('quote_selections')
-        .select('id, created_at')
+        .select('id, created_at, package_name, package_price, total_price')
         .eq('lead_id', contactId)
         .limit(1)
         .maybeSingle(),
     ]);
 
     const viewedAt = viewResult.data?.created_at ?? null;
-    const hasSelection = !!selectionResult.data;
+    const selectionRow = selectionResult.data;
+    // Only count as selection if it's a real selection, not a placeholder
+    // Placeholders have package_name 'Service Selection Pending' and zero prices
+    const hasSelection = !!selectionRow && (
+      selectionRow.package_name !== 'Service Selection Pending' ||
+      parseFloat(selectionRow.package_price || 0) > 0 ||
+      parseFloat(selectionRow.total_price || 0) > 0
+    );
 
     return res.status(200).json({
       viewed: !!viewedAt,
