@@ -100,6 +100,84 @@ export default async function handler(req, res) {
       return res.status(200).json(syntheticQuote);
     }
 
+    // Fallback: id may be contact_submissions id - resolve to contact by email, then look up quote
+    // This handles links that use submission id instead of contact id
+    console.log('⚠️ Trying to resolve id as contact_submissions...');
+    const { data: submissionRow } = await supabaseAdmin
+      .from('contact_submissions')
+      .select('id, email')
+      .eq('id', id)
+      .maybeSingle();
+
+    if (submissionRow?.email) {
+      const { data: contactRow } = await supabaseAdmin
+        .from('contacts')
+        .select('id')
+        .ilike('email_address', submissionRow.email)
+        .is('deleted_at', null)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (contactRow?.id) {
+        console.log('✅ Resolved submission to contact:', contactRow.id, '- fetching quote');
+        const { data: quoteByContact, error: qErr } = await supabaseAdmin
+          .from('quote_selections')
+          .select('*')
+          .eq('lead_id', contactRow.id)
+          .limit(1)
+          .maybeSingle();
+
+        if (!qErr && quoteByContact) {
+          const data = quoteByContact;
+          if (data.speaker_rental && typeof data.speaker_rental === 'string') {
+            try {
+              data.speaker_rental = JSON.parse(data.speaker_rental);
+            } catch (e) {
+              console.error('Error parsing speaker_rental:', e);
+            }
+          }
+          res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+          res.setHeader('Pragma', 'no-cache');
+          res.setHeader('Expires', '0');
+          return res.status(200).json(data);
+        }
+
+        // Try invoice fallback with contact id
+        const { data: invByContactList } = await supabaseAdmin
+          .from('invoices')
+          .select('id, invoice_number, total_amount, invoice_title, contact_id')
+          .eq('contact_id', contactRow.id)
+          .neq('invoice_status', 'Cancelled')
+          .order('created_at', { ascending: false })
+          .limit(1);
+        const invByContact = invByContactList?.[0];
+        if (invByContact) {
+          const syntheticQuote = {
+            id: null,
+            lead_id: contactRow.id,
+            invoice_id: invByContact.id,
+            package_id: 'package_2',
+            package_name: invByContact.invoice_title || 'Package',
+            package_price: parseFloat(invByContact.total_amount) || 0,
+            total_price: parseFloat(invByContact.total_amount) || 0,
+            addons: [],
+            status: 'invoiced',
+            payment_status: 'partial',
+            payment_intent_id: null,
+            deposit_amount: null,
+            paid_at: null,
+            contract_id: null,
+            invoice_number: invByContact.invoice_number,
+          };
+          res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+          res.setHeader('Pragma', 'no-cache');
+          res.setHeader('Expires', '0');
+          return res.status(200).json(syntheticQuote);
+        }
+      }
+    }
+
     if (error) {
       console.error('❌ Error fetching quote:', error);
       return res.status(500).json({ error: 'Quote lookup failed', details: error.message });

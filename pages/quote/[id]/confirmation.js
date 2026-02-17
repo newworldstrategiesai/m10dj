@@ -48,17 +48,17 @@ export default function ConfirmationPage() {
           addons: quote.addons?.length || 0,
           addonsTotal: (quote.addons || []).reduce((sum, a) => sum + (Number(a.price) || 0), 0)
         });
-      } else if (quoteResponse.status === 404 && retryCount < 3) {
+      } else if (quoteResponse.status === 404 && retryCount < 5) {
         // Quote not found - likely timing (save just committed). Retry without showing "Quote Not Found".
-        console.log(`⚠️ Quote not found, retrying... (attempt ${retryCount + 1}/3)`);
+        console.log(`⚠️ Quote not found, retrying... (attempt ${retryCount + 1}/5)`);
         skipLoadingFalse = true;
-        const delayMs = [400, 800, 1200][retryCount]; // shorter first delays so we don't flash error
+        const delayMs = [500, 1000, 1500, 2000, 2500][retryCount]; // longer delays to allow DB commit after save
         setTimeout(async () => {
           await fetchData(retryCount + 1);
         }, delayMs);
         return;
       } else if (quoteResponse.status === 404) {
-        console.error('❌ Quote not found after retries');
+        console.error('❌ Quote not found after 5 retries');
         // Set quoteData to null so the page can render the "no quote" message
         setQuoteData(null);
       }
@@ -121,10 +121,10 @@ export default function ConfirmationPage() {
   }, [id, payment_intent]);
 
   useEffect(() => {
-    if (id) {
+    if (router.isReady && id) {
       fetchData();
     }
-  }, [id, fetchData]);
+  }, [router.isReady, id, fetchData]);
 
   // Calculate total amount - use total_price if available, otherwise calculate from package/speaker rental + addons
   // IMPORTANT: Must apply discounts the same way the invoice page does

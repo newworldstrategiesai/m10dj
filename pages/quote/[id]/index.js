@@ -2309,7 +2309,7 @@ export default function PersonalizedQuote() {
               package_name: result.data.package_name
             });
             // Brief wait so DB commit is visible before confirmation page loads
-            await new Promise(resolve => setTimeout(resolve, 450));
+            await new Promise(resolve => setTimeout(resolve, 800));
             // Verify quote is readable so confirmation page doesn't show "Quote Not Found"
             try {
               const verifyResponse = await fetch(`/api/quote/${id}?_t=${Date.now()}`);
