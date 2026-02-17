@@ -209,15 +209,15 @@ export default function PersonalizedQuote() {
       // Check for existing quote selection
       if (quoteResponse && quoteResponse.ok) {
         const quoteData = await quoteResponse.json();
-        if (quoteData) {
+        if (quoteData && quoteData.package_name !== 'Service Selection Pending') {
           setExistingSelection(quoteData);
           
           // Pre-populate selections if they exist
           // Skip if package_id is 'speaker_rental' (that's handled separately)
-          if (quoteData.package_id && quoteData.package_id !== 'speaker_rental') {
+          if (quoteData.package_id && quoteData.package_id !== 'speaker_rental' && quoteData.package_id !== 'pending') {
             // Find the actual package object from the packages array
-            // We need to determine which package array to search based on event type
-            const eventTypeLower = (leadData?.eventType || leadData?.event_type || '').toLowerCase();
+            // Use data from lead response (leadData state may not be updated yet)
+            const eventTypeLower = (data?.eventType || data?.event_type || '').toLowerCase();
             const isHolidayLocal = eventTypeLower.includes('holiday');
             const isSchoolLocal = eventTypeLower.includes('school');
             const isCorporateLocal = eventTypeLower.includes('corporate') || eventTypeLower.includes('business');
@@ -436,10 +436,10 @@ export default function PersonalizedQuote() {
   }, [id]);
 
   useEffect(() => {
-    if (id) {
+    if (router.isReady && id) {
       fetchLeadData();
     }
-  }, [id, fetchLeadData]);
+  }, [router.isReady, id, fetchLeadData]);
 
   // Refetch data when the page becomes visible (e.g., navigating from invoice/contract pages)
   useEffect(() => {

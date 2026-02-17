@@ -261,10 +261,11 @@ export async function ensureInvoiceExists(quoteId, supabaseClient = null) {
     }
 
     // Update quote_selections with invoice_id
+    // Use finalQuote.id (quote row id) - quoteId may be quote row id when called from save API
     await supabase
       .from('quote_selections')
       .update({ invoice_id: newInvoice.id })
-      .eq('lead_id', quoteId);
+      .eq('id', finalQuote.id);
 
     console.log(`✅ Created draft invoice ${newInvoice.id} for quote ${quoteId}`);
 

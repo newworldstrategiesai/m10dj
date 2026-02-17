@@ -25,12 +25,22 @@ export default async function handler(req, res) {
     // 1) Try quote_selections.invoice_id for this lead_id
     const { data: qsList } = await supabaseAdmin
       .from('quote_selections')
-      .select('invoice_id')
+      .select('id, invoice_id, lead_id')
       .eq('lead_id', id)
-      .not('invoice_id', 'is', null)
       .limit(1);
 
-    let invoiceId = qsList?.[0]?.invoice_id;
+    const quoteRow = qsList?.[0];
+    let invoiceId = quoteRow?.invoice_id;
+    // If quote exists but invoice_id is null, ensure invoice exists (create + link)
+    if (quoteRow && !invoiceId) {
+      try {
+        const { ensureInvoiceExists } = await import('../../../../utils/ensure-invoice-exists');
+        const result = await ensureInvoiceExists(quoteRow.id, supabaseAdmin);
+        if (result.success && result.invoice_id) invoiceId = result.invoice_id;
+      } catch (e) {
+        console.warn('Could not ensure invoice on-the-fly:', e.message);
+      }
+    }
     if (!invoiceId) {
       // 2) Fallback: invoice by contact_id (lead_id is often contact_id)
       const { data: invList } = await supabaseAdmin

@@ -20,16 +20,39 @@ export default async function handler(req, res) {
     // The quote ID itself acts as the authentication token
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Build query for quote selections
-    console.log('🔍 Fetching quote for lead_id:', id);
+    // Build query for quote selections - try lead_id first (contact/submission id), then quote row id
+    console.log('🔍 Fetching quote for id:', id);
     
-    const { data: quoteRow, error } = await supabaseAdmin
+    let quoteRow = null;
+    let lookupError = null;
+    
+    // 1. Look up by lead_id (contact or submission id - most common)
+    const { data: byLeadId, error: errLead } = await supabaseAdmin
       .from('quote_selections')
       .select('*')
       .eq('lead_id', id)
       .limit(1)
       .maybeSingle();
+    
+    if (!errLead && byLeadId) {
+      quoteRow = byLeadId;
+    } else {
+      // 2. Look up by quote_selections.id (when URL contains the quote row id)
+      const { data: byQuoteId, error: errQuote } = await supabaseAdmin
+        .from('quote_selections')
+        .select('*')
+        .eq('id', id)
+        .limit(1)
+        .maybeSingle();
+      
+      if (!errQuote && byQuoteId) {
+        quoteRow = byQuoteId;
+        console.log('✅ Quote found by quote_selections.id');
+      }
+      lookupError = errLead || errQuote;
+    }
 
+    const error = lookupError;
     if (!error && quoteRow) {
       const data = quoteRow;
       console.log('✅ Quote found:', { id: data?.id, lead_id: data?.lead_id, total_price: data?.total_price, package_name: data?.package_name });
