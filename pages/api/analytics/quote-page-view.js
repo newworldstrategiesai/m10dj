@@ -1,4 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
+import { optionalAuth } from '@/utils/auth-helpers/api-auth';
+import { isAdminEmail } from '@/utils/auth-helpers/admin-roles';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -8,11 +10,7 @@ const supabase = createClient(supabaseUrl, supabaseKey);
  * Track quote page views and time on page
  * POST /api/analytics/quote-page-view
  * 
- * Body:
- * - quote_id: string (the quote/contact ID)
- * - event_type: 'page_view' | 'time_on_page' | 'page_exit' | 'package_expanded' | 'package_selected'
- * - time_spent?: number (seconds, for time_on_page events)
- * - metadata?: object (additional data like selected package, addons, etc.)
+ * Skips tracking when an admin views the page (avoids inflating analytics).
  */
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -26,6 +24,15 @@ export default async function handler(req, res) {
   }
 
   try {
+    // Skip tracking when an admin views the page
+    const user = await optionalAuth(req, res);
+    if (user?.email) {
+      const viewerIsAdmin = await isAdminEmail(user.email);
+      if (viewerIsAdmin) {
+        return res.status(200).json({ success: true, message: 'Skipped (admin view)' });
+      }
+    }
+
     // Insert tracking event into analytics table
     // Also track in quote_page_views for follow-up system
     const insertData = {

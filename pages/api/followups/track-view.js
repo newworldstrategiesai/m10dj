@@ -1,8 +1,11 @@
 import { trackPricingViewWithoutSelection } from '../../../utils/followup-tracker';
+import { optionalAuth } from '@/utils/auth-helpers/api-auth';
+import { isAdminEmail } from '@/utils/auth-helpers/admin-roles';
 
 /**
  * Track that a lead viewed pricing but hasn't made a selection
  * This will be used to trigger follow-up emails 2-3 days later
+ * Skips when an admin views the page.
  */
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -16,6 +19,15 @@ export default async function handler(req, res) {
   }
 
   try {
+    // Skip when an admin views the page
+    const user = await optionalAuth(req, res);
+    if (user?.email) {
+      const viewerIsAdmin = await isAdminEmail(user.email);
+      if (viewerIsAdmin) {
+        return res.status(200).json({ success: true, message: 'Skipped (admin view)' });
+      }
+    }
+
     const result = await trackPricingViewWithoutSelection(contactId, quoteId, metadata);
     
     if (result.tracked) {

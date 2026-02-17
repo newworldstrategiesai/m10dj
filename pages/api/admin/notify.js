@@ -1,17 +1,10 @@
 import { sendAdminNotification } from '../../../utils/admin-notifications';
-import { requireAuth } from '@/utils/auth-helpers/api-auth';
+import { optionalAuth } from '@/utils/auth-helpers/api-auth';
+import { isAdminEmail } from '@/utils/auth-helpers/admin-roles';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
-  }
-
-  // SECURITY: Require authentication to prevent spam/abuse
-  try {
-    await requireAuth(req, res);
-  } catch (error) {
-    if (res.headersSent) return;
-    return res.status(401).json({ error: 'Unauthorized' });
   }
 
   const { eventType, data } = req.body;
@@ -21,6 +14,15 @@ export default async function handler(req, res) {
   }
 
   try {
+    // Check if the viewer is an admin - skip notifications when admins view pages
+    const user = await optionalAuth(req, res);
+    if (user?.email) {
+      const viewerIsAdmin = await isAdminEmail(user.email);
+      if (viewerIsAdmin) {
+        return res.status(200).json({ success: true, message: 'Skipped (admin view)' });
+      }
+    }
+
     // Send notification (non-blocking)
     sendAdminNotification(eventType, data).catch(err => {
       console.error('Notification error:', err);

@@ -1427,6 +1427,7 @@ export default async function handler(req, res) {
             submissionId: lastSubmission.id,
             contactId: criticalOperations.contactRecord.id,
             quoteId: recoveredQuoteId,
+            quoteReady: !!(criticalOperations.autoCreation?.quote?.success || criticalOperations.autoCreation?.invoice?.success),
             formData: {
               name: sanitizedData.name,
               email: sanitizedData.email,
@@ -1472,12 +1473,15 @@ export default async function handler(req, res) {
     console.log('   Source:', criticalOperations.contactRecord.id ? 'contact' : 'submission');
 
     // Include form data in response as backup for quote page
+    // quoteReady: true when quote/invoice/contract auto-creation succeeded (safe to redirect)
+    const quoteReady = !!(criticalOperations.autoCreation?.quote?.success || criticalOperations.autoCreation?.invoice?.success);
     const successResponse = { 
       success: true,
       message: 'Thank you for your message! We\'ll get back to you soon.',
       submissionId: dbSubmission.id,
       contactId: criticalOperations.contactRecord.id,
       quoteId: quoteId, // Explicit quoteId field - guaranteed to exist
+      quoteReady, // true when quote page data is ready for redirect
       formData: {
         name: sanitizedData.name,
         email: sanitizedData.email,

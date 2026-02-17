@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { Mail, MapPin, Clock, AlertCircle, Send, Phone } from 'lucide-react';
+import { useRouter } from 'next/router';
+import { Mail, MapPin, Clock, AlertCircle, Send, Phone, Loader2 } from 'lucide-react';
 import { FormErrorLogger } from '../../utils/form-error-logger';
 import { FormStateManager } from '../../utils/form-state-manager';
 import { ClientIdempotencyTracker } from '../../utils/idempotency';
@@ -13,6 +14,7 @@ import { useToast } from '@/components/ui/Toasts/use-toast';
 
 export default function ContactForm({ className = '', showSubmitButton = true, isSubmitOnly = false, modalLayout = false, organizationId = null, ctaSource = null }) {
   const { toast } = useToast();
+  const router = useRouter();
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -29,6 +31,7 @@ export default function ContactForm({ className = '', showSubmitButton = true, i
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [isRedirectingToQuote, setIsRedirectingToQuote] = useState(false);
   const [isChatMinimized, setIsChatMinimized] = useState(() => {
     // Check if chat should be minimized from sessionStorage
     if (typeof window !== 'undefined') {
@@ -492,14 +495,27 @@ export default function ContactForm({ className = '', showSubmitButton = true, i
           }
         }
         
-        // Show success toast notification
-        toast({
-          title: 'Form Submitted Successfully!',
-          description: 'Thank you for your submission. We\'ll get back to you soon!',
-          duration: 3000,
-        });
-        
-        setSubmitted(true);
+        // Redirect to quote page when quote is fully generated (quoteReady from API)
+        const quoteReady = result.data?.quoteReady !== false;
+        if (quoteId && quoteReady) {
+          toast({
+            title: 'Form Submitted Successfully!',
+            description: 'Taking you to your personalized quote...',
+            duration: 2000,
+          });
+          setIsRedirectingToQuote(true);
+          router.push(`/quote/${quoteId}`);
+          // If redirect fails or user navigates back, fall back to chat
+          setTimeout(() => setIsRedirectingToQuote(false), 3000);
+        } else {
+          // Fallback: show chat with link (when quote not ready or no quoteId)
+          toast({
+            title: 'Form Submitted Successfully!',
+            description: 'Thank you for your submission. We\'ll get back to you soon!',
+            duration: 3000,
+          });
+          setSubmitted(true);
+        }
         
         // Reset idempotency key for potential future submissions
         idempotencyKey.current = null;
@@ -569,6 +585,19 @@ export default function ContactForm({ className = '', showSubmitButton = true, i
       document.body.style.height = '';
     };
   }, [submitted, isChatMinimized]);
+
+  // Render redirect overlay when taking user to quote page
+  const redirectOverlay = isRedirectingToQuote && typeof document !== 'undefined' && createPortal(
+    <div 
+      className="fixed inset-0 z-[99999] bg-white dark:bg-black flex flex-col items-center justify-center"
+      style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, width: '100vw', height: '100vh' }}
+    >
+      <Loader2 className="w-12 h-12 text-brand animate-spin mb-4" />
+      <p className="text-lg font-medium text-gray-900 dark:text-white">Preparing your personalized quote...</p>
+      <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Taking you to your quote page</p>
+    </div>,
+    document.body
+  );
 
   // Render chat using Portal (full-screen or minimized)
   const chatOverlay = submitted && typeof document !== 'undefined' && createPortal(
@@ -921,6 +950,7 @@ export default function ContactForm({ className = '', showSubmitButton = true, i
             </p>
           </div>
         </form>
+        {redirectOverlay}
         {chatOverlay}
       </div>
     );
