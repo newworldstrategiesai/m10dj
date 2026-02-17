@@ -299,11 +299,6 @@ ${htmlEmailContent}
         }
       }
 
-      if (logError) {
-        console.error('Error logging email communication:', logError);
-        // Don't fail the request if logging fails
-      }
-
       // Update last contact date on the submission
       const { error: updateError } = await supabase
         .from('contact_submissions')

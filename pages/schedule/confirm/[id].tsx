@@ -114,10 +114,10 @@ export default function BookingConfirmation() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#fcba00] mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading booking details...</p>
+          <p className="text-gray-600 dark:text-gray-400">Loading booking details...</p>
         </div>
       </div>
     );
@@ -127,14 +127,14 @@ export default function BookingConfirmation() {
     return (
       <>
         <Header />
-        <div className="min-h-screen bg-gray-50 py-12 px-4">
+        <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-12 px-4">
           <div className="max-w-2xl mx-auto text-center">
-            <div className="bg-white rounded-xl p-8 shadow-lg">
-              <h1 className="text-2xl font-bold text-gray-900 mb-4">Booking Not Found</h1>
-              <p className="text-gray-600 mb-6">{error || "The booking you're looking for doesn't exist."}</p>
+            <div className="bg-white dark:bg-gray-800 rounded-xl p-8 shadow-lg dark:border dark:border-gray-700">
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">Booking Not Found</h1>
+              <p className="text-gray-600 dark:text-gray-400 mb-6">{error || "The booking you're looking for doesn't exist."}</p>
               <Button
                 onClick={() => router.push('/schedule')}
-                className="bg-[#fcba00] hover:bg-[#d99f00] text-black"
+                className="bg-[#fcba00] hover:bg-[#d99f00] dark:hover:bg-[#e5ab00] text-black"
               >
                 <ArrowLeft className="w-4 h-4 mr-2" />
                 Back to Scheduling
@@ -176,101 +176,101 @@ export default function BookingConfirmation() {
         <meta name="twitter:image" content={getURL('assets/meet-og.png')} />
       </Head>
       <Header />
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 py-12 px-4">
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:via-gray-900 dark:to-gray-800 py-12 px-4">
         <div className="max-w-3xl mx-auto">
           {/* Success Header */}
           <div className="text-center mb-8">
-            <div className="inline-flex items-center justify-center w-16 h-16 bg-green-100 rounded-full mb-4">
-              <CheckCircle className="w-10 h-10 text-green-600" />
+            <div className="inline-flex items-center justify-center w-16 h-16 bg-green-100 dark:bg-green-900/30 rounded-full mb-4">
+              <CheckCircle className="w-10 h-10 text-green-600 dark:text-green-500" />
             </div>
-            <h1 className="text-4xl font-bold text-gray-900 mb-2">
+            <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-2">
               Booking Confirmed!
             </h1>
-            <p className="text-lg text-gray-600">
+            <p className="text-lg text-gray-600 dark:text-gray-400">
               Your consultation has been scheduled successfully
             </p>
           </div>
 
           {/* Booking Details Card */}
-          <Card className="p-8 mb-6">
-            <h2 className="text-2xl font-semibold text-gray-900 mb-6">Meeting Details</h2>
+          <Card className="p-8 mb-6 dark:bg-gray-800/50 dark:border-gray-700">
+            <h2 className="text-2xl font-semibold text-gray-900 dark:text-white mb-6">Meeting Details</h2>
             
             <div className="space-y-4">
               <div className="flex items-start gap-4">
-                <div className="w-10 h-10 bg-[#fcba00]/10 rounded-lg flex items-center justify-center flex-shrink-0">
+                <div className="w-10 h-10 bg-[#fcba00]/10 dark:bg-[#fcba00]/20 rounded-lg flex items-center justify-center flex-shrink-0">
                   <Calendar className="w-5 h-5 text-[#fcba00]" />
                 </div>
                 <div>
-                  <p className="text-sm text-gray-500">Date</p>
-                  <p className="text-lg font-semibold text-gray-900">{formattedDate}</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">Date</p>
+                  <p className="text-lg font-semibold text-gray-900 dark:text-white">{formattedDate}</p>
                 </div>
               </div>
 
               <div className="flex items-start gap-4">
-                <div className="w-10 h-10 bg-[#fcba00]/10 rounded-lg flex items-center justify-center flex-shrink-0">
+                <div className="w-10 h-10 bg-[#fcba00]/10 dark:bg-[#fcba00]/20 rounded-lg flex items-center justify-center flex-shrink-0">
                   <Clock className="w-5 h-5 text-[#fcba00]" />
                 </div>
                 <div>
-                  <p className="text-sm text-gray-500">Time</p>
-                  <p className="text-lg font-semibold text-gray-900">{formattedTime}</p>
-                  <p className="text-sm text-gray-500">Duration: {booking.duration_minutes} minutes</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">Time</p>
+                  <p className="text-lg font-semibold text-gray-900 dark:text-white">{formattedTime}</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">Duration: {booking.duration_minutes} minutes</p>
                 </div>
               </div>
 
               <div className="flex items-start gap-4">
-                <div className="w-10 h-10 bg-[#fcba00]/10 rounded-lg flex items-center justify-center flex-shrink-0">
+                <div className="w-10 h-10 bg-[#fcba00]/10 dark:bg-[#fcba00]/20 rounded-lg flex items-center justify-center flex-shrink-0">
                   <MessageSquare className="w-5 h-5 text-[#fcba00]" />
                 </div>
                 <div>
-                  <p className="text-sm text-gray-500">Meeting Type</p>
-                  <p className="text-lg font-semibold text-gray-900">{booking.meeting_types?.name || 'Consultation'}</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">Meeting Type</p>
+                  <p className="text-lg font-semibold text-gray-900 dark:text-white">{booking.meeting_types?.name || 'Consultation'}</p>
                   {booking.meeting_types?.description && (
-                    <p className="text-sm text-gray-600 mt-1">{booking.meeting_types.description}</p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{booking.meeting_types.description}</p>
                   )}
                 </div>
               </div>
 
               {booking.event_type && (
                 <div className="flex items-start gap-4">
-                  <div className="w-10 h-10 bg-[#fcba00]/10 rounded-lg flex items-center justify-center flex-shrink-0">
+                  <div className="w-10 h-10 bg-[#fcba00]/10 dark:bg-[#fcba00]/20 rounded-lg flex items-center justify-center flex-shrink-0">
                     <Calendar className="w-5 h-5 text-[#fcba00]" />
                   </div>
                   <div>
-                    <p className="text-sm text-gray-500">Your Event</p>
-                    <p className="text-lg font-semibold text-gray-900">{booking.event_type}</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">Your Event</p>
+                    <p className="text-lg font-semibold text-gray-900 dark:text-white">{booking.event_type}</p>
                     {booking.event_date && (
-                      <p className="text-sm text-gray-600 mt-1">Event Date: {new Date(booking.event_date).toLocaleDateString()}</p>
+                      <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">Event Date: {new Date(booking.event_date).toLocaleDateString()}</p>
                     )}
                   </div>
                 </div>
               )}
 
               {booking.notes && (
-                <div className="mt-4 p-4 bg-gray-50 rounded-lg">
-                  <p className="text-sm font-semibold text-gray-700 mb-2">Your Notes:</p>
-                  <p className="text-gray-600 whitespace-pre-wrap">{booking.notes}</p>
+                <div className="mt-4 p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                  <p className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Your Notes:</p>
+                  <p className="text-gray-600 dark:text-gray-400 whitespace-pre-wrap">{booking.notes}</p>
                 </div>
               )}
             </div>
           </Card>
 
           {/* Contact Information Card */}
-          <Card className="p-8 mb-6">
-            <h2 className="text-2xl font-semibold text-gray-900 mb-6">Your Information</h2>
+          <Card className="p-8 mb-6 dark:bg-gray-800/50 dark:border-gray-700">
+            <h2 className="text-2xl font-semibold text-gray-900 dark:text-white mb-6">Your Information</h2>
             
             <div className="space-y-4">
               <div className="flex items-center gap-4">
                 <User className="w-5 h-5 text-gray-400" />
                 <div>
-                  <p className="text-sm text-gray-500">Name</p>
-                  <p className="font-semibold text-gray-900">{booking.client_name}</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">Name</p>
+                  <p className="font-semibold text-gray-900 dark:text-white">{booking.client_name}</p>
                 </div>
               </div>
 
               <div className="flex items-center gap-4">
                 <Mail className="w-5 h-5 text-gray-400" />
                 <div>
-                  <p className="text-sm text-gray-500">Email</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">Email</p>
                   <a href={`mailto:${booking.client_email}`} className="font-semibold text-[#fcba00] hover:underline">
                     {booking.client_email}
                   </a>
@@ -281,8 +281,8 @@ export default function BookingConfirmation() {
                 <div className="flex items-center gap-4">
                   <Phone className="w-5 h-5 text-gray-400" />
                   <div>
-                    <p className="text-sm text-gray-500">Phone</p>
-                    <a href={`tel:${booking.client_phone}`} className="font-semibold text-gray-900 hover:text-[#fcba00]">
+                    <p className="text-sm text-gray-500 dark:text-gray-400">Phone</p>
+                    <a href={`tel:${booking.client_phone}`} className="font-semibold text-gray-900 dark:text-white hover:text-[#fcba00]">
                       {booking.client_phone}
                     </a>
                   </div>
@@ -293,17 +293,17 @@ export default function BookingConfirmation() {
 
           {/* Video Meeting - when booking has a Meet link */}
           {booking.video_call_link && (
-            <Card className="p-6 mb-6 border-green-200 bg-green-50">
-              <h3 className="font-semibold text-gray-900 mb-2 flex items-center gap-2">
-                <Video className="w-5 h-5 text-green-600" />
+            <Card className="p-6 mb-6 border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/20">
+              <h3 className="font-semibold text-gray-900 dark:text-white mb-2 flex items-center gap-2">
+                <Video className="w-5 h-5 text-green-600 dark:text-green-500" />
                 Video Meeting
               </h3>
-              <p className="text-sm text-gray-600 mb-4">
+              <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
                 This is a video call. Join at your scheduled time using the link below.
               </p>
               <Button
                 asChild
-                className="w-full bg-green-600 hover:bg-green-700 text-white"
+                className="w-full bg-green-600 hover:bg-green-700 dark:bg-green-600 dark:hover:bg-green-700 text-white"
               >
                 <a href={booking.video_call_link} target="_blank" rel="noopener noreferrer">
                   <Video className="w-4 h-4 mr-2" />
@@ -317,14 +317,14 @@ export default function BookingConfirmation() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
             <Button
               onClick={downloadCalendarInvite}
-              className="w-full bg-white border-2 border-[#fcba00] text-[#fcba00] hover:bg-[#fcba00] hover:text-black"
+              className="w-full bg-white dark:bg-gray-800 border-2 border-[#fcba00] text-[#fcba00] hover:bg-[#fcba00] hover:text-black dark:hover:bg-[#fcba00] dark:hover:text-black"
             >
               <Download className="w-4 h-4 mr-2" />
               Add to Calendar
             </Button>
             <Button
               onClick={() => router.push('/contact')}
-              className="w-full bg-[#fcba00] hover:bg-[#d99f00] text-black"
+              className="w-full bg-[#fcba00] hover:bg-[#d99f00] dark:hover:bg-[#e5ab00] text-black"
             >
               <MessageSquare className="w-4 h-4 mr-2" />
               Contact Us
@@ -332,19 +332,19 @@ export default function BookingConfirmation() {
           </div>
 
           {/* Important Information */}
-          <Card className="p-6 bg-blue-50 border-blue-200">
-            <h3 className="font-semibold text-gray-900 mb-3">What&apos;s Next?</h3>
-            <ul className="space-y-2 text-sm text-gray-700">
+          <Card className="p-6 bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800">
+            <h3 className="font-semibold text-gray-900 dark:text-white mb-3">What&apos;s Next?</h3>
+            <ul className="space-y-2 text-sm text-gray-700 dark:text-gray-300">
               <li className="flex items-start gap-2">
-                <CheckCircle className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
+                <CheckCircle className="w-4 h-4 text-blue-600 dark:text-blue-500 mt-0.5 flex-shrink-0" />
                 <span>You&apos;ll receive a confirmation email with all the details</span>
               </li>
               <li className="flex items-start gap-2">
-                <CheckCircle className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
+                <CheckCircle className="w-4 h-4 text-blue-600 dark:text-blue-500 mt-0.5 flex-shrink-0" />
                 <span>We&apos;ll send you a reminder 24 hours before your meeting</span>
               </li>
               <li className="flex items-start gap-2">
-                <CheckCircle className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
+                <CheckCircle className="w-4 h-4 text-blue-600 dark:text-blue-500 mt-0.5 flex-shrink-0" />
                 <span>If you need to reschedule or cancel, please contact us at <a href="tel:+19014102020" className="text-[#fcba00] hover:underline font-semibold">(901) 410-2020</a></span>
               </li>
             </ul>

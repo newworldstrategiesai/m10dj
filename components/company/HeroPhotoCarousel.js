@@ -152,9 +152,9 @@ export default function HeroPhotoCarousel({
         aria-hidden
       />
 
-      {/* Overlaid text — compact on mobile, more padding on desktop */}
+      {/* Overlaid text — compact on mobile, more padding on desktop; inset so arrows never cover text */}
       <div className="relative z-[2] flex h-full flex-col justify-end pb-6 pt-16 md:py-12 md:pb-16">
-        <div className="section-container">
+        <div className="section-container pl-12 pr-12 md:pl-14 md:pr-14">
           <h1 className="text-2xl font-bold leading-tight tracking-tight text-white drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)] drop-shadow-[0_2px_6px_rgba(0,0,0,0.7)] md:text-5xl md:drop-shadow-lg lg:text-6xl">
             {title}
           </h1>

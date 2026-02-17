@@ -301,40 +301,40 @@ export default function SchedulePage() {
         <meta name="twitter:description" content="Book a time to discuss your event. Schedule a video or phone consultation with M10 DJ Company." />
         <meta name="twitter:image" content={getURL('assets/meet-og.png')} />
       </Head>
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:via-gray-900 dark:to-gray-800 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-6xl mx-auto">
         {/* Header */}
         <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">
+          <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-2">
             Schedule a Meeting
           </h1>
-          <p className="text-lg text-gray-600">
+          <p className="text-lg text-gray-600 dark:text-gray-400">
             Book a time to discuss your event with Ben
           </p>
         </div>
 
         {/* Event Information Display (when pre-filled) */}
         {hasEventInfo && (
-          <Card className="p-6 mb-6 bg-gradient-to-r from-[#fcba00]/10 to-[#fcba00]/5 border-[#fcba00]/30">
+          <Card className="p-6 mb-6 bg-gradient-to-r from-[#fcba00]/10 to-[#fcba00]/5 dark:from-[#fcba00]/20 dark:to-[#fcba00]/10 border-[#fcba00]/30 dark:border-[#fcba00]/40">
             <div className="flex items-start gap-4">
               <div className="flex-shrink-0 mt-1">
                 <CheckCircle className="w-6 h-6 text-[#fcba00]" />
               </div>
               <div className="flex-1">
-                <h3 className="text-lg font-semibold text-gray-900 mb-3">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">
                   Your Event Details
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
                   {formData.eventType && (
                     <div>
-                      <span className="font-medium text-gray-700">Event Type:</span>{' '}
-                      <span className="text-gray-900">{formData.eventType}</span>
+                      <span className="font-medium text-gray-700 dark:text-gray-300">Event Type:</span>{' '}
+                      <span className="text-gray-900 dark:text-white">{formData.eventType}</span>
                     </div>
                   )}
                   {formData.eventDate && (
                     <div>
-                      <span className="font-medium text-gray-700">Event Date:</span>{' '}
-                      <span className="text-gray-900">
+                      <span className="font-medium text-gray-700 dark:text-gray-300">Event Date:</span>{' '}
+                      <span className="text-gray-900 dark:text-white">
                         {new Date(formData.eventDate).toLocaleDateString('en-US', {
                           weekday: 'long',
                           year: 'numeric',
@@ -346,10 +346,10 @@ export default function SchedulePage() {
                   )}
                   {formData.venueName && (
                     <div className="md:col-span-2">
-                      <span className="font-medium text-gray-700">Venue:</span>{' '}
-                      <span className="text-gray-900">{formData.venueName}</span>
+                      <span className="font-medium text-gray-700 dark:text-gray-300">Venue:</span>{' '}
+                      <span className="text-gray-900 dark:text-white">{formData.venueName}</span>
                       {formData.venueAddress && (
-                        <span className="text-gray-600"> - {formData.venueAddress}</span>
+                        <span className="text-gray-600 dark:text-gray-400"> - {formData.venueAddress}</span>
                       )}
                     </div>
                   )}
@@ -363,8 +363,8 @@ export default function SchedulePage() {
           {/* Left Column - Calendar */}
           <div className="lg:col-span-2 space-y-6">
             {/* Calendar */}
-            <Card className="p-6">
-              <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
+            <Card className="p-6 dark:bg-gray-800/50 dark:border-gray-700">
+              <h2 className="text-xl font-semibold mb-4 flex items-center gap-2 text-gray-900 dark:text-white">
                 <CalendarIcon className="w-5 h-5 text-[#fcba00]" />
                 Select a Date
               </h2>
@@ -373,14 +373,14 @@ export default function SchedulePage() {
                 selected={selectedDate}
                 onSelect={setSelectedDate}
                 disabled={(date) => date < minDate}
-                className="rounded-md border"
+                className="rounded-md border dark:border-gray-600"
               />
             </Card>
 
             {/* Available Time Slots */}
             {selectedDate && (
-              <Card className="p-6">
-                <h2 className="text-xl font-semibold mb-4">Available Times</h2>
+              <Card className="p-6 dark:bg-gray-800/50 dark:border-gray-700">
+                <h2 className="text-xl font-semibold mb-4 text-gray-900 dark:text-white">Available Times</h2>
                 {loadingSlots ? (
                   <div className="flex items-center justify-center py-8">
                     <img
@@ -390,7 +390,7 @@ export default function SchedulePage() {
                     />
                   </div>
                 ) : availableSlots.length === 0 ? (
-                  <p className="text-gray-500 text-center py-8">
+                  <p className="text-gray-500 dark:text-gray-400 text-center py-8">
                     No available time slots for this date. Please select another date.
                   </p>
                 ) : (
@@ -402,7 +402,7 @@ export default function SchedulePage() {
                         className={`p-3 rounded-lg border-2 transition-all ${
                           selectedTime === slot.time
                             ? 'border-[#fcba00] bg-[#fcba00] text-black font-semibold'
-                            : 'border-gray-200 hover:border-gray-300'
+                            : 'border-gray-200 dark:border-gray-600 hover:border-gray-300 dark:hover:border-gray-500 text-gray-900 dark:text-gray-100'
                         }`}
                       >
                         {slot.formatted}
@@ -416,18 +416,18 @@ export default function SchedulePage() {
 
           {/* Right Column - Booking Form */}
           <div className="lg:col-span-1">
-            <Card className="p-6 sticky top-4">
-              <h2 className="text-xl font-semibold mb-4">Booking Details</h2>
+            <Card className="p-6 sticky top-4 dark:bg-gray-800/50 dark:border-gray-700">
+              <h2 className="text-xl font-semibold mb-4 text-gray-900 dark:text-white">Booking Details</h2>
               
               {selectedDate && selectedTime && (
-                <div className="mb-6 p-4 bg-gray-50 rounded-lg space-y-2">
+                <div className="mb-6 p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg space-y-2">
                   <div className="flex items-center gap-2">
-                    <CheckCircle className="w-4 h-4 text-green-600" />
-                    <span className="text-sm font-medium">{defaultMeetingType?.name || 'Consultation'}</span>
+                    <CheckCircle className="w-4 h-4 text-green-600 dark:text-green-500" />
+                    <span className="text-sm font-medium text-gray-900 dark:text-white">{defaultMeetingType?.name || 'Consultation'}</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <CalendarIcon className="w-4 h-4 text-gray-600" />
-                    <span className="text-sm">
+                    <CalendarIcon className="w-4 h-4 text-gray-600 dark:text-gray-400" />
+                    <span className="text-sm text-gray-700 dark:text-gray-300">
                       {selectedDate.toLocaleDateString('en-US', {
                         weekday: 'long',
                         year: 'numeric',
@@ -437,8 +437,8 @@ export default function SchedulePage() {
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Clock className="w-4 h-4 text-gray-600" />
-                    <span className="text-sm">
+                    <Clock className="w-4 h-4 text-gray-600 dark:text-gray-400" />
+                    <span className="text-sm text-gray-700 dark:text-gray-300">
                       {availableSlots.find(s => s.time === selectedTime)?.formatted}
                     </span>
                   </div>
@@ -447,7 +447,7 @@ export default function SchedulePage() {
 
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                     Full Name *
                   </label>
                   <Input
@@ -459,7 +459,7 @@ export default function SchedulePage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                     Email *
                   </label>
                   <Input
@@ -472,7 +472,7 @@ export default function SchedulePage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                     Phone
                   </label>
                   <Input
@@ -484,7 +484,7 @@ export default function SchedulePage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                     Event Type (optional)
                   </label>
                   <Input
@@ -495,7 +495,7 @@ export default function SchedulePage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                     Event Date (optional)
                   </label>
                   <Input
@@ -507,7 +507,7 @@ export default function SchedulePage() {
 
                 {(formData.venueName || formData.venueAddress) && (
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                       Venue Information
                     </label>
                     <div className="space-y-2">
@@ -515,7 +515,7 @@ export default function SchedulePage() {
                         <Input
                           value={formData.venueName}
                           disabled
-                          className="bg-gray-50 text-gray-600"
+                          className="bg-gray-50 dark:bg-gray-700 dark:text-gray-300 text-gray-600 dark:border-gray-600"
                           placeholder="Venue name"
                         />
                       )}
@@ -523,17 +523,17 @@ export default function SchedulePage() {
                         <Input
                           value={formData.venueAddress}
                           disabled
-                          className="bg-gray-50 text-gray-600"
+                          className="bg-gray-50 dark:bg-gray-700 dark:text-gray-300 text-gray-600 dark:border-gray-600"
                           placeholder="Venue address"
                         />
                       )}
                     </div>
-                    <p className="text-xs text-gray-500 mt-1">Pre-filled from your contact form</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Pre-filled from your contact form</p>
                   </div>
                 )}
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                     Additional Notes
                   </label>
                   <Textarea
@@ -547,7 +547,7 @@ export default function SchedulePage() {
                 <Button
                   onClick={handleBooking}
                   disabled={!selectedDate || !selectedTime || !formData.name || !formData.email || booking}
-                  className="w-full bg-[#fcba00] hover:bg-[#d99f00] text-black font-semibold"
+                  className="w-full bg-[#fcba00] hover:bg-[#d99f00] dark:bg-[#fcba00] dark:hover:bg-[#e5ab00] text-black font-semibold"
                 >
                   {booking ? 'Booking...' : 'Confirm Booking'}
                 </Button>
