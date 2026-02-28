@@ -15,7 +15,7 @@ const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
  * Generate contract HTML from template
  * Returns { contractHtml, templateName }
  */
-export async function generateContractHtml(invoice, contact, event, contractNumber, supabase, contractId = null) {
+export async function generateContractHtml(invoice, contact, event, contractNumber, supabase, contractId = null, extraVariables = {}) {
   // Fetch organization owner name dynamically
   let ownerName = 'Ben Murray'; // Default fallback
   try {
@@ -269,6 +269,10 @@ ${paymentScheduleHtml}`
 </ul>`
       : '<p>Cancellation terms are as specified in the associated invoice and payment agreement.</p>',
     total_amount: `$${totalAmount.toFixed(2)}`,
+    extra_hour_rate: extraVariables.extra_hour_rate != null ? `$${Number(extraVariables.extra_hour_rate).toFixed(0)}` : null,
+    extra_hour_section: extraVariables.extra_hour_rate != null 
+      ? `<p><strong>Additional Hours:</strong> Any time beyond the agreed service duration will be billed at $${Number(extraVariables.extra_hour_rate).toFixed(0)} per hour.</p>`
+      : '',
     
     contract_number: contractNumber,
     effective_date: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }),
@@ -498,6 +502,7 @@ strong {
 <h2>3. COMPENSATION</h2>
 <p><strong>Total Contract Amount:</strong> {{invoice_total}}</p>
 {{compensation_section}}
+{{extra_hour_section}}
 </div>
 
 <div class="section">
@@ -553,7 +558,7 @@ strong {
  * @param {Object} supabaseClient - Optional Supabase client
  * @returns {Object} Result with contract info
  */
-export async function ensureContractExistsForInvoice(invoiceId, supabaseClient = null) {
+export async function ensureContractExistsForInvoice(invoiceId, supabaseClient = null, options = {}) {
   const supabase = supabaseClient || createClient(supabaseUrl, supabaseKey);
   
   try {
@@ -640,7 +645,8 @@ export async function ensureContractExistsForInvoice(invoiceId, supabaseClient =
 
         // If contract exists but doesn't have contract_html, generate it
         if (!existingContract.contract_html) {
-          const result = await generateContractHtml(invoice, contact, event, existingContract.contract_number || '', supabase);
+          const extraVars = options.extra_hour_rate != null ? { extra_hour_rate: options.extra_hour_rate } : {};
+          const result = await generateContractHtml(invoice, contact, event, existingContract.contract_number || '', supabase, existingContract.id, extraVars);
           if (result && result.contractHtml) {
             await supabase
               .from('contracts')
@@ -701,7 +707,8 @@ export async function ensureContractExistsForInvoice(invoiceId, supabaseClient =
       }
 
       if (contractWithToken && !contractWithToken.contract_html) {
-        const result = await generateContractHtml(invoice, contact, event, contractWithToken.contract_number || '', supabase);
+        const extraVars = options.extra_hour_rate != null ? { extra_hour_rate: options.extra_hour_rate } : {};
+        const result = await generateContractHtml(invoice, contact, event, contractWithToken.contract_number || '', supabase, contractWithToken.id, extraVars);
         if (result && result.contractHtml) {
           updateData.contract_html = result.contractHtml;
           updateData.contract_template = result.templateName;
@@ -724,7 +731,14 @@ export async function ensureContractExistsForInvoice(invoiceId, supabaseClient =
       };
     }
 
-    // Event already extracted above (line 360)
+    // Event already extracted above (line 584)
+    const eventName = event?.event_name ||
+      (contact.event_type
+        ? `${contact.first_name || ''} ${contact.last_name || ''} ${contact.event_type}`.trim()
+        : null) ||
+      (contact.first_name || contact.last_name
+        ? `${contact.first_name || ''} ${contact.last_name || ''}`.trim()
+        : 'Service Agreement');
 
     // Generate contract number (consistent format: CONT-YYYYMMDD-XXX)
     const today = new Date();
@@ -746,7 +760,8 @@ export async function ensureContractExistsForInvoice(invoiceId, supabaseClient =
     expiresAt.setDate(expiresAt.getDate() + 30); // Token valid for 30 days
 
     // Generate contract HTML
-    const { contractHtml, templateName } = await generateContractHtml(invoice, contact, event, contractNumber, supabase);
+    const extraVars = options.extra_hour_rate != null ? { extra_hour_rate: options.extra_hour_rate } : {};
+    const { contractHtml, templateName } = await generateContractHtml(invoice, contact, event, contractNumber, supabase, null, extraVars);
 
     // Create draft contract
     const contractData = {

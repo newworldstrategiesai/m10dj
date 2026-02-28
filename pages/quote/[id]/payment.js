@@ -751,9 +751,15 @@ export default function PaymentPage() {
                             key={percent}
                             type="button"
                             onClick={() => {
-                              setTipType('percentage');
-                              setTipPercentage(percent);
-                              setCustomTipAmount('');
+                              if (tipType === 'percentage' && tipPercentage === percent) {
+                                setTipType('none');
+                                setTipPercentage(15);
+                                setCustomTipAmount('');
+                              } else {
+                                setTipType('percentage');
+                                setTipPercentage(percent);
+                                setCustomTipAmount('');
+                              }
                             }}
                             className={`py-2 px-3 rounded-lg border-2 transition-all text-sm font-medium ${
                               tipType === 'percentage' && tipPercentage === percent
@@ -771,8 +777,13 @@ export default function PaymentPage() {
                         <button
                           type="button"
                           onClick={() => {
-                            setTipType('custom');
-                            setCustomTipAmount('');
+                            if (tipType === 'custom') {
+                              setTipType('none');
+                              setCustomTipAmount('');
+                            } else {
+                              setTipType('custom');
+                              setCustomTipAmount('');
+                            }
                           }}
                           className={`w-full py-2 px-3 rounded-lg border-2 transition-all text-sm font-medium ${
                             tipType === 'custom'
@@ -802,22 +813,6 @@ export default function PaymentPage() {
                             />
                           </div>
                         )}
-                        
-                        {/* No Tip Option */}
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setTipType('none');
-                            setCustomTipAmount('');
-                          }}
-                          className={`w-full py-2 px-3 rounded-lg border-2 transition-all text-sm font-medium ${
-                            tipType === 'none'
-                              ? 'border-gray-400 dark:border-gray-500 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
-                              : 'border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:border-gray-400'
-                          }`}
-                        >
-                          No Gratuity
-                        </button>
                       </div>
                     </div>
                     

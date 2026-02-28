@@ -268,11 +268,13 @@ export default async function handler(req, res) {
     }
 
     // Ensure contract exists for invoice (invoice-first workflow)
-    // This runs asynchronously so it doesn't block the response
+    // extra_hour_rate: optional $/hr for additional hours beyond agreed time
+    const extraHourRate = req.body.extra_hour_rate != null ? Number(req.body.extra_hour_rate) : null;
     (async () => {
       try {
         const { ensureContractExistsForInvoice } = await import('../../../utils/ensure-contract-exists-for-invoice');
-        const contractResult = await ensureContractExistsForInvoice(invoice.id, adminSupabase);
+        const options = extraHourRate != null && !isNaN(extraHourRate) ? { extra_hour_rate: extraHourRate } : {};
+        const contractResult = await ensureContractExistsForInvoice(invoice.id, adminSupabase, options);
         
         if (contractResult.success) {
           console.log(`✅ Contract ${contractResult.created ? 'created' : 'exists'} for invoice ${invoice.id}:`, contractResult.contract_id);

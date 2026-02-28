@@ -29,7 +29,7 @@ export function TipJarInStream({
 }: TipJarInStreamProps) {
   const [open, setOpen] = useState(false);
   const [amountType, setAmountType] = useState<'preset' | 'custom'>('preset');
-  const [presetAmount, setPresetAmount] = useState(5); // Default to $5
+  const [presetAmount, setPresetAmount] = useState<number | null>(5); // Default to $5, null = deselected
   const [customAmount, setCustomAmount] = useState('');
   const [name, setName] = useState('');
   const [message, setMessage] = useState('');
@@ -37,7 +37,7 @@ export function TipJarInStream({
 
   const getAmount = () => {
     if (amountType === 'preset') {
-      return presetAmount;
+      return presetAmount ?? 0;
     }
     const custom = parseFloat(customAmount);
     return isNaN(custom) || custom <= 0 ? 0 : custom;
@@ -148,7 +148,7 @@ export function TipJarInStream({
                   <button
                     key={preset.value}
                     type="button"
-                    onClick={() => setPresetAmount(preset.value)}
+                    onClick={() => setPresetAmount(presetAmount === preset.value ? null : preset.value)}
                     className={`p-4 rounded-xl border-2 transition-all ${
                       presetAmount === preset.value
                         ? 'border-purple-500 bg-gradient-to-br from-purple-500 to-pink-500 text-white shadow-xl scale-105'

@@ -1265,7 +1265,7 @@ export default function BiddingInterface({
                     <button
                       key={`preset-${preset.value}-${currentWinningBidAmount}-${idx}`} // Include winning bid and index in key to force re-render
                       type="button"
-                      onClick={() => setSelectedPresetBid(preset.value)}
+                      onClick={() => setSelectedPresetBid(selectedPresetBid === preset.value ? null : preset.value)}
                       className={`p-3 rounded-lg border-2 transition-all relative ${
                         selectedPresetBid === preset.value
                           ? 'border-purple-500 bg-gradient-to-br from-purple-500 to-pink-500 text-white shadow-xl shadow-purple-500/40 scale-105'

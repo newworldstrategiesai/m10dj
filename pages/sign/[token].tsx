@@ -244,9 +244,9 @@ export default function SignPage() {
             </button>
             
             {showFullContract && contractData?.contract_html && (
-              <div className="p-4 max-h-[60vh] overflow-y-auto">
+              <div className="p-4 max-h-[60vh] overflow-y-auto bg-white [&_p]:!text-gray-900 [&_li]:!text-gray-900 [&_span]:!text-gray-900 [&_strong]:!text-gray-900 [&_div]:!text-gray-900">
                 <div 
-                  className="prose prose-sm max-w-none"
+                  className="prose prose-sm max-w-none prose-p:text-gray-900 prose-li:text-gray-900 prose-headings:text-gray-900"
                   dangerouslySetInnerHTML={{ __html: contractData.contract_html }}
                 />
               </div>

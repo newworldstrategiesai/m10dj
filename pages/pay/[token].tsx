@@ -807,9 +807,15 @@ export default function PaymentPage() {
                               key={percent}
                               type="button"
                               onClick={() => {
-                                setTipType('percentage');
-                                setTipPercentage(percent);
-                                setCustomTipAmount('');
+                                if (tipType === 'percentage' && tipPercentage === percent) {
+                                  setTipType('none');
+                                  setTipPercentage(15);
+                                  setCustomTipAmount('');
+                                } else {
+                                  setTipType('percentage');
+                                  setTipPercentage(percent);
+                                  setCustomTipAmount('');
+                                }
                               }}
                               className={`py-3 sm:py-3.5 lg:py-4 px-3 sm:px-4 lg:px-5 rounded-xl border-2 transition-all transform hover:scale-105 active:scale-95 touch-manipulation min-h-[60px] lg:min-h-[70px] ${
                                 isSelected
@@ -831,8 +837,13 @@ export default function PaymentPage() {
                         <button
                           type="button"
                           onClick={() => {
-                            setTipType('custom');
-                            setCustomTipAmount('');
+                            if (tipType === 'custom') {
+                              setTipType('none');
+                              setCustomTipAmount('');
+                            } else {
+                              setTipType('custom');
+                              setCustomTipAmount('');
+                            }
                           }}
                           className={`w-full py-3 lg:py-3.5 px-4 rounded-xl border-2 transition-all text-sm lg:text-base font-semibold transform hover:scale-105 active:scale-95 touch-manipulation min-h-[48px] lg:min-h-[52px] ${
                             tipType === 'custom'
@@ -862,22 +873,6 @@ export default function PaymentPage() {
                             />
                           </div>
                         )}
-                        
-                        {/* No Tip Option */}
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setTipType('none');
-                            setCustomTipAmount('');
-                          }}
-                          className={`w-full py-3 lg:py-3.5 px-4 rounded-xl border-2 transition-all text-sm lg:text-base font-semibold transform hover:scale-105 active:scale-95 touch-manipulation min-h-[48px] lg:min-h-[52px] ${
-                            tipType === 'none'
-                              ? 'border-gray-400 dark:border-gray-500 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
-                              : 'border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:border-gray-400 dark:hover:border-gray-500 bg-white dark:bg-gray-700'
-                          }`}
-                        >
-                          No Gratuity
-                        </button>
                       </div>
                       
                       {/* Display Selected Gratuity */}

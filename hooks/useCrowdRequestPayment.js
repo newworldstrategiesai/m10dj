@@ -27,7 +27,7 @@ export function useCrowdRequestPayment({
 }) {
   const getBaseAmount = useCallback(() => {
     if (amountType === 'preset') {
-      return presetAmount;
+      return presetAmount ?? 0;
     } else {
       // For custom amount, only return a value if user has actually entered something
       if (!customAmount || customAmount.trim() === '') {

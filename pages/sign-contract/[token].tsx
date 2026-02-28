@@ -1401,10 +1401,10 @@ export default function SignContractPage() {
               </div>
             </div>
 
-            {/* Contract HTML Content */}
-            <div className="max-h-[50vh] sm:max-h-[600px] overflow-y-auto border border-gray-200 rounded-lg p-4 sm:p-6 mb-4 sm:mb-6 bg-gray-50">
+            {/* Contract HTML Content - Always light background with dark text (never white-on-white) */}
+            <div className="max-h-[50vh] sm:max-h-[600px] overflow-y-auto border border-gray-200 dark:border-gray-600 rounded-lg p-4 sm:p-6 mb-4 sm:mb-6 bg-white [&_p]:!text-gray-900 [&_li]:!text-gray-900 [&_span]:!text-gray-900 [&_strong]:!text-gray-900 [&_div]:!text-gray-900 [&_td]:!text-gray-900 [&_label]:!text-gray-900">
               <div 
-                className="prose prose-sm sm:prose-base max-w-none text-xs sm:text-sm"
+                className="prose prose-sm sm:prose-base max-w-none text-xs sm:text-sm prose-p:text-gray-900 prose-li:text-gray-900 prose-headings:text-gray-900 prose-strong:text-gray-900"
                 dangerouslySetInnerHTML={{ __html: contractData?.contract_html || '' }}
               />
             </div>
@@ -1593,7 +1593,13 @@ export default function SignContractPage() {
             font-family: 'Times New Roman', Times, serif;
             font-size: 12pt;
             line-height: 1.5;
-            color: #000;
+            color: #000 !important;
+            background: white !important;
+          }
+          /* Force dark text on all elements - never white-on-white in dark mode */
+          .contract-content p, .contract-content li, .contract-content span,
+          .contract-content div, .contract-content strong, .contract-content label {
+            color: #000 !important;
           }
           
           .contract-content h1 {
@@ -1604,6 +1610,7 @@ export default function SignContractPage() {
             margin-bottom: 20pt;
             border-bottom: 2px solid #000;
             padding-bottom: 10pt;
+            color: #000 !important;
           }
           
           .contract-content h2 {
@@ -1614,11 +1621,17 @@ export default function SignContractPage() {
             margin-bottom: 12pt;
             border-bottom: 1px solid #ddd;
             padding-bottom: 4pt;
+            color: #000 !important;
+          }
+          
+          .contract-content h3 {
+            color: #000 !important;
           }
           
           .contract-content p {
             margin: 6pt 0;
             text-align: justify;
+            color: #000 !important;
           }
           
           .contract-content ul, .contract-content ol {
@@ -2000,11 +2013,11 @@ export default function SignContractPage() {
           </div>
         )}
 
-        {/* Contract Content - Full Screen Document Style */}
+        {/* Contract Content - Full Screen Document Style - always readable (bg white, dark text) */}
         <div 
           ref={contractContentRef}
           id="contract-content"
-          className={`contract-content ${isAdmin && isEditMode ? 'editable-contract' : ''}`}
+          className={`contract-content bg-white text-gray-900 [&_p]:!text-gray-900 [&_li]:!text-gray-900 [&_span]:!text-gray-900 [&_strong]:!text-gray-900 [&_div]:!text-gray-900 [&_td]:!text-gray-900 [&_label]:!text-gray-900 [&_h1]:!text-gray-900 [&_h2]:!text-gray-900 [&_h3]:!text-gray-900 ${isAdmin && isEditMode ? 'editable-contract' : ''}`}
           contentEditable={isAdmin && isEditMode}
           suppressContentEditableWarning={true}
           onInput={handleContentChange}

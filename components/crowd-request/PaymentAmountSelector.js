@@ -155,7 +155,7 @@ function PaymentAmountSelector({
               <button
                   key={`preset-${preset.value}-${currentWinningBid}-${idx}-${presetAmounts.length}`} // Include winning bid, index, and array length in key to force re-render
                 type="button"
-                  onClick={() => !isBelowMinimum && setPresetAmount(preset.value)}
+                  onClick={() => !isBelowMinimum && setPresetAmount(presetAmount === preset.value ? null : preset.value)}
                   disabled={isBelowMinimum}
                 className={`group relative p-2.5 sm:p-3 rounded-lg sm:rounded-xl border-2 transition-all duration-300 touch-manipulation min-h-[44px] sm:min-h-[52px] overflow-hidden ${
                     isBelowMinimum
