@@ -2430,11 +2430,21 @@ export function GeneralRequestsPage({
       }
       
       const amount = getPaymentAmount();
-      const minPresetAmount = presetAmounts.length > 0 ? presetAmounts[0].value : minimumAmount;
-      if (!amount || amount < minPresetAmount) {
-        setError(`Invalid payment amount. Minimum is $${(minPresetAmount / 100).toFixed(2)}`);
-        setSelectedPaymentMethod(null);
-        return;
+      // For tips: no minimum amount - allow any amount > 0 (Stripe minimum is $0.01)
+      if (requestType === 'tip') {
+        if (!amount || amount <= 0) {
+          setError('Please enter a valid tip amount');
+          setSelectedPaymentMethod(null);
+          return;
+        }
+      } else {
+        // For song requests and shoutouts: enforce minimum preset amount
+        const minPresetAmount = presetAmounts.length > 0 ? presetAmounts[0].value : minimumAmount;
+        if (!amount || amount < minPresetAmount) {
+          setError(`Invalid payment amount. Minimum is $${(minPresetAmount / 100).toFixed(2)}`);
+          setSelectedPaymentMethod(null);
+          return;
+        }
       }
       
       setSubmitting(true);

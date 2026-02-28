@@ -425,7 +425,6 @@ export default function PersonalizedQuote() {
             }
           }
         }
-      }
     } catch (error) {
       console.error('Error fetching lead data:', error);
       
