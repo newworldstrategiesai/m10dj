@@ -10,15 +10,25 @@ interface AdminPageLayoutProps {
   description?: string;
 }
 
+// Domain-aware brand label for page titles
+function getAdminBrandLabel() {
+  if (typeof window === 'undefined') return 'Admin';
+  const h = window.location.hostname.toLowerCase();
+  if (h.includes('tipjar.live') || h.includes('tipjar.com')) return 'TipJar Live';
+  if (h.includes('djdash.net') || h.includes('djdash.com')) return 'DJ Dash';
+  return 'M10 DJ Admin';
+}
+
 /**
  * Simple admin page layout with top navigation bar
  * Use this for admin pages that need consistent navigation
  */
 export default function AdminPageLayout({ children, title, description }: AdminPageLayoutProps) {
+  const brandLabel = getAdminBrandLabel();
   return (
     <>
       <Head>
-        <title>{title ? `${title} - M10 DJ Admin` : 'M10 DJ Admin'}</title>
+        <title>{title ? `${title} - ${brandLabel}` : `${brandLabel} Admin`}</title>
         {description && <meta name="description" content={description} />}
         <meta name="robots" content="noindex, nofollow" />
       </Head>

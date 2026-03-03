@@ -74,12 +74,12 @@ export default function AdminNavbar() {
   // Get the actual theme to display (resolve system theme)
   const displayTheme = mounted && theme !== 'system' ? theme : (mounted && systemTheme || 'dark');
 
-  // Determine logo based on theme and product context
-  // TipJar users should not see M10 DJ Company logos
-  // Also check domain directly as fallback
+  // Determine logo based on domain FIRST - domain always takes precedence for branding
+  // On tipjar.live, NEVER show M10 DJ Company logos regardless of user/org product_context
   const hostname = typeof window !== 'undefined' ? window.location.hostname.toLowerCase() : '';
   const isTipJarDomain = hostname.includes('tipjar.live') || hostname.includes('tipjar.com');
-  const effectiveProductContext = productContext || (isTipJarDomain ? 'tipjar' : null);
+  const isDJDashDomain = hostname.includes('djdash.net') || hostname.includes('djdash.com');
+  const effectiveProductContext = isTipJarDomain ? 'tipjar' : (isDJDashDomain ? 'djdash' : productContext);
   
   const logoSrc = effectiveProductContext === 'tipjar'
     ? '/assets/TipJar-Logo-Icon.png'
@@ -310,7 +310,7 @@ export default function AdminNavbar() {
                 )}
               </div>
               <span className="hidden sm:block font-bold text-lg text-gray-900 dark:text-white">
-                {effectiveProductContext === 'tipjar' ? 'TipJar' : 'M10 DJ Admin'}
+                {effectiveProductContext === 'tipjar' ? 'TipJar Live' : (effectiveProductContext === 'djdash' ? 'DJ Dash' : 'M10 DJ Admin')}
               </span>
             </Link>
 

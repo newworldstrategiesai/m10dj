@@ -46,7 +46,8 @@ import {
   Maximize2,
   Globe,
   Activity,
-  Monitor
+  Monitor,
+  Video
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -691,6 +692,11 @@ export default function CrowdRequestsPage() {
         updateData.qr_display_halo_enabled = qrDisplaySettings.haloEnabled;
         updateData.qr_display_theme_toggle_enabled = qrDisplaySettings.themeToggleEnabled;
 
+        // Payment amount settings - must also save to organization so requests page uses them
+        // (API prefers organization over admin_settings; new orgs have default 1000 otherwise)
+        updateData.requests_minimum_amount = requestSettings.minimumAmount;
+        updateData.requests_preset_amounts = requestSettings.presetAmounts;
+
         const { data: updatedOrg, error: orgError } = await supabase
           .from('organizations')
           .update(updateData)
@@ -1160,6 +1166,15 @@ export default function CrowdRequestsPage() {
         themeToggleEnabled: orgWithRequests.qr_display_theme_toggle_enabled !== false,
       });
 
+      // Payment amount settings - prefer org (canonical) over admin_settings
+      if (orgWithRequests.requests_minimum_amount != null || (orgWithRequests.requests_preset_amounts && Array.isArray(orgWithRequests.requests_preset_amounts) && orgWithRequests.requests_preset_amounts.length > 0)) {
+        setRequestSettings(prev => ({
+          ...prev,
+          ...(orgWithRequests.requests_minimum_amount != null && { minimumAmount: orgWithRequests.requests_minimum_amount }),
+          ...(orgWithRequests.requests_preset_amounts && Array.isArray(orgWithRequests.requests_preset_amounts) && orgWithRequests.requests_preset_amounts.length > 0 && { presetAmounts: orgWithRequests.requests_preset_amounts })
+        }));
+      }
+
       // Filter by organization_id OR null (to catch orphaned requests that need assignment)
       // Also include requests from other organizations to catch any missing requests
       // Note: We'll handle sorting in the frontend to allow dynamic column sorting
@@ -1435,14 +1450,23 @@ export default function CrowdRequestsPage() {
   };
 
   const generateQRCode = () => {
-    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin;
+    // Use window.location.origin so domain matches where user is (tipjar.live, djdash.net, etc.)
+    const baseUrl = typeof window !== 'undefined' ? window.location.origin : (process.env.NEXT_PUBLIC_SITE_URL || '');
     let requestUrl: string;
     let qrCodeUrl: string;
 
     if (qrType === 'public') {
-      // Generate QR for public requests page
+      // Generate QR for current user's requests page - must use org slug for TipJar/DJDash
+      if (!organization?.slug) {
+        toast({
+          title: 'Organization needed',
+          description: 'Please complete your organization setup before generating a public QR code.',
+          variant: 'destructive',
+        });
+        return;
+      }
       // Add ?qr=1 to automatically mark scans as QR code scans
-      requestUrl = `${baseUrl}/requests?qr=1`;
+      requestUrl = `${baseUrl}/${organization.slug}/requests?qr=1`;
       qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(requestUrl)}`;
       setGeneratedPublicQR(qrCodeUrl);
       setGeneratedQR(null);
@@ -1470,12 +1494,13 @@ export default function CrowdRequestsPage() {
   };
 
   const copyQRUrl = () => {
-    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin;
+    const baseUrl = typeof window !== 'undefined' ? window.location.origin : (process.env.NEXT_PUBLIC_SITE_URL || '');
     let requestUrl: string;
     
     if (qrType === 'public') {
+      if (!organization?.slug) return;
       // Add ?qr=1 to automatically mark scans as QR code scans
-      requestUrl = `${baseUrl}/requests?qr=1`;
+      requestUrl = `${baseUrl}/${organization.slug}/requests?qr=1`;
     } else {
       if (!qrEventCode.trim()) return;
       // Add ?qr=1 to automatically mark scans as QR code scans
@@ -1501,6 +1526,54 @@ export default function CrowdRequestsPage() {
     const filename = qrType === 'public' ? 'qr-code-public-requests.png' : `qr-code-${qrEventCode}.png`;
     link.download = filename;
     link.click();
+  };
+
+  const downloadQRForVideoOverlay = async () => {
+    const qrToUse = qrType === 'public' ? generatedPublicQR : generatedQR;
+    if (!qrToUse) {
+      toast({ title: 'Error', description: 'Please generate a QR code first', variant: 'destructive' });
+      return;
+    }
+    try {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      await new Promise<void>((resolve, reject) => {
+        img.onload = () => resolve();
+        img.onerror = () => reject(new Error('Could not load QR image'));
+        img.src = qrToUse;
+      });
+      const qrSize = 400;
+      const padding = 24;
+      const ctaHeight = 56;
+      const canvas = document.createElement('canvas');
+      canvas.width = qrSize + padding * 2;
+      canvas.height = qrSize + padding + ctaHeight;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        toast({ title: 'Error', description: 'Could not create image', variant: 'destructive' });
+        return;
+      }
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(img, padding, padding, qrSize, qrSize);
+      ctx.font = 'bold 28px system-ui, -apple-system, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      const ctaText = 'Scan for requests';
+      const textY = qrSize + padding + ctaHeight / 2;
+      ctx.strokeStyle = 'rgba(0,0,0,0.9)';
+      ctx.lineWidth = 4;
+      ctx.strokeText(ctaText, canvas.width / 2, textY);
+      ctx.fillStyle = 'white';
+      ctx.fillText(ctaText, canvas.width / 2, textY);
+      const dataUrl = canvas.toDataURL('image/png');
+      const link = document.createElement('a');
+      link.href = dataUrl;
+      link.download = qrType === 'public' ? 'qr-scan-for-requests.png' : `qr-scan-for-requests-${qrEventCode}.png`;
+      link.click();
+      toast({ title: 'Downloaded', description: 'Use this PNG as a video overlay (e.g. Serato Video)' });
+    } catch (err) {
+      toast({ title: 'Error', description: err instanceof Error ? err.message : 'Could not generate image', variant: 'destructive' });
+    }
   };
 
   const printQRCodeToPDF = async () => {
@@ -1613,12 +1686,13 @@ export default function CrowdRequestsPage() {
         });
       }
 
-      const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin;
+      const baseUrl = typeof window !== 'undefined' ? window.location.origin : (process.env.NEXT_PUBLIC_SITE_URL || '');
       let requestUrl: string;
       
       if (qrType === 'public') {
+        if (!organization?.slug) return;
         // Add ?qr=1 to automatically mark scans as QR code scans
-        requestUrl = `${baseUrl}/requests?qr=1`;
+        requestUrl = `${baseUrl}/${organization.slug}/requests?qr=1`;
       } else {
         // Add ?qr=1 to automatically mark scans as QR code scans
         requestUrl = `${baseUrl}/crowd-request/${encodeURIComponent(qrEventCode)}?qr=1`;
@@ -3588,14 +3662,14 @@ export default function CrowdRequestsPage() {
             </h1>
           </div>
           <div className="flex gap-2 flex-shrink-0 flex-wrap sm:flex-nowrap">
-            <Button
-              onClick={() => {
-                const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || (typeof window !== 'undefined' ? window.location.origin : '');
-                const slug = organization?.slug;
-                if (slug && baseUrl) {
-                  window.open(`${baseUrl}/${slug}/qr`, '_blank', 'noopener,noreferrer');
-                }
-              }}
+              <Button
+                onClick={() => {
+                  const baseUrl = typeof window !== 'undefined' ? window.location.origin : (process.env.NEXT_PUBLIC_SITE_URL || '');
+                  const slug = organization?.slug;
+                  if (slug && baseUrl) {
+                    window.open(`${baseUrl}/${slug}/qr`, '_blank', 'noopener,noreferrer');
+                  }
+                }}
               variant="outline"
               className="inline-flex items-center gap-2 whitespace-nowrap"
               disabled={!organization?.slug}
@@ -3867,6 +3941,16 @@ export default function CrowdRequestsPage() {
                       </Button>
                       
                       <Button
+                        onClick={downloadQRForVideoOverlay}
+                        variant="outline"
+                        className="inline-flex items-center gap-2"
+                        title="PNG with QR + 'Scan for requests' CTA for video overlays (e.g. Serato Video)"
+                      >
+                        <Video className="w-4 h-4" />
+                        Video Overlay
+                      </Button>
+                      
+                      <Button
                         onClick={printQRCodeToPDF}
                         variant="outline"
                         className="inline-flex items-center gap-2"
@@ -3909,7 +3993,7 @@ export default function CrowdRequestsPage() {
                           Request URL:
                         </p>
                         <p className="text-sm text-gray-600 dark:text-gray-400 font-mono bg-gray-50 dark:bg-gray-900 p-2 rounded break-all">
-                          {process.env.NEXT_PUBLIC_SITE_URL || window.location.origin}/crowd-request/{qrEventCode}?qr=1
+                          {typeof window !== 'undefined' ? window.location.origin : (process.env.NEXT_PUBLIC_SITE_URL || '')}/crowd-request/{qrEventCode}?qr=1
                         </p>
                         <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
                           Scan this QR code or share the URL above with your event attendees.
@@ -3926,7 +4010,7 @@ export default function CrowdRequestsPage() {
               <>
                 <div className="bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 mb-4">
                   <p className="text-sm text-gray-700 dark:text-gray-300">
-                    This QR code will link to the public requests page at <code className="bg-white dark:bg-gray-800 px-2 py-1 rounded">/requests</code>. 
+                    This QR code will link to your public requests page at <code className="bg-white dark:bg-gray-800 px-2 py-1 rounded">{organization?.slug ? `/${organization.slug}/requests` : '/requests'}</code>. 
                     Anyone can use this page to submit song requests or shoutouts.
                   </p>
                 </div>
@@ -4033,6 +4117,16 @@ export default function CrowdRequestsPage() {
                       </Button>
                       
                       <Button
+                        onClick={downloadQRForVideoOverlay}
+                        variant="outline"
+                        className="inline-flex items-center gap-2"
+                        title="PNG with QR + 'Scan for requests' CTA for video overlays (e.g. Serato Video)"
+                      >
+                        <Video className="w-4 h-4" />
+                        Video Overlay
+                      </Button>
+                      
+                      <Button
                         onClick={printQRCodeToPDF}
                         variant="outline"
                         className="inline-flex items-center gap-2"
@@ -4043,7 +4137,7 @@ export default function CrowdRequestsPage() {
                       
                       <Button
                         onClick={() => {
-                          const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin;
+                          const baseUrl = typeof window !== 'undefined' ? window.location.origin : (process.env.NEXT_PUBLIC_SITE_URL || '');
                           const slug = organization?.slug;
                           if (!slug) return;
                           window.open(`${baseUrl}/${slug}/qr`, '_blank', 'noopener,noreferrer');
@@ -4075,7 +4169,7 @@ export default function CrowdRequestsPage() {
                           Public Requests URL:
                         </p>
                         <p className="text-sm text-gray-600 dark:text-gray-400 font-mono bg-gray-50 dark:bg-gray-900 p-2 rounded break-all">
-                          {process.env.NEXT_PUBLIC_SITE_URL || window.location.origin}/requests?qr=1
+                          {typeof window !== 'undefined' ? window.location.origin : (process.env.NEXT_PUBLIC_SITE_URL || '')}{organization?.slug ? `/${organization.slug}/requests?qr=1` : '/requests?qr=1'}
                         </p>
                         <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
                           Scan this QR code or share the URL above. This page is publicly accessible to anyone.

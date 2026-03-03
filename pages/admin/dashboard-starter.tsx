@@ -212,9 +212,8 @@ export default function StarterDashboard() {
     return null;
   }
 
-  const requestPageUrl = typeof window !== 'undefined' 
-    ? `${window.location.origin}/organizations/${organization.slug}/requests`
-    : `https://m10djcompany.com/organizations/${organization.slug}/requests`;
+  // Use relative path so QR/request links always point to current domain (tipjar.live, djdash.net, etc.)
+  const requestPageUrl = `/organizations/${organization.slug}/requests`;
 
   return (
     <AdminLayout>
@@ -278,7 +277,7 @@ export default function StarterDashboard() {
           </a>
 
           <a
-            href={`${requestPageUrl.split('/organizations')[0]}/${organization.slug}/qr`}
+            href={`/${organization.slug}/qr`}
             target="_blank"
             rel="noopener noreferrer"
           >

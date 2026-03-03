@@ -101,10 +101,8 @@ export default function AdminSidebar({ onSignOut, isMobileOpen: externalIsMobile
   
   const [productContext, setProductContext] = useState<string | null>(getInitialProductContext());
 
-  // Determine logo based on theme and product context
-  // TipJar users should not see M10 DJ Company logos
-  // Domain-based detection always takes precedence
-  const effectiveProductContext = productContext || (isTipJarDomain ? 'tipjar' : (isDJDashDomain ? 'djdash' : null));
+  // Domain ALWAYS takes precedence for branding - on tipjar.live, NEVER show M10 DJ logos
+  const effectiveProductContext = isTipJarDomain ? 'tipjar' : (isDJDashDomain ? 'djdash' : productContext);
   
   const logoSrc = effectiveProductContext === 'tipjar'
     ? '/assets/TipJar-Logo-Icon.png'
@@ -355,7 +353,7 @@ export default function AdminSidebar({ onSignOut, isMobileOpen: externalIsMobile
                 ${isExpanded ? 'opacity-100 w-auto' : 'opacity-0 w-0'}
               `}
             >
-              {effectiveProductContext === 'tipjar' ? 'TipJar' : 'M10 DJ'}
+              {effectiveProductContext === 'tipjar' ? 'TipJar Live' : (effectiveProductContext === 'djdash' ? 'DJ Dash' : 'M10 DJ')}
             </span>
           </Link>
         </div>

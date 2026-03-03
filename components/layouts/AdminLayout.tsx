@@ -134,12 +134,11 @@ export default function AdminLayout({ children, title, description, showPageTitl
     };
   }, [supabase]);
 
-  // Determine logo based on theme and product context
-  // TipJar users should not see M10 DJ Company logos
-  // Also check domain directly as fallback
+  // Domain ALWAYS takes precedence for branding - on tipjar.live, NEVER show M10 DJ logos
   const hostname = typeof window !== 'undefined' ? window.location.hostname.toLowerCase() : '';
   const isTipJarDomain = hostname.includes('tipjar.live') || hostname.includes('tipjar.com');
-  const effectiveProductContext = productContext || (isTipJarDomain ? 'tipjar' : null);
+  const isDJDashDomain = hostname.includes('djdash.net') || hostname.includes('djdash.com');
+  const effectiveProductContext = isTipJarDomain ? 'tipjar' : (isDJDashDomain ? 'djdash' : productContext);
   
   const logoSrc = effectiveProductContext === 'tipjar'
     ? '/assets/TipJar-Logo-Icon.png'

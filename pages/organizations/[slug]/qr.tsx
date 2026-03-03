@@ -17,6 +17,7 @@
  */
 
 import { useRouter } from 'next/router';
+import type { GetServerSideProps } from 'next';
 import Head from 'next/head';
 import { useEffect, useState } from 'react';
 import { useTheme } from 'next-themes';
@@ -24,7 +25,7 @@ import { createClient } from '@/utils/supabase/client';
 import { AuroraBackground } from '@/components/ui/shadcn-io/aurora-background';
 import { Sun, Moon } from 'lucide-react';
 
-export default function OrganizationQRDisplayPage() {
+export default function OrganizationQRDisplayPage({ metaHost, metaSlug, metaSiteName }: { metaHost?: string; metaSlug?: string; metaSiteName?: string }) {
   const router = useRouter();
   const { slug } = router.query;
   const { theme, setTheme, resolvedTheme } = useTheme();
@@ -202,15 +203,37 @@ export default function OrganizationQRDisplayPage() {
     </div>
   );
 
+  const slugForMeta = metaSlug || (Array.isArray(slug) ? slug[0] : slug);
+  const baseUrl = metaHost ? `https://${metaHost}` : (typeof window !== 'undefined' ? window.location.origin : process.env.NEXT_PUBLIC_SITE_URL || '');
+  const ogImageUrl = baseUrl && slugForMeta ? `${baseUrl}/api/og/qr/${encodeURIComponent(slugForMeta)}` : 'https://tipjar.live/assets/tipjar-open-graph-new.png';
+  const pageTitle = organization ? `Scan to Request Songs | ${organization.slug}` : (slugForMeta ? `Scan to Request Songs | ${slugForMeta}` : 'Scan to Request Songs');
+  const siteName = metaSiteName || 'TipJar Live';
+
   return (
     <>
       <Head>
-        <title>Scan to Request Songs</title>
+        <title>{pageTitle}</title>
         <meta name="robots" content="noindex" />
+        <meta name="description" content="Scan the QR code to request songs and send shoutouts at the event." />
         <meta
           name="viewport"
           content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"
         />
+        {/* Open Graph - domain-aware for iMessage/social sharing */}
+        <meta property="og:title" content={pageTitle} />
+        <meta property="og:description" content="Scan the QR code to request songs and send shoutouts at the event." />
+        <meta property="og:image" content={ogImageUrl} />
+        <meta property="og:image:width" content="1200" />
+        <meta property="og:image:height" content="630" />
+        <meta property="og:image:alt" content={`Scan to Request Songs - ${siteName}`} />
+        <meta property="og:site_name" content={siteName} />
+        <meta property="og:type" content="website" />
+        {/* Twitter Card */}
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content={pageTitle} />
+        <meta name="twitter:description" content="Scan the QR code to request songs and send shoutouts at the event." />
+        <meta name="twitter:image" content={ogImageUrl} />
+        <meta name="twitter:image:alt" content={`Scan to Request Songs - ${siteName}`} />
       </Head>
 
       {useAurora ? (
@@ -243,3 +266,20 @@ export default function OrganizationQRDisplayPage() {
     </>
   );
 }
+
+export const getServerSideProps: GetServerSideProps = async (context) => {
+  const { slug } = context.params || {};
+  const slugStr = Array.isArray(slug) ? slug[0] : slug;
+  const host = context.req?.headers?.host || '';
+  const isTipJar = host.includes('tipjar.live') || host.includes('tipjar.com');
+  const isDJDash = host.includes('djdash.net') || host.includes('djdash.com');
+  const metaSiteName = isTipJar ? 'TipJar Live' : isDJDash ? 'DJ Dash' : 'M10 DJ Company';
+
+  return {
+    props: {
+      metaHost: host,
+      metaSlug: slugStr || '',
+      metaSiteName,
+    },
+  };
+};
