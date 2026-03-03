@@ -1092,6 +1092,7 @@ export default async function handler(req, res) {
       const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://m10djcompany.com';
       
       // Build wedding-specific links section (primary CTA: Select Your Services / quote page)
+      // Use table-based layout for email client compatibility (flexbox causes overflow on mobile)
       let weddingLinksSection = '';
       if (isWedding && contactId) {
         const quotePageLink = `${baseUrl}/quote/${contactId}`;
@@ -1099,50 +1100,45 @@ export default async function handler(req, res) {
         const scheduleLink = `${baseUrl}/schedule`;
         
         weddingLinksSection = `
-          <div style="background: #f0f9ff; border: 2px solid #3b82f6; padding: 25px; border-radius: 8px; margin: 25px 0; text-align: center;">
-            <h3 style="color: #1e40af; margin-top: 0; margin-bottom: 15px; font-size: 20px;">🎵 Get Started on Your Wedding Planning</h3>
-            <p style="color: #1e3a8a; margin-bottom: 20px; line-height: 1.6;">
-              We've created a personalized page for you. Select your package and add-ons to get your custom quote:
-            </p>
-            
-            <div style="display: flex; flex-direction: column; gap: 15px; max-width: 400px; margin: 0 auto;">
-              <a href="${quotePageLink}" 
-                 style="display: block; background: #fcba00; color: #000; padding: 15px 25px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 16px; text-align: center; transition: background 0.3s;">
-                📋 Select Your Services &amp; View Pricing
-              </a>
-              <p style="color: #475569; margin: 0; font-size: 14px; line-height: 1.5;">
-                Compare packages, choose add-ons, and see your total. You can also open this link on your phone to review anytime.
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background: #f0f9ff; border: 2px solid #3b82f6; border-radius: 8px; margin: 25px 0; max-width: 100%;">
+            <tr><td style="padding: 25px;">
+              <h3 style="color: #1e40af; margin: 0 0 15px 0; font-size: 20px; text-align: center;">🎵 Get Started on Your Wedding Planning</h3>
+              <p style="color: #1e3a8a; margin: 0 0 20px 0; line-height: 1.6; text-align: center;">
+                We've created a personalized page for you. Select your package and add-ons to get your custom quote:
               </p>
-              
-              <a href="${questionnaireLink}" 
-                 style="display: block; background: #e0f2fe; color: #1e40af; padding: 12px 20px; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 15px; text-align: center; border: 1px solid #3b82f6;">
-                🎵 Wedding Music Questionnaire
-              </a>
-              <p style="color: #475569; margin: 0; font-size: 14px; line-height: 1.5;">
-                Tell us your music preferences and special songs so we can create the perfect playlist.
-              </p>
-              
-              <a href="${scheduleLink}" 
-                 style="display: block; background: #3b82f6; color: #fff; padding: 12px 20px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 15px; text-align: center; margin-top: 5px;">
-                📅 Schedule a Free Consultation
-              </a>
-            </div>
-          </div>
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width: 100%;">
+                <tr><td style="padding-bottom: 15px; text-align: center;">
+                  <a href="${quotePageLink}" style="display: inline-block; background: #fcba00; color: #000; padding: 15px 25px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 16px;">📋 Select Your Services &amp; View Pricing</a>
+                </td></tr>
+                <tr><td style="padding-bottom: 15px; color: #475569; font-size: 14px; line-height: 1.5; text-align: center;">
+                  Compare packages, choose add-ons, and see your total. You can also open this link on your phone to review anytime.
+                </td></tr>
+                <tr><td style="padding-bottom: 15px; text-align: center;">
+                  <a href="${questionnaireLink}" style="display: inline-block; background: #e0f2fe; color: #1e40af; padding: 12px 20px; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 15px; border: 1px solid #3b82f6;">🎵 Wedding Music Questionnaire</a>
+                </td></tr>
+                <tr><td style="padding-bottom: 15px; color: #475569; font-size: 14px; line-height: 1.5; text-align: center;">
+                  Tell us your music preferences and special songs so we can create the perfect playlist.
+                </td></tr>
+                <tr><td style="text-align: center;">
+                  <a href="${scheduleLink}" style="display: inline-block; background: #3b82f6; color: #fff; padding: 12px 20px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 15px;">📅 Schedule a Free Consultation</a>
+                </td></tr>
+              </table>
+            </td></tr>
+          </table>
         `;
       } else if (!isWedding) {
-        // For non-wedding events, still offer consultation
+        // For non-wedding events, still offer consultation (table layout for email client compatibility)
         const scheduleLink = `${baseUrl}/schedule`;
         weddingLinksSection = `
-          <div style="background: #f0f9ff; border: 2px solid #3b82f6; padding: 25px; border-radius: 8px; margin: 25px 0; text-align: center;">
-            <h3 style="color: #1e40af; margin-top: 0; margin-bottom: 15px; font-size: 20px;">📅 Schedule a Free Consultation</h3>
-            <p style="color: #1e3a8a; margin-bottom: 20px; line-height: 1.6;">
-              Want to discuss your event in detail? Book a time that works for you:
-            </p>
-            <a href="${scheduleLink}" 
-               style="display: inline-block; background: #3b82f6; color: #fff; padding: 15px 30px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 16px;">
-              Schedule Your Consultation →
-            </a>
-          </div>
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background: #f0f9ff; border: 2px solid #3b82f6; border-radius: 8px; margin: 25px 0; max-width: 100%;">
+            <tr><td style="padding: 25px; text-align: center;">
+              <h3 style="color: #1e40af; margin: 0 0 15px 0; font-size: 20px;">📅 Schedule a Free Consultation</h3>
+              <p style="color: #1e3a8a; margin: 0 0 20px 0; line-height: 1.6;">
+                Want to discuss your event in detail? Book a time that works for you:
+              </p>
+              <a href="${scheduleLink}" style="display: inline-block; background: #3b82f6; color: #fff; padding: 15px 30px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 16px;">Schedule Your Consultation &#8594;</a>
+            </td></tr>
+          </table>
         `;
       }
       

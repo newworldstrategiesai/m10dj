@@ -57,6 +57,14 @@ interface CommunicationLog {
   content: string;
   status: string;
   created_at: string;
+  metadata?: {
+    email_id?: string;
+    delivered_at?: string;
+    opened_at?: string;
+    complained_at?: string;
+    bounce?: unknown;
+    resend_events?: { type: string; at: string }[];
+  } | null;
 }
 
 export default function FormSubmissionsPage() {
@@ -803,49 +811,64 @@ export default function FormSubmissionsPage() {
                     Communication History ({communicationHistory.length})
                   </h3>
                   <div className="space-y-3 max-h-64 overflow-y-auto">
-                    {communicationHistory.map((comm) => (
-                      <div
-                        key={comm.id}
-                        className={`
-                          p-3 rounded-lg border-l-4
-                          ${comm.direction === 'outbound'
-                            ? 'bg-blue-50 dark:bg-blue-900/30 border-blue-500 dark:border-blue-600'
-                            : 'bg-green-50 dark:bg-green-900/30 border-green-500 dark:border-green-600'
-                          }
-                        `}
-                      >
-                        <div className="flex items-start justify-between mb-2">
-                          <div className="flex items-center gap-2">
-                            {comm.communication_type === 'email' && <Mail className="w-4 h-4 text-gray-600 dark:text-zinc-400" />}
-                            {comm.communication_type === 'sms' && <MessageSquare className="w-4 h-4 text-gray-600 dark:text-zinc-400" />}
-                            {comm.communication_type === 'call' && <Phone className="w-4 h-4 text-gray-600 dark:text-zinc-400" />}
-                            <span className="text-xs font-semibold text-gray-900 dark:text-white uppercase">
-                              {comm.communication_type}
-                            </span>
-                            <span className={`
-                              text-xs px-2 py-0.5 rounded-full
-                              ${comm.direction === 'outbound'
-                                ? 'bg-blue-200 dark:bg-blue-800 text-blue-800 dark:text-blue-200'
-                                : 'bg-green-200 dark:bg-green-800 text-green-800 dark:text-green-200'
-                              }
-                            `}>
-                              {comm.direction === 'outbound' ? '→ Sent' : '← Received'}
+                    {communicationHistory.map((comm) => {
+                      const status = comm.status || 'sent';
+                      const meta = comm.metadata as CommunicationLog['metadata'] | undefined;
+                      const statusLabel = status === 'read' ? 'Opened' : status === 'delivered' ? 'Delivered' : status === 'bounced' ? 'Bounced' : status === 'complained' ? 'Spam' : status === 'failed' ? 'Failed' : 'Sent';
+                      const statusColor = status === 'read' || status === 'delivered' ? 'text-green-700 dark:text-green-400' : status === 'bounced' || status === 'complained' || status === 'failed' ? 'text-amber-700 dark:text-amber-400' : 'text-gray-600 dark:text-zinc-400';
+                      return (
+                        <div
+                          key={comm.id}
+                          className={`
+                            p-3 rounded-lg border-l-4
+                            ${comm.direction === 'outbound'
+                              ? 'bg-blue-50 dark:bg-blue-900/30 border-blue-500 dark:border-blue-600'
+                              : 'bg-green-50 dark:bg-green-900/30 border-green-500 dark:border-green-600'
+                            }
+                          `}
+                        >
+                          <div className="flex items-start justify-between mb-2">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              {comm.communication_type === 'email' && <Mail className="w-4 h-4 text-gray-600 dark:text-zinc-400" />}
+                              {comm.communication_type === 'sms' && <MessageSquare className="w-4 h-4 text-gray-600 dark:text-zinc-400" />}
+                              {comm.communication_type === 'call' && <Phone className="w-4 h-4 text-gray-600 dark:text-zinc-400" />}
+                              <span className="text-xs font-semibold text-gray-900 dark:text-white uppercase">
+                                {comm.communication_type}
+                              </span>
+                              <span className={`
+                                text-xs px-2 py-0.5 rounded-full
+                                ${comm.direction === 'outbound'
+                                  ? 'bg-blue-200 dark:bg-blue-800 text-blue-800 dark:text-blue-200'
+                                  : 'bg-green-200 dark:bg-green-800 text-green-800 dark:text-green-200'
+                                }
+                              `}>
+                                {comm.direction === 'outbound' ? '→ Sent' : '← Received'}
+                              </span>
+                              <span className={`text-xs font-medium ${statusColor}`}>
+                                {statusLabel}
+                              </span>
+                            </div>
+                            <span className="text-xs text-gray-500 dark:text-zinc-400">
+                              {formatDate(comm.created_at)}
                             </span>
                           </div>
-                          <span className="text-xs text-gray-500 dark:text-zinc-400">
-                            {formatDate(comm.created_at)}
-                          </span>
-                        </div>
-                        {comm.subject && (
-                          <div className="text-sm font-semibold text-gray-900 dark:text-white mb-1">
-                            {comm.subject}
+                          {(meta?.delivered_at || meta?.opened_at) && (
+                            <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500 dark:text-zinc-400 mb-1">
+                              {meta.delivered_at && <span>Delivered {formatDate(meta.delivered_at)}</span>}
+                              {meta.opened_at && <span>Opened {formatDate(meta.opened_at)}</span>}
+                            </div>
+                          )}
+                          {comm.subject && (
+                            <div className="text-sm font-semibold text-gray-900 dark:text-white mb-1">
+                              {comm.subject}
+                            </div>
+                          )}
+                          <div className="text-sm text-gray-700 dark:text-zinc-300 line-clamp-3">
+                            {comm.content}
                           </div>
-                        )}
-                        <div className="text-sm text-gray-700 dark:text-zinc-300 line-clamp-3">
-                          {comm.content}
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               )}
@@ -1225,24 +1248,7 @@ djbenmurray@gmail.com`
       const responseData = await response.json();
       console.log('   ✅ Email API success:', responseData);
 
-      // Log communication
-      console.log('📝 Logging communication to database...');
-      const { error: logError } = await (supabase.from('communication_log') as any).insert({
-        contact_submission_id: submission.id,
-        communication_type: 'email',
-        direction: 'outbound',
-        subject: formData.subject,
-        content: emailBody,
-        status: 'sent',
-        sent_to: submission.email,
-        created_at: new Date().toISOString()
-      });
-
-      if (logError) {
-        console.error('   ⚠️ Failed to log communication:', logError);
-      } else {
-        console.log('   ✅ Communication logged');
-      }
+      // Communication is logged by the send-email API (so it appears in Submission Details > Communication history)
 
       // Update submission status if it was "new"
       if (submission.status === 'new') {

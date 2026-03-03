@@ -211,31 +211,50 @@ ${htmlEmailContent}
       emailId = emailResult.data?.id;
     }
 
-    // Log the communication in database (if recordId provided)
+    // Log the communication in database (need a contact_submission_id for Submission Details / Communication history)
     if (recordId) {
       const supabase = createClient(supabaseUrl, supabaseServiceKey);
       
-      // Get organization_id from contact or contact_submission
+      // Resolve organization_id and a valid contact_submission_id for logging.
+      // When submissionId is passed: use it. When only contactId is passed: resolve to a submission by contact email so the log shows under Submission Details.
       let organizationId = null;
+      let contactSubmissionIdForLog = null;
+      let submissionIdForLastContact = null;
+
       const { data: contact } = await supabase
         .from('contacts')
-        .select('organization_id')
+        .select('organization_id, email_address')
         .eq('id', recordId)
         .single();
       
       if (contact?.organization_id) {
         organizationId = contact.organization_id;
-      } else {
-        // Try contact_submissions if not found in contacts
-        const { data: submission } = await supabase
-          .from('contact_submissions')
-          .select('organization_id')
-          .eq('id', recordId)
-          .single();
-        
-        if (submission?.organization_id) {
-          organizationId = submission.organization_id;
+      }
+      if (submissionId) {
+        contactSubmissionIdForLog = submissionId;
+        submissionIdForLastContact = submissionId;
+        if (!organizationId) {
+          const { data: sub } = await supabase.from('contact_submissions').select('organization_id').eq('id', submissionId).single();
+          if (sub?.organization_id) organizationId = sub.organization_id;
         }
+      } else if (contactId && recordId === contactId) {
+        // recordId is contact id: resolve a contact_submission by same email so we can log and show in Submission Details
+        const email = (contact?.email_address || '').trim().toLowerCase();
+        if (email) {
+          const { data: subRow } = await supabase
+            .from('contact_submissions')
+            .select('id, organization_id')
+            .ilike('email', email)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+          if (subRow?.id) {
+            contactSubmissionIdForLog = subRow.id;
+            submissionIdForLastContact = subRow.id;
+            if (subRow.organization_id) organizationId = organizationId || subRow.organization_id;
+          }
+        }
+        if (!organizationId && contact?.organization_id) organizationId = contact.organization_id;
       }
       
       // If draftId provided, try to update the draft instead of creating new entry
@@ -264,12 +283,12 @@ ${htmlEmailContent}
         }
       }
       
-      // If no draftId or update failed, insert new entry
-      if (!draftUpdated) {
+      // Insert new log entry only when we have a valid contact_submission_id (so it shows in Submission Details)
+      if (!draftUpdated && contactSubmissionIdForLog) {
         const { error: logError } = await supabase
           .from('communication_log')
           .insert([{
-            contact_submission_id: recordId,
+            contact_submission_id: contactSubmissionIdForLog,
             communication_type: 'email',
             direction: 'outbound',
             subject: emailSubject,
@@ -277,7 +296,7 @@ ${htmlEmailContent}
             sent_by: 'Admin',
             sent_to: emailTo,
             status: 'sent',
-            organization_id: organizationId, // Set organization_id for multi-tenant isolation
+            organization_id: organizationId || null,
             metadata: {
               email_id: emailId,
               provider: useGmail ? 'gmail' : 'resend',
@@ -287,21 +306,25 @@ ${htmlEmailContent}
 
         if (logError) {
           console.error('Error logging email communication:', logError);
-          // Don't fail the request if logging fails
+        } else {
+          console.log('✅ Communication log inserted for contact_submission_id:', contactSubmissionIdForLog);
         }
+      } else if (!contactSubmissionIdForLog) {
+        console.warn('⚠️ No contact_submission_id resolved – email sent but not logged to Communication history');
       }
 
-      // Update last contact date on the submission
-      const { error: updateError } = await supabase
-        .from('contact_submissions')
-        .update({ 
-          last_contact_date: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', recordId);
-
-      if (updateError) {
-        console.error('Error updating last contact date:', updateError);
+      // Update last contact date only when we have a submission row to update
+      if (submissionIdForLastContact) {
+        const { error: updateError } = await supabase
+          .from('contact_submissions')
+          .update({ 
+            last_contact_date: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', submissionIdForLastContact);
+        if (updateError) {
+          console.error('Error updating last contact date:', updateError);
+        }
       }
     }
 
@@ -316,38 +339,31 @@ ${htmlEmailContent}
     console.error('   Error message:', error.message);
     console.error('   Error stack:', error.stack);
     
-    // Try to log the failed attempt (if recordId provided)
+    // Try to log the failed attempt with a valid contact_submission_id
     if (recordId) {
       try {
         const supabase = createClient(supabaseUrl, supabaseServiceKey);
-        
-        // Get organization_id from contact or contact_submission
+        let contactSubmissionIdForLog = submissionId || null;
         let organizationId = null;
-        const { data: contact } = await supabase
-          .from('contacts')
-          .select('organization_id')
-          .eq('id', recordId)
-          .single();
-        
-        if (contact?.organization_id) {
-          organizationId = contact.organization_id;
-        } else {
-          // Try contact_submissions if not found in contacts
-          const { data: submission } = await supabase
-            .from('contact_submissions')
-            .select('organization_id')
-            .eq('id', recordId)
-            .single();
-          
-          if (submission?.organization_id) {
-            organizationId = submission.organization_id;
+        if (submissionId) {
+          contactSubmissionIdForLog = submissionId;
+          const { data: sub } = await supabase.from('contact_submissions').select('organization_id').eq('id', submissionId).single();
+          if (sub?.organization_id) organizationId = sub.organization_id;
+        } else if (contactId) {
+          const { data: contact } = await supabase.from('contacts').select('organization_id, email_address').eq('id', contactId).single();
+          if (contact?.organization_id) organizationId = contact.organization_id;
+          const email = (contact?.email_address || '').trim().toLowerCase();
+          if (email) {
+            const { data: subRow } = await supabase.from('contact_submissions').select('id, organization_id').ilike('email', email).order('created_at', { ascending: false }).limit(1).maybeSingle();
+            if (subRow?.id) {
+              contactSubmissionIdForLog = subRow.id;
+              if (subRow.organization_id) organizationId = organizationId || subRow.organization_id;
+            }
           }
         }
-        
-        await supabase
-          .from('communication_log')
-          .insert([{
-            contact_submission_id: recordId,
+        if (contactSubmissionIdForLog) {
+          await supabase.from('communication_log').insert([{
+            contact_submission_id: contactSubmissionIdForLog,
             communication_type: 'email',
             direction: 'outbound',
             subject: emailSubject,
@@ -355,9 +371,10 @@ ${htmlEmailContent}
             sent_by: 'Admin',
             sent_to: emailTo,
             status: 'failed',
-            organization_id: organizationId, // Set organization_id for multi-tenant isolation
+            organization_id: organizationId || null,
             metadata: { error: error.message }
           }]);
+        }
       } catch (logError) {
         console.error('Error logging failed email:', logError);
       }
