@@ -133,25 +133,17 @@ export default async function handler(req, res) {
   console.log(`   From: ${useGmail ? 'Gmail Account' : 'M10 DJ Company <hello@m10djcompany.com>'}`);
 
   try {
-    // Convert plain text to HTML, converting quote links to buttons
-    let htmlEmailContent = emailContent;
-    
-    // Convert quote links to styled buttons
-    // Pattern: Look for quote links in format: https://.../quote/[uuid] or http://.../quote/[uuid]
-    const quoteLinkRegex = /(https?:\/\/[^\s]+\/quote\/[a-f0-9-]{36})/gi;
-    htmlEmailContent = htmlEmailContent.replace(quoteLinkRegex, (match) => {
-      return `<div style="text-align: center; margin: 25px 0;">
-        <a href="${match}" 
-           style="display: inline-block; background: linear-gradient(135deg, #fcba00, #e6a800); color: #000; padding: 16px 32px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); transition: transform 0.2s;">
-          View Pricing
-        </a>
-      </div>`;
-    });
-    
-    // Convert line breaks and preserve formatting
-    htmlEmailContent = htmlEmailContent
+    // Convert plain text to HTML, then convert quote links to buttons.
+    // Do newline/rule conversion FIRST so we don't insert <br> inside the button HTML (which breaks rendering in many clients).
+    let htmlEmailContent = emailContent
       .replace(/\n/g, '<br>')
       .replace(/━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━/g, '<hr style="border: none; border-top: 2px solid #fcba00; margin: 20px 0;">');
+
+    // Convert quote links (and service selection links: /quote/[uuid]) to a single-line styled button so HTML stays valid
+    const quoteLinkRegex = /(https?:\/\/[^\s<>]+\/quote\/[a-f0-9-]{36})/gi;
+    const buttonHtml = (url) =>
+      `<div style="text-align: center; margin: 25px 0;"><a href="${url}" style="display: inline-block; background: linear-gradient(135deg, #fcba00, #e6a800); color: #000; padding: 16px 32px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">View Pricing</a></div>`;
+    htmlEmailContent = htmlEmailContent.replace(quoteLinkRegex, (match) => buttonHtml(match));
     
     // Create professional HTML email template
     const htmlContent = `

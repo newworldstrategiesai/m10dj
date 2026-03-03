@@ -1091,9 +1091,10 @@ export default async function handler(req, res) {
       const contactId = criticalOperations.contactRecord?.id;
       const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://m10djcompany.com';
       
-      // Build wedding-specific links section
+      // Build wedding-specific links section (primary CTA: Select Your Services / quote page)
       let weddingLinksSection = '';
       if (isWedding && contactId) {
+        const quotePageLink = `${baseUrl}/quote/${contactId}`;
         const questionnaireLink = `${baseUrl}/quote/${contactId}/questionnaire`;
         const scheduleLink = `${baseUrl}/schedule`;
         
@@ -1101,25 +1102,30 @@ export default async function handler(req, res) {
           <div style="background: #f0f9ff; border: 2px solid #3b82f6; padding: 25px; border-radius: 8px; margin: 25px 0; text-align: center;">
             <h3 style="color: #1e40af; margin-top: 0; margin-bottom: 15px; font-size: 20px;">🎵 Get Started on Your Wedding Planning</h3>
             <p style="color: #1e3a8a; margin-bottom: 20px; line-height: 1.6;">
-              Want to get started right away? Here are two ways to move forward:
+              We've created a personalized page for you. Select your package and add-ons to get your custom quote:
             </p>
             
             <div style="display: flex; flex-direction: column; gap: 15px; max-width: 400px; margin: 0 auto;">
-              <a href="${questionnaireLink}" 
+              <a href="${quotePageLink}" 
                  style="display: block; background: #fcba00; color: #000; padding: 15px 25px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 16px; text-align: center; transition: background 0.3s;">
-                📋 Start Wedding Music Questionnaire
+                📋 Select Your Services &amp; View Pricing
               </a>
               <p style="color: #475569; margin: 0; font-size: 14px; line-height: 1.5;">
-                Help us understand your music preferences, special songs, and the vibe you're going for. This will help us create the perfect playlist for your big day!
+                Compare packages, choose add-ons, and see your total. You can also open this link on your phone to review anytime.
+              </p>
+              
+              <a href="${questionnaireLink}" 
+                 style="display: block; background: #e0f2fe; color: #1e40af; padding: 12px 20px; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 15px; text-align: center; border: 1px solid #3b82f6;">
+                🎵 Wedding Music Questionnaire
+              </a>
+              <p style="color: #475569; margin: 0; font-size: 14px; line-height: 1.5;">
+                Tell us your music preferences and special songs so we can create the perfect playlist.
               </p>
               
               <a href="${scheduleLink}" 
-                 style="display: block; background: #3b82f6; color: #fff; padding: 15px 25px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 16px; text-align: center; transition: background 0.3s; margin-top: 10px;">
+                 style="display: block; background: #3b82f6; color: #fff; padding: 12px 20px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 15px; text-align: center; margin-top: 5px;">
                 📅 Schedule a Free Consultation
               </a>
-              <p style="color: #475569; margin: 0; font-size: 14px; line-height: 1.5;">
-                Book a time to discuss your wedding in detail. We'll go over your vision, answer questions, and make sure everything is perfect for your special day.
-              </p>
             </div>
           </div>
         `;
@@ -1509,8 +1515,9 @@ export default async function handler(req, res) {
     console.log('   Source:', criticalOperations.contactRecord.id ? 'contact' : 'submission');
 
     // Include form data in response as backup for quote page
-    // quoteReady: true when quote/invoice/contract auto-creation succeeded (safe to redirect)
-    const quoteReady = !!(criticalOperations.autoCreation?.quote?.success || criticalOperations.autoCreation?.invoice?.success);
+    // quoteReady: true when quote/invoice auto-creation succeeded OR when wedding (redirect to service selection / quote page immediately)
+    const isWeddingRedirect = (standardizedEventType === 'wedding' && !!criticalOperations.contactRecord?.id);
+    const quoteReady = !!(criticalOperations.autoCreation?.quote?.success || criticalOperations.autoCreation?.invoice?.success || isWeddingRedirect);
     const successResponse = { 
       success: true,
       message: 'Thank you for your message! We\'ll get back to you soon.',
