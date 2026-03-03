@@ -3659,7 +3659,7 @@ export default function CrowdRequestsPage() {
                 }
               }}
               variant="outline"
-              className="hidden inline-flex items-center gap-2 whitespace-nowrap"
+              className="!hidden"
               title="Find missing Venmo requests from the last 7 days"
             >
               <Search className="w-4 h-4" />
@@ -3669,7 +3669,7 @@ export default function CrowdRequestsPage() {
               onClick={handleManualSync}
               disabled={syncingPayments}
               variant="outline"
-              className="hidden inline-flex items-center gap-2 whitespace-nowrap"
+              className="!hidden"
               title="Sync payment status from Stripe for all requests"
             >
               <RefreshCw className={`w-4 h-4 sm:w-5 sm:h-5 ${syncingPayments ? 'animate-spin' : ''}`} />
@@ -3694,7 +3694,7 @@ export default function CrowdRequestsPage() {
                 }
               }}
               variant="outline"
-              className="hidden inline-flex items-center gap-2 whitespace-nowrap"
+              className="!hidden"
               title="Test Stripe webhook configuration"
             >
               <AlertCircle className="w-4 h-4 sm:w-5 sm:h-5" />
@@ -3733,7 +3733,7 @@ export default function CrowdRequestsPage() {
               }}
               disabled={syncingPayments}
               variant="outline"
-              className="hidden inline-flex items-center gap-2 whitespace-nowrap"
+              className="!hidden"
               title="Find payments in Stripe that aren't in the app"
             >
               <Search className={`w-4 h-4 sm:w-5 sm:h-5 ${syncingPayments ? 'animate-spin' : ''}`} />

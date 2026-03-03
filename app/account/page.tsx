@@ -3,7 +3,9 @@ import EmailForm from '@/components/ui/AccountForms/EmailForm';
 import NameForm from '@/components/ui/AccountForms/NameForm';
 import AdminPhoneForm from '@/components/ui/AccountForms/AdminPhoneForm';
 import AvatarForm from '@/components/ui/AccountForms/AvatarForm';
+import Card from '@/components/ui/Card/Card';
 import { redirect } from 'next/navigation';
+import Link from 'next/link';
 import { createClient } from '@/utils/supabase/server';
 import {
   getUserDetails,
@@ -46,6 +48,22 @@ export default async function Account() {
         <NameForm userName={userDetails?.full_name ?? ''} />
         <EmailForm userEmail={user.email} />
         <AdminPhoneForm adminPhoneNumber={adminPhoneNumber} />
+        <Card
+          title="Request Page Settings"
+          description="Customize your public request page, cover photo, branding, payments, and more."
+          footer={
+            <Link
+              href="/admin/requests-page"
+              className="text-zinc-300 dark:text-zinc-400 hover:text-white dark:hover:text-white underline underline-offset-2 transition-colors"
+            >
+              Go to Request Page Settings →
+            </Link>
+          }
+        >
+          <p className="mt-4 mb-4 text-sm text-zinc-400 dark:text-zinc-500">
+            Configure how your request page appears to guests—cover photo, social links, tip options, and more.
+          </p>
+        </Card>
       </div>
     </section>
   );

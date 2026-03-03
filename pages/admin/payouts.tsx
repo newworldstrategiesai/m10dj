@@ -105,6 +105,14 @@ export default function PayoutsPage() {
     checkAuthAndLoad();
   }, []);
 
+  // Auto-fill max amount when instant available amount changes (must be at top level - no conditional returns before hooks)
+  const balanceForInstant = balance ? (balance.instant_available ?? 0) / 100 : 0;
+  useEffect(() => {
+    if (balanceForInstant > 0 && !instantPayoutAmount) {
+      setInstantPayoutAmount(balanceForInstant.toFixed(2));
+    }
+  }, [balanceForInstant]);
+
   const checkAuthAndLoad = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -339,13 +347,6 @@ export default function PayoutsPage() {
   const availableAmount = balance ? balance.available / 100 : 0;
   const instantAvailableAmount = balance ? (balance.instant_available || 0) / 100 : 0;
   const pendingAmount = balance ? balance.pending / 100 : 0;
-
-  // Auto-fill max amount when instant available amount changes
-  useEffect(() => {
-    if (instantAvailableAmount > 0 && !instantPayoutAmount) {
-      setInstantPayoutAmount(instantAvailableAmount.toFixed(2));
-    }
-  }, [instantAvailableAmount]);
 
   // Calculate breakdown for current amount
   const currentAmount = parseFloat(instantPayoutAmount) || 0;

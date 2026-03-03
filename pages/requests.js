@@ -4309,19 +4309,51 @@ export function GeneralRequestsPage({
               <div className="absolute inset-0 w-full h-full bg-black" style={{ zIndex: 0 }} />
             )}
             
-            {/* Profile photo circle - bottom-left of cover, overlapping (TipJar profile layout) */}
-            {profilePhotoUrl && (
-              <div
-                className="absolute left-4 sm:left-6 bottom-0 z-20 flex items-end justify-start pointer-events-none"
-                style={{ transform: 'translateY(50%)' }}
-              >
-                <div className="w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 rounded-full overflow-hidden border-2 border-black dark:border-gray-900 bg-black shadow-lg flex-shrink-0">
-                  <img
-                    src={profilePhotoUrl}
-                    alt=""
-                    className="w-full h-full object-cover"
-                  />
-                </div>
+            {/* Social links at bottom of cover (TipJar profile layout) - centered, just above page background */}
+            {profilePhotoUrl && !minimalHeader && ((previewSocialLinks && previewSocialLinks.length > 0) || (organizationData?.social_links && Array.isArray(organizationData.social_links) && organizationData.social_links.length > 0) || allowSocialAccountSelector) && (
+              <div className="absolute bottom-2 sm:bottom-3 left-0 right-0 flex items-center justify-center gap-3 z-30 pointer-events-auto">
+                {(previewSocialLinks || organizationData?.social_links || []).filter(link => link.enabled !== false).length > 0
+                  ? (previewSocialLinks || organizationData?.social_links || [])
+                      .filter(link => link.enabled !== false)
+                      .sort((a, b) => (a.order || 0) - (b.order || 0))
+                      .map((link, index) => {
+                        const getSocialIcon = (platform) => {
+                          const iconProps = { className: "w-4 h-4", strokeWidth: 1.5, fill: "none" };
+                          switch (platform?.toLowerCase()) {
+                            case 'facebook': return <Facebook {...iconProps} />;
+                            case 'instagram': return <Instagram {...iconProps} />;
+                            case 'twitter': return <Twitter {...iconProps} />;
+                            case 'youtube': return <Youtube {...iconProps} />;
+                            case 'linkedin': return <Linkedin {...iconProps} />;
+                            default: return <Link2 {...iconProps} />;
+                          }
+                        };
+                        const platform = link.platform?.toLowerCase();
+                        const isSelectable = platform === 'instagram' || platform === 'facebook';
+                        if (isSelectable && allowSocialAccountSelector) {
+                          return (
+                            <button key={`profile-social-${index}`} type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleSocialClick(e, platform); }} className="flex items-center justify-center w-8 h-8 rounded-full bg-white/20 backdrop-blur-sm text-white hover:bg-white/30 transition-all border border-white/20" aria-label={link.label || link.platform}>
+                              {getSocialIcon(link.platform)}
+                            </button>
+                          );
+                        }
+                        return (
+                          <a key={`profile-social-${index}`} href={link.url} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center w-8 h-8 rounded-full bg-white/20 backdrop-blur-sm text-white hover:bg-white/30 transition-all border border-white/20" aria-label={link.label || link.platform}>
+                            {getSocialIcon(link.platform)}
+                          </a>
+                        );
+                      })
+                  : allowSocialAccountSelector && (
+                      <>
+                        <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleSocialClick(e, 'instagram'); }} className="flex items-center justify-center w-8 h-8 rounded-full bg-white/20 backdrop-blur-sm text-white hover:bg-white/30 transition-all border border-white/20" aria-label="Instagram">
+                          <Instagram className="w-4 h-4" strokeWidth={1.5} fill="none" />
+                        </button>
+                        <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleSocialClick(e, 'facebook'); }} className="flex items-center justify-center w-8 h-8 rounded-full bg-white/20 backdrop-blur-sm text-white hover:bg-white/30 transition-all border border-white/20" aria-label="Facebook">
+                          <Facebook className="w-4 h-4" strokeWidth={1.5} fill="none" />
+                        </button>
+                      </>
+                    )
+                }
               </div>
             )}
             
@@ -4443,8 +4475,8 @@ export function GeneralRequestsPage({
               </div>
               )}
               
-              {/* Bottom section with social icons - Hide on minimal header */}
-              {!minimalHeader && (
+              {/* Bottom section with social icons - Hide on minimal header; when profile layout, icons are in hero bottom */}
+              {!minimalHeader && !showProfilePhotoLayout && (
               <div className="w-full flex flex-col items-center gap-2 mt-0.5 sm:mt-1">
                 {/* Social Links - Positioned at bottom */}
                 {((previewSocialLinks && previewSocialLinks.length > 0) || (organizationData?.social_links && Array.isArray(organizationData.social_links) && organizationData.social_links.length > 0)) ? (
@@ -4547,41 +4579,49 @@ export function GeneralRequestsPage({
         
         {/* Title and description below hero when profile photo layout (TipJar) */}
         {!embedMode && !showPaymentMethods && showProfilePhotoLayout && (
-          <div className="relative z-10 px-4 pt-2 pb-3 sm:pt-4 sm:pb-4 bg-black">
-            <h1
-              className="text-xl sm:text-2xl md:text-3xl font-bold text-white dark:text-white mb-1 sm:mb-2"
-              style={{
-                fontFamily: effectiveArtistNameFont,
-                textTransform: effectiveArtistNameTextTransform,
-                color: effectiveArtistNameColor,
-                letterSpacing: `${effectiveArtistNameKerning}px`,
-                textShadow: artistNameTextShadow
-              }}
-            >
-              {(() => {
-                const artistName = organizationData?.requests_header_artist_name || organizationData?.name || 'DJ';
-                if (effectiveArtistNameTextTransform === 'uppercase') return artistName.toUpperCase();
-                if (effectiveArtistNameTextTransform === 'lowercase') return artistName.toLowerCase();
-                return artistName;
-              })()}
-            </h1>
-            {effectiveHeaderLocation && organizationData?.requests_show_subtitle !== false && (
-              <p
-                className="text-sm sm:text-base text-gray-300 dark:text-gray-400"
+          <div className="relative z-20 px-4 bg-black overflow-visible">
+            {/* Avatar straddles cover/content boundary - negative margin pulls it up into hero */}
+            <div className="flex flex-col items-start -mt-12 sm:-mt-14 md:-mt-16">
+              <div className="w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 rounded-full overflow-hidden border-2 border-zinc-800 dark:border-zinc-700 bg-black shadow-xl flex-shrink-0 ring-2 ring-white/10">
+                <img src={profilePhotoUrl} alt="" className="w-full h-full object-cover" />
+              </div>
+              {/* Username directly below the avatar */}
+              <h1
+                className="text-xl sm:text-2xl md:text-3xl font-bold text-white dark:text-white mt-3 sm:mt-4 mb-1 sm:mb-2"
                 style={{
-                  fontFamily: effectiveSubtitleFont,
-                  textTransform: effectiveSubtitleTextTransform,
-                  color: effectiveSubtitleColor
+                  fontFamily: effectiveArtistNameFont,
+                  textTransform: effectiveArtistNameTextTransform,
+                  color: effectiveArtistNameColor,
+                  letterSpacing: `${effectiveArtistNameKerning}px`,
+                  textShadow: artistNameTextShadow
                 }}
               >
                 {(() => {
-                  const locationText = effectiveHeaderLocation;
-                  if (effectiveSubtitleTextTransform === 'uppercase') return locationText.toUpperCase();
-                  if (effectiveSubtitleTextTransform === 'lowercase') return locationText.toLowerCase();
-                  return locationText;
+                  const artistName = organizationData?.requests_header_artist_name || organizationData?.name || 'DJ';
+                  if (effectiveArtistNameTextTransform === 'uppercase') return artistName.toUpperCase();
+                  if (effectiveArtistNameTextTransform === 'lowercase') return artistName.toLowerCase();
+                  return artistName;
                 })()}
-              </p>
-            )}
+              </h1>
+              {effectiveHeaderLocation && organizationData?.requests_show_subtitle !== false && (
+                <p
+                  className="text-sm sm:text-base text-gray-300 dark:text-gray-400"
+                  style={{
+                    fontFamily: effectiveSubtitleFont,
+                    textTransform: effectiveSubtitleTextTransform,
+                    color: effectiveSubtitleColor
+                  }}
+                >
+                  {(() => {
+                    const locationText = effectiveHeaderLocation;
+                    if (effectiveSubtitleTextTransform === 'uppercase') return locationText.toUpperCase();
+                    if (effectiveSubtitleTextTransform === 'lowercase') return locationText.toLowerCase();
+                    return locationText;
+                  })()}
+                </p>
+              )}
+            </div>
+            <div className="pt-2 pb-3 sm:pt-4 sm:pb-4" />
           </div>
         )}
         
