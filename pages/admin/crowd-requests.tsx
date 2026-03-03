@@ -3612,7 +3612,7 @@ export default function CrowdRequestsPage() {
                 }
               }}
               variant="outline"
-              className="inline-flex items-center gap-2 whitespace-nowrap"
+              className="hidden inline-flex items-center gap-2 whitespace-nowrap"
               title="Find missing Venmo requests from the last 7 days"
             >
               <Search className="w-4 h-4" />
@@ -3622,7 +3622,7 @@ export default function CrowdRequestsPage() {
               onClick={handleManualSync}
               disabled={syncingPayments}
               variant="outline"
-              className="inline-flex items-center gap-2 whitespace-nowrap"
+              className="hidden inline-flex items-center gap-2 whitespace-nowrap"
               title="Sync payment status from Stripe for all requests"
             >
               <RefreshCw className={`w-4 h-4 sm:w-5 sm:h-5 ${syncingPayments ? 'animate-spin' : ''}`} />
@@ -3647,7 +3647,7 @@ export default function CrowdRequestsPage() {
                 }
               }}
               variant="outline"
-              className="inline-flex items-center gap-2 whitespace-nowrap"
+              className="hidden inline-flex items-center gap-2 whitespace-nowrap"
               title="Test Stripe webhook configuration"
             >
               <AlertCircle className="w-4 h-4 sm:w-5 sm:h-5" />
@@ -3686,7 +3686,7 @@ export default function CrowdRequestsPage() {
               }}
               disabled={syncingPayments}
               variant="outline"
-              className="inline-flex items-center gap-2 whitespace-nowrap"
+              className="hidden inline-flex items-center gap-2 whitespace-nowrap"
               title="Find payments in Stripe that aren't in the app"
             >
               <Search className={`w-4 h-4 sm:w-5 sm:h-5 ${syncingPayments ? 'animate-spin' : ''}`} />
@@ -7014,6 +7014,40 @@ export default function CrowdRequestsPage() {
           </div>
         )}
 
+        {/* Summary Stats - reflects current filters (date range, status, etc.) */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-4">
+          <div className="bg-white dark:bg-gray-800 rounded-lg sm:rounded-xl shadow border border-gray-200 dark:border-gray-700 p-3 sm:p-4 min-w-0">
+            <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mb-0.5 sm:mb-1 truncate">Total Requests</p>
+            <p className="text-lg sm:text-2xl font-bold text-gray-900 dark:text-white tabular-nums">
+              {loading ? '—' : filteredRequests.length}
+            </p>
+          </div>
+          <div className="bg-white dark:bg-gray-800 rounded-lg sm:rounded-xl shadow border border-gray-200 dark:border-gray-700 p-3 sm:p-4 min-w-0">
+            <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mb-0.5 sm:mb-1 truncate">Paid</p>
+            <p className="text-lg sm:text-2xl font-bold text-green-600 dark:text-green-400 tabular-nums">
+              {loading ? '—' : filteredRequests.filter(r => r.payment_status === 'paid').length}
+            </p>
+          </div>
+          <div className="bg-white dark:bg-gray-800 rounded-lg sm:rounded-xl shadow border border-gray-200 dark:border-gray-700 p-3 sm:p-4 min-w-0">
+            <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mb-0.5 sm:mb-1 truncate">Total Revenue</p>
+            <p className="text-lg sm:text-2xl font-bold text-gray-900 dark:text-white tabular-nums truncate">
+              {loading ? '—' : `$${(filteredRequests
+                .filter(r => r.payment_status === 'paid' || r.payment_status === 'partially_refunded')
+                .reduce((sum, r) => {
+                  const paid = r.amount_paid || 0;
+                  const refunded = r.refund_amount || 0;
+                  return sum + (paid - refunded);
+                }, 0) / 100).toFixed(2)}`}
+            </p>
+          </div>
+          <div className="bg-white dark:bg-gray-800 rounded-lg sm:rounded-xl shadow border border-gray-200 dark:border-gray-700 p-3 sm:p-4 min-w-0">
+            <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mb-0.5 sm:mb-1 truncate">Pending</p>
+            <p className="text-lg sm:text-2xl font-bold text-yellow-600 dark:text-yellow-400 tabular-nums">
+              {loading ? '—' : filteredRequests.filter(r => r.payment_status === 'pending').length}
+            </p>
+          </div>
+        </div>
+
         {/* Requests List */}
         {loading ? (
           <div className="text-center py-12">
@@ -9553,42 +9587,6 @@ export default function CrowdRequestsPage() {
         )}
 
 
-        {/* Summary Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-gray-200 dark:border-gray-700">
-            <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Total Requests</p>
-            <p className="text-2xl font-bold text-gray-900 dark:text-white">
-              {requests.length}
-            </p>
-          </div>
-          
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-gray-200 dark:border-gray-700">
-            <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Paid</p>
-            <p className="text-2xl font-bold text-green-600 dark:text-green-400">
-              {requests.filter(r => r.payment_status === 'paid').length}
-            </p>
-          </div>
-          
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-gray-200 dark:border-gray-700">
-            <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Total Revenue</p>
-            <p className="text-2xl font-bold text-gray-900 dark:text-white">
-              ${(requests
-                .filter(r => r.payment_status === 'paid' || r.payment_status === 'partially_refunded')
-                .reduce((sum, r) => {
-                  const paid = r.amount_paid || 0;
-                  const refunded = r.refund_amount || 0;
-                  return sum + (paid - refunded);
-                }, 0) / 100).toFixed(2)}
-            </p>
-          </div>
-          
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-gray-200 dark:border-gray-700">
-            <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Pending</p>
-            <p className="text-2xl font-bold text-yellow-600 dark:text-yellow-400">
-              {requests.filter(r => r.payment_status === 'pending').length}
-            </p>
-          </div>
-        </div>
       </div>
 
       {/* Orphaned Payments Dialog */}
