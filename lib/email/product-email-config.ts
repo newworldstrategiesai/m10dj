@@ -18,7 +18,7 @@ export function getProductFromEmail(productContext: ProductContext | null | unde
     case 'tipjar':
       return process.env.RESEND_FROM_EMAIL_TIPJAR || 
              process.env.RESEND_FROM_EMAIL || 
-             'TipJar <noreply@tipjar.live>';
+             'TipJar Live <noreply@tipjar.live>';
     
     case 'djdash':
       return process.env.RESEND_FROM_EMAIL_DJDASH || 
@@ -31,7 +31,7 @@ export function getProductFromEmail(productContext: ProductContext | null | unde
              'M10 DJ Company <noreply@m10djcompany.com>';
     
     default:
-      return process.env.RESEND_FROM_EMAIL || 'TipJar <noreply@tipjar.live>';
+      return process.env.RESEND_FROM_EMAIL || 'TipJar Live <noreply@tipjar.live>';
   }
 }
 
@@ -43,13 +43,13 @@ export function getProductName(productContext: ProductContext | null | undefined
   
   switch (context) {
     case 'tipjar':
-      return 'TipJar';
+      return 'TipJar Live';
     case 'djdash':
       return 'DJ Dash';
     case 'm10dj':
       return 'M10 DJ Company';
     default:
-      return 'TipJar';
+      return 'TipJar Live';
   }
 }
 

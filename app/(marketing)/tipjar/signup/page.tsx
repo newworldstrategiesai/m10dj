@@ -2,6 +2,7 @@ import { Metadata } from 'next';
 import Link from 'next/link';
 import TipJarHeader from '@/components/tipjar/Header';
 import TipJarFooter from '@/components/tipjar/Footer';
+import TurnstileWidget from '@/components/tipjar/TurnstileWidget';
 import { 
   CheckCircle,
   ArrowRight,
@@ -48,10 +49,18 @@ export default function SignupPage({
   return (
     <div className="min-h-screen bg-white dark:bg-gray-950">
       <style dangerouslySetInnerHTML={{__html: `
+        /* Force visible text and distinct background so input never goes white-on-white */
         input#businessName,
         input#email,
         input#password {
           color: #111827 !important;
+          background-color: #f9fafb !important;
+          -webkit-text-fill-color: #111827 !important;
+        }
+        input#businessName::placeholder,
+        input#email::placeholder,
+        input#password::placeholder {
+          color: #6b7280 !important;
         }
         .dark input#businessName,
         .dark input#email,
@@ -60,11 +69,8 @@ export default function SignupPage({
         html.dark input#email,
         html.dark input#password {
           color: #f3f4f6 !important;
-        }
-        input#businessName::placeholder,
-        input#email::placeholder,
-        input#password::placeholder {
-          color: #9ca3af !important;
+          background-color: #374151 !important;
+          -webkit-text-fill-color: #f3f4f6 !important;
         }
         .dark input#businessName::placeholder,
         .dark input#email::placeholder,
@@ -72,7 +78,25 @@ export default function SignupPage({
         html.dark input#businessName::placeholder,
         html.dark input#email::placeholder,
         html.dark input#password::placeholder {
-          color: #6b7280 !important;
+          color: #9ca3af !important;
+        }
+        /* Prevent browser autofill from making text invisible (white on white) */
+        input#businessName:-webkit-autofill,
+        input#email:-webkit-autofill,
+        input#password:-webkit-autofill {
+          -webkit-text-fill-color: #111827 !important;
+          -webkit-box-shadow: 0 0 0 1000px #f9fafb inset !important;
+          box-shadow: 0 0 0 1000px #f9fafb inset !important;
+        }
+        .dark input#businessName:-webkit-autofill,
+        .dark input#email:-webkit-autofill,
+        .dark input#password:-webkit-autofill,
+        html.dark input#businessName:-webkit-autofill,
+        html.dark input#email:-webkit-autofill,
+        html.dark input#password:-webkit-autofill {
+          -webkit-text-fill-color: #f3f4f6 !important;
+          -webkit-box-shadow: 0 0 0 1000px #374151 inset !important;
+          box-shadow: 0 0 0 1000px #374151 inset !important;
         }
       `}} />
       <TipJarHeader />
@@ -122,7 +146,7 @@ export default function SignupPage({
                       Account Created Successfully! 🎉
                     </h2>
                     <p className="text-gray-600 dark:text-gray-400">
-                      We've sent a confirmation email to your inbox
+                      We&apos;ve sent a confirmation email to your inbox. If you don&apos;t see it, check your spam folder and add noreply@tipjar.live to your contacts.
                     </p>
                   </div>
 
@@ -132,7 +156,7 @@ export default function SignupPage({
                       Check Your Email
                     </h3>
                     <p className="text-sm text-gray-600 dark:text-gray-400 mb-4 ml-8">
-                      Look for an email from <strong className="text-gray-900 dark:text-white">noreply@tipjar.live</strong> with the subject "Confirm your TipJar account"
+                      Look for an email from <strong className="text-gray-900 dark:text-white">TipJar Live (noreply@tipjar.live)</strong> with the subject &quot;Confirm your email for TipJar Live&quot;
                     </p>
                     
                     <h3 className="font-semibold text-gray-900 dark:text-white mb-3 flex items-center">
@@ -140,7 +164,7 @@ export default function SignupPage({
                       Click the Confirmation Link
                     </h3>
                     <p className="text-sm text-gray-600 dark:text-gray-400 mb-4 ml-8">
-                      Click the "Confirm Email Address" button in the email to verify your account. This link expires in 24 hours.
+                      Click the &quot;Confirm Email Address&quot; button in the email to verify your account. This link expires in 24 hours.
                     </p>
                     
                     <h3 className="font-semibold text-gray-900 dark:text-white mb-3 flex items-center">
@@ -148,13 +172,13 @@ export default function SignupPage({
                       Complete Your Setup
                     </h3>
                     <p className="text-sm text-gray-600 dark:text-gray-400 ml-8">
-                      After confirming, you'll be taken through a quick onboarding to set up your tip page
+                      After confirming, you&apos;ll be taken through a quick onboarding to set up your tip page
                     </p>
                   </div>
 
                   <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
                     <p className="text-sm text-amber-800 dark:text-amber-200">
-                      <strong>Didn't receive the email?</strong> Check your spam folder or{' '}
+                      <strong>Didn&apos;t receive the email?</strong> Check your spam or junk folder and add <strong>noreply@tipjar.live</strong> to your contacts so future emails don&apos;t go to spam. You can also{' '}
                       <Link href="/tipjar/signin" className="underline font-semibold">
                         try signing in
                       </Link>
@@ -215,7 +239,12 @@ export default function SignupPage({
                     placeholder="At least 8 characters"
                   />
                 </div>
-                
+
+                <TurnstileWidget
+                  siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY}
+                  theme="auto"
+                />
+
                 <button
                   type="submit"
                   className="w-full bg-green-500 hover:bg-green-600 text-white px-6 py-4 rounded-lg font-semibold text-lg uppercase tracking-wider transition-colors"

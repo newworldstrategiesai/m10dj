@@ -4,7 +4,7 @@ import { sendAdminSMS, formatContactSubmissionSMS } from '../../utils/sms-helper
 import { createServerSupabaseClient } from '@supabase/auth-helpers-nextjs';
 import { sendServiceSelectionToLead } from '../../utils/service-selection-helper.js';
 import { createRateLimitMiddleware, getClientIp } from '../../utils/rate-limiter';
-import { sanitizeContactFormData, hasSuspiciousPatterns } from '../../utils/input-sanitizer';
+import { sanitizeContactFormData, hasSuspiciousPatterns, hasSpamLikeContent } from '../../utils/input-sanitizer';
 import { serverIdempotency } from '../../utils/idempotency';
 import { validateContactForm } from '../../utils/form-validator';
 import { autoCreateQuoteInvoiceContract } from '../../utils/auto-create-quote-invoice-contract';
@@ -85,14 +85,24 @@ export default async function handler(req, res) {
     message
   });
 
-  // SECURITY: Check for suspicious patterns
+  // SECURITY: Reject spam-like content (URLs, crypto, etc.) in name or message
+  if (hasSpamLikeContent(sanitizedData.name) || hasSpamLikeContent(sanitizedData.message)) {
+    console.log('🚫 Spam-like content rejected in submission from IP:', getClientIp(req));
+    return res.status(400).json({
+      success: false,
+      message: 'Your submission could not be sent. Please remove any links or promotional content and try again.'
+    });
+  }
+
+  // SECURITY: Reject suspicious patterns (injection, XSS)
   const fieldsToCheck = [sanitizedData.name, sanitizedData.email, sanitizedData.message];
   const hasSuspicious = fieldsToCheck.some(field => field && hasSuspiciousPatterns(field));
-  
   if (hasSuspicious) {
-    console.log('⚠️ Suspicious patterns detected in submission from IP:', getClientIp(req));
-    // Log but don't reject - could be false positive
-    // In production, you might want to flag this for manual review
+    console.log('⚠️ Suspicious patterns rejected in submission from IP:', getClientIp(req));
+    return res.status(400).json({
+      success: false,
+      message: 'Invalid content in your submission. Please try again with plain text only.'
+    });
   }
 
   // Enhanced validation

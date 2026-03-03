@@ -81,11 +81,11 @@ function generateSignupConfirmationEmail(
           <tr>
             <td style="padding: 40px 30px;">
               <p style="margin: 0 0 20px; color: #374151; font-size: 16px;">
-                Thanks for signing up! Please confirm your email address to get started.
+                You signed up at ${productDomain}. Thanks for joining! Please confirm your email so we can get you started.
               </p>
               
               <p style="margin: 0 0 30px; color: #374151; font-size: 16px;">
-                Click the button below to verify your account:
+                Click the button below to verify your email address:
               </p>
               
               <!-- CTA Button -->
@@ -108,7 +108,7 @@ function generateSignupConfirmationEmail(
               </p>
               
               <p style="margin: 30px 0 0; color: #6b7280; font-size: 14px;">
-                This link expires in 24 hours. If you didn't create an account, you can safely ignore this email.
+                This link expires in 24 hours. If you didn&apos;t sign up at ${productDomain}, you can safely ignore this email.
               </p>
             </td>
           </tr>
@@ -133,12 +133,12 @@ function generateSignupConfirmationEmail(
 
   const text = `Welcome to ${productName}!
 
-Thanks for signing up! Please confirm your email address to get started.
+You signed up at ${productDomain}. Please confirm your email so we can get you started.
 
-Click this link to verify your account:
+Click this link to verify your email address:
 ${confirmationUrl}
 
-This link expires in 24 hours. If you didn't create an account, you can safely ignore this email.
+This link expires in 24 hours. If you didn't sign up at ${productDomain}, you can safely ignore this email.
 
 © ${new Date().getFullYear()} ${productName}
 ${productDomain}`;
@@ -473,7 +473,7 @@ export async function POST(request: NextRequest) {
           actionUrl += `&redirect_to=${encodeURIComponent(redirect_to)}`;
         }
         emailContent = generateSignupConfirmationEmail(productName, productDomain, actionUrl, accentColor);
-        subject = `Confirm your ${productName} account`;
+        subject = `Confirm your email for ${productName}`;
         break;
 
       case 'recovery':

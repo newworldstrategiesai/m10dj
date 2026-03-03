@@ -182,6 +182,7 @@ export default function CrowdRequestsPage() {
   const [showOrphanedDialog, setShowOrphanedDialog] = useState(false);
   const [orphanedPaymentsData, setOrphanedPaymentsData] = useState<any>(null);
   const [organization, setOrganization] = useState<any>(null);
+  const [orgLoadError, setOrgLoadError] = useState<string | null>(null);
   const [showAudioTrackingModal, setShowAudioTrackingModal] = useState(false);
   const [isAudioModalMinimized, setIsAudioModalMinimized] = useState(false);
   const [selectedEventCode, setSelectedEventCode] = useState<string | null>(null);
@@ -1078,9 +1079,13 @@ export default function CrowdRequestsPage() {
       const org = await getCurrentOrganization(supabase);
 
       if (!org) {
-        throw new Error('No organization found');
+        setOrganization(null);
+        setOrgLoadError('No organization found');
+        setLoading(false);
+        return;
       }
 
+      setOrgLoadError(null);
       setOrganization(org);
       
       // Type assertion to access requests_* properties that exist in DB but not in TypeScript type
@@ -3517,9 +3522,51 @@ export default function CrowdRequestsPage() {
     checkTier();
   }, [supabase]);
 
+  const hostname = typeof window !== 'undefined' ? window.location.hostname.toLowerCase() : '';
+  const isTipJarDomain = hostname.includes('tipjar.live') || hostname.includes('tipjar.com');
+
   return (
     <AdminLayout>
       <div className="space-y-6 px-4 lg:px-6">
+        {!loading && !organization ? (
+          <div className="max-w-md mx-auto py-8 sm:py-12">
+            <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 sm:p-8 text-center">
+              <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 mb-4">
+                <AlertCircle className="w-6 h-6" />
+              </div>
+              <h1 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+                {isTipJarDomain ? 'Setting up your tip page' : 'No organization found'}
+              </h1>
+              <p className="text-gray-600 dark:text-gray-400 mb-6">
+                {isTipJarDomain
+                  ? "Your account is still being set up. This usually takes a moment. Click Retry below, or refresh the page. If you just signed up, try signing in again."
+                  : 'Your account is not linked to an organization yet. Complete onboarding or contact support.'}
+              </p>
+              <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                <Button
+                  onClick={() => {
+                    setOrgLoadError(null);
+                    fetchRequests();
+                  }}
+                  className="inline-flex items-center justify-center gap-2"
+                >
+                  <RefreshCw className="w-4 h-4" />
+                  Retry
+                </Button>
+                {isTipJarDomain && (
+                  <Button
+                    variant="outline"
+                    onClick={() => router.push('/signin')}
+                    className="inline-flex items-center justify-center gap-2"
+                  >
+                    Sign in again
+                  </Button>
+                )}
+              </div>
+            </div>
+          </div>
+        ) : (
+          <>
         {/* Stripe Connect Requirement Banner */}
         <StripeConnectRequirementBanner organization={organization} />
         
@@ -9586,7 +9633,8 @@ export default function CrowdRequestsPage() {
           </div>
         )}
 
-
+          </>
+        )}
       </div>
 
       {/* Orphaned Payments Dialog */}

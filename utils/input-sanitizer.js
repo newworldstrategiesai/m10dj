@@ -255,6 +255,39 @@ export function hasSuspiciousPatterns(input) {
 }
 
 /**
+ * Check if text contains spam-like content (URLs, crypto, adult, etc.) for name/message fields.
+ * Use this to reject contact form submissions that are clearly bot/spam.
+ * @param {string} input - String to check (e.g. name, message)
+ * @returns {boolean} True if spam-like content detected
+ */
+export function hasSpamLikeContent(input) {
+  if (typeof input !== 'string' || !input.trim()) {
+    return false;
+  }
+  const text = input.toLowerCase().trim();
+  // URLs (http, https, .ru, .tk, etc.)
+  if (/https?:\/\//i.test(input) || /\b[\w.-]+\.(ru|tk|ml|ga|cf|gq|xyz|top|work|click|link|pw)\b/i.test(text)) {
+    return true;
+  }
+  // Common spam keywords in name/message (crypto, gambling, adult, pills)
+  const spamKeywords = [
+    /\bbitcoin\b/i, /\bcrypto\b/i, /\bcasino\b/i, /\bgambling\b/i,
+    /\bviagra\b/i, /\bcialis\b/i, /\bpills?\b/i, /\byandex\b/i,
+    /\btelegram\s*\.\s*me\b/i, /\bt\.me\b/i, /\bclick\s*here\b/i,
+    /\bmake\s*money\b/i, /\bearn\s*money\b/i, /\bfree\s*money\b/i,
+    /\blottery\b/i, /\bprize\b.*\bwin\b/i, /\bwinner\b.*\bclaim\b/i,
+  ];
+  if (spamKeywords.some(pattern => pattern.test(text))) {
+    return true;
+  }
+  // Multiple dots or slashes suggest URL pasted in name
+  if ((input.match(/\./g) || []).length >= 3 || (input.match(/\//g) || []).length >= 2) {
+    return true;
+  }
+  return false;
+}
+
+/**
  * Check if email looks like a real email (basic heuristics)
  * @param {string} email - Email to check
  * @returns {boolean} True if email looks legitimate
@@ -294,6 +327,7 @@ export default {
   sanitizeFormData,
   sanitizeContactFormData,
   hasSuspiciousPatterns,
+  hasSpamLikeContent,
   isLegitimateEmail
 };
 

@@ -3,6 +3,8 @@ import { createClient } from '@/utils/supabase/server';
 import { createClient as createAdminClient } from '@supabase/supabase-js';
 import { getURL } from '@/utils/helpers';
 import { getProductBaseUrl } from '@/lib/email/product-email-config';
+import { rateLimiter } from '@/utils/rate-limiter';
+import { verifyTurnstileToken } from '@/lib/turnstile';
 
 function isValidEmail(email: string) {
   const regex = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,6}$/;
@@ -65,6 +67,16 @@ function detectProductContext(request: NextRequest): 'tipjar' | 'djdash' | 'm10d
   return 'tipjar';
 }
 
+function getClientIp(request: NextRequest): string {
+  const cf = request.headers.get('cf-connecting-ip');
+  const forwarded = request.headers.get('x-forwarded-for');
+  const real = request.headers.get('x-real-ip');
+  if (cf) return cf;
+  if (forwarded) return forwarded.split(',')[0].trim();
+  if (real) return real;
+  return 'unknown';
+}
+
 export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData();
@@ -76,6 +88,30 @@ export async function POST(request: NextRequest) {
 
     // Detect product context from request
     const productContext = detectProductContext(request);
+
+    const signupPath = productContext === 'tipjar' ? '/tipjar/signup' :
+                      productContext === 'djdash' ? '/djdash/signup' :
+                      '/signup';
+
+    // Rate limit: 5 signup attempts per 15 minutes per IP
+    const clientIp = getClientIp(request);
+    const rateResult = rateLimiter.checkLimit(clientIp, 5, 15 * 60 * 1000) as { allowed: boolean; retryAfter: number; remaining: number };
+    if (!rateResult.allowed) {
+      return NextResponse.redirect(
+        new URL(`${signupPath}?error=${encodeURIComponent('Too many signup attempts. Please try again in a few minutes.')}`, request.url),
+        { status: 303 }
+      );
+    }
+
+    // Turnstile CAPTCHA verification (when TURNSTILE_SECRET_KEY is set)
+    const turnstileToken = formData.get('cf-turnstile-response') as string | null;
+    const turnstileOk = await verifyTurnstileToken(turnstileToken);
+    if (!turnstileOk) {
+      return NextResponse.redirect(
+        new URL(`${signupPath}?error=${encodeURIComponent('Security check failed. Please try again.')}`, request.url),
+        { status: 303 }
+      );
+    }
 
     // Handle affiliate referral tracking
     let affiliateReferralId: string | null = null;
@@ -102,11 +138,6 @@ export async function POST(request: NextRequest) {
     const productBaseUrl = getProductBaseUrl(productContext);
     const callbackURL = `${productBaseUrl}/auth/callback`;
 
-    // Determine signup page path based on product
-    const signupPath = productContext === 'tipjar' ? '/tipjar/signup' :
-                      productContext === 'djdash' ? '/djdash/signup' :
-                      '/signup';
-    
     const signinPath = productContext === 'tipjar' ? '/tipjar/signin/password_signin' :
                       productContext === 'djdash' ? '/djdash/signin/password_signin' :
                       '/signin/password_signin';
