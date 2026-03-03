@@ -2,6 +2,7 @@ import CustomerPortalForm from '@/components/ui/AccountForms/CustomerPortalForm'
 import EmailForm from '@/components/ui/AccountForms/EmailForm';
 import NameForm from '@/components/ui/AccountForms/NameForm';
 import AdminPhoneForm from '@/components/ui/AccountForms/AdminPhoneForm';
+import AvatarForm from '@/components/ui/AccountForms/AvatarForm';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/utils/supabase/server';
 import {
@@ -37,6 +38,10 @@ export default async function Account() {
         </div>
       </div>
       <div className="p-4">
+        <AvatarForm
+          avatarUrl={userDetails?.avatar_url ?? user?.user_metadata?.avatar_url ?? null}
+          userName={userDetails?.full_name ?? user?.user_metadata?.full_name ?? ''}
+        />
         <CustomerPortalForm subscription={subscription} />
         <NameForm userName={userDetails?.full_name ?? ''} />
         <EmailForm userEmail={user.email} />

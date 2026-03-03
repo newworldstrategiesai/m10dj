@@ -255,6 +255,13 @@ export async function middleware(request: NextRequest) {
       // Auth routes (confirm, callback, reset_password) are in app router
       // Keep as-is, don't rewrite - these should work directly at /auth/*
       rewritePath = '';
+    } else if (path === '/account' || path.startsWith('/account/')) {
+      // Account page lives at app/account (not under /tipjar/). Pass through so /account is served.
+      rewritePath = '';
+    } else if (path === '/admin/account' || path === '/admin/account/') {
+      // Account is at /account, not /admin/account. Redirect so the URL is correct.
+      url.pathname = '/account';
+      return NextResponse.redirect(url, 302);
     } else if (path.startsWith('/admin/')) {
       // Admin routes are in pages router, keep as-is
       // Don't rewrite, let it fall through to pages router

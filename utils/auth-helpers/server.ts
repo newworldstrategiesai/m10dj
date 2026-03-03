@@ -472,13 +472,10 @@ export async function updateName(formData: FormData) {
 
 export async function updateAdminPhoneNumber(formData: FormData) {
   const supabase = createClient();
-  const newPhoneNumber = formData.get('newAdminPhoneNumber') as string;
+  const raw = formData.get('newAdminPhoneNumber');
+  const newPhoneNumber = raw == null ? '' : String(raw).trim();
 
-  if (!newPhoneNumber) {
-    return getErrorRedirect('/account', 'Phone number is required');
-  }
-
-  // Clean phone number (remove spaces, dashes, parentheses)
+  // Clean phone number (remove spaces, dashes, parentheses); empty is allowed (clears the number)
   const cleanedPhone = newPhoneNumber.replace(/[\s\-\(\)]/g, '');
 
   const { data: { user }, error: userError } = await supabase.auth.getUser();
@@ -487,7 +484,6 @@ export async function updateAdminPhoneNumber(formData: FormData) {
     return getErrorRedirect('/account', 'Authentication required');
   }
 
-  // Update or insert admin phone number setting
   const { error } = await (supabase as any)
     .from('admin_settings')
     .upsert(
@@ -506,5 +502,41 @@ export async function updateAdminPhoneNumber(formData: FormData) {
     return getErrorRedirect('/account', 'Failed to update phone number');
   }
 
-  return getStatusRedirect('/account', 'Success!', 'Phone number updated successfully');
+  const message = cleanedPhone
+    ? 'Phone number updated successfully.'
+    : 'Phone number cleared.';
+  return getStatusRedirect('/account', 'Success!', message);
+}
+
+export async function updateAvatar(formData: FormData) {
+  const avatarUrl = formData.get('avatar_url');
+  const value = avatarUrl == null ? '' : String(avatarUrl).trim();
+
+  const supabase = createClient();
+  const { data: { user }, error: userError } = await supabase.auth.getUser();
+
+  if (userError || !user) {
+    return getErrorRedirect('/account', 'Authentication required');
+  }
+
+  const { error: authError } = await supabase.auth.updateUser({
+    data: { avatar_url: value || null }
+  });
+
+  if (authError) {
+    console.error('Error updating auth avatar:', authError);
+    return getErrorRedirect('/account', 'Failed to update avatar');
+  }
+
+  const { error: dbError } = await (supabase as any)
+    .from('users')
+    .update({ avatar_url: value || null })
+    .eq('id', user.id);
+
+  if (dbError) {
+    console.error('Error updating users.avatar_url:', dbError);
+    return getErrorRedirect('/account', 'Failed to update profile');
+  }
+
+  return getStatusRedirect('/account', 'Success!', value ? 'Avatar updated.' : 'Avatar removed.');
 }

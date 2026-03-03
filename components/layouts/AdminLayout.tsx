@@ -10,6 +10,7 @@ import { Plus, ArrowLeft, Menu, X } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { getCurrentOrganization } from '@/utils/organization-helpers';
 import { IncomingCallOverlay } from '@/components/admin/IncomingCallOverlay';
+import AdminPhoneBanner from '@/components/admin/AdminPhoneBanner';
 
 interface AdminLayoutProps {
   children: React.ReactNode;
@@ -237,6 +238,7 @@ export default function AdminLayout({ children, title, description, showPageTitl
 
         {/* Main Content Area */}
         <div className="lg:ml-20 pt-16 lg:pt-0">
+          <AdminPhoneBanner />
 
           {/* Page Title Section - Only show if showPageTitle is true */}
           {showPageTitle && (

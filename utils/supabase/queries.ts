@@ -43,12 +43,13 @@ export const getAdminPhoneNumber = cache(async (supabase: SupabaseClient<any>) =
     .from('admin_settings')
     .select('setting_value')
     .eq('setting_key', 'admin_phone_number')
-    .single();
+    .maybeSingle();
 
   if (error) {
     console.error('Error fetching admin phone number:', error);
-    return '9014977001'; // Default fallback
+    return '';
   }
 
-  return data?.setting_value || '9014977001';
+  const value = data?.setting_value?.trim();
+  return value ?? '';
 });
