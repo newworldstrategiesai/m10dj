@@ -14,11 +14,12 @@ const { createClient } = require('@supabase/supabase-js');
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const webhookSecret = process.env.RESEND_WEBHOOK_SECRET;
+// Use dedicated secret for this endpoint; Resend gives a different signing secret per webhook URL
+const webhookSecret = process.env.RESEND_WEBHOOK_SECRET_UNIFIED || process.env.RESEND_WEBHOOK_SECRET;
 
 function verifySignature(payload, signature) {
   if (!webhookSecret) {
-    console.warn('[Resend webhook] RESEND_WEBHOOK_SECRET not set, skipping verification');
+    console.warn('[Resend webhook] RESEND_WEBHOOK_SECRET_UNIFIED (or RESEND_WEBHOOK_SECRET) not set, skipping verification');
     return true;
   }
   if (!signature) return false;
