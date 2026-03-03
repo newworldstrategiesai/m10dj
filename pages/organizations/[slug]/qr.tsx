@@ -204,8 +204,8 @@ export default function OrganizationQRDisplayPage({ metaHost, metaSlug, metaSite
   );
 
   const slugForMeta = metaSlug || (Array.isArray(slug) ? slug[0] : slug);
-  const baseUrl = metaHost ? `https://${metaHost}` : (typeof window !== 'undefined' ? window.location.origin : process.env.NEXT_PUBLIC_SITE_URL || '');
-  const ogImageUrl = baseUrl && slugForMeta ? `${baseUrl}/api/og/qr/${encodeURIComponent(slugForMeta)}` : 'https://tipjar.live/assets/tipjar-open-graph-new.png';
+  const metaBaseUrl = metaHost ? `https://${metaHost}` : (typeof window !== 'undefined' ? window.location.origin : process.env.NEXT_PUBLIC_SITE_URL || '');
+  const ogImageUrl = metaBaseUrl && slugForMeta ? `${metaBaseUrl}/api/og/qr/${encodeURIComponent(slugForMeta)}` : 'https://tipjar.live/assets/tipjar-open-graph-new.png';
   const pageTitle = organization ? `Scan to Request Songs | ${organization.slug}` : (slugForMeta ? `Scan to Request Songs | ${slugForMeta}` : 'Scan to Request Songs');
   const siteName = metaSiteName || 'TipJar Live';
 
