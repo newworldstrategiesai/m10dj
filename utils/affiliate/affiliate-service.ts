@@ -89,12 +89,12 @@ export class AffiliateService {
    */
   async generateAffiliateCode(userId: string, baseName?: string): Promise<string> {
     try {
-      // Get user's organization info for base name
+      // Get user's organization info for base name (organizations use owner_id, not user_id)
       const { data: org } = await this.supabase
         .from('organizations')
         .select('name')
-        .eq('user_id', userId)
-        .single();
+        .eq('owner_id', userId)
+        .maybeSingle();
 
       const base = baseName || org?.name || 'AFFILIATE';
       const cleanBase = base.replace(/[^A-Z0-9]/gi, '_').toUpperCase();
@@ -165,12 +165,12 @@ export class AffiliateService {
 
       if (createError) throw createError;
 
-      // Link affiliate to user's organization
+      // Link affiliate to user's organization (organizations use owner_id, not user_id)
       const { data: org } = await this.supabase
         .from('organizations')
         .select('id')
-        .eq('user_id', userId)
-        .single();
+        .eq('owner_id', userId)
+        .maybeSingle();
 
       if (org) {
         await this.supabase

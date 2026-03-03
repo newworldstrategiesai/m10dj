@@ -4309,9 +4309,9 @@ export function GeneralRequestsPage({
               <div className="absolute inset-0 w-full h-full bg-black" style={{ zIndex: 0 }} />
             )}
             
-            {/* Social links at bottom of cover (TipJar profile layout) - centered, just above page background */}
+            {/* Social links at bottom of cover (TipJar profile layout) - centered, always visible on mobile */}
             {profilePhotoUrl && !minimalHeader && ((previewSocialLinks && previewSocialLinks.length > 0) || (organizationData?.social_links && Array.isArray(organizationData.social_links) && organizationData.social_links.length > 0) || allowSocialAccountSelector) && (
-              <div className="absolute bottom-2 sm:bottom-3 left-0 right-0 flex items-center justify-center gap-3 z-30 pointer-events-auto">
+              <div className="absolute bottom-2 sm:bottom-3 left-0 right-0 flex items-center justify-center gap-3 z-[50] pointer-events-auto min-h-[44px]">
                 {(previewSocialLinks || organizationData?.social_links || []).filter(link => link.enabled !== false).length > 0
                   ? (previewSocialLinks || organizationData?.social_links || [])
                       .filter(link => link.enabled !== false)
@@ -4358,10 +4358,10 @@ export function GeneralRequestsPage({
             )}
             
             {/* Desktop Background - removed black gradient to show animated background */}
-            {/* Content overlay - hide title/location when profile layout (they go below hero) */}
-            <div             className={`relative z-20 h-full flex flex-col justify-between items-center text-center px-4 ${
+            {/* Content overlay - hide title/location when profile layout (they go below hero); pointer-events-none when profile layout so social icons at bottom are tappable */}
+            <div className={`relative z-20 h-full flex flex-col justify-between items-center text-center px-4 ${
               minimalHeader ? 'justify-center' : ''
-            }`} style={{ paddingTop: minimalHeader ? '60px' : '80px', paddingBottom: minimalHeader ? '10px' : '4px', overflow: 'visible' }}>
+            } ${showProfilePhotoLayout ? 'pointer-events-none' : ''}`} style={{ paddingTop: minimalHeader ? '60px' : '80px', paddingBottom: minimalHeader ? '10px' : '4px', overflow: 'visible' }}>
               {/* Top content section - hidden when profile layout (title/description shown below hero) */}
               {!showProfilePhotoLayout && (
               <div className={`flex flex-col items-center justify-center ${minimalHeader ? '' : 'flex-1'}`}>
@@ -4579,9 +4579,9 @@ export function GeneralRequestsPage({
         
         {/* Title and description below hero when profile photo layout (TipJar) */}
         {!embedMode && !showPaymentMethods && showProfilePhotoLayout && (
-          <div className="relative z-20 px-4 bg-black overflow-visible">
-            {/* Avatar straddles cover/content boundary - negative margin pulls it up into hero */}
-            <div className="flex flex-col items-start -mt-12 sm:-mt-14 md:-mt-16">
+          <div className="relative z-20 px-4 bg-black overflow-visible -mt-14 sm:-mt-14 md:-mt-16">
+            {/* Avatar straddles cover/content boundary - negative margin on parent pulls whole strip up */}
+            <div className="flex flex-col items-start">
               <div className="w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 rounded-full overflow-hidden border-2 border-zinc-800 dark:border-zinc-700 bg-black shadow-xl flex-shrink-0 ring-2 ring-white/10">
                 <img src={profilePhotoUrl} alt="" className="w-full h-full object-cover" />
               </div>
