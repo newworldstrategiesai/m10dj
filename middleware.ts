@@ -191,6 +191,12 @@ export async function middleware(request: NextRequest) {
     
     // Let /sitemap.xml and /robots.txt pass through – app/sitemap.ts and app/robots.ts
     // serve domain-specific content based on Host header (no rewrite needed).
+    if (path === '/sitemap.xml' || path === '/robots.txt') {
+      const response = await updateSession(request);
+      response.headers.set('x-pathname', request.nextUrl.pathname);
+      response.headers.set('x-product', 'tipjar');
+      return response;
+    }
     
     // If path already starts with /tipjar/, let it pass through without rewriting
     if (path.startsWith('/tipjar/')) {
@@ -436,7 +442,12 @@ export async function middleware(request: NextRequest) {
     let rewritePath = '';
     
     // Let /sitemap.xml and /robots.txt pass through – app/sitemap.ts and app/robots.ts
-    // serve domain-specific content based on Host header (no rewrite needed).
+    if (path === '/sitemap.xml' || path === '/robots.txt') {
+      const response = await updateSession(request);
+      response.headers.set('x-pathname', request.nextUrl.pathname);
+      response.headers.set('x-product', 'djdash');
+      return response;
+    }
     
     // Rewrite paths to djdash marketing routes
     if (path === '/' || path === '') {
