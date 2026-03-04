@@ -30,6 +30,11 @@ export default function OrganizationRequestsPage() {
     async function loadOrganization(forceRefresh = false) {
       if (!slug) {
         console.log('⏸️ [SLUG/REQUESTS] No slug, skipping organization load');
+        // Prevent infinite loading when router isn't ready or slug is missing (e.g. URL with ?qr=1)
+        if (router.isReady) {
+          setLoading(false);
+          setError('Organization not found');
+        }
         return;
       }
 
@@ -142,7 +147,7 @@ export default function OrganizationRequestsPage() {
       clearInterval(refreshInterval);
       window.removeEventListener('focus', handleFocus);
     };
-  }, [slug]); // Removed supabase from dependencies - it's stable via useMemo
+  }, [slug, router.isReady]); // Re-run when router becomes ready so we can clear loading if slug is still missing
 
   // Check owner status when auth state changes
   useEffect(() => {

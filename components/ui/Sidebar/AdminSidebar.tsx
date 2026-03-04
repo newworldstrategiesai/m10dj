@@ -217,9 +217,10 @@ export default function AdminSidebar({ onSignOut, isMobileOpen: externalIsMobile
         { label: 'Billing', href: '/admin/billing', icon: <CreditCard className="w-5 h-5" /> },
       ];
 
-      // Add batch invite links for super admin only
+      // Add batch invite and users list for super admin only
       if (isSuperAdmin) {
         tipjarNavItems.push(
+          { label: 'Users', href: '/admin/tipjar/users', icon: <Users className="w-5 h-5" /> },
           { label: 'Batch Invites', href: '/admin/tipjar/batch-dashboard', icon: <List className="w-5 h-5" /> },
           { label: 'Create Batch', href: '/admin/tipjar/batch-create', icon: <UserPlus className="w-5 h-5" /> }
         );
