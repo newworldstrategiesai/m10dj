@@ -7,12 +7,18 @@ import GlobalChatWidget from '@/components/company/GlobalChatWidget';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import AdminNavbar from '@/components/admin/AdminNavbar';
 import { Toaster } from '@/components/ui/Toasts/toaster-pages';
+import dynamic from 'next/dynamic';
 import { useEffect } from 'react';
 import { trackPageView } from '@/utils/visitor-tracking';
 import { registerServiceWorker } from '@/utils/service-worker';
 import { ErrorRecoveryBoundary } from '@/components/ErrorRecoveryBoundary';
 // Temporarily disabled to prevent rate limiting issues
 // import EnhancedTracking from '../components/EnhancedTracking'
+
+const GoogleAnalyticsTipJar = dynamic(
+  () => import('@/components/analytics/GoogleAnalyticsTipJar'),
+  { ssr: false }
+);
 
 export default function App({ Component, pageProps }) {
   // Suppress React warning about fetchPriority prop (Next.js 13.5.6 compatibility issue)
@@ -179,6 +185,7 @@ export default function App({ Component, pageProps }) {
         title="Application Error"
         message="Something went wrong. Please refresh the page or contact support if the problem persists."
       >
+      <GoogleAnalyticsTipJar />
       <Head>
         {/* Favicon and app icons - Domain-aware */}
         {isTipJarDomain ? (

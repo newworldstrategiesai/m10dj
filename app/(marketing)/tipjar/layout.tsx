@@ -1,5 +1,6 @@
 import { Metadata } from 'next';
 import { PropsWithChildren } from 'react';
+import GoogleAnalyticsTipJar from '@/components/analytics/GoogleAnalyticsTipJar';
 
 const title = 'TipJar Live - DJ Tip Collection & Song Request App';
 const description = 'Request songs, send tips, and interact with your DJ in real-time. The easiest way to support your favorite DJ and get your music played at events.';
@@ -73,6 +74,11 @@ export const metadata: Metadata = {
 };
 
 export default function TipJarLayout({ children }: PropsWithChildren) {
-  return children;
+  return (
+    <>
+      <GoogleAnalyticsTipJar />
+      {children}
+    </>
+  );
 }
 

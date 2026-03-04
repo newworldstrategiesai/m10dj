@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter, useParams } from 'next/router';
+import { useRouter } from 'next/router';
 import Link from 'next/link';
 import AdminLayout from '@/components/layouts/AdminLayout';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
@@ -77,9 +77,8 @@ interface UserDetailData {
 
 export default function TipJarUserDetailPage() {
   const router = useRouter();
-  const params = useParams();
   const { toast } = useToast();
-  const organizationId = params?.organizationId as string | undefined;
+  const organizationId = router.query?.organizationId as string | undefined;
   const [data, setData] = useState<UserDetailData | null>(null);
   const [loading, setLoading] = useState(true);
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
