@@ -17,6 +17,7 @@ interface TipJarUserRow {
   ownerId: string;
   email: string;
   username: string;
+  emailConfirmed: boolean;
   profileUrl: string;
   createdAt: string;
   isClaimed: boolean;
@@ -143,6 +144,7 @@ export default function TipJarUsersPage() {
                     <th className="text-left p-4 font-medium text-foreground">Username</th>
                     <th className="text-left p-4 font-medium text-foreground">Email</th>
                     <th className="text-left p-4 font-medium text-foreground hidden md:table-cell">Organization</th>
+                    <th className="text-left p-4 font-medium text-foreground">Email status</th>
                     <th className="text-left p-4 font-medium text-foreground">Profile</th>
                     <th className="w-10 p-4" aria-label="Action" />
                   </tr>
@@ -157,6 +159,15 @@ export default function TipJarUsersPage() {
                       <td className="p-4 font-medium text-foreground">{u.username || '—'}</td>
                       <td className="p-4 text-muted-foreground">{u.email}</td>
                       <td className="p-4 text-muted-foreground hidden md:table-cell">{u.orgName || u.slug}</td>
+                      <td className="p-4">
+                        {u.emailConfirmed ? (
+                          <span className="text-xs text-muted-foreground">Confirmed</span>
+                        ) : (
+                          <span className="inline-flex items-center rounded-md bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800 dark:bg-amber-900/50 dark:text-amber-200">
+                            Unconfirmed
+                          </span>
+                        )}
+                      </td>
                       <td className="p-4">
                         <a
                           href={u.profileUrl}

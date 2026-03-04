@@ -46,10 +46,15 @@ export async function GET(request: NextRequest) {
       if (!verifyResponse.ok) {
         const errorData = await verifyResponse.json();
         console.error('[Auth Callback] Token verification error:', errorData);
-        
+
         const isTipJar = requestUrl.hostname.includes('tipjar');
+        const signupOrInviteOnWrongDomain =
+          (type === 'signup' || type === 'invite') &&
+          requestUrl.hostname.includes('m10djcompany.com');
+        const signinOrigin =
+          signupOrInviteOnWrongDomain ? 'https://www.tipjar.live' : requestUrl.origin;
         let errorRedirectPath: string;
-        
+
         switch (type) {
           case 'recovery':
             errorRedirectPath = isTipJar
@@ -57,8 +62,8 @@ export async function GET(request: NextRequest) {
               : `${requestUrl.origin}/signin/forgot_password`;
             break;
           default:
-            errorRedirectPath = isTipJar
-              ? `${requestUrl.origin}/tipjar/signin/password_signin`
+            errorRedirectPath = isTipJar || signupOrInviteOnWrongDomain
+              ? `${signinOrigin}/tipjar/signin/password_signin`
               : `${requestUrl.origin}/signin/password_signin`;
             break;
         }
@@ -74,21 +79,28 @@ export async function GET(request: NextRequest) {
 
       // Token verified successfully - Supabase should have set the session via cookies
       // The verify endpoint returns a session, which should be set in cookies automatically
-      
-      // For signup confirmations, redirect to success page with "Go to Sign In" button
-      if (type === 'signup') {
-        const isTipJar = requestUrl.hostname.includes('tipjar');
-        if (isTipJar) {
-          const confirmedUrl = requestUrl.hostname.includes('m10djcompany.com')
-            ? 'https://tipjar.live/tipjar/auth/confirmed'
-            : `${requestUrl.origin}/tipjar/auth/confirmed`;
-          return NextResponse.redirect(confirmedUrl);
-        } else {
-          // For other products, continue with normal flow
-          // (could create similar success pages for djdash/m10dj if needed)
+
+      // For signup and invite confirmations, redirect to TipJar success page so "Go to Sign In" works
+      // Always use tipjar.live for TipJar so the sign-in page works (fixes manual invites from Supabase dashboard)
+      if (type === 'signup' || type === 'invite') {
+        let isTipJar = requestUrl.hostname.includes('tipjar');
+        try {
+          const verifyData = await verifyResponse.json();
+          const userMeta = verifyData?.user?.user_metadata;
+          if (userMeta?.product_context === 'tipjar') isTipJar = true;
+        } catch {
+          // ignore parse errors
         }
+        if (isTipJar) {
+          const confirmedUrl =
+            requestUrl.hostname.includes('m10djcompany.com') || !requestUrl.hostname.includes('tipjar.live')
+              ? 'https://www.tipjar.live/tipjar/auth/confirmed'
+              : `${requestUrl.origin}/tipjar/auth/confirmed`;
+          return NextResponse.redirect(confirmedUrl);
+        }
+        // For other products, continue with normal flow (could add djdash/m10dj confirmed pages)
       }
-      
+
       // For other types (recovery, magiclink, etc.), continue with normal flow below
     } catch (error: any) {
       console.error('[Auth Callback] Token verification error:', error);

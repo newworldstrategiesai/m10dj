@@ -42,10 +42,13 @@ Go to: **Supabase Dashboard** → **Authentication** → **URL Configuration**
 
 Set **"Site URL"** to:
 ```
-https://tipjar.live
+https://www.tipjar.live
 ```
+(or `https://tipjar.live` if you use non-www)
 
 This is the base URL Supabase uses for email links and redirects.
+
+**Manual invites:** If you invite users from **Supabase Dashboard** (Authentication → Users → Invite), the email link uses this Site URL. Use `https://www.tipjar.live` so the confirmation link lands on TipJar. The app will then redirect them to the working sign-in page (`/tipjar/signin/password_signin`) even if the link was generated with another domain.
 
 ---
 

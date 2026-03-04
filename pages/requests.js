@@ -3141,7 +3141,7 @@ export function GeneralRequestsPage({
                 disablePictureInPicture
                 preload="metadata"
                 poster={coverPhoto}
-                style={{ objectPosition: 'center 35%' }}
+                style={{ objectPosition: 'center 25%' }}
                 onLoadStart={() => {
                   // Clear timeout when video starts loading
                   if (desktopVideoTimeoutRef.current) {
@@ -3181,7 +3181,7 @@ export function GeneralRequestsPage({
                 src={coverPhoto}
                 alt="Header background"
                 className="absolute inset-0 w-full h-full object-cover"
-                style={{ objectPosition: 'center 35%' }}
+                style={{ objectPosition: 'center 25%' }}
                 onError={(e) => {
                   console.warn('⚠️ [VIDEO] Poster image also failed to load');
                   // Fall through to animated gradient
@@ -3362,10 +3362,10 @@ export function GeneralRequestsPage({
                 />
               )
             ) : coverPhoto ? (
-              /* Custom cover photo */
+              /* Custom cover photo - position top-friendly so cover isn't cropped off on desktop */
               <div 
-                className="absolute inset-0 w-full h-full bg-cover bg-center"
-                style={{ backgroundImage: `url(${coverPhoto})` }}
+                className="absolute inset-0 w-full h-full bg-cover"
+                style={{ backgroundImage: `url(${coverPhoto})`, backgroundPosition: 'center 25%' }}
               />
             ) : (
               /* No background - transparent/black fallback */
@@ -4153,7 +4153,7 @@ export function GeneralRequestsPage({
                 disablePictureInPicture
                 preload="metadata"
                 poster={coverPhoto}
-                style={{ zIndex: 0, objectPosition: 'center 35%' }}
+                style={{ zIndex: 0, objectPosition: 'center 25%' }}
                 onLoadStart={() => {
                   // Clear timeout when video starts loading
                   if (mobileVideoTimeoutRef.current) {
@@ -4193,7 +4193,7 @@ export function GeneralRequestsPage({
                 src={coverPhoto}
                 alt="Header background"
                 className="absolute inset-0 w-full h-full object-cover"
-                style={{ zIndex: 0, objectPosition: 'center 35%' }}
+                style={{ zIndex: 0, objectPosition: 'center 25%' }}
                 onError={(e) => {
                   console.warn('⚠️ [VIDEO] Poster image also failed to load');
                   // Fall through to animated gradient
@@ -4299,10 +4299,10 @@ export function GeneralRequestsPage({
                 />
               )
             ) : coverPhoto ? (
-              /* Custom cover photo */
+              /* Custom cover photo - position top-friendly so cover isn't cropped off on desktop */
               <div 
-                className="absolute inset-0 w-full h-full bg-cover bg-center"
-                style={{ backgroundImage: `url(${coverPhoto})`, objectPosition: 'center 40%', zIndex: 0 }}
+                className="absolute inset-0 w-full h-full bg-cover"
+                style={{ backgroundImage: `url(${coverPhoto})`, backgroundPosition: 'center 25%', zIndex: 0 }}
               />
             ) : (
               /* No background - transparent/black fallback */
@@ -4579,8 +4579,8 @@ export function GeneralRequestsPage({
         
         {/* Title and description below hero when profile photo layout (TipJar) */}
         {!embedMode && !showPaymentMethods && showProfilePhotoLayout && (
-          <div className="relative z-20 px-4 bg-black overflow-visible -mt-14 sm:-mt-14 md:-mt-16">
-            {/* Avatar straddles cover/content boundary - negative margin on parent pulls whole strip up */}
+          <div className="relative z-20 px-4 bg-black overflow-visible -mt-16 sm:-mt-[4.5rem] md:-mt-20">
+            {/* Avatar overlaps cover: negative margin pulls strip up so circle straddles hero bottom (mobile + desktop) */}
             <div className="flex flex-col items-start">
               <div className="w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 rounded-full overflow-hidden border-2 border-zinc-800 dark:border-zinc-700 bg-black shadow-xl flex-shrink-0 ring-2 ring-white/10">
                 <img src={profilePhotoUrl} alt="" className="w-full h-full object-cover" />

@@ -37,14 +37,18 @@ export default async function handler(req, res) {
       if (!userError && userList?.users) {
         userList.users.forEach((u) => {
           const name = u.user_metadata?.full_name || u.user_metadata?.name || (u.email ? u.email.split('@')[0] : '—');
-          userMap.set(u.id, { email: u.email || '—', username: name });
+          userMap.set(u.id, {
+            email: u.email || '—',
+            username: name,
+            emailConfirmed: !!u.email_confirmed_at,
+          });
         });
       }
     }
 
     const baseUrl = process.env.NEXT_PUBLIC_TIPJAR_URL || 'https://www.tipjar.live';
     const users = (orgs || []).map((org) => {
-      const owner = userMap.get(org.owner_id) || { email: '—', username: '—' };
+      const owner = userMap.get(org.owner_id) || { email: '—', username: '—', emailConfirmed: false };
       return {
         organizationId: org.id,
         slug: org.slug,
@@ -52,6 +56,7 @@ export default async function handler(req, res) {
         ownerId: org.owner_id,
         email: owner.email,
         username: owner.username,
+        emailConfirmed: owner.emailConfirmed,
         profileUrl: `${baseUrl.replace(/\/$/, '')}/${org.slug}`,
         createdAt: org.created_at,
         isClaimed: org.is_claimed ?? false,
