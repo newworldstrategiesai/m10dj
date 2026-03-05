@@ -15,7 +15,7 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { invoiceId, leadId, amount, description, successUrl, cancelUrl, paymentType, gratuityAmount, gratuityType, gratuityPercentage } = req.body;
+  const { invoiceId: bodyInvoiceId, leadId, amount, description, successUrl, cancelUrl, paymentType, gratuityAmount, gratuityType, gratuityPercentage } = req.body;
   
   // For invoice payments, if amount is provided, use it (includes gratuity)
   // Otherwise, calculate from invoice total + gratuity
@@ -187,6 +187,9 @@ export default async function handler(req, res) {
         });
       }
 
+      // When quote has an invoice, pass invoice_id so webhook ties payment to invoice (fixes second payment not showing)
+      const quoteInvoiceId = bodyInvoiceId || quote?.invoice_id || null;
+
       // Create Stripe checkout session with customer for saving payment methods
       const sessionParams = {
         payment_method_types: ['card'],
@@ -197,6 +200,7 @@ export default async function handler(req, res) {
         metadata: {
           lead_id: leadId,
           payment_type: paymentType || (amount === Math.round((quote?.total_price || 0) * 100) ? 'full' : 'deposit'),
+          ...(quoteInvoiceId ? { invoice_id: quoteInvoiceId } : {}),
           ...(gratuityAmount && gratuityAmount > 0 && paymentType === 'full' ? {
             gratuity_amount: gratuityAmount.toString(),
             gratuity_type: gratuityType || '',
@@ -207,6 +211,7 @@ export default async function handler(req, res) {
           metadata: {
             lead_id: leadId,
             payment_type: paymentType || (amount === Math.round((quote?.total_price || 0) * 100) ? 'full' : 'deposit'),
+            ...(quoteInvoiceId ? { invoice_id: quoteInvoiceId } : {}),
             ...(gratuityAmount && gratuityAmount > 0 && paymentType === 'full' ? {
               gratuity_amount: gratuityAmount.toString(),
               gratuity_type: gratuityType || '',
@@ -259,8 +264,8 @@ export default async function handler(req, res) {
       });
     }
 
-    // Handle invoice payment (invoiceId provided)
-    if (!invoiceId) {
+    // Handle invoice payment (invoiceId provided in body, no leadId)
+    if (!bodyInvoiceId) {
       return res.status(400).json({ error: 'Either invoiceId or leadId required' });
     }
 
@@ -268,7 +273,7 @@ export default async function handler(req, res) {
     const { data: invoice, error: invoiceError } = await supabase
       .from('invoices')
       .select('*, contacts(*)')
-      .eq('id', invoiceId)
+      .eq('id', bodyInvoiceId)
       .single();
 
     if (invoiceError || !invoice) {

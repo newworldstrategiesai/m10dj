@@ -182,42 +182,12 @@ export default async function handler(req, res) {
               console.error('⚠️ Error fetching invoice before update:', fetchError);
             }
 
-            // Calculate base payment amount (excluding gratuity)
-            // This should match the invoice total_amount for a full payment
+            // Base payment amount (excluding gratuity) for this payment record
             const basePaymentAmount = paymentAmount - gratuityAmount;
-            
-            // Update invoice status and payment info
-            const invoiceUpdate = {
-              invoice_status: 'Paid',
-              amount_paid: basePaymentAmount, // Base payment amount (excluding gratuity)
-              balance_due: 0, // Invoice is fully paid
-              paid_date: new Date().toISOString(),
-              updated_at: new Date().toISOString()
-            };
 
-            const { error: invoiceUpdateError, data: updatedInvoice } = await supabase
-              .from('invoices')
-              .update(invoiceUpdate)
-              .eq('id', invoiceId)
-              .select();
-
-            if (invoiceUpdateError) {
-              console.error('⚠️ Error updating invoice status:', invoiceUpdateError);
-              console.error('Invoice update details:', {
-                invoiceId,
-                invoiceNumber: currentInvoice?.invoice_number,
-                attemptedUpdate: invoiceUpdate,
-                error: invoiceUpdateError
-              });
-            } else {
-              console.log(`✅ Invoice ${invoiceId} marked as paid`, {
-                invoiceNumber: currentInvoice?.invoice_number || 'N/A',
-                previousStatus: currentInvoice?.invoice_status || 'N/A',
-                amountPaid: basePaymentAmount,
-                paymentAmount: paymentAmount,
-                gratuityAmount: gratuityAmount
-              });
-            }
+            // Do NOT manually update invoice amount_paid/balance_due here — the DB trigger
+            // sync_payments_to_invoice runs on payment insert and sums all payments for this
+            // invoice, so deposit + remaining balance both show correctly.
 
             // Build payment notes with gratuity info if applicable
             let paymentNotes = `Stripe Payment Intent: ${session.payment_intent || session.id}`;
@@ -240,10 +210,11 @@ export default async function handler(req, res) {
               // Payment record total_amount should be base payment (excluding gratuity)
               // The database trigger will sum payments and update invoice.amount_paid
               // Gratuity is tracked separately in the gratuity field
+              const paymentTypeLabel = session.metadata?.payment_type === 'deposit' ? 'Deposit' : (session.metadata?.payment_type === 'remaining' || session.metadata?.payment_type === 'full' ? 'Remaining balance' : 'Invoice Payment');
               const paymentRecord = {
                 contact_id: invoiceData.contact_id,
                 invoice_id: invoiceId,
-                payment_name: 'Invoice Payment',
+                payment_name: paymentTypeLabel,
                 total_amount: basePaymentAmount, // Base payment amount (excluding gratuity)
                 gratuity: gratuityAmount, // Gratuity tracked separately
                 payment_status: 'Paid',
@@ -377,8 +348,8 @@ export default async function handler(req, res) {
           }
         }
 
-        // Handle quote/lead payment from checkout session
-        if (leadId) {
+        // Handle quote/lead payment from checkout session (skip when already handled via invoice_id above)
+        if (leadId && !invoiceId) {
           const paymentAmount = session.amount_total / 100;
           const paymentType = session.metadata?.payment_type || 'deposit';
           
@@ -390,10 +361,10 @@ export default async function handler(req, res) {
           // Find the contact_id from the lead_id
           let contactId = leadId;
           
-          // Try to find contact_id via quote_selections -> contact_submissions
+          // Try to find contact_id and optional invoice_id via quote_selections -> contact_submissions
           const { data: quoteSelection } = await supabase
             .from('quote_selections')
-            .select('contact_submission_id')
+            .select('contact_submission_id, invoice_id')
             .eq('lead_id', leadId)
             .single();
           
@@ -408,6 +379,8 @@ export default async function handler(req, res) {
               contactId = submission.contact_id;
             }
           }
+
+          const quoteInvoiceId = quoteSelection?.invoice_id || null;
           
           // Update quote_selections
           await supabase
@@ -431,9 +404,10 @@ export default async function handler(req, res) {
             }
           }
 
-          // Create payment record in payments table
+          // Create payment record in payments table (link to invoice when known so trigger updates invoice)
           const paymentRecord = {
             contact_id: contactId,
+            invoice_id: quoteInvoiceId || undefined,
             payment_name: paymentType === 'deposit' ? 'Deposit' : 'Full Payment',
             total_amount: paymentAmount,
             gratuity: gratuityAmount,
@@ -441,6 +415,8 @@ export default async function handler(req, res) {
             payment_method: 'Credit Card',
             transaction_date: new Date().toISOString().split('T')[0], // Date only
             payment_notes: paymentNotes,
+            stripe_session_id: session.id,
+            stripe_payment_intent: session.payment_intent || session.id,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
           };
@@ -809,8 +785,19 @@ export default async function handler(req, res) {
           }
         }
 
-        // Handle quote/lead payment
+        // Handle quote/lead payment (skip if checkout.session.completed already created the payment)
         if (leadIdFromIntent) {
+          const { data: existingPayment } = await supabaseForPaymentIntent
+            .from('payments')
+            .select('id')
+            .eq('stripe_payment_intent', paymentIntent.id)
+            .limit(1)
+            .maybeSingle();
+          if (existingPayment) {
+            console.log('ℹ️ Payment already recorded for intent:', paymentIntent.id, '- skipping duplicate');
+            break;
+          }
+
           const paymentAmount = paymentIntent.amount / 100;
           const paymentType = paymentIntent.metadata.payment_type || 'deposit';
           
@@ -821,7 +808,7 @@ export default async function handler(req, res) {
           // Try to find contact_id via quote_selections -> contact_submissions
           const { data: quoteSelection } = await supabaseForPaymentIntent
             .from('quote_selections')
-            .select('contact_submission_id')
+            .select('contact_submission_id, invoice_id')
             .eq('lead_id', leadIdFromIntent)
             .single();
           
@@ -836,6 +823,8 @@ export default async function handler(req, res) {
               contactId = submission.contact_id;
             }
           }
+
+          const quoteInvoiceId = quoteSelection?.invoice_id || null;
           
           // Update quote_selections
           const { error: quoteError } = await supabaseForPaymentIntent
@@ -853,15 +842,17 @@ export default async function handler(req, res) {
             console.error('⚠️ Error updating quote_selections:', quoteError);
           }
 
-          // Create payment record in payments table
+          // Create payment record in payments table (include invoice_id when known)
           const paymentRecord = {
             contact_id: contactId,
+            invoice_id: quoteInvoiceId || undefined,
             payment_name: paymentType === 'deposit' ? 'Deposit' : 'Full Payment',
             total_amount: paymentAmount,
             payment_status: 'Paid',
             payment_method: 'Credit Card',
             transaction_date: new Date().toISOString().split('T')[0], // Date only
             payment_notes: `Stripe Payment Intent: ${paymentIntent.id}`,
+            stripe_payment_intent: paymentIntent.id,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
           };

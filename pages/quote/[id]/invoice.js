@@ -4,7 +4,7 @@ import Head from 'next/head';
 import Link from 'next/link';
 import Header from '../../../components/company/Header';
 import QuoteBottomNav from '../../../components/quote/QuoteBottomNav';
-import { FileText, Download, ArrowLeft, Loader2, CheckCircle, Calendar, MapPin, Users, Edit, Save, X, Settings, Percent, DollarSign } from 'lucide-react';
+import { FileText, Download, ArrowLeft, Loader2, CheckCircle, Calendar, MapPin, Users, Edit, Save, X, Settings, Percent, DollarSign, Receipt } from 'lucide-react';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -67,6 +67,7 @@ export default function InvoicePage() {
   const [numberOfPayments, setNumberOfPayments] = useState(2); // Default to 2 (deposit + final)
   const [paymentSchedule, setPaymentSchedule] = useState([]); // Array of { amount, dueDate }
   const [isEditingPaymentTerms, setIsEditingPaymentTerms] = useState(false);
+  const [sendingReceipt, setSendingReceipt] = useState(false);
   const supabase = createClientComponentClient();
   const { toast } = useToast();
 
@@ -2140,6 +2141,55 @@ export default function InvoicePage() {
                           <p className="text-xs sm:text-sm text-yellow-700 dark:text-yellow-300">
                             ${remainingBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} remaining
                           </p>
+                        </div>
+                      )}
+
+                      {/* Admin: Send receipt to client */}
+                      {isAdmin && (invoiceData?.id || quoteData?.invoice_id) && (
+                        <div className="no-print mt-3 sm:mt-4">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="gap-2 border-green-300 dark:border-green-700 text-green-800 dark:text-green-200 hover:bg-green-50 dark:hover:bg-green-900/20"
+                            disabled={sendingReceipt}
+                            onClick={async () => {
+                              const invoiceId = invoiceData?.id || quoteData?.invoice_id;
+                              if (!invoiceId) return;
+                              setSendingReceipt(true);
+                              try {
+                                const response = await fetch(`/api/invoices/${invoiceId}/send-receipt`, {
+                                  method: 'POST',
+                                  headers: { 'Content-Type': 'application/json' },
+                                  credentials: 'include',
+                                });
+                                const data = await response.json().catch(() => ({}));
+                                if (response.ok && data.success) {
+                                  toast({
+                                    title: 'Receipt sent',
+                                    description: data.sent_to ? `Payment receipt sent to ${data.sent_to}` : 'Payment receipt sent to the client.',
+                                  });
+                                } else {
+                                  toast({
+                                    title: 'Could not send receipt',
+                                    description: data.error || data.message || (response.status === 401 ? 'Please sign in as admin.' : 'Failed to send receipt.'),
+                                    variant: 'destructive',
+                                  });
+                                }
+                              } catch (err) {
+                                toast({
+                                  title: 'Could not send receipt',
+                                  description: err.message || 'Failed to send receipt. Please try again.',
+                                  variant: 'destructive',
+                                });
+                              } finally {
+                                setSendingReceipt(false);
+                              }
+                            }}
+                          >
+                            <Receipt className="h-4 w-4" />
+                            {sendingReceipt ? 'Sending...' : 'Send receipt to client'}
+                          </Button>
                         </div>
                       )}
                     </>

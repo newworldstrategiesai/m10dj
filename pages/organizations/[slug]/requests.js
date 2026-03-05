@@ -24,6 +24,15 @@ export default function OrganizationRequestsPage() {
   const [isOwner, setIsOwner] = useState(false);
 
   useEffect(() => {
+    let isMounted = true;
+    const LOAD_TIMEOUT_MS = 15000;
+    const timeoutId = setTimeout(() => {
+      if (isMounted) {
+        console.warn('⚠️ [ORGANIZATIONS/REQUESTS] Load timeout - stopping loader');
+        setLoading(false);
+      }
+    }, LOAD_TIMEOUT_MS);
+
     async function loadOrganization(forceRefresh = false) {
       if (!slug) {
         console.log('⏸️ No slug, skipping organization load');
@@ -195,6 +204,8 @@ export default function OrganizationRequestsPage() {
     window.addEventListener('focus', handleFocus);
 
     return () => {
+      isMounted = false;
+      clearTimeout(timeoutId);
       clearInterval(refreshInterval);
       window.removeEventListener('focus', handleFocus);
     };
@@ -280,10 +291,28 @@ export default function OrganizationRequestsPage() {
 
   if (error || !organization) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Organization Not Found</h1>
-          <p className="text-gray-600">{error || 'The organization you\'re looking for doesn\'t exist or is not active.'}</p>
+      <div className="min-h-screen flex flex-col items-center justify-center bg-black px-4">
+        <p className="text-white/90 text-center mb-4">
+          {error === 'Organization not found' || error === 'This organization is not currently active'
+            ? (error === 'This organization is not currently active'
+                ? 'This organization is not currently active.'
+                : "The organization you're looking for doesn't exist or has been removed.")
+            : 'Having trouble loading? Try refreshing or use the link from your DJ.'}
+        </p>
+        <div className="flex gap-3">
+          <button
+            type="button"
+            onClick={() => window.location.reload()}
+            className="px-4 py-2 rounded-lg bg-white/20 text-white hover:bg-white/30 transition-colors"
+          >
+            Refresh page
+          </button>
+          <a
+            href="/"
+            className="px-4 py-2 rounded-lg bg-white/20 text-white hover:bg-white/30 transition-colors inline-block text-center"
+          >
+            Go to Home
+          </a>
         </div>
       </div>
     );

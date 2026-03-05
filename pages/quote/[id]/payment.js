@@ -455,12 +455,13 @@ export default function PaymentPage() {
         }
       }
 
-      // Create Stripe checkout session
+      // Create Stripe checkout session (pass invoice_id when available so webhook ties payment to invoice)
       const response = await fetch('/api/stripe/create-checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           leadId: id,
+          invoiceId: quoteData?.invoice_id || null,
           amount: amount,
           description: description,
           paymentType: hasDepositPaid ? 'remaining' : (paymentType === 'deposit' ? 'deposit' : 'full'),
