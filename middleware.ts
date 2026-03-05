@@ -149,6 +149,30 @@ export async function middleware(request: NextRequest) {
   const isStaticFile = url.pathname.startsWith('/_next') || 
                        url.pathname.startsWith('/favicon') ||
                        url.pathname.match(/\.(ico|png|jpg|jpeg|svg|css|js)$/);
+
+  const isTipJarDomain = hostnameLower === 'tipjar.live' ||
+    hostnameLower === 'www.tipjar.live' ||
+    hostnameLower.endsWith('.tipjar.live');
+
+  // On TipJar: rewrite _next/data/.../slug/requests.json to _next/data/.../organizations/slug/requests.json
+  // so client-side data request matches the rewritten document route (avoids 404 and infinite load)
+  if (isTipJarDomain && url.pathname.match(/^\/_next\/data\/[^/]+\/[^/]+\/requests\.json$/)) {
+    const dataRewritePath = url.pathname.replace(
+      /^(\/_next\/data\/[^/]+\/)([^/]+)(\/requests\.json)$/,
+      '$1organizations/$2$3'
+    );
+    url.pathname = dataRewritePath;
+    const response = await updateSession(request);
+    const rewriteResponse = NextResponse.rewrite(url);
+    rewriteResponse.headers.set('x-pathname', request.nextUrl.pathname);
+    rewriteResponse.headers.set('x-product', 'tipjar');
+    response.headers.forEach((value, key) => {
+      if (key.startsWith('x-') || key === 'set-cookie') {
+        rewriteResponse.headers.set(key, value);
+      }
+    });
+    return rewriteResponse;
+  }
   
   // Skip routing for API routes and static files
   if (isApiRoute || isStaticFile) {
@@ -165,12 +189,7 @@ export async function middleware(request: NextRequest) {
     return response;
   }
   
-  // Check which domain we're on
-  // Route groups (marketing) don't appear in URLs, so we rewrite to the actual route structure
-  const isTipJarDomain = hostnameLower === 'tipjar.live' || 
-                         hostnameLower === 'www.tipjar.live' ||
-                         hostnameLower.endsWith('.tipjar.live');
-  
+  // Check which domain we're on (isTipJarDomain already set above for _next/data rewrite)
   const isDJDashDomain = hostnameLower === 'djdash.net' || 
                          hostnameLower === 'www.djdash.net' ||
                          hostnameLower.endsWith('.djdash.net');

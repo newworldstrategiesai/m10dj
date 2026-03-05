@@ -6,10 +6,10 @@
  * This page allows anyone to submit song requests/shoutouts for a specific DJ organization
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { createClient } from '@/utils/supabase/client';
 import { getCoverPhotoUrl } from '../../../utils/cover-photo-helper';
 import { GeneralRequestsPage } from '../../requests'; // Reuse the existing requests page component (named export)
 import TipJarChatWidget from '../../../components/tipjar/TipJarChatWidget';
@@ -17,7 +17,7 @@ import TipJarChatWidget from '../../../components/tipjar/TipJarChatWidget';
 export default function OrganizationRequestsPage() {
   const router = useRouter();
   const { slug } = router.query;
-  const supabase = createClientComponentClient();
+  const supabase = useMemo(() => createClient(), []);
   const [organization, setOrganization] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -27,9 +27,8 @@ export default function OrganizationRequestsPage() {
     async function loadOrganization(forceRefresh = false) {
       if (!slug) {
         console.log('⏸️ No slug, skipping organization load');
-        // Prevent infinite loading when router isn't ready or slug is missing (e.g. URL with ?qr=1)
+        setLoading(false);
         if (router.isReady) {
-          setLoading(false);
           setError('Organization not found');
         }
         return;

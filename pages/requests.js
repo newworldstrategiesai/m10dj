@@ -47,7 +47,15 @@ export default function RequestsPageWrapper() {
 
   useEffect(() => {
     let isMounted = true;
-    
+    const LOAD_TIMEOUT_MS = 15000;
+
+    const timeoutId = setTimeout(() => {
+      if (isMounted) {
+        console.warn('⚠️ [REQUESTS] Load timeout - stopping loader');
+        setLoading(false);
+      }
+    }, LOAD_TIMEOUT_MS);
+
     async function loadOrganizationByContext() {
       try {
         // Detect which domain we're on
@@ -187,9 +195,9 @@ export default function RequestsPageWrapper() {
 
     loadOrganizationByContext();
     
-    // Cleanup function to prevent state updates after unmount
     return () => {
       isMounted = false;
+      clearTimeout(timeoutId);
     };
     
     // Note: We don't set up a polling interval here because it would cause
@@ -222,6 +230,21 @@ export default function RequestsPageWrapper() {
         isOpen={true} 
         message="Loading requests page..." 
         />
+    );
+  }
+
+  if (!organization) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-black px-4">
+        <p className="text-white/90 text-center mb-4">Having trouble loading? Try refreshing or use the link from your DJ.</p>
+        <button
+          type="button"
+          onClick={() => window.location.reload()}
+          className="px-4 py-2 rounded-lg bg-white/20 text-white hover:bg-white/30 transition-colors"
+        >
+          Refresh page
+        </button>
+      </div>
     );
   }
 
