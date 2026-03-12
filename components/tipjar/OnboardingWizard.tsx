@@ -234,6 +234,27 @@ export default function TipJarOnboardingWizard({
         // Non-critical, continue
       }
 
+      // After successful onboarding, send the DJ their TipJar link and QR code via SMS (phone signups)
+      try {
+        const {
+          data: { session }
+        } = await supabase.auth.getSession();
+
+        if (session && user?.phone) {
+          await fetch('/api/tipjar/onboarding/send-link-sms', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${session.access_token}`
+            },
+            body: JSON.stringify({})
+          });
+        }
+      } catch (error) {
+        console.error('Failed to send TipJar onboarding SMS (non-critical):', error);
+        // Non-critical: continue without blocking redirect
+      }
+
       // Create dummy data for new users to explore the UI
       try {
         const dummyDataResponse = await fetch('/api/admin/create-dummy-crowd-requests', {

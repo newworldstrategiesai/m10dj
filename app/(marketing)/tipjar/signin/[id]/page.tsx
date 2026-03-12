@@ -180,6 +180,16 @@ export default async function TipJarSignIn({
                       ? 'Sign Up'
                       : 'Sign In'}
               </h2>
+              {viewProp === 'password_signin' && (
+                <div className="space-y-0.5">
+                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                    Phone or Email
+                  </p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                    Password
+                  </p>
+                </div>
+              )}
             </div>
             
             {viewProp === 'password_signin' && (
