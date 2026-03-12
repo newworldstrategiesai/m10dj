@@ -118,7 +118,7 @@ export default function InvoicePage() {
           }
         }
         
-        // Notify admin that invoice page was opened
+        // Notify admin that invoice page was opened (SMS throttled to 1/day; every view still logged)
         fetch('/api/admin/notify', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -133,6 +133,21 @@ export default function InvoicePage() {
             }
           })
         }).catch(err => console.error('Failed to notify admin:', err));
+
+        // Log invoice page view for admin timeline (same as quote page views)
+        fetch('/api/analytics/quote-page-view', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            quote_id: id,
+            event_type: 'invoice_page_view',
+            metadata: {
+              event_type: lead.eventType || lead.event_type,
+              event_date: lead.eventDate || lead.event_date,
+              name: lead.name || lead.first_name || lead.last_name
+            }
+          })
+        }).catch(err => console.error('Failed to track invoice page view:', err));
         
         // Initialize event date editing state
         if (lead.eventDate) {

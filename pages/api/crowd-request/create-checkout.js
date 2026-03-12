@@ -68,7 +68,7 @@ export default async function handler(req, res) {
   });
 
   // Use normalized amount for rest of function
-  const normalizedAmount = amountInCents;
+  let normalizedAmount = amountInCents;
 
   if (!process.env.STRIPE_SECRET_KEY) {
     return res.status(500).json({ error: 'Stripe not configured' });
@@ -96,6 +96,27 @@ export default async function handler(req, res) {
       type: crowdRequest.request_type,
       organization_id: crowdRequest.organization_id
     });
+
+    // Server-side safeguard: if request has fast-track (or next/audio) but frontend sent only the base amount,
+    // correct the total so the customer is charged base + fees. Only apply when amount_requested looks like a
+    // base (common preset amounts) to avoid double-adding when amount_requested was already stored as total.
+    const fastTrackFee = crowdRequest.fast_track_fee || 0;
+    const nextFee = crowdRequest.next_fee || 0;
+    const audioUploadFee = crowdRequest.audio_upload_fee || 0;
+    const hasPriorityFees = (crowdRequest.is_fast_track && fastTrackFee > 0) || (crowdRequest.is_next && nextFee > 0) || audioUploadFee > 0;
+    const commonBaseAmounts = [1000, 1500, 2000, 2500, 3000, 5000, 7500, 10000]; // common preset bases in cents
+    const amountRequested = crowdRequest.amount_requested || 0;
+    if (hasPriorityFees && normalizedAmount === amountRequested && commonBaseAmounts.includes(amountRequested)) {
+      const correctedTotal = amountRequested + fastTrackFee + nextFee + audioUploadFee;
+      console.log('🔵 [CREATE-CHECKOUT] Corrected amount to include priority/audio fees (frontend sent base only):', {
+        was: normalizedAmount / 100,
+        now: correctedTotal / 100,
+        fastTrackFee: fastTrackFee / 100,
+        nextFee: nextFee / 100,
+        audioUploadFee: audioUploadFee / 100
+      });
+      normalizedAmount = correctedTotal;
+    }
 
     // Fetch bundle songs if this is part of a bundle
     // Bundle songs share: same requester (email/phone), same payment_code, created within 5 seconds
@@ -288,11 +309,8 @@ export default async function handler(req, res) {
 
     const fullDescription = buildFullDescription();
     
-    // Build line items - separate base amount and priority fees for clarity
+    // Build line items - separate base amount and priority fees for clarity (fastTrackFee, nextFee, audioUploadFee already in scope above)
     const lineItems = [];
-    const fastTrackFee = crowdRequest.fast_track_fee || 0;
-    const nextFee = crowdRequest.next_fee || 0;
-    const audioUploadFee = crowdRequest.audio_upload_fee || 0;
     const baseAmount = Math.max(0, normalizedAmount - fastTrackFee - nextFee - audioUploadFee); // Ensure baseAmount is never negative
     
     // Base request item with detailed description

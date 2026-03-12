@@ -52,6 +52,13 @@ export default function SignPage() {
   const [signed, setSigned] = useState(false);
   const [showFullContract, setShowFullContract] = useState(false);
 
+  const baseUrl =
+    (typeof window !== 'undefined' && window.location?.origin) ||
+    process.env.NEXT_PUBLIC_SITE_URL ||
+    'https://www.m10djcompany.com';
+  const canonicalUrl = token ? `${baseUrl}/sign/${token}` : `${baseUrl}/sign`;
+  const ogImage = `${baseUrl}/assets/signing-og-image.png`;
+
   useEffect(() => {
     if (token) {
       validateToken();
@@ -145,25 +152,91 @@ export default function SignPage() {
   // Loading state
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-        <div className="text-center">
-          <Loader2 className="w-12 h-12 animate-spin text-indigo-600 mx-auto" />
-          <p className="mt-4 text-gray-600">Loading document...</p>
+      <>
+        <Head>
+          <title>Sign Document - M10 DJ Company</title>
+          <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+
+          <meta property="og:type" content="website" />
+          <meta property="og:url" content={canonicalUrl} />
+          <meta property="og:title" content="Sign Document - M10 DJ Company" />
+          <meta
+            property="og:description"
+            content="Review and sign your document securely online."
+          />
+          <meta property="og:image" content={ogImage} />
+          <meta property="og:image:secure_url" content={ogImage} />
+          <meta property="og:image:width" content="1200" />
+          <meta property="og:image:height" content="630" />
+          <meta property="og:image:alt" content="M10 DJ Company - Secure Document Signing" />
+          <meta property="og:image:type" content="image/png" />
+          <meta property="og:site_name" content="M10 DJ Company" />
+
+          <meta name="twitter:card" content="summary_large_image" />
+          <meta name="twitter:title" content="Sign Document - M10 DJ Company" />
+          <meta
+            name="twitter:description"
+            content="Review and sign your document securely online."
+          />
+          <meta name="twitter:image" content={ogImage} />
+          <meta name="twitter:image:alt" content="M10 DJ Company - Secure Document Signing" />
+
+          <meta name="robots" content="noindex, nofollow" />
+        </Head>
+
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+          <div className="text-center">
+            <Loader2 className="w-12 h-12 animate-spin text-indigo-600 mx-auto" />
+            <p className="mt-4 text-gray-600">Loading document...</p>
+          </div>
         </div>
-      </div>
+      </>
     );
   }
 
   // Error state
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-        <div className="max-w-md w-full bg-white rounded-2xl shadow-lg p-8 text-center">
-          <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
-          <h1 className="text-xl font-bold text-gray-900 mb-2">Unable to Load Document</h1>
-          <p className="text-gray-600">{error}</p>
+      <>
+        <Head>
+          <title>Unable to Load Document - M10 DJ Company</title>
+          <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+
+          <meta property="og:type" content="website" />
+          <meta property="og:url" content={canonicalUrl} />
+          <meta property="og:title" content="Unable to Load Document - M10 DJ Company" />
+          <meta
+            property="og:description"
+            content="This signing link may be invalid or expired. Please request a new link."
+          />
+          <meta property="og:image" content={ogImage} />
+          <meta property="og:image:secure_url" content={ogImage} />
+          <meta property="og:image:width" content="1200" />
+          <meta property="og:image:height" content="630" />
+          <meta property="og:image:alt" content="M10 DJ Company - Secure Document Signing" />
+          <meta property="og:image:type" content="image/png" />
+          <meta property="og:site_name" content="M10 DJ Company" />
+
+          <meta name="twitter:card" content="summary_large_image" />
+          <meta name="twitter:title" content="Unable to Load Document - M10 DJ Company" />
+          <meta
+            name="twitter:description"
+            content="This signing link may be invalid or expired. Please request a new link."
+          />
+          <meta name="twitter:image" content={ogImage} />
+          <meta name="twitter:image:alt" content="M10 DJ Company - Secure Document Signing" />
+
+          <meta name="robots" content="noindex, nofollow" />
+        </Head>
+
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+          <div className="max-w-md w-full bg-white rounded-2xl shadow-lg p-8 text-center">
+            <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
+            <h1 className="text-xl font-bold text-gray-900 mb-2">Unable to Load Document</h1>
+            <p className="text-gray-600">{error}</p>
+          </div>
         </div>
-      </div>
+      </>
     );
   }
 
@@ -173,6 +246,30 @@ export default function SignPage() {
       <>
         <Head>
           <title>Document Signed</title>
+          <meta property="og:type" content="website" />
+          <meta property="og:url" content={canonicalUrl} />
+          <meta property="og:title" content="Document Signed - M10 DJ Company" />
+          <meta
+            property="og:description"
+            content="Your signature has been recorded successfully."
+          />
+          <meta property="og:image" content={ogImage} />
+          <meta property="og:image:secure_url" content={ogImage} />
+          <meta property="og:image:width" content="1200" />
+          <meta property="og:image:height" content="630" />
+          <meta property="og:image:alt" content="M10 DJ Company - Secure Document Signing" />
+          <meta property="og:image:type" content="image/png" />
+
+          <meta name="twitter:card" content="summary_large_image" />
+          <meta name="twitter:title" content="Document Signed - M10 DJ Company" />
+          <meta
+            name="twitter:description"
+            content="Your signature has been recorded successfully."
+          />
+          <meta name="twitter:image" content={ogImage} />
+          <meta name="twitter:image:alt" content="M10 DJ Company - Secure Document Signing" />
+
+          <meta name="robots" content="noindex, nofollow" />
         </Head>
         <div className="min-h-screen bg-gradient-to-b from-green-50 to-white flex items-center justify-center p-4">
           <div className="max-w-md w-full bg-white rounded-2xl shadow-lg p-8 text-center">
@@ -206,6 +303,37 @@ export default function SignPage() {
       <Head>
         <title>Sign Document - {contractData?.contract_number}</title>
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+        <meta property="og:type" content="website" />
+        <meta property="og:url" content={canonicalUrl} />
+        <meta
+          property="og:title"
+          content={`Sign Document${contractData?.contract_number ? ` - ${contractData.contract_number}` : ''} - M10 DJ Company`}
+        />
+        <meta
+          property="og:description"
+          content="Review and sign your document securely online."
+        />
+        <meta property="og:image" content={ogImage} />
+        <meta property="og:image:secure_url" content={ogImage} />
+        <meta property="og:image:width" content="1200" />
+        <meta property="og:image:height" content="630" />
+        <meta property="og:image:alt" content="M10 DJ Company - Secure Document Signing" />
+        <meta property="og:image:type" content="image/png" />
+        <meta property="og:site_name" content="M10 DJ Company" />
+
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta
+          name="twitter:title"
+          content={`Sign Document${contractData?.contract_number ? ` - ${contractData.contract_number}` : ''} - M10 DJ Company`}
+        />
+        <meta
+          name="twitter:description"
+          content="Review and sign your document securely online."
+        />
+        <meta name="twitter:image" content={ogImage} />
+        <meta name="twitter:image:alt" content="M10 DJ Company - Secure Document Signing" />
+
+        <meta name="robots" content="noindex, nofollow" />
       </Head>
       
       <div className="min-h-screen bg-gray-50">

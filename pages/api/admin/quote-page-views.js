@@ -55,9 +55,9 @@ export default async function handler(req, res) {
 
     const { data: views, error: viewsError } = await supabaseAdmin
       .from('quote_analytics')
-      .select('id, created_at, time_spent, metadata')
+      .select('id, created_at, time_spent, metadata, event_type')
       .eq('quote_id', contactId)
-      .eq('event_type', 'page_view')
+      .in('event_type', ['page_view', 'invoice_page_view'])
       .order('created_at', { ascending: false });
 
     if (viewsError) {
@@ -71,6 +71,7 @@ export default async function handler(req, res) {
         createdAt: v.created_at,
         timeSpent: v.time_spent ?? null,
         metadata: v.metadata ?? {},
+        eventType: v.event_type ?? 'page_view',
       })),
     });
   } catch (err) {

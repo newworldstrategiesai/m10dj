@@ -102,13 +102,21 @@ export default async function handler(req, res) {
       day: 'numeric' 
     });
 
+    // "Recipient discloses to you" template: Party A = Disclosing (recipient), Party B = Receiving (sender)
+    const isRecipientDiscloses = template.name === 'business_nda_recipient_discloses';
+    const partyAName = isRecipientDiscloses ? recipientName : (senderName || session.user.user_metadata?.full_name || 'Party A');
+    const partyAEmail = isRecipientDiscloses ? recipientEmail : (senderEmail || session.user.email);
+    const partyBName = isRecipientDiscloses ? (senderName || session.user.user_metadata?.full_name || 'Party B') : recipientName;
+    const partyBEmail = isRecipientDiscloses ? (senderEmail || session.user.email) : recipientEmail;
+
     const variables = {
       contract_number: contractNumber,
       effective_date: effectiveDate,
-      party_a_name: senderName || session.user.user_metadata?.full_name || 'Party A',
-      party_a_email: senderEmail || session.user.email,
-      party_b_name: recipientName,
-      party_b_email: recipientEmail,
+      party_a_name: partyAName,
+      party_a_email: partyAEmail,
+      party_b_name: partyBName,
+      party_b_email: partyBEmail,
+      purpose: purpose || template.description || 'Potential business relationship, collaboration, or transaction',
       term_years: termYears || 7,
       governing_state: governingState || 'Tennessee',
       signature_date: effectiveDate,

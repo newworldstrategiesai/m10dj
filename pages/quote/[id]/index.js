@@ -2558,7 +2558,7 @@ export default function PersonalizedQuote() {
                 Page view timeline
               </h2>
               <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-                Each time this quote page was viewed (by client or admin).
+                Each time this quote or invoice page was viewed (by client or admin).
               </p>
               {pageViewTimelineLoading ? (
                 <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400 text-sm">
@@ -2576,6 +2576,9 @@ export default function PersonalizedQuote() {
                     >
                       <span className="text-gray-700 dark:text-gray-300 font-medium whitespace-nowrap">
                         {view.createdAt ? new Date(view.createdAt).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }) : '—'}
+                      </span>
+                      <span className="text-gray-500 dark:text-gray-400">
+                        {view.eventType === 'invoice_page_view' ? 'Invoice page' : 'Quote page'}
                       </span>
                       {view.timeSpent != null && view.timeSpent > 0 && (
                         <span className="text-gray-500 dark:text-gray-400">

@@ -169,6 +169,7 @@ export default function App({ Component, pageProps }) {
   // Check if we're on a page that has custom OG images (don't include default OG tags)
   const isPaymentPage = router.pathname.startsWith('/pay/');
   const isContractPage = router.pathname.startsWith('/sign-contract/');
+  const isStandaloneSignPage = router.pathname === '/sign/[token]';
   const isQuotePage = router.pathname.startsWith('/quote/');
   const isQRDisplayPage = router.pathname.endsWith('/qr');
   
@@ -228,7 +229,7 @@ export default function App({ Component, pageProps }) {
         <meta name="msapplication-config" content="/browserconfig.xml" />
         
         {/* Open Graph default image - Domain-aware with custom OG images excluded */}
-        {!isPaymentPage && !isContractPage && !isQuotePage && !isQRDisplayPage && (
+        {!isPaymentPage && !isContractPage && !isStandaloneSignPage && !isQuotePage && !isQRDisplayPage && (
           <>
             {isTipJarDomain ? (
               <>
@@ -257,7 +258,7 @@ export default function App({ Component, pageProps }) {
         <meta property="og:site_name" content={isTipJarDomain ? 'TipJar Live' : isDJDashDomain ? 'DJ Dash' : 'M10 DJ Company'} />
         
         {/* Twitter Card default image - Domain-aware with custom OG images excluded */}
-        {!isPaymentPage && !isContractPage && !isQuotePage && !isQRDisplayPage && (
+        {!isPaymentPage && !isContractPage && !isStandaloneSignPage && !isQuotePage && !isQRDisplayPage && (
           <>
             <meta name="twitter:card" content="summary_large_image" />
             {isTipJarDomain ? (
@@ -269,7 +270,7 @@ export default function App({ Component, pageProps }) {
             )}
           </>
         )}
-        {!isPaymentPage && !isContractPage && !isQuotePage && !isQRDisplayPage && (
+        {!isPaymentPage && !isContractPage && !isStandaloneSignPage && !isQuotePage && !isQRDisplayPage && (
           <meta name="twitter:site" content={isTipJarDomain ? '@tipjarlive' : isDJDashDomain ? '@djdash' : '@m10djcompany'} />
         )}
         

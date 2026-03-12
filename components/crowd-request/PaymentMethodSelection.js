@@ -305,8 +305,13 @@ function PaymentMethodSelection({
         throw new Error('Request not created yet. Please fill out the form first.');
       }
       
-      // Use updated amount if additional songs were added
-      const finalAmount = updatedAmount || amount;
+      // Use getPaymentAmount() to include fast-track, next, bundle fees (same as Cash/Venmo/Stripe card)
+      let finalAmount;
+      if (getPaymentAmount) {
+        finalAmount = getPaymentAmount();
+      } else {
+        finalAmount = updatedAmount || amount;
+      }
       
       if (!finalAmount || finalAmount <= 0) {
         throw new Error('Invalid payment amount');

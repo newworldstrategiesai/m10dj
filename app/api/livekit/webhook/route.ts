@@ -390,8 +390,16 @@ async function handleEgressEnded(egressInfo: {
 
   const fileResults = egressInfo.fileResults ?? [];
   const firstFile = fileResults[0];
-  const recordingUrl = firstFile?.location;
+  let recordingUrl = firstFile?.location ?? firstFile?.filename;
   if (!recordingUrl && !egressInfo.egressId) return;
+
+  // If we have a path/key instead of a full URL (e.g. Supabase S3 returns key), build public URL
+  if (recordingUrl && !recordingUrl.startsWith('http')) {
+    const publicUrl = buildSupabaseRecordingUrl(recordingUrl);
+    if (publicUrl) {
+      recordingUrl = publicUrl;
+    }
+  }
 
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,

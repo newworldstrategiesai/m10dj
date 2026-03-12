@@ -35,13 +35,71 @@ export async function sendAdminNotification(eventType, data) {
   }
 }
 
+/** Page-open event types that are throttled to 1 SMS per contact per day */
+const PAGE_OPEN_EVENT_TYPES = ['quote_page_open', 'invoice_page_open'];
+
+/**
+ * Check if we already sent an admin SMS for this contact + event type today.
+ * Used to throttle quote_page_open and invoice_page_open to 1 SMS per day.
+ */
+async function alreadySentPageOpenSMSToday(contactId, eventType) {
+  if (!contactId || !PAGE_OPEN_EVENT_TYPES.includes(eventType) || !supabaseUrl || !supabaseKey) {
+    return false;
+  }
+  try {
+    const supabase = createClient(supabaseUrl, supabaseKey);
+    const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+    const { data: row } = await supabase
+      .from('admin_sms_daily_sent')
+      .select('id')
+      .eq('contact_id', String(contactId))
+      .eq('event_type', eventType)
+      .eq('sent_date', today)
+      .maybeSingle();
+    return !!row;
+  } catch (err) {
+    console.error('Error checking admin_sms_daily_sent:', err);
+    return false; // allow send on error so we don't silence notifications
+  }
+}
+
+/**
+ * Record that we sent an admin SMS for this contact + event type today.
+ */
+async function recordPageOpenSMSSent(contactId, eventType) {
+  if (!contactId || !PAGE_OPEN_EVENT_TYPES.includes(eventType) || !supabaseUrl || !supabaseKey) {
+    return;
+  }
+  try {
+    const supabase = createClient(supabaseUrl, supabaseKey);
+    const today = new Date().toISOString().slice(0, 10);
+    await supabase.from('admin_sms_daily_sent').insert({
+      contact_id: String(contactId),
+      event_type: eventType,
+      sent_date: today,
+    });
+  } catch (err) {
+    console.error('Error recording admin_sms_daily_sent:', err);
+  }
+}
+
 /**
  * Send SMS notification to admin
+ * For quote_page_open and invoice_page_open: only one SMS per contact per day; every view is still logged via logNotificationToDatabase.
  */
 async function sendAdminSMSNotification(eventType, data) {
   if (!adminPhone) {
     console.log('No admin phone configured for SMS notifications');
     return;
+  }
+
+  const contactId = data?.contactId || data?.leadId;
+  if (PAGE_OPEN_EVENT_TYPES.includes(eventType) && contactId) {
+    const alreadySent = await alreadySentPageOpenSMSToday(contactId, eventType);
+    if (alreadySent) {
+      console.log(`Admin SMS skipped for ${eventType} (already sent today for contact ${contactId})`);
+      return;
+    }
   }
 
   let message = '';
@@ -90,6 +148,11 @@ async function sendAdminSMSNotification(eventType, data) {
   const result = await sendAdminSMS(message);
   if (result.success) {
     console.log(`✅ Admin SMS notification sent for ${eventType}`);
+    if (PAGE_OPEN_EVENT_TYPES.includes(eventType) && contactId) {
+      recordPageOpenSMSSent(contactId, eventType).catch(err => {
+        console.error('Failed to record admin_sms_daily_sent:', err);
+      });
+    }
   } else {
     console.error(`❌ Failed to send SMS notification for ${eventType}:`, result.error);
   }
