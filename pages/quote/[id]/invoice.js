@@ -1154,7 +1154,7 @@ export default function InvoicePage() {
       <div className="min-h-screen bg-gradient-to-b from-white via-gray-50 to-white dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
         <Header className="no-print" />
 
-        <main className="section-container py-4 md:py-12 lg:py-20 px-4 sm:px-6 pb-32 md:pb-32">
+        <main className="section-container py-4 md:py-12 lg:py-20 px-4 sm:px-6 pb-44 md:pb-48">
           {/* Header Actions */}
           <div className="no-print max-w-4xl mx-auto mb-4 sm:mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4">
             <Link
@@ -2580,8 +2580,8 @@ export default function InvoicePage() {
             </div>
           </div>
 
-          {/* Action Buttons */}
-          <div className="no-print max-w-4xl mx-auto mt-4 sm:mt-6 md:mt-8 mb-6 sm:mb-8 flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center px-4 sm:px-0">
+          {/* Action Buttons - extra bottom spacing so they stay above fixed QuoteBottomNav on mobile and desktop */}
+          <div className="no-print max-w-4xl mx-auto mt-4 sm:mt-6 md:mt-8 flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center px-4 sm:px-0">
             <Link
               href={`/quote/${id}/payment`}
               className="btn-primary inline-flex items-center justify-center gap-2 text-sm sm:text-base py-2.5 sm:py-3"

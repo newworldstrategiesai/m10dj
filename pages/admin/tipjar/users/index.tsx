@@ -11,14 +11,14 @@ import { useToast } from '@/components/ui/Toasts/use-toast';
 import { Search, ExternalLink, Users, Loader2, ChevronRight } from 'lucide-react';
 
 interface TipJarUserRow {
-  organizationId: string;
-  slug: string;
-  orgName: string;
+  organizationId: string | null;
+  slug: string | null;
+  orgName: string | null;
   ownerId: string;
   email: string;
   username: string;
   emailConfirmed: boolean;
-  profileUrl: string;
+  profileUrl: string | null;
   createdAt: string;
   isClaimed: boolean;
   claimedAt: string | null;
@@ -87,12 +87,12 @@ export default function TipJarUsersPage() {
       !searchQuery ||
       u.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
       u.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      u.orgName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      u.slug.toLowerCase().includes(searchQuery.toLowerCase())
+      (u.orgName && u.orgName.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (u.slug && u.slug.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
-  const handleRowClick = (organizationId: string) => {
-    router.push(`/admin/tipjar/users/${organizationId}`);
+  const handleRowClick = (organizationId: string | null) => {
+    if (organizationId) router.push(`/admin/tipjar/users/${organizationId}`);
   };
 
   if (authLoading || !isSuperAdmin) {
@@ -152,13 +152,13 @@ export default function TipJarUsersPage() {
                 <tbody>
                   {filtered.map((u) => (
                     <tr
-                      key={u.organizationId}
+                      key={u.organizationId ?? u.ownerId}
                       onClick={() => handleRowClick(u.organizationId)}
-                      className="border-b border-border hover:bg-muted/50 cursor-pointer transition-colors"
+                      className={`border-b border-border hover:bg-muted/50 transition-colors ${u.organizationId ? 'cursor-pointer' : 'cursor-default'}`}
                     >
                       <td className="p-4 font-medium text-foreground">{u.username || '—'}</td>
                       <td className="p-4 text-muted-foreground">{u.email}</td>
-                      <td className="p-4 text-muted-foreground hidden md:table-cell">{u.orgName || u.slug}</td>
+                      <td className="p-4 text-muted-foreground hidden md:table-cell">{u.orgName || u.slug || '—'}</td>
                       <td className="p-4">
                         {u.emailConfirmed ? (
                           <span className="text-xs text-muted-foreground">Confirmed</span>
@@ -169,19 +169,23 @@ export default function TipJarUsersPage() {
                         )}
                       </td>
                       <td className="p-4">
-                        <a
-                          href={u.profileUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          onClick={(e) => e.stopPropagation()}
-                          className="inline-flex items-center gap-1 text-primary hover:underline"
-                        >
-                          View page
-                          <ExternalLink className="h-3 w-3" />
-                        </a>
+                        {u.profileUrl ? (
+                          <a
+                            href={u.profileUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={(e) => e.stopPropagation()}
+                            className="inline-flex items-center gap-1 text-primary hover:underline"
+                          >
+                            View page
+                            <ExternalLink className="h-3 w-3" />
+                          </a>
+                        ) : (
+                          <span className="text-muted-foreground text-sm">No page yet</span>
+                        )}
                       </td>
                       <td className="p-4">
-                        <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                        {u.organizationId && <ChevronRight className="h-4 w-4 text-muted-foreground" />}
                       </td>
                     </tr>
                   ))}

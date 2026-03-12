@@ -275,6 +275,14 @@ export default function SignupPage({
                     </span>
                   </div>
                 </div>
+
+                <Link
+                  href="/tipjar/signup/phone"
+                  className="flex items-center justify-center gap-2 w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-gray-900 dark:text-gray-100"
+                >
+                  <Smartphone className="w-5 h-5" />
+                  Sign up with phone (no password)
+                </Link>
                 
                 <div className="grid grid-cols-2 gap-4">
                   <button

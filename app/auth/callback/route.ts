@@ -17,35 +17,16 @@ export async function GET(request: NextRequest) {
   const supabase = createClient();
 
   // Handle token_hash from custom email hooks (email confirmation, password reset, etc.)
+  // Use verifyOtp so the session is set in cookies via the server client's cookie store.
   if (tokenHash && !code) {
     try {
-      // Verify token_hash using Supabase's verifyOtp method
-      // Note: verifyOtp requires email, but for token_hash we need to verify differently
-      // For custom email hooks, we can verify by calling Supabase's API directly
-      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-      const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-      
-      if (!supabaseUrl || !supabaseAnonKey) {
-        throw new Error('Supabase configuration missing');
-      }
-
-      // Verify the token_hash by calling Supabase's verify endpoint
-      const verifyResponse = await fetch(`${supabaseUrl}/auth/v1/verify`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'apikey': supabaseAnonKey,
-          'Authorization': `Bearer ${supabaseAnonKey}`,
-        },
-        body: JSON.stringify({
-          token_hash: tokenHash,
-          type: type,
-        }),
+      const { data: verifyData, error: verifyError } = await supabase.auth.verifyOtp({
+        token_hash: tokenHash,
+        type: type as 'recovery' | 'signup' | 'invite' | 'magiclink' | 'email_change' | 'email',
       });
 
-      if (!verifyResponse.ok) {
-        const errorData = await verifyResponse.json();
-        console.error('[Auth Callback] Token verification error:', errorData);
+      if (verifyError) {
+        console.error('[Auth Callback] Token verification error:', verifyError);
 
         const isTipJar = requestUrl.hostname.includes('tipjar');
         const signupOrInviteOnWrongDomain =
@@ -67,30 +48,39 @@ export async function GET(request: NextRequest) {
               : `${requestUrl.origin}/signin/password_signin`;
             break;
         }
-        
+
         return NextResponse.redirect(
           getErrorRedirect(
             errorRedirectPath,
-            errorData.error || 'verification_failed',
-            errorData.error_description || errorData.msg || 'Invalid or expired confirmation link. Please request a new one.'
+            verifyError.name || 'verification_failed',
+            verifyError.message || 'Invalid or expired confirmation link. Please request a new one.'
           )
         );
       }
 
-      // Token verified successfully - Supabase should have set the session via cookies
-      // The verify endpoint returns a session, which should be set in cookies automatically
+      // Token verified successfully; session is now in cookies via verifyOtp.
 
-      // For signup and invite confirmations, redirect to TipJar success page so "Go to Sign In" works
-      // Always use tipjar.live for TipJar so the sign-in page works (fixes manual invites from Supabase dashboard)
+      // Recovery: redirect to update password page so user can set a new password.
+      if (type === 'recovery') {
+        const isTipJar = requestUrl.hostname.includes('tipjar') ||
+          verifyData?.user?.user_metadata?.product_context === 'tipjar';
+        const updatePasswordPath = isTipJar
+          ? `${requestUrl.origin}/tipjar/signin/update_password`
+          : `${requestUrl.origin}/signin/update_password`;
+        return NextResponse.redirect(
+          getStatusRedirect(
+            updatePasswordPath,
+            'Link verified',
+            'Please enter a new password for your account.'
+          )
+        );
+      }
+
+      // For signup and invite confirmations, redirect to TipJar success page so "Go to Sign In" works.
       if (type === 'signup' || type === 'invite') {
         let isTipJar = requestUrl.hostname.includes('tipjar');
-        try {
-          const verifyData = await verifyResponse.json();
-          const userMeta = verifyData?.user?.user_metadata;
-          if (userMeta?.product_context === 'tipjar') isTipJar = true;
-        } catch {
-          // ignore parse errors
-        }
+        const userMeta = verifyData?.user?.user_metadata;
+        if (userMeta?.product_context === 'tipjar') isTipJar = true;
         if (isTipJar) {
           const confirmedUrl =
             requestUrl.hostname.includes('m10djcompany.com') || !requestUrl.hostname.includes('tipjar.live')
@@ -98,10 +88,9 @@ export async function GET(request: NextRequest) {
               : `${requestUrl.origin}/tipjar/auth/confirmed`;
           return NextResponse.redirect(confirmedUrl);
         }
-        // For other products, continue with normal flow (could add djdash/m10dj confirmed pages)
       }
 
-      // For other types (recovery, magiclink, etc.), continue with normal flow below
+      // For other types (magiclink, etc.), fall through to default redirect below.
     } catch (error: any) {
       console.error('[Auth Callback] Token verification error:', error);
       
@@ -164,7 +153,7 @@ export async function GET(request: NextRequest) {
     // After successful authentication, link existing contacts to this user
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      
+
       if (user && user.email) {
         // Use service role to update contacts
         const { createClient: createServiceClient } = await import('@supabase/supabase-js');

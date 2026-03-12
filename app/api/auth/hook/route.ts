@@ -185,17 +185,21 @@ function generatePasswordResetEmail(
                 Click the button below to choose a new password:
               </p>
               
-              <!-- CTA Button -->
+              <!-- CTA Button (some clients strip styled buttons; fallback link follows) -->
               <table role="presentation" style="width: 100%; border-collapse: collapse;">
                 <tr>
                   <td style="text-align: center; padding: 20px 0;">
                     <a href="${resetUrl}" 
-                       style="display: inline-block; background: linear-gradient(135deg, ${accentColor} 0%, ${accentColor}dd 100%); color: #ffffff; text-decoration: none; padding: 16px 40px; border-radius: 8px; font-weight: 600; font-size: 16px; box-shadow: 0 4px 14px ${accentColor}40;">
+                       style="display: inline-block; background: linear-gradient(135deg, ${accentColor} 0%, ${accentColor}dd 100%); color: #ffffff !important; text-decoration: none; padding: 16px 40px; border-radius: 8px; font-weight: 600; font-size: 16px; box-shadow: 0 4px 14px ${accentColor}40;">
                       Reset Password
                     </a>
                   </td>
                 </tr>
               </table>
+              
+              <p style="margin: 24px 0 0; color: #374151; font-size: 16px;">
+                If you don&apos;t see the button above, <a href="${resetUrl}" style="color: ${accentColor}; text-decoration: underline;">click here to reset your password</a>.
+              </p>
               
               <p style="margin: 30px 0 0; color: #6b7280; font-size: 14px;">
                 Or copy and paste this link into your browser:

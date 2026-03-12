@@ -24,6 +24,7 @@ import {
   FocusLayout,
   CarouselLayout,
   Chat,
+  formatChatMessageLinks,
   TrackRefContext,
   useTranscriptions,
 } from '@livekit/components-react';
@@ -830,7 +831,7 @@ export function MeetingGridLayout({
               </button>
             )}
             <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
-              <Chat className="h-full min-h-0" />
+              <Chat className="h-full min-h-0" messageFormatter={formatChatMessageLinks} />
             </div>
           </div>
         )

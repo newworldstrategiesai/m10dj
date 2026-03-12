@@ -335,11 +335,30 @@ input[type="number"] {
   flex-direction: column;
   min-height: 0;
 }
-/* Let LiveKit's default .lk-chat grid apply (grid-template-rows: header 1fr form). Only give it height. */
-.lk-meet-chat-sidebar .lk-chat {
+/* Ensure the chat container and its root child both fill height so the grid has a defined height. */
+.lk-meet-chat-sidebar > div {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
   flex: 1;
+}
+.lk-meet-chat-sidebar > div > * {
+  min-height: 0;
+  flex: 1;
+  height: 100%;
+}
+/* Let LiveKit's .lk-chat grid fill height and keep form row at bottom; align content to start so messages sit at top. */
+.lk-meet-chat-sidebar .lk-chat {
+  display: grid;
+  grid-template-rows: var(--lk-chat-header-height) 1fr var(--lk-control-bar-height);
   min-height: 0;
   height: 100%;
   width: 100%;
   max-width: 100%;
+  align-items: start;
+}
+/* Messages area must shrink and scroll so the form stays pinned to the bottom. */
+.lk-meet-chat-sidebar .lk-chat-messages {
+  min-height: 0;
+  overflow-y: auto;
 }
