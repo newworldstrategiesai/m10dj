@@ -8,8 +8,10 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { getCurrentOrganization, Organization } from '@/utils/organization-context';
-import { CreditCard, CheckCircle, AlertCircle, ArrowRight, Loader2, ExternalLink, RefreshCw, X } from 'lucide-react';
+import { CreditCard, CheckCircle, AlertCircle, ArrowRight, Loader2, ExternalLink, RefreshCw, X, Mail } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import BankAccountCollection from './BankAccountCollection';
 
 interface ConnectStatus {
@@ -194,6 +196,11 @@ export default function StripeConnectSetup({ onOrganizationUpdate }: StripeConne
     helpUrl?: string;
     isTestMode?: boolean;
   } | null>(null);
+  /** When true, show form to collect email (phone-only users before Stripe setup) */
+  const [showEmailPrompt, setShowEmailPrompt] = useState(false);
+  const [emailForStripe, setEmailForStripe] = useState('');
+  const [savingEmail, setSavingEmail] = useState(false);
+  const [emailError, setEmailError] = useState<string | null>(null);
 
   const handleSetup = async () => {
     try {
@@ -210,6 +217,15 @@ export default function StripeConnectSetup({ onOrganizationUpdate }: StripeConne
         if (!createResponse.ok) {
           const errorData = await createResponse.json();
           const errorMessage = errorData.details || errorData.error || 'Failed to create Stripe account';
+          
+          // Phone-only users: prompt to add email (required for Stripe)
+          if (errorData.code === 'email_required') {
+            setShowEmailPrompt(true);
+            setError(null);
+            setErrorDetails(null);
+            setSettingUp(false);
+            return;
+          }
           
           // Check if it's a "cannot create accounts" error (most critical)
           const cannotCreateAccounts = errorData.cannotCreateAccounts || 
@@ -265,6 +281,36 @@ export default function StripeConnectSetup({ onOrganizationUpdate }: StripeConne
     }
   };
 
+  const saveEmailAndRetry = async () => {
+    const email = emailForStripe.trim();
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setEmailError('Please enter a valid email address.');
+      return;
+    }
+    setEmailError(null);
+    setSavingEmail(true);
+    try {
+      const res = await fetch('/api/auth/set-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setEmailError(data.error || 'Could not save email. Please try again.');
+        return;
+      }
+      await supabase.auth.refreshSession();
+      setShowEmailPrompt(false);
+      setEmailForStripe('');
+      await handleSetup();
+    } catch (e) {
+      setEmailError('Something went wrong. Please try again.');
+    } finally {
+      setSavingEmail(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
@@ -278,6 +324,53 @@ export default function StripeConnectSetup({ onOrganizationUpdate }: StripeConne
 
   if (!organization || !connectStatus) {
     return null;
+  }
+
+  // Phone-only user: collect email before Stripe setup
+  if (showEmailPrompt) {
+    return (
+      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6" data-stripe-setup>
+        <div className="flex items-start gap-4 mb-4">
+          <div className="bg-amber-100 dark:bg-amber-900/50 rounded-lg p-3 flex-shrink-0">
+            <Mail className="h-6 w-6 text-amber-600 dark:text-amber-400" />
+          </div>
+          <div className="flex-1">
+            <h3 className="font-semibold text-gray-900 dark:text-white mb-1">
+              Add your email address
+            </h3>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+              Stripe needs your email for payment setup. It will be saved to your account.
+            </p>
+            <div className="space-y-2">
+              <Label htmlFor="stripe-email" className="text-gray-700 dark:text-gray-300">
+                Email address
+              </Label>
+              <Input
+                id="stripe-email"
+                type="email"
+                placeholder="you@example.com"
+                value={emailForStripe}
+                onChange={(e) => setEmailForStripe(e.target.value)}
+                className="max-w-md bg-white dark:bg-gray-900 text-gray-900 dark:text-white border-gray-300 dark:border-gray-600"
+                disabled={savingEmail}
+              />
+              {emailError && (
+                <p className="text-sm text-red-600 dark:text-red-400">{emailError}</p>
+              )}
+            </div>
+            <div className="flex gap-2 mt-4">
+              <Button onClick={saveEmailAndRetry} disabled={savingEmail}>
+                {savingEmail ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                Save & continue
+              </Button>
+              <Button variant="outline" onClick={() => { setShowEmailPrompt(false); setEmailError(null); }} disabled={savingEmail}>
+                Cancel
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   // If setup is complete, show success status

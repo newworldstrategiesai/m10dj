@@ -15,6 +15,9 @@ export interface OnboardingData {
   location: string;
   slug: string;
   paymentSetup: 'completed' | 'skipped' | 'pending';
+  /** Admin SMS notifications */
+  adminSmsOptIn?: boolean;
+  adminSmsPhone?: string;
   logoUrl?: string;
   /** Cover photo for public page hero (stored in Supabase organization-assets bucket) */
   coverPhotoUrl?: string;
@@ -45,7 +48,8 @@ export default function TipJarOnboardingWizard({
     displayName: '',
     location: '',
     slug: '',
-    paymentSetup: 'pending'
+    paymentSetup: 'pending',
+    adminSmsOptIn: false
   });
 
   const totalSteps = 6;
@@ -75,6 +79,19 @@ export default function TipJarOnboardingWizard({
       }));
     }
   }, [organization, user]);
+
+  // Pre-fill SMS phone from authenticated user if available and not already set
+  useEffect(() => {
+    if (user?.phone) {
+      setOnboardingData(prev => {
+        if (prev.adminSmsPhone) return prev;
+        return {
+          ...prev,
+          adminSmsPhone: prev.adminSmsPhone || user.phone
+        };
+      });
+    }
+  }, [user]);
 
   function generateSlugFromName(name: string): string {
     return name
@@ -193,6 +210,30 @@ export default function TipJarOnboardingWizard({
         }
       }
 
+      // Save admin SMS notification preference (optional)
+      try {
+        const {
+          data: { session }
+        } = await supabase.auth.getSession();
+
+        if (session && onboardingData.adminSmsOptIn && onboardingData.adminSmsPhone) {
+          await fetch('/api/admin-settings', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${session.access_token}`
+            },
+            body: JSON.stringify({
+              settingKey: 'admin_phone_number',
+              settingValue: onboardingData.adminSmsPhone
+            })
+          });
+        }
+      } catch (error) {
+        console.error('Failed to save admin SMS preference:', error);
+        // Non-critical, continue
+      }
+
       // Create dummy data for new users to explore the UI
       try {
         const dummyDataResponse = await fetch('/api/admin/create-dummy-crowd-requests', {
@@ -237,6 +278,7 @@ export default function TipJarOnboardingWizard({
           <BasicInfoStep
             data={onboardingData}
             onDataUpdate={handleDataUpdate}
+            userPhone={user?.phone}
             onNext={handleNext}
             onBack={handleBack}
             progress={progress}

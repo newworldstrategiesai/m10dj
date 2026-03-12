@@ -53,6 +53,8 @@ export default function AdminSidebar({ onSignOut, isMobileOpen: externalIsMobile
   const [internalIsMobileOpen, setInternalIsMobileOpen] = useState(false);
   const [subscriptionTier, setSubscriptionTier] = useState<string | null>(null);
   const [isPlatformAdmin, setIsPlatformAdmin] = useState(false);
+  /** For TipJar: only show Karaoke in nav when org has karaoke_enabled (hidden by default for new users) */
+  const [karaokeEnabledForTipjar, setKaraokeEnabledForTipjar] = useState<boolean | null>(null);
   const { theme, setTheme, systemTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   
@@ -66,9 +68,17 @@ export default function AdminSidebar({ onSignOut, isMobileOpen: externalIsMobile
     }
   };
 
-  // Check subscription tier on mount
+  // Check subscription tier on mount and when TipJar user enables/disables karaoke
   useEffect(() => {
     checkSubscriptionTier();
+  }, []);
+
+  useEffect(() => {
+    const onKaraokeEnabledChanged = () => checkSubscriptionTier();
+    if (typeof window !== 'undefined') {
+      window.addEventListener('karaoke-enabled-changed', onKaraokeEnabledChanged);
+      return () => window.removeEventListener('karaoke-enabled-changed', onKaraokeEnabledChanged);
+    }
   }, []);
 
   // Initialize mounted state
@@ -174,6 +184,19 @@ export default function AdminSidebar({ onSignOut, isMobileOpen: externalIsMobile
         if (!detectedProductContext && org.product_context && org.product_context !== finalProductContext) {
           setProductContext(org.product_context);
         }
+
+        // TipJar: only show Karaoke in sidebar when org has explicitly enabled it (hidden by default for new users)
+        const isTipjar = detectedProductContext === 'tipjar' || finalProductContext === 'tipjar';
+        if (isTipjar && org.id && org.id !== 'platform-admin') {
+          const { data: karaokeRow } = await supabase
+            .from('karaoke_settings')
+            .select('karaoke_enabled')
+            .eq('organization_id', org.id)
+            .maybeSingle();
+          setKaraokeEnabledForTipjar(karaokeRow?.karaoke_enabled === true);
+        } else if (!isTipjar) {
+          setKaraokeEnabledForTipjar(null);
+        }
       }
     } catch (error) {
       console.error('Error checking subscription tier:', error);
@@ -206,12 +229,12 @@ export default function AdminSidebar({ onSignOut, isMobileOpen: externalIsMobile
 
   // Filter navigation based on subscription tier and product context
   const getNavItems = (): NavItem[] => {
-    // TipJar users only see crowd requests and related features
+    // TipJar users only see crowd requests and related features; Karaoke hidden by default (show only when enabled)
     if (productContext === 'tipjar') {
       const tipjarNavItems: NavItem[] = [
         { label: 'Crowd Requests', href: '/admin/crowd-requests', icon: <QrCode className="w-5 h-5" /> },
         { label: 'QR Display', href: '/admin/display-qr', icon: <QrCode className="w-5 h-5" /> },
-        { label: 'Karaoke Queue', href: '/admin/karaoke', icon: <Mic className="w-5 h-5" /> },
+        ...(karaokeEnabledForTipjar === true ? [{ label: 'Karaoke Queue', href: '/admin/karaoke', icon: <Mic className="w-5 h-5" /> }] : []),
         { label: 'Request Page', href: '/admin/requests-page', icon: <Music className="w-5 h-5" /> },
         { label: 'Payouts', href: '/admin/payouts', icon: <DollarSign className="w-5 h-5" /> },
         { label: 'Billing', href: '/admin/billing', icon: <CreditCard className="w-5 h-5" /> },

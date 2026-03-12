@@ -35,6 +35,15 @@ export default function AdminPhoneBanner() {
 
     const check = async () => {
       try {
+        // If the logged-in user already has a phone on their auth profile
+        // (e.g. they registered using phone), don't nag them to "add" it again.
+        const { data: userData } = await supabase.auth.getUser();
+        const authPhone = userData?.user?.phone;
+        if (hasPhone(authPhone)) {
+          setShowBanner(false);
+          return;
+        }
+
         const { data, error } = await supabase
           .from('admin_settings')
           .select('setting_value')

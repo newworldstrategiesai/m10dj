@@ -8,6 +8,7 @@ import {
   getRedirectMethod
 } from '@/utils/auth-helpers/settings';
 import PasswordSignIn from '@/components/ui/AuthForms/PasswordSignIn';
+import TipJarUnifiedSignIn from '@/components/tipjar/TipJarUnifiedSignIn';
 import EmailSignIn from '@/components/ui/AuthForms/EmailSignIn';
 import Separator from '@/components/ui/AuthForms/Separator';
 import OauthSignIn from '@/components/ui/AuthForms/OauthSignIn';
@@ -179,15 +180,10 @@ export default async function TipJarSignIn({
                       ? 'Sign Up'
                       : 'Sign In'}
               </h2>
-              {viewProp === 'password_signin' && (
-                <p className="text-sm text-gray-600 dark:text-gray-400">
-                  Enter your credentials to access your account
-                </p>
-              )}
             </div>
             
             {viewProp === 'password_signin' && (
-              <PasswordSignIn
+              <TipJarUnifiedSignIn
                 allowEmail={allowEmail}
                 redirectMethod={redirectMethod}
                 redirectTo={searchParams?.redirect ? decodeURIComponent(searchParams.redirect) : ''}

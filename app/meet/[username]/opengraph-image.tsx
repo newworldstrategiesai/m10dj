@@ -1,6 +1,6 @@
 import { ImageResponse } from 'next/server';
 
-export const alt = 'Video Meeting';
+export const alt = 'Meet – Video call';
 export const size = { width: 1200, height: 630 };
 export const contentType = 'image/png';
 
@@ -22,7 +22,9 @@ export default async function MeetOpengraphImage({ params }: Props) {
           flexDirection: 'column',
           alignItems: 'center',
           justifyContent: 'center',
-          background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%)',
+          background: isM10
+            ? 'linear-gradient(135deg, #0c0a09 0%, #1c1917 50%, #0c0a09 100%)'
+            : 'linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%)',
           fontFamily: 'system-ui, sans-serif',
         }}
       >
@@ -38,24 +40,26 @@ export default async function MeetOpengraphImage({ params }: Props) {
             marginBottom: 32,
           }}
         >
+          {/* Video camera icon */}
           <svg
             width="64"
             height="64"
             viewBox="0 0 24 24"
             fill="none"
-            stroke="#0f172a"
+            stroke={isM10 ? '#0c0a09' : '#0f172a'}
             strokeWidth="2"
             strokeLinecap="round"
             strokeLinejoin="round"
           >
-            <path d="M15 10l-4 4l6 6l4-16l-18 7l4 2l2 6l3-4" />
+            <path d="M23 7l-7 5 7 5V7z" />
+            <rect x="1" y="5" width="15" height="14" rx="2" ry="2" />
           </svg>
         </div>
         <div style={{ fontSize: 48, fontWeight: 700, color: 'white', marginBottom: 12 }}>
-          Video Meeting
+          Meet with @{username}
         </div>
-        <div style={{ fontSize: 28, color: '#94a3b8', marginBottom: 40 }}>
-          Join @{username}
+        <div style={{ fontSize: 24, color: '#94a3b8', marginBottom: 40 }}>
+          Schedule or join a video call
         </div>
         <div style={{ fontSize: 22, color: '#64748b' }}>
           {brand}

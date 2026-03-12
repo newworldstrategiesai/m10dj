@@ -1,7 +1,6 @@
 import { Metadata } from 'next';
 import Link from 'next/link';
 import TipJarHeader from '@/components/tipjar/Header';
-import TipJarFooter from '@/components/tipjar/Footer';
 import PhoneSignupForm from '@/components/tipjar/PhoneSignupForm';
 
 export const metadata: Metadata = {
@@ -12,6 +11,61 @@ export const metadata: Metadata = {
 export default function TipJarPhoneSignupPage() {
   return (
     <div className="min-h-screen bg-white dark:bg-gray-950">
+      <style
+        // Ensure input text is always visible (no white-on-white), including autofill, in light and dark mode
+        dangerouslySetInnerHTML={{
+          __html: `
+        input#phone,
+        input#organizationName,
+        input#code {
+          color: #111827 !important;
+          background-color: #f9fafb !important;
+          -webkit-text-fill-color: #111827 !important;
+        }
+        input#phone::placeholder,
+        input#organizationName::placeholder,
+        input#code::placeholder {
+          color: #6b7280 !important;
+        }
+        .dark input#phone,
+        .dark input#organizationName,
+        .dark input#code,
+        html.dark input#phone,
+        html.dark input#organizationName,
+        html.dark input#code {
+          color: #f3f4f6 !important;
+          background-color: #374151 !important;
+          -webkit-text-fill-color: #f3f4f6 !important;
+        }
+        .dark input#phone::placeholder,
+        .dark input#organizationName::placeholder,
+        .dark input#code::placeholder,
+        html.dark input#phone::placeholder,
+        html.dark input#organizationName::placeholder,
+        html.dark input#code::placeholder {
+          color: #9ca3af !important;
+        }
+        /* Prevent browser autofill from making text invisible (white on white) */
+        input#phone:-webkit-autofill,
+        input#organizationName:-webkit-autofill,
+        input#code:-webkit-autofill {
+          -webkit-text-fill-color: #111827 !important;
+          -webkit-box-shadow: 0 0 0 1000px #f9fafb inset !important;
+          box-shadow: 0 0 0 1000px #f9fafb inset !important;
+        }
+        .dark input#phone:-webkit-autofill,
+        .dark input#organizationName:-webkit-autofill,
+        .dark input#code:-webkit-autofill,
+        html.dark input#phone:-webkit-autofill,
+        html.dark input#organizationName:-webkit-autofill,
+        html.dark input#code:-webkit-autofill {
+          -webkit-text-fill-color: #f3f4f6 !important;
+          -webkit-box-shadow: 0 0 0 1000px #374151 inset !important;
+          box-shadow: 0 0 0 1000px #374151 inset !important;
+        }
+      `,
+        }}
+      />
       <TipJarHeader />
       <main className="flex min-h-[calc(100vh-4rem)] items-center justify-center px-4 py-12 sm:px-6 lg:px-8">
         <div className="w-full max-w-md">
@@ -27,14 +81,13 @@ export default function TipJarPhoneSignupPage() {
             </div>
           </div>
           <p className="mt-6 text-center text-sm text-gray-600 dark:text-gray-400">
-            Prefer email?{' '}
-            <Link href="/tipjar/signup" className="font-medium text-primary underline-offset-4 hover:underline">
-              Sign up with email
+            Already have an account?{' '}
+            <Link href="/tipjar/signin" className="font-medium text-primary underline-offset-4 hover:underline">
+              Sign in
             </Link>
           </p>
         </div>
       </main>
-      <TipJarFooter />
     </div>
   );
 }

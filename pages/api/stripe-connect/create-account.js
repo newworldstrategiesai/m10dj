@@ -23,6 +23,16 @@ export default async function handler(req, res) {
 
     const user = session.user;
 
+    // Stripe requires contact_email; phone-only users may have no email yet
+    const userEmail = (user.email || '').trim();
+    if (!userEmail) {
+      return res.status(400).json({
+        error: 'Invalid email address:',
+        code: 'email_required',
+        details: 'Please add your email address to continue. It is required for Stripe payment setup.',
+      });
+    }
+
     // Create admin client at the start (we'll need it for organization operations)
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
 
@@ -241,7 +251,7 @@ export default async function handler(req, res) {
       : undefined;
     
     const account = await createConnectAccount(
-      user.email || '',
+      userEmail,
       organization.name,
       organization.slug, // Pass slug for business profile URL
       branding,

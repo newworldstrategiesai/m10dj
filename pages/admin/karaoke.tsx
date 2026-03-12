@@ -374,7 +374,7 @@ export default function KaraokeAdminPage() {
   // Load data when organization is available
   useEffect(() => {
     if (organization && !authLoading) {
-      loadSettings(organization.id);
+      loadSettings(organization.id, organization.product_context);
       loadSignups(organization.id);
     }
   }, [organization, authLoading]);
@@ -410,7 +410,7 @@ export default function KaraokeAdminPage() {
     }
   }, [selectedSignup, showDetailModal]);
 
-  const loadSettings = async (orgId: string) => {
+  const loadSettings = async (orgId: string, productContext?: string | null) => {
     try {
       const { data } = await supabase
         .from('karaoke_settings')
@@ -449,11 +449,13 @@ export default function KaraokeAdminPage() {
           });
         }
       } else {
+        // New TipJar users: hide karaoke from nav by default (they can enable it on this page)
+        const isTipjar = productContext === 'tipjar';
         const { data: newSettings } = await (supabase
           .from('karaoke_settings') as any)
           .insert({
             organization_id: orgId,
-            karaoke_enabled: true,
+            karaoke_enabled: !isTipjar,
             priority_pricing_enabled: true,
             rotation_enabled: true,
             priority_fee_cents: 1000,
@@ -1043,6 +1045,9 @@ export default function KaraokeAdminPage() {
     );
   }
 
+  const isTipjar = organization?.product_context === 'tipjar';
+  const karaokeHiddenForTipjar = isTipjar && settings && !settings.karaoke_enabled;
+
   return (
     <KaraokeLayout
       ref={karaokeLayoutRef}
@@ -1053,6 +1058,25 @@ export default function KaraokeAdminPage() {
       signups={signups}
       onSignupStatusChange={(signupId: string, status: string) => updateStatus(signupId, status as any)}
     >
+      {karaokeHiddenForTipjar && (
+        <div className="mb-4 p-4 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 flex flex-wrap items-center justify-between gap-3">
+          <p className="text-sm text-amber-800 dark:text-amber-200">
+            Karaoke is hidden from your sidebar. Enable it to show <strong>Karaoke Queue</strong> in your menu.
+          </p>
+          <Button
+            size="sm"
+            variant="outline"
+            className="border-amber-600 text-amber-700 hover:bg-amber-100 dark:border-amber-500 dark:text-amber-300 dark:hover:bg-amber-900/40"
+            onClick={() => {
+              setSettingsTab('general');
+              setShowSettings(true);
+            }}
+          >
+            <Settings className="w-4 h-4 mr-2" />
+            Open Settings
+          </Button>
+        </div>
+      )}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="grid w-full grid-cols-4 mb-6 bg-gray-100 dark:bg-gray-800">
           <TabsTrigger value="discover" className="text-gray-700 dark:text-gray-300 data-[state=active]:text-gray-900 dark:data-[state=active]:text-white">Discover</TabsTrigger>
@@ -2842,6 +2866,9 @@ export default function KaraokeAdminPage() {
                                   .eq('organization_id', organization.id);
                                 if (!error) {
                                   setSettings({ ...settings, karaoke_enabled: checked });
+                                  if (typeof window !== 'undefined') {
+                                    window.dispatchEvent(new CustomEvent('karaoke-enabled-changed', { detail: { enabled: checked } }));
+                                  }
                                 }
                               }}
                             />

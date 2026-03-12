@@ -251,7 +251,16 @@ export async function middleware(request: NextRequest) {
     } else if (path === '/how-it-works' || path.startsWith('/how-it-works/')) {
       rewritePath = '/tipjar/how-it-works';
     } else if (path === '/signup' || path.startsWith('/signup/')) {
-      rewritePath = '/tipjar/signup';
+      // TipJar: insist on phone signup — redirect to phone flow (no email/password option)
+      url.pathname = '/tipjar/signup/phone';
+      const response = await updateSession(request);
+      const redirectResponse = NextResponse.redirect(url, 302);
+      response.headers.forEach((value, key) => {
+        if (key.startsWith('x-') || key === 'set-cookie') {
+          redirectResponse.headers.set(key, value);
+        }
+      });
+      return redirectResponse;
     } else if (path === '/signin') {
       rewritePath = '/tipjar/signin';
     } else if (path.startsWith('/signin/')) {
