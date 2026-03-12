@@ -77,7 +77,7 @@ export default function TipJarPhoneSignupPage() {
               We’ll send a one-time code. No password needed.
             </p>
             <div className="mt-6">
-              <PhoneSignupForm />
+              <PhoneSignupForm mode="signup" />
             </div>
           </div>
           <p className="mt-6 text-center text-sm text-gray-600 dark:text-gray-400">

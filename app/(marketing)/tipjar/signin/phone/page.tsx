@@ -23,7 +23,7 @@ export default function TipJarPhoneSignInPage() {
               We’ll send a one-time code to your number.
             </p>
             <div className="mt-6">
-              <PhoneSignupForm />
+              <PhoneSignupForm mode="signin" />
             </div>
           </div>
           <p className="mt-6 text-center text-sm text-gray-600 dark:text-gray-400">

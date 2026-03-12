@@ -11,7 +11,11 @@ import { AlertCircle } from 'lucide-react';
 
 type Step = 'phone' | 'code';
 
-export default function PhoneSignupForm() {
+interface PhoneSignupFormProps {
+  mode?: 'signup' | 'signin';
+}
+
+export default function PhoneSignupForm({ mode = 'signup' }: PhoneSignupFormProps) {
   const router = useRouter();
   const [step, setStep] = useState<Step>('phone');
   const [phone, setPhone] = useState('');
@@ -38,11 +42,17 @@ export default function PhoneSignupForm() {
         body: JSON.stringify({
           phone: phone.trim(),
           productContext: 'tipjar',
-          organizationName: organizationName.trim() || undefined,
+          intent: mode,
+          organizationName: mode === 'signup' ? organizationName.trim() || undefined : undefined,
         }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
+        if (data.code === 'phone_exists' && mode === 'signup') {
+          // Phone already registered – send them to phone sign-in instead
+          router.push('/tipjar/signin/phone');
+          return;
+        }
         setError(data.error || 'Failed to send code. Try again.');
         return;
       }

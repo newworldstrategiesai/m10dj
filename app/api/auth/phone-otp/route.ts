@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/utils/supabase/server';
 import { rateLimiter } from '@/utils/rate-limiter';
+import { createClient as createSupabaseAdminClient } from '@supabase/supabase-js';
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 /**
  * Normalize phone to E.164. Accepts +1..., 1..., or 10-digit US.
@@ -27,7 +31,7 @@ function getClientIp(request: NextRequest): string {
 /**
  * POST /api/auth/phone-otp
  * Request an SMS OTP for phone-only sign up / sign in.
- * Body: { phone: string, productContext?: 'tipjar'|'djdash'|'m10dj', organizationName?: string }
+ * Body: { phone: string, productContext?: 'tipjar'|'djdash'|'m10dj', organizationName?: string, intent?: 'signup'|'signin' }
  */
 export async function POST(request: NextRequest) {
   try {
@@ -38,6 +42,8 @@ export async function POST(request: NextRequest) {
       : 'tipjar';
     const organizationName =
       typeof body.organizationName === 'string' ? body.organizationName.trim() || undefined : undefined;
+
+    const intent = body.intent === 'signin' ? 'signin' : 'signup';
 
     const phone = normalizePhone(phoneRaw);
     if (!phone) {
@@ -76,6 +82,26 @@ export async function POST(request: NextRequest) {
         },
         { status: 429, headers: { 'Retry-After': String(phoneLimit.retryAfter) } }
       );
+    }
+
+    // For signup intent, check if phone already belongs to an existing user and short-circuit to sign-in
+    if (intent === 'signup' && supabaseUrl && supabaseServiceKey) {
+      try {
+        const admin = createSupabaseAdminClient(supabaseUrl, supabaseServiceKey);
+        const { data: existingUser, error: adminError } = await admin.auth.admin.getUserByPhone(phone);
+        if (!adminError && existingUser?.user) {
+          return NextResponse.json(
+            {
+              error: 'This phone number is already registered. Please sign in instead.',
+              code: 'phone_exists'
+            },
+            { status: 409 }
+          );
+        }
+      } catch (adminErr) {
+        console.error('[phone-otp] admin phone lookup failed (continuing):', adminErr);
+        // Non-fatal: continue to signInWithOtp below
+      }
     }
 
     const supabase = createClient();
