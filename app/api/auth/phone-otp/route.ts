@@ -88,8 +88,14 @@ export async function POST(request: NextRequest) {
     if (intent === 'signup' && supabaseUrl && supabaseServiceKey) {
       try {
         const admin = createSupabaseAdminClient(supabaseUrl, supabaseServiceKey);
-        const { data: existingUser, error: adminError } = await admin.auth.admin.getUserByPhone(phone);
-        if (!adminError && existingUser?.user) {
+        // Query auth.users directly by phone using the service role client
+        const { data: existingUser, error: adminError } = await admin
+          .from('auth.users')
+          .select('id')
+          .eq('phone', phone)
+          .maybeSingle();
+
+        if (!adminError && existingUser) {
           return NextResponse.json(
             {
               error: 'This phone number is already registered. Please sign in instead.',
