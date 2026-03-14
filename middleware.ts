@@ -354,6 +354,9 @@ export async function middleware(request: NextRequest) {
               } else if (rest[0] === 'qr') {
                 // Performer QR display: /[venue-slug]/[performer-slug]/qr
                 rewritePath = `/organizations/${performerOrg.slug}/qr`;
+              } else if (rest[0] === 'door') {
+                // Performer door ticket sales: /[venue-slug]/[performer-slug]/door
+                rewritePath = `/organizations/${performerOrg.slug}/door`;
               } else {
                 // Other performer pages
                 rewritePath = `/tipjar/${venueSlug}/${performerSlug}/${rest.join('/')}`;
@@ -433,6 +436,9 @@ export async function middleware(request: NextRequest) {
         } else if (subPath === 'qr') {
           // Handle /[slug]/qr -> QR display page for iPad/crowd viewing
           rewritePath = `/organizations/${slug}/qr`;
+        } else if (subPath === 'door') {
+          // Handle /[slug]/door -> door ticket sales page
+          rewritePath = `/organizations/${slug}/door`;
         } else {
           // Route to artist page (e.g., /m10djcompany -> /tipjar/m10djcompany)
           rewritePath = `/tipjar/${slug}`;
