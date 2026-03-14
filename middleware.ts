@@ -173,6 +173,25 @@ export async function middleware(request: NextRequest) {
     });
     return rewriteResponse;
   }
+
+  // On TipJar: rewrite _next/data/.../slug/door.json to _next/data/.../organizations/slug/door.json
+  if (isTipJarDomain && url.pathname.match(/^\/_next\/data\/[^/]+\/[^/]+\/door\.json$/)) {
+    const dataRewritePath = url.pathname.replace(
+      /^(\/_next\/data\/[^/]+\/)([^/]+)(\/door\.json)$/,
+      '$1organizations/$2$3'
+    );
+    url.pathname = dataRewritePath;
+    const response = await updateSession(request);
+    const rewriteResponse = NextResponse.rewrite(url);
+    rewriteResponse.headers.set('x-pathname', request.nextUrl.pathname);
+    rewriteResponse.headers.set('x-product', 'tipjar');
+    response.headers.forEach((value, key) => {
+      if (key.startsWith('x-') || key === 'set-cookie') {
+        rewriteResponse.headers.set(key, value);
+      }
+    });
+    return rewriteResponse;
+  }
   
   // Skip routing for API routes and static files
   if (isApiRoute || isStaticFile) {
