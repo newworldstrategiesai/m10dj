@@ -71,6 +71,11 @@ html[data-karaoke-page="true"] body {
   padding-top: 0 !important;
 }
 
+/* Remove padding-top on door page (no header nav) */
+html[data-door-page="true"] body {
+  padding-top: 0 !important;
+}
+
 /* Karaoke page scrollbar colors */
 html[data-karaoke-page="true"] ::-webkit-scrollbar-thumb {
   background: #06b6d4; /* cyan-500 */

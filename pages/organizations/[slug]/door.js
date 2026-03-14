@@ -104,15 +104,42 @@ export default function OrganizationDoorPage() {
 
   const coverUrl = getCoverPhotoUrl(organization);
   const siteName = 'TipJar.Live';
+  const siteUrl = typeof window !== 'undefined'
+    ? window.location.origin
+    : (process.env.NEXT_PUBLIC_SITE_URL || 'https://tipjar.live');
+  const currentUrl = typeof window !== 'undefined'
+    ? window.location.href
+    : `${siteUrl}/${organization.slug}/door`;
+  const pageTitle = `${organization.name} – Door Tickets | ${siteName}`;
+  const pageDescription = venueDisplay
+    ? `Buy door tickets for ${organization.name} at ${venueDisplay}. Walk-up ticket sales.`
+    : `Buy door tickets for ${organization.name}. Pay by card at the door.`;
+  const ogImageUrl = `${siteUrl}/api/og/door/${encodeURIComponent(organization.slug)}`;
 
   return (
     <>
       <Head>
-        <title>{organization.name} – Door Tickets | {siteName}</title>
-        <meta name="description" content={`Buy door tickets for ${organization.name}${venueDisplay ? ` at ${venueDisplay}` : ''}`} />
-        <meta property="og:title" content={`${organization.name} – Door Tickets`} />
-        <meta property="og:description" content={`Buy walk-up tickets at the door${venueDisplay ? ` – ${venueDisplay}` : ''}`} />
-        {coverUrl && <meta property="og:image" content={coverUrl} />}
+        <title>{pageTitle}</title>
+        <meta name="description" content={pageDescription} />
+        <link rel="canonical" href={currentUrl} />
+        {/* Open Graph / Facebook / iPhone SMS Preview */}
+        <meta property="og:type" content="website" />
+        <meta property="og:url" content={currentUrl} />
+        <meta property="og:title" content={pageTitle} />
+        <meta property="og:description" content={pageDescription} />
+        <meta property="og:image" content={ogImageUrl} />
+        <meta property="og:image:width" content="1200" />
+        <meta property="og:image:height" content="630" />
+        <meta property="og:image:alt" content={`Door Tickets – ${organization.name}${venueDisplay ? ` at ${venueDisplay}` : ''}`} />
+        <meta property="og:site_name" content={siteName} />
+        <meta property="og:locale" content="en_US" />
+        {/* Twitter Card */}
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:url" content={currentUrl} />
+        <meta name="twitter:title" content={pageTitle} />
+        <meta name="twitter:description" content={pageDescription} />
+        <meta name="twitter:image" content={ogImageUrl} />
+        <meta name="twitter:image:alt" content={`Door Tickets – ${organization.name}`} />
       </Head>
 
       <div className="min-h-screen bg-zinc-50 dark:bg-zinc-900">

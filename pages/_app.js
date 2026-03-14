@@ -135,6 +135,8 @@ export default function App({ Component, pageProps }) {
   const isDJDashPage = router.pathname.startsWith('/djdash') || router.pathname.startsWith('/dj/');
   // Check if we're on a QR display page (no chat widget, clean full-screen experience)
   const isQRPage = router.pathname.endsWith('/qr');
+  // Check if we're on door ticket page (no header nav, full-bleed)
+  const isDoorPage = router.pathname.includes('/organizations/') && router.pathname.endsWith('/door');
 
   // Set data attribute to remove body padding on admin pages
   useEffect(() => {
@@ -153,6 +155,15 @@ export default function App({ Component, pageProps }) {
       document.documentElement.removeAttribute('data-karaoke-page');
     }
   }, [isKaraokePage]);
+
+  // Set data attribute to remove header/nav padding on door page
+  useEffect(() => {
+    if (isDoorPage) {
+      document.documentElement.setAttribute('data-door-page', 'true');
+    } else {
+      document.documentElement.removeAttribute('data-door-page');
+    }
+  }, [isDoorPage]);
 
   // Track page views for M10 DJ Company pages (customer journey tracking)
   // Skip admin pages and DJ Dash pages - only track public-facing M10 pages
@@ -327,7 +338,7 @@ export default function App({ Component, pageProps }) {
 
       {isAdminRoute && !isSignInPage && <FloatingAdminAssistant />}
       {/* Only show chat widget on m10djcompany.com, not on djdash.net, sign-contract pages, quote pages, or karaoke pages */}
-      {!isSignInPage && !isRequestsPage && !isBidPage && !isAdminRoute && !isDJDashPage && !isSignContractPage && !isQuotePage && !isKaraokePage && !isQRPage && <GlobalChatWidget />}
+      {!isSignInPage && !isRequestsPage && !isBidPage && !isAdminRoute && !isDJDashPage && !isSignContractPage && !isQuotePage && !isKaraokePage && !isQRPage && !isDoorPage && <GlobalChatWidget />}
       {/* Toast notifications for Pages Router */}
       <Toaster />
       {/* Temporarily disabled to prevent rate limiting issues */}
