@@ -5,16 +5,21 @@
  *
  * Uses existing Stripe Connect payment infrastructure.
  * Admin configures door price and venue/location in Door settings.
+ *
+ * Loads org via client Supabase (same as requests page) to avoid API 404 issues
+ * that can occur with relative fetch on some deployments.
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
+import { createClient } from '@/utils/supabase/client';
 import { getCoverPhotoUrl } from '../../../utils/cover-photo-helper';
 
 export default function OrganizationDoorPage() {
   const router = useRouter();
   const { slug } = router.query;
+  const supabase = useMemo(() => createClient(), []);
   const [organization, setOrganization] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -31,15 +36,39 @@ export default function OrganizationDoorPage() {
 
     async function loadOrganization() {
       try {
-        const res = await fetch(`/api/organizations/get-by-slug?slug=${encodeURIComponent(slugStr)}`);
-        const data = await res.json();
+        let { data: org, error: orgError } = await supabase
+          .from('organizations')
+          .select('id, name, slug, cover_photo_path, subscription_status')
+          .eq('slug', slugStr)
+          .maybeSingle();
 
-        if (!res.ok || !data.organization) {
-          setError(data?.error || 'Organization not found');
+        if (!org && !orgError) {
+          const { data: normalizedOrgs } = await supabase
+            .rpc('get_organization_by_normalized_slug', { input_slug: slugStr });
+          if (normalizedOrgs?.[0]?.slug) {
+            const { data: fullOrg } = await supabase
+              .from('organizations')
+              .select('id, name, slug, cover_photo_path, subscription_status')
+              .eq('slug', normalizedOrgs[0].slug)
+              .maybeSingle();
+            org = fullOrg;
+          }
+        }
+
+        if (orgError) {
+          setError('Organization not found');
+          return;
+        }
+        if (!org) {
+          setError('Organization not found');
+          return;
+        }
+        if (org.subscription_status !== 'active' && org.subscription_status !== 'trial') {
+          setError('This organization is not currently active');
           return;
         }
 
-        setOrganization(data.organization);
+        setOrganization(org);
       } catch {
         setError('Failed to load');
       } finally {
@@ -48,7 +77,7 @@ export default function OrganizationDoorPage() {
     }
 
     loadOrganization();
-  }, [slug, router.isReady]);
+  }, [slug, router.isReady, supabase]);
 
   // door_settings (venue_display, price_cents) will come from migration + admin UI
   const venueDisplay = organization?.name || '';
