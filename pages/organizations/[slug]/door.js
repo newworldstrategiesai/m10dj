@@ -7,16 +7,14 @@
  * Admin configures door price and venue/location in Door settings.
  */
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
-import { createClient } from '@/utils/supabase/client';
 import { getCoverPhotoUrl } from '../../../utils/cover-photo-helper';
 
 export default function OrganizationDoorPage() {
   const router = useRouter();
   const { slug } = router.query;
-  const supabase = useMemo(() => createClient(), []);
   const [organization, setOrganization] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -33,39 +31,15 @@ export default function OrganizationDoorPage() {
 
     async function loadOrganization() {
       try {
-        let { data: org, error: orgError } = await supabase
-          .from('organizations')
-          .select('id, name, slug, cover_photo_path, subscription_status')
-          .eq('slug', slugStr)
-          .maybeSingle();
+        const res = await fetch(`/api/organizations/get-by-slug?slug=${encodeURIComponent(slugStr)}`);
+        const data = await res.json();
 
-        if (!org && !orgError) {
-          const { data: normalizedOrgs } = await supabase
-            .rpc('get_organization_by_normalized_slug', { input_slug: slugStr });
-          if (normalizedOrgs?.[0]) {
-            const { data: fullOrg } = await supabase
-              .from('organizations')
-              .select('id, name, slug, cover_photo_path, subscription_status')
-              .eq('slug', normalizedOrgs[0].slug)
-              .maybeSingle();
-            org = fullOrg;
-          }
-        }
-
-        if (orgError) {
-          setError('Organization not found');
-          return;
-        }
-        if (!org) {
-          setError('Organization not found');
-          return;
-        }
-        if (org.subscription_status !== 'active' && org.subscription_status !== 'trial') {
-          setError('This organization is not currently active');
+        if (!res.ok || !data.organization) {
+          setError(data?.error || 'Organization not found');
           return;
         }
 
-        setOrganization(org);
+        setOrganization(data.organization);
       } catch {
         setError('Failed to load');
       } finally {
@@ -74,7 +48,7 @@ export default function OrganizationDoorPage() {
     }
 
     loadOrganization();
-  }, [slug, router.isReady, supabase]);
+  }, [slug, router.isReady]);
 
   // door_settings (venue_display, price_cents) will come from migration + admin UI
   const venueDisplay = organization?.name || '';
