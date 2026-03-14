@@ -32,7 +32,7 @@ export default async function handler(req, res) {
     // Try exact match first
     let { data: organization, error: orgError } = await supabase
       .from('organizations')
-      .select('id, name, slug, cover_photo_path, subscription_status, subscription_tier')
+      .select('id, name, slug, requests_cover_photo_url, requests_artist_photo_url, requests_venue_photo_url, requests_primary_cover_source, subscription_status, subscription_tier')
       .eq('slug', slug)
       .maybeSingle();
 
@@ -46,7 +46,7 @@ export default async function handler(req, res) {
         const matchedSlug = normalizedOrgs[0].slug;
         const { data: fullOrg } = await supabase
           .from('organizations')
-          .select('id, name, slug, cover_photo_path, subscription_status, subscription_tier')
+          .select('id, name, slug, requests_cover_photo_url, requests_artist_photo_url, requests_venue_photo_url, requests_primary_cover_source, subscription_status, subscription_tier')
           .eq('slug', matchedSlug)
           .maybeSingle();
         

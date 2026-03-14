@@ -38,7 +38,7 @@ export default function OrganizationDoorPage() {
       try {
         let { data: org, error: orgError } = await supabase
           .from('organizations')
-          .select('id, name, slug, cover_photo_path, subscription_status')
+          .select('id, name, slug, requests_cover_photo_url, requests_artist_photo_url, requests_venue_photo_url, requests_primary_cover_source, subscription_status')
           .eq('slug', slugStr)
           .maybeSingle();
 
@@ -48,7 +48,7 @@ export default function OrganizationDoorPage() {
           if (normalizedOrgs?.[0]?.slug) {
             const { data: fullOrg } = await supabase
               .from('organizations')
-              .select('id, name, slug, cover_photo_path, subscription_status')
+              .select('id, name, slug, requests_cover_photo_url, requests_artist_photo_url, requests_venue_photo_url, requests_primary_cover_source, subscription_status')
               .eq('slug', normalizedOrgs[0].slug)
               .maybeSingle();
             org = fullOrg;
@@ -100,7 +100,7 @@ export default function OrganizationDoorPage() {
     );
   }
 
-  const coverUrl = getCoverPhotoUrl(organization.cover_photo_path);
+  const coverUrl = getCoverPhotoUrl(organization);
   const siteName = 'TipJar.Live';
 
   return (
