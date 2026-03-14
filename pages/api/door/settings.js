@@ -51,7 +51,7 @@ export default async function handler(req, res) {
       organizationId: org.id,
       organizationName: org.name,
       slug: org.slug,
-      enabled: ds.enabled ?? false,
+      enabled: ds.enabled !== false,
       price_cents: ds.price_cents ?? 1500,
       venue_display: ds.venue_display || org.name || '',
       max_quantity_per_transaction: ds.max_quantity_per_transaction ?? 10,
