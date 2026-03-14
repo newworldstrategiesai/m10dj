@@ -452,9 +452,7 @@ export async function createPaymentWithPlatformFee(
     transfer_data: {
       destination: connectAccountId,
     },
-    automatic_payment_methods: {
-      enabled: true,
-    },
+    payment_method_types: ['card', 'cashapp'],
   });
 
   return paymentIntent;

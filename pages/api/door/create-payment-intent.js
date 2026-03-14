@@ -109,7 +109,7 @@ export default async function handler(req, res) {
       paymentIntent = await stripeInstance.paymentIntents.create({
         amount: amountCents,
         currency: 'usd',
-        automatic_payment_methods: { enabled: true },
+        payment_method_types: ['card', 'cashapp'],
         metadata: {
           type: 'door_ticket',
           organization_id: org.id,
