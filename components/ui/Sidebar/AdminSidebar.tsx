@@ -220,6 +220,7 @@ export default function AdminSidebar({ onSignOut, isMobileOpen: externalIsMobile
     { label: 'Messages', href: '/admin/messages', icon: <MessageSquare className="w-5 h-5" /> },
     { label: 'Calls', href: '/admin/calls/history', icon: <Phone className="w-5 h-5" /> },
     { label: 'Crowd Requests', href: '/admin/crowd-requests', icon: <QrCode className="w-5 h-5" /> },
+    { label: 'Door Settings', href: '/admin/door-settings', icon: <Ticket className="w-5 h-5" /> },
     { label: 'Karaoke Queue', href: '/admin/karaoke', icon: <Mic className="w-5 h-5" /> },
     { label: 'Request Page', href: '/admin/requests-page', icon: <Music className="w-5 h-5" /> },
     { label: 'Social Media', href: '/admin/instagram', icon: <Instagram className="w-5 h-5" /> },
@@ -236,6 +237,7 @@ export default function AdminSidebar({ onSignOut, isMobileOpen: externalIsMobile
         { label: 'QR Display', href: '/admin/display-qr', icon: <QrCode className="w-5 h-5" /> },
         ...(karaokeEnabledForTipjar === true ? [{ label: 'Karaoke Queue', href: '/admin/karaoke', icon: <Mic className="w-5 h-5" /> }] : []),
         { label: 'Request Page', href: '/admin/requests-page', icon: <Music className="w-5 h-5" /> },
+        { label: 'Door Settings', href: '/admin/door-settings', icon: <Ticket className="w-5 h-5" /> },
         { label: 'Payouts', href: '/admin/payouts', icon: <DollarSign className="w-5 h-5" /> },
         { label: 'Billing', href: '/admin/billing', icon: <CreditCard className="w-5 h-5" /> },
       ];
@@ -270,6 +272,7 @@ export default function AdminSidebar({ onSignOut, isMobileOpen: externalIsMobile
         { label: 'QR Display', href: '/admin/display-qr', icon: <QrCode className="w-5 h-5" /> },
         { label: 'Karaoke Queue', href: '/admin/karaoke', icon: <Mic className="w-5 h-5" /> },
         { label: 'Request Page', href: '/admin/requests-page', icon: <Music className="w-5 h-5" /> },
+        { label: 'Door Settings', href: '/admin/door-settings', icon: <Ticket className="w-5 h-5" /> },
         { label: 'Payouts', href: '/admin/payouts', icon: <DollarSign className="w-5 h-5" /> },
         { label: 'Billing', href: '/admin/billing', icon: <CreditCard className="w-5 h-5" /> },
       ];
