@@ -16,6 +16,7 @@ import { createClient } from '@/utils/supabase/client';
 import { getCoverPhotoUrl } from '../../../utils/cover-photo-helper';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 
 const DoorPaymentForm = dynamic(() => import('@/components/door/DoorPaymentForm'), { ssr: false });
 
@@ -33,6 +34,8 @@ export default function OrganizationDoorPage() {
   const [priceEditing, setPriceEditing] = useState(false);
   const [priceSavePending, setPriceSavePending] = useState(false);
   const [priceSaveMsg, setPriceSaveMsg] = useState(null);
+  const [customizeOpen, setCustomizeOpen] = useState(false);
+  const [customizePending, setCustomizePending] = useState(false);
   const [purchaserName, setPurchaserName] = useState('');
   const [purchaserEmail, setPurchaserEmail] = useState('');
   const [purchaserPhone, setPurchaserPhone] = useState('');
@@ -156,16 +159,16 @@ export default function OrganizationDoorPage() {
     try {
       const supabase = createClient();
       const ds = doorSettings || {};
+      const merged = {
+        ...ds,
+        enabled: ds.enabled !== false,
+        price_cents: cents,
+        venue_display: (ds.venue_display || '').trim() || null,
+        max_quantity_per_transaction: ds.max_quantity_per_transaction ?? 10,
+      };
       const { error } = await supabase
         .from('organizations')
-        .update({
-          door_settings: {
-            enabled: ds.enabled !== false,
-            price_cents: cents,
-            venue_display: ds.venue_display?.trim() || null,
-            max_quantity_per_transaction: ds.max_quantity_per_transaction ?? 10,
-          },
-        })
+        .update({ door_settings: merged })
         .eq('id', organization.id);
       if (error) throw error;
       setDoorSettings((s) => ({ ...(s || {}), price_cents: cents }));
@@ -178,6 +181,25 @@ export default function OrganizationDoorPage() {
       setTimeout(() => setPriceSaveMsg(null), 4000);
     } finally {
       setPriceSavePending(false);
+    }
+  };
+
+  const handleCustomizeSave = async (updates) => {
+    if (!organization || !isOwner) return;
+    setCustomizePending(true);
+    try {
+      const res = await fetch('/api/door/update-settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ organizationId: organization.id, ...updates }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || 'Failed to save');
+      setDoorSettings((s) => ({ ...(s || {}), ...updates }));
+    } catch (e) {
+      console.error('Failed to save customization:', e);
+    } finally {
+      setCustomizePending(false);
     }
   };
 
@@ -198,7 +220,10 @@ export default function OrganizationDoorPage() {
     );
   }
 
-  const coverUrl = getCoverPhotoUrl(organization);
+  const showCover = doorSettings?.show_cover_photo !== false;
+  const coverUrl =
+    showCover &&
+    (doorSettings?.cover_photo_url?.trim?.() || getCoverPhotoUrl(organization));
   const siteName = 'TipJar.Live';
   const siteUrl = typeof window !== 'undefined'
     ? window.location.origin
@@ -248,10 +273,12 @@ export default function OrganizationDoorPage() {
           )}
           <div className="relative bg-black/40 dark:bg-black/50 px-4 py-8 text-center">
             <h1 className="text-2xl md:text-3xl font-bold text-white drop-shadow">
-              {organization.name}
+              {doorSettings?.header_text ?? organization.name}
             </h1>
-            {venueDisplay && (
-              <p className="mt-2 text-lg text-white/90 drop-shadow">{venueDisplay}</p>
+            {(doorSettings?.subtitle_text ?? venueDisplay) && (
+              <p className="mt-2 text-lg text-white/90 drop-shadow">
+                {doorSettings?.subtitle_text ?? venueDisplay}
+              </p>
             )}
             <p className="mt-1 text-white/80 drop-shadow">Door tickets</p>
           </div>
@@ -303,6 +330,104 @@ export default function OrganizationDoorPage() {
               </div>
             ) : enabled ? (
               <>
+                {isOwner && (
+                  <Collapsible open={customizeOpen} onOpenChange={setCustomizeOpen} className="border-b border-border pb-4">
+                    <CollapsibleTrigger className="text-sm text-muted-foreground hover:text-foreground flex items-center gap-1">
+                      {customizeOpen ? '▼' : '▶'} Customize door page
+                    </CollapsibleTrigger>
+                    <CollapsibleContent className="pt-4 space-y-3">
+                      <div className="space-y-2">
+                        <Label htmlFor="header">Header text</Label>
+                        <Input
+                          id="header"
+                          defaultValue={doorSettings?.header_text ?? organization.name}
+                          placeholder={organization.name}
+                          onBlur={(e) => {
+                            const v = e.target.value.trim();
+                            if (v !== (doorSettings?.header_text ?? organization.name)) {
+                              handleCustomizeSave({ header_text: v || null });
+                            }
+                          }}
+                          disabled={customizePending}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="subtitle">Subtitle</Label>
+                        <Input
+                          id="subtitle"
+                          defaultValue={doorSettings?.subtitle_text ?? venueDisplay}
+                          placeholder={venueDisplay}
+                          onBlur={(e) => {
+                            const v = e.target.value.trim();
+                            if (v !== (doorSettings?.subtitle_text ?? venueDisplay)) {
+                              handleCustomizeSave({ subtitle_text: v || null });
+                            }
+                          }}
+                          disabled={customizePending}
+                        />
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          id="showCover"
+                          checked={doorSettings?.show_cover_photo !== false}
+                          onChange={(e) => handleCustomizeSave({ show_cover_photo: e.target.checked })}
+                          disabled={customizePending}
+                          className="rounded border-input"
+                        />
+                        <Label htmlFor="showCover" className="font-normal">Show cover photo</Label>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="coverUrl">Cover photo URL (optional)</Label>
+                        <Input
+                          id="coverUrl"
+                          type="url"
+                          placeholder="https://..."
+                          defaultValue={doorSettings?.cover_photo_url || ''}
+                          onBlur={(e) => {
+                            const v = e.target.value.trim();
+                            if (v !== (doorSettings?.cover_photo_url || '')) {
+                              handleCustomizeSave({ cover_photo_url: v || null });
+                            }
+                          }}
+                          disabled={customizePending}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="btnColor">Button color (hex)</Label>
+                        <div className="flex gap-2 items-center">
+                          <Input
+                            id="btnColor"
+                            type="color"
+                            className="w-12 h-10 p-1 cursor-pointer"
+                            value={doorSettings?.button_color || '#9333ea'}
+                            onChange={(e) => handleCustomizeSave({ button_color: e.target.value })}
+                            disabled={customizePending}
+                          />
+                          <Input
+                            type="text"
+                            placeholder="#9333ea (optional)"
+                            defaultValue={doorSettings?.button_color || ''}
+                            className="flex-1 font-mono text-sm"
+                            onBlur={(e) => {
+                              const v = e.target.value.trim();
+                              if (v === '' && doorSettings?.button_color) {
+                                handleCustomizeSave({ button_color: null });
+                              } else if (v && /^#[0-9A-Fa-f]{6}$/.test(v) && v !== (doorSettings?.button_color || '')) {
+                                handleCustomizeSave({ button_color: v });
+                              }
+                            }}
+                            disabled={customizePending}
+                          />
+                        </div>
+                      </div>
+                      {customizePending && (
+                        <p className="text-xs text-muted-foreground">Saving…</p>
+                      )}
+                    </CollapsibleContent>
+                  </Collapsible>
+                )}
+
                 <div className="text-center">
                   {isOwner && priceEditing ? (
                     <div className="flex flex-col items-center gap-2">
@@ -393,6 +518,7 @@ export default function OrganizationDoorPage() {
                     purchaserName={purchaserName}
                     purchaserEmail={purchaserEmail}
                     purchaserPhone={purchaserPhone || undefined}
+                    branding={doorSettings?.button_color ? { primaryColor: doorSettings.button_color } : undefined}
                     onSuccess={(result) => {
                       setSuccessData(result);
                       setSuccess(true);

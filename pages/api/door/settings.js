@@ -51,10 +51,16 @@ export default async function handler(req, res) {
       organizationId: org.id,
       organizationName: org.name,
       slug: org.slug,
-      enabled: ds.enabled !== false,
+      enabled: ds.enabled === true,
       price_cents: ds.price_cents ?? 1500,
       venue_display: ds.venue_display || org.name || '',
       max_quantity_per_transaction: ds.max_quantity_per_transaction ?? 10,
+      // Customization
+      header_text: ds.header_text ?? org.name,
+      subtitle_text: ds.subtitle_text ?? ds.venue_display ?? org.name ?? '',
+      cover_photo_url: ds.cover_photo_url ?? null,
+      show_cover_photo: ds.show_cover_photo !== false,
+      button_color: ds.button_color ?? null,
     });
   } catch (err) {
     console.error('[door/settings]', err);

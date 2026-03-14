@@ -5,6 +5,7 @@
  */
 import { createClient } from '@supabase/supabase-js';
 import { createPaymentWithPlatformFee, calculatePlatformFee } from '@/utils/stripe/connect';
+import { getStripeInstance } from '@/utils/stripe/config';
 import { createRateLimitMiddleware, getClientIp } from '@/utils/rate-limiter';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -51,7 +52,7 @@ export default async function handler(req, res) {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
     const { data: org, error: orgError } = await supabase
       .from('organizations')
-      .select('id, name, door_settings, stripe_connect_account_id, stripe_connect_charges_enabled, stripe_connect_payouts_enabled, platform_fee_percentage, platform_fee_fixed')
+      .select('id, name, door_settings, stripe_connect_account_id, stripe_connect_charges_enabled, stripe_connect_payouts_enabled, platform_fee_percentage, platform_fee_fixed, is_platform_owner')
       .eq('id', organizationId)
       .single();
 
@@ -75,7 +76,12 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Minimum charge is $0.50' });
     }
 
-    if (!org.stripe_connect_account_id || !org.stripe_connect_charges_enabled || !org.stripe_connect_payouts_enabled) {
+    const hasConnectAccount = org.stripe_connect_account_id &&
+      org.stripe_connect_charges_enabled &&
+      org.stripe_connect_payouts_enabled;
+    const isPlatformOwner = org.is_platform_owner === true;
+
+    if (!hasConnectAccount && !isPlatformOwner) {
       return res.status(400).json({ error: 'Stripe Connect is not set up for this organization' });
     }
 
@@ -85,15 +91,43 @@ export default async function handler(req, res) {
 
     const qrCode = generateQrCode();
 
-    const paymentIntent = await createPaymentWithPlatformFee(
-      amountCents,
-      org.stripe_connect_account_id,
-      platformFeePct,
-      platformFeeFixed,
-      'tipjar'
-    );
+    let paymentIntent;
+    if (hasConnectAccount) {
+      paymentIntent = await createPaymentWithPlatformFee(
+        amountCents,
+        org.stripe_connect_account_id,
+        platformFeePct,
+        platformFeeFixed,
+        'tipjar'
+      );
+    } else {
+      // Platform owner: payment goes to platform account (no Connect required)
+      const stripeInstance = getStripeInstance('tipjar');
+      if (!stripeInstance) {
+        return res.status(500).json({ error: 'Stripe is not configured' });
+      }
+      paymentIntent = await stripeInstance.paymentIntents.create({
+        amount: amountCents,
+        currency: 'usd',
+        automatic_payment_methods: { enabled: true },
+        metadata: {
+          type: 'door_ticket',
+          organization_id: org.id,
+          organization_name: org.name,
+          quantity: String(quantity),
+          price_cents: String(priceCents),
+          purchaser_name: name.substring(0, 200),
+          purchaser_email: email.substring(0, 254),
+          qr_code: qrCode,
+        },
+        ...(email && { receipt_email: email }),
+      });
+    }
 
-    const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+    const stripeInstance = getStripeInstance('tipjar');
+    if (!stripeInstance) {
+      return res.status(500).json({ error: 'Stripe is not configured' });
+    }
     const updatePayload = {
       metadata: {
         type: 'door_ticket',
@@ -109,7 +143,9 @@ export default async function handler(req, res) {
     if (email) {
       updatePayload.receipt_email = email;
     }
-    await stripe.paymentIntents.update(paymentIntent.id, updatePayload);
+    if (hasConnectAccount) {
+      await stripeInstance.paymentIntents.update(paymentIntent.id, updatePayload);
+    }
 
     return res.status(200).json({
       clientSecret: paymentIntent.client_secret,
