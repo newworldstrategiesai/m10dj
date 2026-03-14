@@ -252,6 +252,12 @@ export default function AdminNavbar() {
           ]
         },
         {
+          label: 'Door Tickets',
+          items: [
+            { label: 'Door Settings', href: '/admin/door-settings', icon: <DollarSign className="w-4 h-4" />, description: 'Walk-up ticket sales' },
+          ]
+        },
+        {
           label: 'Financial',
           items: [
             { label: 'Payouts', href: '/admin/payouts', icon: <DollarSign className="w-4 h-4" />, description: 'Earnings' },

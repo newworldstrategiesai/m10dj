@@ -3,26 +3,32 @@
  * URL: /organizations/[slug]/door
  * Example: tipjar.live/m10djcompany/door
  *
- * Uses existing Stripe Connect payment infrastructure.
- * Admin configures door price and venue/location in Door settings.
- *
- * Loads org via client Supabase (same as requests page) to avoid API 404 issues
- * that can occur with relative fetch on some deployments.
+ * Uses Stripe Connect for card payments. Admin configures price and venue in Door Settings.
  */
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
+import dynamic from 'next/dynamic';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
 import { createClient } from '@/utils/supabase/client';
 import { getCoverPhotoUrl } from '../../../utils/cover-photo-helper';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+
+const DoorPaymentForm = dynamic(() => import('@/components/door/DoorPaymentForm'), { ssr: false });
 
 export default function OrganizationDoorPage() {
   const router = useRouter();
   const { slug } = router.query;
-  const supabase = useMemo(() => createClient(), []);
   const [organization, setOrganization] = useState(null);
+  const [doorSettings, setDoorSettings] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [success, setSuccess] = useState(false);
+  const [purchaserName, setPurchaserName] = useState('');
+  const [purchaserEmail, setPurchaserEmail] = useState('');
+  const [purchaserPhone, setPurchaserPhone] = useState('');
+  const [quantity, setQuantity] = useState(1);
 
   useEffect(() => {
     if (!slug) {
@@ -30,35 +36,26 @@ export default function OrganizationDoorPage() {
       if (router.isReady) setError('Organization not found');
       return;
     }
-
     const slugStr = Array.isArray(slug) ? slug[0] : slug;
     if (!slugStr) return;
 
-    async function loadOrganization() {
+    async function load() {
       try {
-        let { data: org, error: orgError } = await supabase
+        const supabase = createClient();
+        let { data: org } = await supabase
           .from('organizations')
           .select('id, name, slug, requests_cover_photo_url, requests_artist_photo_url, requests_venue_photo_url, requests_primary_cover_source, subscription_status')
           .eq('slug', slugStr)
           .maybeSingle();
 
-        if (!org && !orgError) {
-          const { data: normalizedOrgs } = await supabase
-            .rpc('get_organization_by_normalized_slug', { input_slug: slugStr });
-          if (normalizedOrgs?.[0]?.slug) {
-            const { data: fullOrg } = await supabase
-              .from('organizations')
-              .select('id, name, slug, requests_cover_photo_url, requests_artist_photo_url, requests_venue_photo_url, requests_primary_cover_source, subscription_status')
-              .eq('slug', normalizedOrgs[0].slug)
-              .maybeSingle();
-            org = fullOrg;
+        if (!org) {
+          const { data: norm } = await supabase.rpc('get_organization_by_normalized_slug', { input_slug: slugStr });
+          if (norm?.[0]?.slug) {
+            const { data: full } = await supabase.from('organizations').select('id, name, slug, requests_cover_photo_url, requests_artist_photo_url, requests_venue_photo_url, requests_primary_cover_source, subscription_status').eq('slug', norm[0].slug).maybeSingle();
+            org = full;
           }
         }
 
-        if (orgError) {
-          setError('Organization not found');
-          return;
-        }
         if (!org) {
           setError('Organization not found');
           return;
@@ -69,6 +66,10 @@ export default function OrganizationDoorPage() {
         }
 
         setOrganization(org);
+
+        const res = await fetch(`/api/door/settings?slug=${encodeURIComponent(slugStr)}`);
+        const data = await res.json();
+        if (res.ok) setDoorSettings(data);
       } catch {
         setError('Failed to load');
       } finally {
@@ -76,12 +77,13 @@ export default function OrganizationDoorPage() {
       }
     }
 
-    loadOrganization();
-  }, [slug, router.isReady, supabase]);
+    load();
+  }, [slug, router.isReady]);
 
-  // door_settings (venue_display, price_cents) will come from migration + admin UI
-  const venueDisplay = organization?.name || '';
-  const doorPrice = null;
+  const venueDisplay = doorSettings?.venue_display || organization?.name || '';
+  const priceCents = doorSettings?.price_cents ?? 1500;
+  const maxQty = doorSettings?.max_quantity_per_transaction ?? 10;
+  const enabled = doorSettings?.enabled ?? false;
 
   if (loading) {
     return (
@@ -133,14 +135,67 @@ export default function OrganizationDoorPage() {
         </header>
 
         <main className="max-w-md mx-auto px-4 py-8">
-          <div className="rounded-xl border bg-card text-card-foreground shadow-sm p-6 text-center">
-            <p className="text-muted-foreground mb-4">
-              Walk-up ticket sales are coming soon.
-            </p>
-            {doorPrice != null && (
-              <p className="text-lg font-semibold">
-                ${(doorPrice).toFixed(2)} per ticket
-              </p>
+          <div className="rounded-xl border bg-card text-card-foreground shadow-sm p-6 space-y-6">
+            {success ? (
+              <div className="text-center space-y-4">
+                <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400">
+                  <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+                <h2 className="text-xl font-semibold text-foreground">Payment successful</h2>
+                <p className="text-muted-foreground">Your ticket(s) have been purchased. You're all set!</p>
+              </div>
+            ) : enabled ? (
+              <>
+                <div className="text-center">
+                  <p className="text-lg font-semibold text-foreground">${(priceCents / 100).toFixed(2)} per ticket</p>
+                  <p className="text-sm text-muted-foreground">Pay by card at the door</p>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="name">Name</Label>
+                    <Input id="name" required placeholder="Your name" value={purchaserName} onChange={(e) => setPurchaserName(e.target.value)} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="email">Email</Label>
+                    <Input id="email" type="email" required placeholder="you@example.com" value={purchaserEmail} onChange={(e) => setPurchaserEmail(e.target.value)} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="phone">Phone (optional)</Label>
+                    <Input id="phone" type="tel" placeholder="(555) 123-4567" value={purchaserPhone} onChange={(e) => setPurchaserPhone(e.target.value)} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="qty">Quantity</Label>
+                    <select
+                      id="qty"
+                      className="w-full h-10 px-3 rounded-md border border-input bg-background"
+                      value={quantity}
+                      onChange={(e) => setQuantity(parseInt(e.target.value, 10))}
+                    >
+                      {Array.from({ length: maxQty }, (_, i) => i + 1).map((n) => (
+                        <option key={n} value={n}>{n} ticket{n > 1 ? 's' : ''}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <DoorPaymentForm
+                    organizationId={organization.id}
+                    quantity={quantity}
+                    priceCents={priceCents}
+                    purchaserName={purchaserName}
+                    purchaserEmail={purchaserEmail}
+                    purchaserPhone={purchaserPhone || undefined}
+                    onSuccess={() => setSuccess(true)}
+                    onError={(msg) => {}}
+                  />
+                </div>
+              </>
+            ) : (
+              <div className="text-center">
+                <p className="text-muted-foreground mb-2">Walk-up ticket sales are not yet configured.</p>
+                <p className="text-sm text-muted-foreground">Check back soon!</p>
+              </div>
             )}
           </div>
         </main>
