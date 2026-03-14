@@ -5,9 +5,16 @@
  */
 import { createClient } from '@supabase/supabase-js';
 import { createPaymentWithPlatformFee, calculatePlatformFee } from '@/utils/stripe/connect';
+import { createRateLimitMiddleware, getClientIp } from '@/utils/rate-limiter';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+const rateLimiter = createRateLimitMiddleware({
+  maxRequests: 15,
+  windowMs: 15 * 60 * 1000,
+  keyGenerator: (r) => getClientIp(r),
+});
 
 function generateQrCode() {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -23,11 +30,18 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
+  await rateLimiter(req, res);
+  if (res.headersSent) return;
+
   const { organizationId, quantity = 1, purchaser_name, purchaser_email } = req.body || {};
 
-  if (!organizationId || !purchaser_name || !purchaser_email) {
-    return res.status(400).json({ error: 'organizationId, purchaser_name, and purchaser_email are required' });
+  if (!organizationId) {
+    return res.status(400).json({ error: 'organizationId is required' });
   }
+
+  // Name and email optional for walk-up; use placeholders when empty
+  const name = (purchaser_name || '').trim() || 'Walk-up';
+  const email = (purchaser_email || '').trim() || '';
 
   if (quantity < 1 || quantity > 50) {
     return res.status(400).json({ error: 'Quantity must be between 1 and 50' });
@@ -80,18 +94,22 @@ export default async function handler(req, res) {
     );
 
     const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
-    await stripe.paymentIntents.update(paymentIntent.id, {
+    const updatePayload = {
       metadata: {
         type: 'door_ticket',
         organization_id: org.id,
         organization_name: org.name,
         quantity: String(quantity),
         price_cents: String(priceCents),
-        purchaser_name: (purchaser_name || '').substring(0, 200),
-        purchaser_email: (purchaser_email || '').substring(0, 254),
+        purchaser_name: name.substring(0, 200),
+        purchaser_email: email.substring(0, 254),
         qr_code: qrCode,
       },
-    });
+    };
+    if (email) {
+      updatePayload.receipt_email = email;
+    }
+    await stripe.paymentIntents.update(paymentIntent.id, updatePayload);
 
     return res.status(200).json({
       clientSecret: paymentIntent.client_secret,

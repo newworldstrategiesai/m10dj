@@ -35,7 +35,8 @@ import {
   Sparkles,
   Mic,
   UserPlus,
-  Phone
+  Phone,
+  Ticket
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -254,7 +255,8 @@ export default function AdminNavbar() {
         {
           label: 'Door Tickets',
           items: [
-            { label: 'Door Settings', href: '/admin/door-settings', icon: <DollarSign className="w-4 h-4" />, description: 'Walk-up ticket sales' },
+            { label: 'Door Settings', href: '/admin/door-settings', icon: <DollarSign className="w-4 h-4" />, description: 'Configure walk-up sales' },
+            { label: 'Door Sales', href: '/admin/door-sales', icon: <Ticket className="w-4 h-4" />, description: 'View recent sales' },
           ]
         },
         {

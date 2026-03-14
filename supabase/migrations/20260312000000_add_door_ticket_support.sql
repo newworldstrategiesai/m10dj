@@ -20,3 +20,8 @@ ALTER TABLE public.event_tickets
 ALTER COLUMN event_id DROP NOT NULL;
 
 COMMENT ON COLUMN public.event_tickets.event_id IS 'Event identifier. NULL for door-only sales (no specific event).';
+
+-- 4. Unique constraint for idempotent record-sale (prevent duplicate tickets per payment)
+CREATE UNIQUE INDEX IF NOT EXISTS idx_event_tickets_stripe_pi_unique
+  ON public.event_tickets(stripe_payment_intent_id)
+  WHERE stripe_payment_intent_id IS NOT NULL;
