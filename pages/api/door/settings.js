@@ -22,7 +22,7 @@ export default async function handler(req, res) {
 
     let { data: org, error } = await supabase
       .from('organizations')
-      .select('id, name, slug, door_settings, subscription_status')
+      .select('id, name, slug, door_settings, subscription_status, requests_venmo_username, requests_venmo_phone_number, requests_payment_method_venmo_enabled')
       .eq('slug', slug)
       .maybeSingle();
 
@@ -31,7 +31,7 @@ export default async function handler(req, res) {
       if (normalized?.[0]) {
         const { data: full } = await supabase
           .from('organizations')
-          .select('id, name, slug, door_settings, subscription_status')
+          .select('id, name, slug, door_settings, subscription_status, requests_venmo_username, requests_venmo_phone_number, requests_payment_method_venmo_enabled')
           .eq('slug', normalized[0].slug)
           .maybeSingle();
         org = full;
@@ -61,6 +61,10 @@ export default async function handler(req, res) {
       cover_photo_url: ds.cover_photo_url ?? null,
       show_cover_photo: ds.show_cover_photo !== false,
       button_color: ds.button_color ?? null,
+      // Venmo (from org requests settings)
+      venmo_enabled: !!(org.requests_venmo_username && org.requests_payment_method_venmo_enabled !== false),
+      venmo_username: org.requests_venmo_username || null,
+      venmo_phone_number: org.requests_venmo_phone_number || null,
     });
   } catch (err) {
     console.error('[door/settings]', err);

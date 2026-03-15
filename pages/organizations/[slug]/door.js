@@ -40,6 +40,9 @@ export default function OrganizationDoorPage() {
   const [purchaserEmail, setPurchaserEmail] = useState('');
   const [purchaserPhone, setPurchaserPhone] = useState('');
   const [quantity, setQuantity] = useState(1);
+  const [paymentMethod, setPaymentMethod] = useState(null); // 'card' | 'venmo'
+  const [venmoData, setVenmoData] = useState(null); // { qrCode, paymentCode, ticketId, totalAmount }
+  const [venmoSubmitting, setVenmoSubmitting] = useState(false);
   const confettiTriggered = useRef(false);
 
   useEffect(() => {
@@ -48,6 +51,17 @@ export default function OrganizationDoorPage() {
       triggerConfetti();
     }
   }, [success, successData?.recordSaleFailed]);
+
+  // Handle return from Venmo redirect (venmo_ticket and qr in URL)
+  useEffect(() => {
+    if (!router.isReady || success) return;
+    const { venmo_ticket, qr } = router.query;
+    if (venmo_ticket && qr) {
+      setSuccessData({ ticketId: venmo_ticket, qrCode: decodeURIComponent(qr) });
+      setSuccess(true);
+      router.replace(router.asPath.split('?')[0], undefined, { shallow: true });
+    }
+  }, [router.isReady, router.query.venmo_ticket, router.query.qr, success]);
 
   // Handle return from 3DS redirect (Stripe appends payment_intent_client_secret to URL)
   useEffect(() => {
@@ -151,6 +165,39 @@ export default function OrganizationDoorPage() {
   const priceCents = doorSettings?.price_cents ?? 1500;
   const maxQty = doorSettings?.max_quantity_per_transaction ?? 10;
   const enabled = doorSettings?.enabled ?? false;
+  const venmoEnabled = doorSettings?.venmo_enabled === true;
+
+  const handleVenmoPay = async () => {
+    if (!organization) return;
+    setVenmoSubmitting(true);
+    setFormError(null);
+    try {
+      const res = await fetch('/api/door/record-venmo-sale', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          organizationId: organization.id,
+          quantity,
+          priceCents,
+          purchaserName: purchaserName.trim() || 'Walk-up',
+          purchaserEmail: purchaserEmail.trim() || undefined,
+          purchaserPhone: purchaserPhone.trim() || undefined,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || 'Failed to create ticket');
+      setVenmoData({
+        qrCode: data.qrCode,
+        paymentCode: data.paymentCode,
+        ticketId: data.ticketId,
+        totalAmount: data.totalAmount,
+      });
+    } catch (e) {
+      setFormError(e.message || 'Failed. Try again.');
+    } finally {
+      setVenmoSubmitting(false);
+    }
+  };
 
   const handlePriceSave = async (newCents) => {
     if (!organization || !isOwner) return;
@@ -511,7 +558,124 @@ export default function OrganizationDoorPage() {
                       ))}
                     </select>
                   </div>
-                  <DoorPaymentForm
+
+                  {/* Payment method selection */}
+                  <div className="space-y-2">
+                    <Label>Payment method</Label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setPaymentMethod('card')}
+                        className={`min-h-[48px] rounded-lg border-2 font-medium transition-colors ${
+                          paymentMethod === 'card'
+                            ? 'border-primary bg-primary/10 text-primary'
+                            : 'border-input bg-background hover:border-primary/50'
+                        }`}
+                      >
+                        Card / Cash App
+                      </button>
+                      {venmoEnabled && (
+                        <button
+                          type="button"
+                          onClick={() => setPaymentMethod('venmo')}
+                          className={`min-h-[48px] rounded-lg border-2 font-medium transition-colors flex items-center justify-center gap-1.5 ${
+                            paymentMethod === 'venmo'
+                              ? 'border-[#008CFF] bg-[#008CFF]/10 text-[#008CFF]'
+                              : 'border-input bg-background hover:border-[#008CFF]/50'
+                          }`}
+                        >
+                          <svg viewBox="0 0 48 48" className="w-5 h-5" fill="currentColor">
+                            <path d="M40.25,4.45a14.26,14.26,0,0,1,2.06,7.8c0,9.72-8.3,22.34-15,31.2H11.91L5.74,6.58,19.21,5.3l3.27,26.24c3.05-5,6.81-12.76,6.81-18.08A14.51,14.51,0,0,0,28,6.94Z"/>
+                          </svg>
+                          Venmo
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Venmo flow: show Venmo screen or "Pay with Venmo" button */}
+                  {paymentMethod === 'venmo' && venmoData ? (
+                    <div className="space-y-4 pt-2">
+                      <div className="bg-purple-50 dark:bg-purple-900/20 border-2 border-purple-300 dark:border-purple-700 rounded-lg p-3">
+                        <p className="text-xs font-semibold text-purple-800 dark:text-purple-200 mb-1">Include this code in your Venmo note:</p>
+                        <p className="text-lg font-bold text-purple-900 dark:text-purple-100 text-center font-mono">{venmoData.paymentCode}</p>
+                      </div>
+                      <div className="flex justify-center">
+                        <div className="bg-white dark:bg-zinc-800 p-2 rounded-lg border">
+                          <img
+                            src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(
+                              `${typeof window !== 'undefined' ? window.location.origin : (process.env.NEXT_PUBLIC_SITE_URL || 'https://tipjar.live')}/venmo-redirect?recipients=${encodeURIComponent(doorSettings?.venmo_phone_number || (doorSettings?.venmo_username || '').replace(/^@/, ''))}&amount=${(venmoData.totalAmount || 0).toFixed(2)}&note=${encodeURIComponent(`Door ticket ${venmoData.paymentCode}`)}`
+                            )}`}
+                            alt="Venmo QR"
+                            className="w-40 h-40"
+                          />
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const recipients = doorSettings?.venmo_phone_number || (doorSettings?.venmo_username || '').replace(/^@/, '');
+                          const note = `Door ticket ${venmoData.paymentCode}`;
+                          const slugVal = organization?.slug || router.query.slug || '';
+                          const returnUrl = `${window.location.origin}/organizations/${slugVal}/door?venmo_ticket=${venmoData.ticketId}&qr=${encodeURIComponent(venmoData.qrCode || '')}`;
+                          const url = `/venmo-redirect?recipients=${encodeURIComponent(recipients)}&amount=${(venmoData.totalAmount || 0).toFixed(2)}&note=${encodeURIComponent(note)}`;
+                          if (typeof window !== 'undefined') {
+                            sessionStorage.setItem('venmo_thank_you_url', returnUrl);
+                            window.location.href = url;
+                          }
+                        }}
+                        className="w-full py-3 px-4 bg-[#008CFF] hover:bg-[#0077E6] text-white rounded-lg font-semibold flex items-center justify-center gap-2"
+                      >
+                        <svg viewBox="0 0 48 48" className="w-5 h-5" fill="currentColor">
+                          <path d="M40.25,4.45a14.26,14.26,0,0,1,2.06,7.8c0,9.72-8.3,22.34-15,31.2H11.91L5.74,6.58,19.21,5.3l3.27,26.24c3.05-5,6.81-12.76,6.81-18.08A14.51,14.51,0,0,0,28,6.94Z"/>
+                        </svg>
+                        Open Venmo to Pay
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSuccessData({ qrCode: venmoData.qrCode, ticketId: venmoData.ticketId });
+                          setSuccess(true);
+                        }}
+                        className="w-full py-3 px-4 bg-green-600 hover:bg-green-700 text-white rounded-lg font-semibold"
+                      >
+                        I&apos;ve Paid – Show My Ticket
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { setVenmoData(null); setPaymentMethod(null); }}
+                        className="w-full py-2 text-sm text-muted-foreground hover:text-foreground"
+                      >
+                        ← Choose different payment method
+                      </button>
+                    </div>
+                  ) : paymentMethod === 'venmo' ? (
+                    <div className="space-y-2">
+                      <button
+                        type="button"
+                        onClick={handleVenmoPay}
+                        disabled={venmoSubmitting}
+                        className="w-full min-h-[48px] py-3 px-4 bg-[#008CFF] hover:bg-[#0077E6] disabled:opacity-50 text-white rounded-lg font-semibold flex items-center justify-center gap-2"
+                      >
+                        {venmoSubmitting ? 'Creating ticket…' : (
+                          <>
+                            <svg viewBox="0 0 48 48" className="w-5 h-5" fill="currentColor">
+                              <path d="M40.25,4.45a14.26,14.26,0,0,1,2.06,7.8c0,9.72-8.3,22.34-15,31.2H11.91L5.74,6.58,19.21,5.3l3.27,26.24c3.05-5,6.81-12.76,6.81-18.08A14.51,14.51,0,0,0,28,6.94Z"/>
+                            </svg>
+                            Pay ${((priceCents * quantity) / 100).toFixed(2)} with Venmo
+                          </>
+                        )}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setPaymentMethod(null)}
+                        className="w-full py-2 text-sm text-muted-foreground hover:text-foreground"
+                      >
+                        ← Choose different payment method
+                      </button>
+                    </div>
+                  ) : paymentMethod === 'card' ? (
+                    <DoorPaymentForm
                     organizationId={organization.id}
                     quantity={quantity}
                     priceCents={priceCents}
@@ -525,6 +689,11 @@ export default function OrganizationDoorPage() {
                     }}
                     onError={(msg) => setFormError(msg)}
                   />
+                  ) : (
+                    <p className="text-sm text-muted-foreground text-center py-2">
+                      Choose a payment method above
+                    </p>
+                  )}
                 </div>
               </>
             ) : (
